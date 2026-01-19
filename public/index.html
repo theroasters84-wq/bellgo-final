@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
     <title>Bellgo Unified</title>
     <style>
         /* --- ΣΤΥΛ (ΜΑΥΡΟ/ΚΙΤΡΙΝΟ) --- */
@@ -22,7 +22,7 @@
         .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em;}
         .btn-call:active { background: red; transform: scale(0.95); }
 
-        /* CHAT STYLES (ΜΕΓΑΛΩΣΑΜΕ ΤΟ ΥΨΟΣ ΕΔΩ) */
+        /* CHAT STYLES (ΜΕΓΑΛΟ ΥΨΟΣ 55%) */
         #chat-ui { width: 100%; height: 55vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
         #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
         .msg { margin-bottom: 8px; padding: 5px; }
@@ -120,7 +120,7 @@
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v2', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v3', JSON.stringify(auth));
             
             initUI();
             connect();
@@ -211,10 +211,10 @@
         }
 
         function acceptOrder() {
+            // ΣΤΑΜΑΤΑΕΙ Ο ΗΧΟΣ ΑΛΛΑ ΔΕΝ ΣΤΕΛΝΕΙ ΜΗΝΥΜΑ ΣΤΟ CHAT
             document.getElementById('alert-layer').style.display = 'none';
             snd.pause(); snd.currentTime = 0;
             if(navigator.vibrate) navigator.vibrate(0);
-            // ΔΕΝ ΣΤΕΛΝΟΥΜΕ ΠΙΑ ΜΗΝΥΜΑ ΣΤΟ CHAT!
         }
 
         window.addEventListener('keydown', (e) => {
@@ -236,7 +236,7 @@
             PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
         }
 
-        const saved = localStorage.getItem('unified_auth_v2');
+        const saved = localStorage.getItem('unified_auth_v3');
         if(saved) {
             auth = JSON.parse(saved);
             initUI();
