@@ -4,89 +4,66 @@ const socketIo = require('socket.io');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// --- ΡΥΘΜΙΣΕΙΣ FIREBASE ---
+// --- FIREBASE INIT (Αν λείπει το αρχείο, δεν κρασάρει) ---
 try {
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    console.log("Firebase initialized successfully");
+    console.log("✅ Firebase connected");
 } catch (error) {
-    console.error("Firebase init error (Push won't work):", error.message);
+    console.log("⚠️ Firebase not found (Push notifications won't work, but app will run)");
 }
 
 const app = express();
 const server = http.createServer(app);
 
-// --- ΡΥΘΜΙΣΕΙΣ SOCKET.IO (ΕΠΙΚΟΙΝΩΝΙΑ) ---
+// --- SOCKET IO SETUP ---
 const io = socketIo(server, {
     cors: {
-        origin: "*", // Επιτρέπει σύνδεση από παντού (Κινητό, Browser)
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
 
-// Εξυπηρέτηση των αρχείων από τον φάκελο 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Λίστα συνδεδεμένων χρηστών (για να βλέπει ο Admin ποιος είναι online)
-let connectedUsers = {};
-
+// --- LOGIC ---
 io.on('connection', (socket) => {
     console.log('New connection:', socket.id);
 
-    // 1. Δήλωση Ρόλου (Admin, Driver, Waiter)
-    socket.on('login', (userData) => {
-        // userData = { role: 'driver', name: 'Nikos' }
-        connectedUsers[socket.id] = userData;
-        console.log(`User logged in: ${userData.role} (${socket.id})`);
-        
-        // Ενημέρωσε όλους (π.χ. τον Admin) ότι μπήκε νέος χρήστης
-        io.emit('users-update', connectedUsers);
+    // 1. LOGIN (Για να ξέρουμε ποιος είναι ποιος)
+    socket.on('login', (user) => {
+        console.log(`👤 User Logged in: ${user.name} (${user.role})`);
+        io.emit('chat-message', { user: 'SYSTEM', text: `Ο/Η ${user.name} συνδέθηκε!` });
     });
 
-    // 2. CHAT: Όταν κάποιος στέλνει μήνυμα
-    socket.on('chat-message', (msgData) => {
-        console.log('Chat received:', msgData);
-        // Το στέλνουμε πίσω σε ΟΛΟΥΣ για να εμφανιστεί στην οθόνη
-        io.emit('chat-message', msgData);
+    // 2. CHAT (Αμφίδρομη επικοινωνία)
+    socket.on('chat-message', (data) => {
+        console.log(`💬 Chat from ${data.user}: ${data.text}`);
+        io.emit('chat-message', data); // Στέλνει σε όλους
     });
 
-    // 3. ΠΑΡΑΓΓΕΛΙΕΣ: Όταν ο Admin στέλνει παραγγελία
+    // 3. NEW ORDER (Από Admin -> Σε Drivers)
     socket.on('new-order', (orderData) => {
-        console.log('New Order:', orderData);
-        io.emit('order-notification', orderData); // Ειδοποίηση στην εφαρμογή
-        
-        // Στείλε και Push Notification (αν υπάρχει το token)
-        sendPushNotification(orderData);
-    });
-
-    // 4. Αποσύνδεση
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        delete connectedUsers[socket.id];
-        io.emit('users-update', connectedUsers); // Ενημέρωσε τη λίστα
+        console.log('🔔 New Order sent!');
+        // Ειδοποίηση στην εφαρμογή (κόκκινη οθόνη)
+        io.emit('order-notification', orderData);
+        // Ειδοποίηση Push (αν υπάρχει Firebase)
+        sendPush();
     });
 });
 
-// Συνάρτηση για Push Notifications (FCM)
-function sendPushNotification(data) {
-    const message = {
-        notification: {
-            title: 'Νέα Παραγγελία!',
-            body: `Τραπέζι: ${data.table} - Σύνολο: ${data.total}€`
-        },
-        topic: 'orders' 
-    };
-
-    admin.messaging().send(message)
-        .then((response) => console.log('Push sent:', response))
-        .catch((error) => console.log('Push error:', error));
+function sendPush() {
+    try {
+        const message = {
+            notification: { title: 'Νέα Παραγγελία!', body: 'Πάτα για αποδοχή' },
+            topic: 'orders'
+        };
+        admin.messaging().send(message).catch(e => console.log(e));
+    } catch (e) {}
 }
 
-// Εκκίνηση Server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server LIVE on port ${PORT}`);
-});
+server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
