@@ -4,12 +4,12 @@ const socketIo = require('socket.io');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// FIREBASE
+// FIREBASE SETUP
 try {
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     console.log("✅ Firebase Active");
-} catch (e) { console.log("⚠️ Firebase Skipped"); }
+} catch (e) { console.log("⚠️ Firebase Skipped (No serviceAccountKey.json)"); }
 
 const app = express();
 const server = http.createServer(app);
@@ -18,75 +18,79 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Εδώ κρατάμε τους χρήστες ΜΟΝΙΜΑ (μέχρι να κάνουν Logout)
-// Μορφή: { "Nikos": { socketId: "...", shop: "Roasters", token: "..." } }
+// Λίστα οδηγών (Δεν σβήνονται στο disconnect)
 let activeDrivers = {}; 
 
 io.on('connection', (socket) => {
     
-    // 1. LOGIN (Ή ΕΠΑΝΑΣΥΝΔΕΣΗ)
+    // 1. LOGIN
     socket.on('login', (user) => {
         socket.join(user.shop);
         
         if (user.role === 'driver') {
-            // Αποθηκεύουμε τον οδηγό με βάση το ΟΝΟΜΑ του (όχι το socket id που αλλάζει)
+            // Αποθήκευση/Ενημέρωση του οδηγού
             activeDrivers[user.name] = { 
                 socketId: socket.id, 
                 shop: user.shop,
-                // Αν στείλει token για Firebase, το κρατάμε
                 fcmToken: user.fcmToken || null 
             };
-            console.log(`✅ Driver ${user.name} is ONLINE`);
+            console.log(`✅ Driver ${user.name} checked in.`);
         }
         
-        // Ενημερώνουμε τους Admins αμέσως
+        // Ενημερώνουμε αμέσως τους Admin
         updateShopAdmins(user.shop);
     });
 
-    // 2. ΕΝΗΜΕΡΩΣΗ TOKEN (Για Firebase)
+    // 2. UPDATE FIREBASE TOKEN
     socket.on('update-token', (data) => {
         if (activeDrivers[data.name]) {
             activeDrivers[data.name].fcmToken = data.token;
         }
     });
 
-    // 3. LOGOUT (ΜΟΝΟ ΤΟΤΕ ΤΟΝ ΣΒΗΝΟΥΜΕ)
+    // 3. MANUAL LOGOUT (Μόνο τότε διαγράφεται)
     socket.on('force-logout', (user) => {
         if (activeDrivers[user.name]) {
             delete activeDrivers[user.name];
             updateShopAdmins(user.shop);
-            console.log(`cX Driver ${user.name} Logged Out manually`);
+            console.log(`🚪 Driver ${user.name} logged out.`);
         }
     });
 
-    // 4. ΚΛΗΣΗ (SOCKET + FIREBASE)
+    // 4. ΚΛΗΣΗ (ADMIN -> DRIVER)
     socket.on('call-driver', (targetName) => {
         const driver = activeDrivers[targetName];
-        
         if (driver) {
             console.log(`🔔 Calling ${targetName}...`);
-            
-            // Α. Προσπάθεια μέσω Socket (Αν είναι ανοιχτή η οθόνη)
+            // Μέσω Socket (αν είναι ανοιχτό)
             io.to(driver.socketId).emit('order-notification');
-
-            // Β. Προσπάθεια μέσω Firebase (Αν κοιμάται)
-            if (driver.fcmToken) {
-                sendPush(driver.fcmToken);
-            }
+            // Μέσω Firebase (αν κοιμάται)
+            if (driver.fcmToken) sendPush(driver.fcmToken);
         }
     });
 
+    // 5. ΑΠΟΔΟΧΗ (DRIVER -> ADMIN)
+    socket.on('accept-order', (data) => {
+        // Ειδοποιούμε το μαγαζί ότι ο τάδε το δέχτηκε (για να γίνει πράσινο το κουμπί)
+        io.to(data.shop).emit('order-accepted', data.driverName);
+    });
+
+    // 6. CHAT
     socket.on('chat-message', (data) => {
         io.to(data.shop).emit('chat-message', data);
+    });
+
+    // 7. DISCONNECT (Απλά ενημερώνουμε το socketId αν ξαναμπεί, δεν τον σβήνουμε)
+    socket.on('disconnect', () => {
+        // Δεν κάνουμε delete εδώ!
     });
 });
 
 function updateShopAdmins(shopName) {
     const driversList = [];
-    // Ψάχνουμε στη μόνιμη λίστα activeDrivers
     for (let name in activeDrivers) {
         if (activeDrivers[name].shop === shopName) {
-            driversList.push({ name: name }); // Στέλνουμε το όνομα ως ID
+            driversList.push({ name: name });
         }
     }
     io.to(shopName).emit('update-drivers-list', driversList);
