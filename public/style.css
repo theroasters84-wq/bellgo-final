@@ -1,0 +1,106 @@
+/* Γενικό Στυλ - Modern Dark */
+body { 
+    background: #000; 
+    color: #00ff00; 
+    font-family: 'Courier New', monospace; 
+    margin: 0; 
+    padding: 10px; 
+    overflow-x: hidden; 
+}
+
+.box { 
+    border: 1px solid #00ff00; 
+    padding: 15px; 
+    margin-bottom: 10px; 
+    border-radius: 8px; 
+    background: #050505; 
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);
+}
+
+.hidden { display: none !important; }
+
+/* Inputs & Buttons */
+input, select { 
+    background: #000; 
+    color: #00ff00; 
+    border: 1px solid #004400; 
+    padding: 12px; 
+    margin: 8px 0; 
+    width: 100%; 
+    box-sizing: border-box; 
+    font-size: 16px; 
+    outline: none;
+}
+
+button { 
+    background: #00ff00; 
+    color: #000; 
+    border: none; 
+    padding: 12px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    text-transform: uppercase;
+}
+
+button:active { background: #00cc00; }
+
+/* Password Wrapper με Ματάκι */
+.password-wrapper { 
+    position: relative; 
+    width: 100%; 
+}
+
+#togglePassword {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 22px;
+    color: #00ff00;
+    z-index: 5;
+}
+
+/* ΓΙΓΑΝΤΙΑΙΟ ΚΟΥΜΠΙ ΑΠΟΔΟΧΗΣ (Καλύπτει τα πάντα) */
+#accept-btn {
+    display: none;
+    position: fixed;
+    top: 0; 
+    left: 0;
+    width: 100vw; 
+    height: 100vh;
+    background: #ff0000; 
+    color: #fff;
+    font-size: 50px; 
+    font-weight: bold;
+    z-index: 10000;
+    border: none;
+    text-align: center;
+}
+
+/* Chat UI */
+#chat-area { 
+    height: 180px; 
+    overflow-y: auto; 
+    font-size: 14px; 
+    border-bottom: 1px solid #004400; 
+    margin-bottom: 8px; 
+    background: #020202; 
+    padding: 5px;
+    text-align: left;
+}
+
+.chat-msg { margin-bottom: 4px; border-bottom: 1px solid #001100; padding-bottom: 2px; }
+.timestamp { color: #006600; font-size: 11px; margin-right: 5px; }
+
+/* Admin Staff List */
+.staff-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 10px 0; 
+    border-bottom: 1px solid #002200; 
+}
+
+.small-info { font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
