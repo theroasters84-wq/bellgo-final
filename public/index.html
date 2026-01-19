@@ -4,128 +4,222 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
-    <title>Bellgo Driver</title>
+    <title>Bellgo Unified</title>
     <style>
+        /* --- ΣΤΥΛ (ΜΑΥΡΟ/ΚΙΤΡΙΝΟ) --- */
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
         .hidden { display: none !important; }
-        .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .btn { width: 85%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; }
-        input { width: 80%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 5px; }
+        .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        
+        /* INPUTS & BUTTONS */
+        input, select { width: 85%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 8px; font-size: 16px; }
+        .btn { width: 90%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; cursor: pointer; }
+        .btn-outline { background: transparent; border: 1px solid #ffc107; color: #ffc107; }
 
-        /* CHAT */
-        #chat-container { width: 90%; height: 40vh; margin-top: 20px; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; }
-        #chat-messages { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
-        .msg { margin-bottom: 5px; padding: 5px; border-radius: 4px; }
+        /* ADMIN LIST STYLES */
+        #drivers-container { width: 100%; max-height: 40vh; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; padding: 10px; border-radius: 10px; }
+        .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
+        .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; }
+        .btn-call:active { background: red; transform: scale(0.95); }
+
+        /* CHAT STYLES */
+        #chat-ui { width: 100%; height: 35vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; }
+        #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
+        .msg { margin-bottom: 5px; padding: 5px; }
         .mine { color: #ffc107; text-align: right; }
         .theirs { color: #00ccff; text-align: left; }
 
-        /* ALERT & FAKE LOCK */
-        #alert-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; }
+        /* ALERT LAYER (RED SCREEN) */
+        #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; animation: flash 0.5s infinite; }
+        @keyframes flash { 50% { background: #900; } }
+
+        /* FAKE LOCK */
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen">
-        <h1 style="color:#ffc107">BELLGO</h1>
-        <input type="text" id="shop" placeholder="MAGAZI (π.χ. Roasters)">
-        <input type="password" id="pass" placeholder="KWDIKOS">
-        <input type="text" id="name" placeholder="ONOMA">
-        <button class="btn" onclick="login()">EISODOS</button>
+        <h1 style="color:#ffc107; letter-spacing: 2px;">BELLGO</h1>
+        
+        <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ (π.χ. Roasters)">
+        <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ (1234)">
+        <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
+        
+        <p style="color:#888; margin-top:10px;">ΕΠΙΛΟΓΗ ΡΟΛΟΥ:</p>
+        <select id="role-select">
+            <option value="driver">🛵 ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</option>
+            <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
+        </select>
+
+        <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
     </div>
 
     <div id="driver-ui" class="screen hidden">
-        <h2 id="d-name" style="color:#ffc107">NAME</h2>
+        <h2 id="d-label" style="color:#ffc107">DRIVER</h2>
         <span style="color:#0f0">● ONLINE</span>
 
-        <div id="chat-container">
-            <div id="chat-messages"></div>
+        <div id="chat-ui">
+            <div id="chat-msgs"></div>
             <div style="display:flex; border-top:1px solid #333;">
-                <input type="text" id="chat-in" placeholder="Message..." style="border:none; margin:0; width:80%;">
+                <input type="text" id="c-in" placeholder="Μήνυμα..." style="border:none; margin:0; width:80%;">
                 <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold;">></button>
             </div>
         </div>
 
-        <button class="btn" style="background:#333; color:white; border:1px solid #555; margin-top:20px;" onclick="toggleLock()">🔒 FAKE LOCK</button>
-        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:10px;">Logout</button>
+        <button class="btn btn-outline" onclick="toggleLock()">🔒 FAKE LOCK</button>
+        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:20px;">Logout</button>
     </div>
 
-    <div id="alert-screen" onclick="acceptOrder()">
-        <h1 style="font-size:50px; color:white;">ΚΛΗΣΗ!</h1>
+    <div id="admin-ui" class="screen hidden">
+        <h2 style="color:#ffc107">ADMIN PANEL</h2>
+        <p style="color:#888" id="shop-label">SHOP</p>
+
+        <div style="width:100%; text-align:left; color:#ffc107; margin-bottom:5px;">Διανομείς Online:</div>
+        <div id="drivers-container">
+            <p style="color:#666; text-align:center;">Αναμονή για συνδέσεις...</p>
+        </div>
+
+        <div id="admin-chat-ui" style="width:100%; height: 25vh; border:1px solid #333; background:#111; display:flex; flex-direction:column;">
+            <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
+            <div style="display:flex;">
+                <input type="text" id="a-in" placeholder="Chat..." style="flex:1; margin:0; border:none;">
+                <button onclick="sendAdminChat()" style="background:#444; color:white; border:none; padding:10px;">Send</button>
+            </div>
+        </div>
+        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:20px;">Logout</button>
+    </div>
+
+    <div id="alert-layer" onclick="acceptOrder()">
+        <h1 style="font-size:3em; color:white">ΚΛΗΣΗ!</h1>
+        <p style="font-size:1.5em; color:white">ΠΑΤΑ ΚΟΥΜΠΙ</p>
     </div>
     <div id="fake-lock" onclick="toggleLock()"></div>
     <audio id="snd" src="alert.mp3" loop></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const SERVER_URL = 'https://bellgo-final.onrender.com';
+        const SERVER = 'https://bellgo-final.onrender.com';
         let socket, auth;
         const snd = document.getElementById('snd');
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
-        function login() {
-            const s = document.getElementById('shop').value.trim(); // Trim για να μην έχει κενά
+        function attemptLogin() {
+            const s = document.getElementById('shop').value.trim();
             const p = document.getElementById('pass').value;
-            const n = document.getElementById('name').value;
+            const n = document.getElementById('name').value.trim();
+            const r = document.getElementById('role-select').value;
 
-            if(p !== "1234") return alert("LATHOS KWDIKOS");
-            if(!n || !s) return alert("SYMPLIROSE OLA TA Pedia");
+            if(p !== "1234") return alert("Λάθος Κωδικός");
+            if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            auth = { shop: s, name: n, role: 'driver' };
-            localStorage.setItem('bellgo_auth', JSON.stringify(auth));
+            auth = { shop: s, name: n, role: r };
+            localStorage.setItem('unified_auth', JSON.stringify(auth));
             
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('driver-ui').classList.remove('hidden');
-            document.getElementById('d-name').innerText = n.toUpperCase();
-
+            initUI();
             connect();
         }
 
+        function initUI() {
+            document.getElementById('login-screen').classList.add('hidden');
+            
+            if(auth.role === 'driver') {
+                document.getElementById('driver-ui').classList.remove('hidden');
+                document.getElementById('d-label').innerText = auth.name.toUpperCase();
+            } else {
+                document.getElementById('admin-ui').classList.remove('hidden');
+                document.getElementById('shop-label').innerText = auth.shop.toUpperCase();
+            }
+        }
+
         function connect() {
-            socket = io(SERVER_URL, { transports: ['websocket'] });
+            socket = io(SERVER, { transports: ['websocket'] });
 
             socket.on('connect', () => {
-                socket.emit('login', auth); // Στέλνει και το Shop Name για να μπει στο Room
-                if(PushNotifications) setupPush();
-                setInterval(() => { if(socket.connected) socket.emit('heartbeat'); }, 25000);
+                socket.emit('login', auth);
+                if(auth.role === 'driver') {
+                    setInterval(() => { if(socket.connected) socket.emit('heartbeat'); }, 25000);
+                    if(PushNotifications) setupPush();
+                }
             });
 
-            socket.on('order-notification', () => triggerAlert());
-            
-            // Chat: Μόνο κείμενο, χωρίς συστημικά μηνύματα
+            // --- ADMIN LOGIC: ΕΝΗΜΕΡΩΣΗ ΛΙΣΤΑΣ ---
+            socket.on('update-drivers-list', (drivers) => {
+                if(auth.role !== 'admin') return; // Μόνο ο admin το βλέπει
+                
+                const list = document.getElementById('drivers-container');
+                list.innerHTML = ""; 
+                
+                if(drivers.length === 0) {
+                    list.innerHTML = "<p style='color:#666; text-align:center;'>Κανείς Online</p>";
+                    return;
+                }
+
+                drivers.forEach(d => {
+                    // Δημιουργία κουμπιού για κάθε οδηγό
+                    list.innerHTML += `
+                        <div class="driver-card">
+                            <span style="font-size:1.1em; color:white;">🛵 ${d.name}</span>
+                            <button class="btn-call" onclick="callDriver('${d.id}')">ΚΛΗΣΗ 🔔</button>
+                        </div>`;
+                });
+            });
+
+            // --- DRIVER LOGIC: ΛΗΨΗ ΚΛΗΣΗΣ ---
+            socket.on('order-notification', () => {
+                if(auth.role === 'driver') triggerAlert();
+            });
+
+            // --- CHAT LOGIC (KOINO) ---
             socket.on('chat-message', (data) => {
-                const box = document.getElementById('chat-messages');
+                // Επιλογή του σωστού κουτιού ανάλογα με τον ρόλο
+                const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
                 const isMe = data.user === auth.name;
                 box.innerHTML += `<div class="msg ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
                 box.scrollTop = box.scrollHeight;
             });
         }
 
-        function sendChat() {
-            const txt = document.getElementById('chat-in').value;
+        // Λειτουργίες Admin
+        function callDriver(targetId) {
+            socket.emit('call-driver', targetId); // Καλεί ΜΟΝΟ αυτόν
+            // Προσθήκη μηνύματος στο chat ότι έγινε κλήση
+            // socket.emit('chat-message', { shop: auth.shop, user: 'SYSTEM', text: `🔔 Κλήση προς διανομέα...` });
+        }
+
+        function sendAdminChat() {
+            const txt = document.getElementById('a-in').value;
             if(txt) {
-                // Στέλνουμε και το shop για να πάει στο σωστό δωμάτιο
                 socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt });
-                document.getElementById('chat-in').value = '';
+                document.getElementById('a-in').value = '';
+            }
+        }
+
+        // Λειτουργίες Driver
+        function sendChat() {
+            const txt = document.getElementById('c-in').value;
+            if(txt) {
+                socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt });
+                document.getElementById('c-in').value = '';
             }
         }
 
         function triggerAlert() {
-            document.getElementById('alert-screen').style.display = 'flex';
+            document.getElementById('alert-layer').style.display = 'flex';
             snd.play().catch(e=>{});
             if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         }
 
         function acceptOrder() {
-            document.getElementById('alert-screen').style.display = 'none';
+            document.getElementById('alert-layer').style.display = 'none';
             snd.pause(); snd.currentTime = 0;
             if(navigator.vibrate) navigator.vibrate(0);
-            // Στέλνουμε μήνυμα επιβεβαίωσης στο chat (προαιρετικά, αν θες σβήστο για απόλυτη καθαριότητα)
-            socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: '✅ ΕΛΑΒΑ ΤΗΝ ΚΛΗΣΗ' });
+            socket.emit('chat-message', { shop: auth.shop, user: 'SYSTEM', text: `✅ Ο/Η ${auth.name} έλαβε την κλήση!` });
         }
 
+        // Κοινές Λειτουργίες
         window.addEventListener('keydown', (e) => {
-            if((e.key === "VolumeUp" || e.key === "VolumeDown") && document.getElementById('alert-screen').style.display === 'flex') {
+            if((e.key === "VolumeUp" || e.key === "VolumeDown") && document.getElementById('alert-layer').style.display === 'flex') {
                 acceptOrder();
             }
         });
@@ -143,12 +237,12 @@
             PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
         }
 
-        const saved = localStorage.getItem('bellgo_auth');
+        // Auto Login
+        const saved = localStorage.getItem('unified_auth');
         if(saved) {
             auth = JSON.parse(saved);
-            document.getElementById('shop').value = auth.shop;
-            document.getElementById('name').value = auth.name;
-            document.getElementById('pass').value = "1234";
+            initUI();
+            connect();
         }
     </script>
 </body>
