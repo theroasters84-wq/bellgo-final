@@ -17,73 +17,61 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Λίστα για να ξέρουμε ποιοι οδηγοί είναι σε ποιο μαγαζί
-// Μορφή: { "socketID": { name: "Nikos", shop: "Roasters", role: "driver" } }
+// Εδώ αποθηκεύουμε ποιος είναι ποιος: { socketId: { name, shop, role } }
 let connectedUsers = {};
 
 io.on('connection', (socket) => {
     
-    // 1. LOGIN & ROOMS
+    // 1. LOGIN
     socket.on('login', (user) => {
-        // Αποθήκευση χρήστη
+        // user = { shop: "Roasters", name: "Nikos", role: "driver" ή "admin" }
         connectedUsers[socket.id] = user;
+        socket.join(user.shop); // Μπαίνουν στο δωμάτιο του μαγαζιού
         
-        // Βάζουμε τον χρήστη στο "Δωμάτιο" του μαγαζιού του
-        socket.join(user.shop); 
-        console.log(`👤 ${user.name} joined room: ${user.shop}`);
-
-        // Αν μπήκε Driver ή Admin, ενημερώνουμε τον Admin του μαγαζιού για τη λίστα
+        console.log(`👤 Login: ${user.name} (${user.role}) at ${user.shop}`);
+        
+        // Αν συνδέθηκε/αποσυνδέθηκε κάποιος, ενημερώνουμε τους Admins του μαγαζιού
         updateShopAdmins(user.shop);
     });
 
-    // 2. CHAT (Μόνο στο συγκεκριμένο μαγαζί)
+    // 2. ΣΤΟΧΕΥΜΕΝΗ ΚΛΗΣΗ (Admin -> Specific Driver)
+    socket.on('call-driver', (targetSocketId) => {
+        console.log(`🔔 Calling specific driver: ${targetSocketId}`);
+        // Στέλνουμε ΜΟΝΟ σε αυτόν τον διανομέα
+        io.to(targetSocketId).emit('order-notification');
+    });
+
+    // 3. CHAT (Μόνο στο ίδιο μαγαζί)
     socket.on('chat-message', (data) => {
-        // Στέλνουμε το μήνυμα ΜΟΝΟ σε όσους είναι στο ίδιο μαγαζί (room)
-        // data πρέπει να έχει { shop, user, text }
         io.to(data.shop).emit('chat-message', data);
     });
 
-    // 3. ΣΤΟΧΕΥΜΕΝΗ ΚΛΗΣΗ (Admin -> Specific Driver)
-    socket.on('call-driver', (targetSocketId) => {
-        // Στέλνουμε ειδοποίηση ΜΟΝΟ στον συγκεκριμένο οδηγό
-        io.to(targetSocketId).emit('order-notification');
-        
-        // Στέλνουμε Push αν χρειαστεί (εδώ απλοϊκά σε όλους του topic, 
-        // για πιο σωστά θέλει tokens, αλλά ας το αφήσουμε απλό για αρχή)
-        sendPush();
-    });
+    // 4. HEARTBEAT
+    socket.on('heartbeat', () => { /* Κρατάει τη σύνδεση */ });
 
-    // 4. ΑΠΟΣΥΝΔΕΣΗ
+    // 5. DISCONNECT
     socket.on('disconnect', () => {
         const user = connectedUsers[socket.id];
         if (user) {
-            const shopName = user.shop;
+            const shop = user.shop;
             delete connectedUsers[socket.id];
-            // Ενημερώνουμε τον Admin ότι έφυγε κάποιος
-            updateShopAdmins(shopName);
+            updateShopAdmins(shop); // Ενημέρωσε τη λίστα ότι έφυγε
         }
     });
 });
 
-// Συνάρτηση που στέλνει τη λίστα των οδηγών στους Admins του συγκεκριμένου Shop
+// Στέλνει τη λίστα των Online Διανομέων στους Admins του ίδιου μαγαζιού
 function updateShopAdmins(shopName) {
-    // Βρες όλους τους οδηγούς αυτού του μαγαζιού
-    const driversList = [];
+    // Βρες όλους τους drivers αυτού του shop
+    const drivers = [];
     for (let id in connectedUsers) {
         if (connectedUsers[id].shop === shopName && connectedUsers[id].role === 'driver') {
-            driversList.push({ id: id, name: connectedUsers[id].name });
+            drivers.push({ id: id, name: connectedUsers[id].name });
         }
     }
-    // Στείλε τη λίστα στο δωμάτιο του μαγαζιού (θα το ακούσει το shop.html)
-    io.to(shopName).emit('update-drivers', driversList);
-}
-
-function sendPush() {
-    try {
-        const msg = { notification: { title: 'ΚΛΗΣΗ!', body: 'Πάτα το κουμπί!' }, topic: 'orders' };
-        admin.messaging().send(msg).catch(e=>{});
-    } catch (e) {}
+    // Στείλε τη λίστα στο room του shop (θα το φιλτράρει το front-end να το δουν μόνο οι admins)
+    io.to(shopName).emit('update-drivers-list', drivers);
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server Ready on ${PORT}`));
