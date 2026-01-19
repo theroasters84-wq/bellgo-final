@@ -1,0 +1,26 @@
+{
+  "name": "bellgo-v2",
+  "version": "1.0.0",
+  "description": "Bellgo Unified App Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theroasters84-wq/bellgo-android.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "firebase-admin": "^11.11.1",
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/push-notifications": "^8.0.0"
+  }
+}
