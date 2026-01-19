@@ -6,152 +6,110 @@
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
     <title>Bellgo Driver</title>
     <style>
-        /* --- ΤΟ ΠΑΛΙΟ ΚΛΑΣΙΚΟ ΣΤΥΛ (ROASTERS STYLE) --- */
-        body { background: #000000; color: #ffffff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
         .hidden { display: none !important; }
         .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        /* ΚΟΥΜΠΙΑ & INPUTS ΟΠΩΣ ΤΑ ΕΙΧΕΣ */
         .btn { width: 85%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; }
-        .btn-dark { background: #333; color: white; border: 1px solid #555; }
-        input { width: 80%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 5px; font-size: 16px; }
+        input { width: 80%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 5px; }
 
-        /* HEADER */
-        .header { width: 100%; padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #111; box-sizing: border-box; border-bottom: 2px solid #ffc107; position: absolute; top: 0; }
-
-        /* CHAT UI (ΠΡΟΣΑΡΜΟΣΜΕΝΟ ΝΑ ΜΗΝ ΧΑΛΑΕΙ ΤΗΝ ΟΘΟΝΗ) */
-        #chat-container { width: 90%; height: 40vh; margin-top: 60px; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; }
+        /* CHAT */
+        #chat-container { width: 90%; height: 40vh; margin-top: 20px; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; }
         #chat-messages { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
         .msg { margin-bottom: 5px; padding: 5px; border-radius: 4px; }
-        .mine { color: #ffc107; text-align: right; } /* Τα δικά μου Κίτρινα */
-        .theirs { color: #00ccff; text-align: left; } /* Των άλλων Μπλε */
-        
-        /* CONTROLS AREA */
-        .controls { position: absolute; bottom: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .mine { color: #ffc107; text-align: right; }
+        .theirs { color: #00ccff; text-align: left; }
 
-        /* RED ALERT LAYER */
-        #alert-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        .flash { animation: blinking 0.5s infinite; }
-        @keyframes blinking { 50% { background: #800000; } }
-
-        /* FAKE LOCK (BLACK SCREEN) */
+        /* ALERT & FAKE LOCK */
+        #alert-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; }
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen">
-        <h1 style="color:#ffc107; font-size: 40px; margin-bottom:10px;">BELLGO</h1>
-        <p style="color:#666">Unified App v2</p>
-        <br>
-        <input type="text" id="shop" placeholder="MAGAZI">
+        <h1 style="color:#ffc107">BELLGO</h1>
+        <input type="text" id="shop" placeholder="MAGAZI (π.χ. Roasters)">
         <input type="password" id="pass" placeholder="KWDIKOS">
         <input type="text" id="name" placeholder="ONOMA">
-        <button class="btn" onclick="login('driver')">EISODOS (DRIVER)</button>
-        <button class="btn btn-dark" onclick="login('admin')">ADMIN PANEL</button>
+        <button class="btn" onclick="login()">EISODOS</button>
     </div>
 
     <div id="driver-ui" class="screen hidden">
-        <div class="header">
-            <span id="d-name" style="color:#ffc107; font-weight:bold;">NAME</span>
-            <span style="color:#0f0; font-size:12px;">● ONLINE</span>
-        </div>
+        <h2 id="d-name" style="color:#ffc107">NAME</h2>
+        <span style="color:#0f0">● ONLINE</span>
 
         <div id="chat-container">
-            <div id="chat-messages">
-                <div style="color:#444; text-align:center;">--- Chat Started ---</div>
-            </div>
+            <div id="chat-messages"></div>
             <div style="display:flex; border-top:1px solid #333;">
                 <input type="text" id="chat-in" placeholder="Message..." style="border:none; margin:0; width:80%;">
                 <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold;">></button>
             </div>
         </div>
 
-        <div class="controls">
-            <button class="btn btn-dark" style="width:90%; border: 1px solid #ffc107;" onclick="toggleLock()">🔒 FAKE LOCK</button>
-            <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:10px;">Logout</button>
-        </div>
+        <button class="btn" style="background:#333; color:white; border:1px solid #555; margin-top:20px;" onclick="toggleLock()">🔒 FAKE LOCK</button>
+        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:10px;">Logout</button>
     </div>
 
-    <div id="alert-screen" class="flash" onclick="acceptOrder()">
+    <div id="alert-screen" onclick="acceptOrder()">
         <h1 style="font-size:50px; color:white;">ΚΛΗΣΗ!</h1>
-        <p style="font-size:20px; color:white;">ΠΑΤΑ VOLUME BUTTON</p>
     </div>
-
-    <div id="fake-lock" onclick="toggleLock()">
-        <div style="position:absolute; bottom:50px; width:100%; text-align:center; color:#222;">Double Tap to Unlock</div>
-    </div>
-
+    <div id="fake-lock" onclick="toggleLock()"></div>
     <audio id="snd" src="alert.mp3" loop></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        // --- ΡΥΘΜΙΣΕΙΣ ---
-        const SERVER_URL = 'https://bellgo-final.onrender.com'; // TO URL ΣΟΥ
+        const SERVER_URL = 'https://bellgo-final.onrender.com';
         let socket, auth;
         const snd = document.getElementById('snd');
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
-        // --- LOGIN LOGIC ---
-        function login(role) {
-            const s = document.getElementById('shop').value;
+        function login() {
+            const s = document.getElementById('shop').value.trim(); // Trim για να μην έχει κενά
             const p = document.getElementById('pass').value;
             const n = document.getElementById('name').value;
 
             if(p !== "1234") return alert("LATHOS KWDIKOS");
-            if(!n) return alert("BALE ONOMA");
+            if(!n || !s) return alert("SYMPLIROSE OLA TA Pedia");
 
-            auth = { shop: s, name: n, role: role };
+            auth = { shop: s, name: n, role: 'driver' };
             localStorage.setItem('bellgo_auth', JSON.stringify(auth));
             
-            // UI Switch
             document.getElementById('login-screen').classList.add('hidden');
-            if(role === 'admin') { window.location.href="shop.html"; return; }
-            
             document.getElementById('driver-ui').classList.remove('hidden');
             document.getElementById('d-name').innerText = n.toUpperCase();
 
             connect();
         }
 
-        // --- CONNECTION ---
         function connect() {
             socket = io(SERVER_URL, { transports: ['websocket'] });
 
             socket.on('connect', () => {
-                socket.emit('login', auth);
-                startHeartbeat(); // ΤΟPOΘΕΤΗΣΗ 1 (Heartbeat)
+                socket.emit('login', auth); // Στέλνει και το Shop Name για να μπει στο Room
                 if(PushNotifications) setupPush();
+                setInterval(() => { if(socket.connected) socket.emit('heartbeat'); }, 25000);
             });
 
-            // ΕΔΩ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: ΑΚΟΥΕΙ ΤΑ ΣΩΣΤΑ EVENTS
             socket.on('order-notification', () => triggerAlert());
-            socket.on('chat-message', (data) => addMsg(data));
+            
+            // Chat: Μόνο κείμενο, χωρίς συστημικά μηνύματα
+            socket.on('chat-message', (data) => {
+                const box = document.getElementById('chat-messages');
+                const isMe = data.user === auth.name;
+                box.innerHTML += `<div class="msg ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
+                box.scrollTop = box.scrollHeight;
+            });
         }
 
-        function startHeartbeat() {
-            setInterval(() => {
-                if(socket?.connected) socket.emit('heartbeat');
-            }, 25000);
-        }
-
-        // --- CHAT FUNCTIONS ---
         function sendChat() {
             const txt = document.getElementById('chat-in').value;
             if(txt) {
-                socket.emit('chat-message', { user: auth.name, text: txt });
+                // Στέλνουμε και το shop για να πάει στο σωστό δωμάτιο
+                socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt });
                 document.getElementById('chat-in').value = '';
             }
         }
 
-        function addMsg(data) {
-            const box = document.getElementById('chat-messages');
-            const isMe = data.user === auth.name;
-            box.innerHTML += `<div class="msg ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
-
-        // --- ALERT & VOLUME BUTTONS ---
         function triggerAlert() {
             document.getElementById('alert-screen').style.display = 'flex';
             snd.play().catch(e=>{});
@@ -162,18 +120,16 @@
             document.getElementById('alert-screen').style.display = 'none';
             snd.pause(); snd.currentTime = 0;
             if(navigator.vibrate) navigator.vibrate(0);
-            socket.emit('chat-message', { user: 'SYSTEM', text: `✅ ${auth.name} TO PHRE!` });
+            // Στέλνουμε μήνυμα επιβεβαίωσης στο chat (προαιρετικά, αν θες σβήστο για απόλυτη καθαριότητα)
+            socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: '✅ ΕΛΑΒΑ ΤΗΝ ΚΛΗΣΗ' });
         }
 
-        // KEY LISTENER (ΓΙΑ ΝΑ ΔΟΥΛΕΥΕΙ ΤΟ MAIANCTIVITY.JAVA)
         window.addEventListener('keydown', (e) => {
-            const isVol = (e.key === "VolumeUp" || e.key === "VolumeDown");
-            if(isVol && document.getElementById('alert-screen').style.display === 'flex') {
+            if((e.key === "VolumeUp" || e.key === "VolumeDown") && document.getElementById('alert-screen').style.display === 'flex') {
                 acceptOrder();
             }
         });
 
-        // --- UTILS ---
         function toggleLock() {
             const l = document.getElementById('fake-lock');
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
@@ -187,7 +143,6 @@
             PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
         }
 
-        // Auto Login Check
         const saved = localStorage.getItem('bellgo_auth');
         if(saved) {
             auth = JSON.parse(saved);
