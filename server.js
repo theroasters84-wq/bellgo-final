@@ -1,66 +1,78 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const socketIo = require('socket.io');
+const path = require('path');
 const admin = require('firebase-admin');
 
-// Εισαγωγή του αρχείου ταυτοποίησης Firebase
-const serviceAccount = require("./serviceAccountKey.json");
+// Αρχικοποίηση Firebase (για ειδοποιήσεις)
+// Προσοχή: Βεβαιώσου ότι το αρχείο serviceAccountKey.json υπάρχει στον ίδιο φάκελο
+const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase initialized successfully");
+} catch (error) {
+    console.error("Firebase init error:", error);
+}
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
+
+// Ρυθμίσεις CORS για να δέχεται συνδέσεις από παντού (Render, Κινητό, Browser)
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
-// Αποθήκευση των FCM Tokens των οδηγών
-let driverTokens = {}; 
+// Εξυπηρέτηση στατικών αρχείων (HTML, CSS, JS) από τον φάκελο 'public'
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
+// Socket.io: Διαχείριση συνδέσεων
 io.on('connection', (socket) => {
-  console.log('Χρήστης συνδέθηκε:', socket.id);
+    console.log('New client connected:', socket.id);
 
-  // Όταν ένας οδηγός στέλνει το Token του
-  socket.on('update-fcm-token', (data) => {
-    console.log(`Λήψη Token για τον οδηγό ${data.name}: ${data.token}`);
-    driverTokens[data.name] = data.token;
-  });
+    // Όταν ο Admin στέλνει παραγγελία
+    socket.on('new-order', (orderData) => {
+        console.log('Order received:', orderData);
+        
+        // 1. Στείλε την παραγγελία σε όλους (Admin Panel, Κινητά)
+        io.emit('order-notification', orderData);
 
-  // Όταν ο Admin στέλνει νέα παραγγελία
-  socket.on('send-order', (orderData) => {
-    console.log('Νέα παραγγελία από Admin:', orderData);
-    
-    // 1. Αποστολή μέσω Socket (για όσους είναι online)
-    io.emit('new-order', orderData);
-
-    // 2. Αποστολή μέσω Firebase Push Notification σε όλους τους οδηγούς
-    Object.values(driverTokens).forEach(token => {
-      const message = {
-        notification: {
-          title: 'Νέα Κλήση Bellgo!',
-          body: `Παραγγελία από: ${orderData.shopName || 'Το κατάστημα'}`
-        },
-        token: token
-      };
-
-      admin.messaging().send(message)
-        .then((response) => console.log('Push εστάλη επιτυχώς:', response))
-        .catch((error) => console.log('Σφάλμα Push:', error));
+        // 2. Στείλε Push Notification στα Android κινητά
+        sendPushNotification(orderData);
     });
-  });
 
-  socket.on('send-chat-message', (msg) => {
-    io.emit('new-chat-message', { user: socket.id, text: msg });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Χρήστης αποσυνδέθηκε');
-  });
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
 });
 
+// Συνάρτηση αποστολής Push Notification (FCM)
+function sendPushNotification(data) {
+    const message = {
+        notification: {
+            title: 'Νέα Παραγγελία!',
+            body: `Τραπέζι: ${data.table} - Σύνολο: ${data.total}€`
+        },
+        topic: 'orders' // Στέλνει σε όσους έχουν γραφτεί στο θέμα "orders"
+    };
+
+    admin.messaging().send(message)
+        .then((response) => {
+            console.log('Push sent successfully:', response);
+        })
+        .catch((error) => {
+            console.log('Error sending push:', error);
+        });
+}
+
+// Εκκίνηση Server (Σημαντικό για το Render: process.env.PORT)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
