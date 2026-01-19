@@ -4,68 +4,41 @@
     <meta charset="UTF-8">
     <title>Admin - Bellgo</title>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; margin:0; padding: 20px; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; max-width: 500px; margin: 0 auto; border: 1px solid #333; }
-        .driver { background: #222; padding: 15px; margin: 10px 0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #ffc107; }
-        #chat-admin { height: 200px; overflow-y: auto; background: #111; padding: 10px; margin: 15px 0; border-radius: 10px; text-align: left; border: 1px solid #333; }
-        .btn-call { background: #ffc107; color: black; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        input { padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 5px; width: 70%; }
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #222; padding: 20px; border-radius: 15px; border: 1px solid #ffc107; max-width: 500px; margin: 0 auto; }
+        .btn-order { background: #ffc107; color: black; padding: 25px; border-radius: 15px; width: 100%; border: none; font-weight: bold; font-size: 1.5em; cursor: pointer; }
+        #messages { height: 200px; overflow-y: auto; background: #111; margin: 20px 0; padding: 10px; text-align: left; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2 id="shop-title" style="color:#ffc107">ADMIN</h2>
-        <div id="driver-list">Αναζήτηση διανομέων...</div>
-        
-        <div id="chat-admin"></div>
-        <div style="display: flex; gap: 5px; justify-content: center;">
-            <input type="text" id="chat-in" placeholder="Μήνυμα...">
-            <button onclick="sendChat()" style="padding: 10px 20px; background: #333; color: white; border: none; border-radius: 5px;">➤</button>
-        </div>
-        
-        <p id="status" style="margin-top: 15px; color:#0f0"></p>
-        <button onclick="localStorage.clear(); location.href='index.html'" style="background: none; color: #666; border: none; margin-top: 20px; cursor: pointer;">Έξοδος</button>
+        <h1>ADMIN - BELLGO</h1>
+        <button class="btn-order" onclick="sendOrder()">ΑΠΟΣΤΟΛΗ ΚΛΗΣΗΣ 📢</button>
+        <div id="messages"></div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const auth = JSON.parse(localStorage.getItem('roasters_auth'));
-        if(!auth) location.href="index.html";
-        document.getElementById('shop-title').innerText = auth.shop.toUpperCase();
-        
-        const socket = io();
-        socket.emit('login', auth);
+        // --- ΣΥΝΔΕΣΗ ΜΕ ΤΟΝ SERVER ΣΤΟ RENDER ---
+        const socket = io('https://bellgo-final.onrender.com'); 
+        const msgBox = document.getElementById('messages');
 
-        socket.on('update-drivers-detailed', (drivers) => {
-            const list = document.getElementById('driver-list');
-            list.innerHTML = "<h3>ONLINE ΔΙΑΝΟΜΕΙΣ</h3>";
-            if(drivers.length === 0) list.innerHTML += "<p style='color:#555'>Κανένας online</p>";
-            drivers.forEach(d => {
-                list.innerHTML += `<div class="driver">
-                    <span>${d.name.toUpperCase()}</span>
-                    <button class="btn-call" onclick="call('${d.id}', '${d.name}')">ΚΛΗΣΗ</button>
-                </div>`;
-            });
+        socket.on('connect', () => {
+             msgBox.innerHTML += `<div style="color:cyan">● Συνδέθηκε στον Server</div>`;
+             // Δηλώνουμε ότι είμαστε Admin
+             socket.emit('login', { role: 'admin', name: 'AdminPanel' });
         });
 
-        function call(id, name) {
-            socket.emit('new-order', { shopName: auth.shop, targetDriverId: id });
-            document.getElementById('status').innerText = "Κλήση στον " + name + "...";
+        function sendOrder() {
+            // ΔΙΟΡΘΩΣΗ: Στέλνουμε 'new-order' με τα δεδομένα που περιμένει ο server
+            const orderData = { table: "Admin Button", total: "0" };
+            socket.emit('new-order', orderData);
+            msgBox.innerHTML += `<div>[${new Date().toLocaleTimeString()}] Κλήση εστάλη!</div>`;
         }
 
-        socket.on('new-chat-message', (data) => {
-            const box = document.getElementById('chat-admin');
-            box.innerHTML += `<div><b style="color:#ffc107">${data.user}:</b> ${data.text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        });
-
-        function sendChat() {
-            const m = document.getElementById('chat-in');
-            if(m.value) { socket.emit('send-chat-message', m.value); m.value=''; }
-        }
-
-        socket.on('order-confirmed', (data) => {
-            document.getElementById('status').innerText = "✅ ΑΠΟΔΟΧΗ: " + data.driverName.toUpperCase();
+        // Ακούμε και για το Chat για να βλέπουμε τι λένε οι οδηγοί
+        socket.on('chat-message', (data) => {
+            msgBox.innerHTML += `<div style="color:#ffc107">${data.user}: ${data.text}</div>`;
         });
     </script>
 </body>
