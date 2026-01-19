@@ -4,108 +4,104 @@
     <meta charset="UTF-8">
     <title>Bellgo Admin</title>
     <style>
-        /* --- DARK THEME ADMIN STYLE --- */
         body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        
         .container { max-width: 600px; margin: 0 auto; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
         
-        /* ΤΟ ΜΕΓΑΛΟ ΚΟΥΜΠΙ ΚΛΗΣΗΣ */
-        .btn-bell { 
-            background: #ffc107; 
-            color: black; 
-            width: 100%; 
-            padding: 40px; 
-            font-size: 30px; 
-            font-weight: bold; 
-            border: none; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            margin-bottom: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
-        }
-        .btn-bell:active { transform: scale(0.98); background: #e0a800; }
-
-        /* LOG / CHAT AREA */
-        h3 { text-align: left; color: #888; margin-bottom: 5px; }
-        #log-box { 
-            height: 400px; 
-            overflow-y: auto; 
-            background: #000; 
-            border: 1px solid #333; 
-            padding: 15px; 
-            text-align: left; 
-            font-family: monospace; 
-            font-size: 14px;
-        }
-        .entry { border-bottom: 1px solid #222; padding: 5px 0; }
+        /* ΛΙΣΤΑ ΟΔΗΓΩΝ */
+        #drivers-list { margin-bottom: 20px; min-height: 100px; }
         
-        /* COLORS FOR LOGS */
-        .sys { color: #0f0; } /* Πράσινο για συστήματα/αποδοχή */
-        .drv { color: #00ccff; } /* Μπλε για οδηγούς */
-        .me { color: #ffc107; } /* Κίτρινο για εμάς */
+        /* ΚΟΥΜΠΙ ΟΔΗΓΟΥ */
+        .driver-card { 
+            display: flex; justify-content: space-between; align-items: center;
+            background: #333; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #555;
+        }
+        .driver-name { font-size: 1.2em; font-weight: bold; color: #fff; }
+        .btn-call { 
+            background: #ffc107; color: black; border: none; padding: 10px 20px; 
+            font-weight: bold; border-radius: 5px; cursor: pointer; font-size: 1em;
+        }
+        .btn-call:active { background: #e0a800; transform: scale(0.95); }
+
+        /* CHAT */
+        #log-box { height: 300px; overflow-y: auto; background: #000; border: 1px solid #333; padding: 15px; text-align: left; font-family: monospace; font-size: 14px; margin-bottom: 10px; }
+        .entry { border-bottom: 1px solid #222; padding: 5px 0; }
+        .mine { color: #ffc107; text-align: right; display:block;} 
+        .theirs { color: #00ccff; text-align: left; display:block;}
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1 style="color:#ffc107; letter-spacing: 2px;">BELLGO ADMIN</h1>
-        
-        <button class="btn-bell" onclick="sendCall()">🔔 ΚΛΗΣΗ ΔΙΑΝΟΜΕΑ</button>
+        <h1 style="color:#ffc107;">ΔΙΑΧΕΙΡΙΣΗ ΔΙΑΝΟΜΗΣ</h1>
+        <h3 id="shop-title" style="color:#888;">WAITING...</h3>
 
-        <h3>Live Activity:</h3>
+        <div id="drivers-list">
+            <p style="color:#666">Αναμονή για διανομείς...</p>
+        </div>
+
+        <h3>Chat</h3>
         <div id="log-box"></div>
-        
-        <div style="display:flex; margin-top:10px;">
-            <input type="text" id="admin-msg" placeholder="Γράψε μήνυμα..." style="flex:1; padding:10px; border:none;">
-            <button onclick="sendMsg()" style="padding:10px 20px; background:#444; color:white; border:none; cursor:pointer;">Send</button>
+        <div style="display:flex;">
+            <input type="text" id="admin-msg" placeholder="Μήνυμα..." style="flex:1; padding:10px;">
+            <button onclick="sendMsg()" style="padding:10px; background:#444; color:white; border:none;">Send</button>
         </div>
     </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        // Σιγουρέψου ότι το URL είναι σωστό
         const SERVER_URL = 'https://bellgo-final.onrender.com';
         const socket = io(SERVER_URL);
-        const box = document.getElementById('log-box');
+        
+        // ΡΥΘΜΙΣΕ ΤΟ ΟΝΟΜΑ ΤΟΥ ΜΑΓΑΖΙΟΥ ΕΔΩ (Ή βάλτο να το ζητάει με prompt)
+        const MY_SHOP = "Roasters"; // <--- ΑΛΛΑΞΕ ΤΟ ΑΝΑΛΟΓΑ ΤΟ ΜΑΓΑΖΙ
+        const MY_NAME = "Admin";
 
-        // 1. ΣΥΝΔΕΣΗ
+        document.getElementById('shop-title').innerText = "SHOP: " + MY_SHOP;
+
         socket.on('connect', () => {
-            log('Σύστημα', 'Συνδέθηκε στον Server επιτυχώς', 'sys');
-            socket.emit('login', { name: 'SHOP', role: 'admin' });
+            // Login ως Admin στο συγκεκριμένο Shop Room
+            socket.emit('login', { name: MY_NAME, shop: MY_SHOP, role: 'admin' });
         });
 
-        // 2. ΑΠΟΣΤΟΛΗ ΚΛΗΣΗΣ
-        function sendCall() {
-            // Στέλνει την εντολή που περιμένει το server.js και το android
-            socket.emit('new-order', { shop: 'Roasters' });
-            log('Me', '🔔 Η ΚΛΗΣΗ ΕΣΤΑΛΗ!', 'me');
+        // ΛΗΨΗ ΛΙΣΤΑΣ ΟΔΗΓΩΝ
+        socket.on('update-drivers', (drivers) => {
+            const list = document.getElementById('drivers-list');
+            list.innerHTML = ""; // Καθαρισμός
+            
+            if(drivers.length === 0) {
+                list.innerHTML = "<p style='color:#666'>Κανένας διανομέας online</p>";
+                return;
+            }
+
+            drivers.forEach(d => {
+                // Δημιουργία κουμπιού για κάθε οδηγό
+                list.innerHTML += `
+                    <div class="driver-card">
+                        <span class="driver-name">🛵 ${d.name}</span>
+                        <button class="btn-call" onclick="callDriver('${d.id}')">ΚΛΗΣΗ 🔔</button>
+                    </div>`;
+            });
+        });
+
+        // ΚΛΗΣΗ ΣΥΓΚΕΚΡΙΜΕΝΟΥ ΟΔΗΓΟΥ
+        function callDriver(socketId) {
+            socket.emit('call-driver', socketId);
         }
 
-        // 3. ΛΗΨΗ CHAT & ΕΠΙΒΕΒΑΙΩΣΕΩΝ
-        socket.on('chat-message', (data) => {
-            let type = 'drv';
-            if(data.user === 'SYSTEM') type = 'sys'; // Μηνύματα συστήματος (π.χ. Αποδοχή)
-            if(data.user === 'SHOP') type = 'me';
-            
-            log(data.user, data.text, type);
-        });
-
-        // 4. ΑΠΟΣΤΟΛΗ ΜΗΝΥΜΑΤΟΣ ΑΠΟ ADMIN
+        // CHAT (ΜΟΝΟ ΚΕΙΜΕΝΟ)
         function sendMsg() {
-            const inp = document.getElementById('admin-msg');
-            if(inp.value) {
-                socket.emit('chat-message', { user: 'SHOP', text: inp.value });
-                inp.value = '';
+            const txt = document.getElementById('admin-msg').value;
+            if(txt) {
+                socket.emit('chat-message', { shop: MY_SHOP, user: MY_NAME, text: txt });
+                document.getElementById('admin-msg').value = '';
             }
         }
 
-        // ΒΟΗΘΗΤΙΚΗ ΣΥΝΑΡΤΗΣΗ LOG
-        function log(user, text, type) {
-            const time = new Date().toLocaleTimeString();
-            box.innerHTML += `<div class="entry"><span style="color:#666">[${time}]</span> <b class="${type}">${user}:</b> ${text}</div>`;
+        socket.on('chat-message', (data) => {
+            const box = document.getElementById('log-box');
+            const isMe = data.user === MY_NAME;
+            box.innerHTML += `<div class="entry ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
             box.scrollTop = box.scrollHeight;
-        }
+        });
     </script>
 </body>
 </html>
