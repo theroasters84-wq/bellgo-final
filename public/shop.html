@@ -2,42 +2,110 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Bellgo</title>
+    <title>Bellgo Admin</title>
     <style>
-        body { background: #222; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        .btn-order { background: #ffc107; font-size: 2em; padding: 30px; border-radius: 20px; border: none; cursor: pointer; width: 100%; max-width: 400px; margin-bottom: 20px;}
-        #chat-log { background: #111; height: 300px; overflow-y: auto; padding: 10px; text-align: left; max-width: 600px; margin: 0 auto; border: 1px solid #444; }
+        /* --- DARK THEME ADMIN STYLE --- */
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        
+        .container { max-width: 600px; margin: 0 auto; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
+        
+        /* ΤΟ ΜΕΓΑΛΟ ΚΟΥΜΠΙ ΚΛΗΣΗΣ */
+        .btn-bell { 
+            background: #ffc107; 
+            color: black; 
+            width: 100%; 
+            padding: 40px; 
+            font-size: 30px; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .btn-bell:active { transform: scale(0.98); background: #e0a800; }
+
+        /* LOG / CHAT AREA */
+        h3 { text-align: left; color: #888; margin-bottom: 5px; }
+        #log-box { 
+            height: 400px; 
+            overflow-y: auto; 
+            background: #000; 
+            border: 1px solid #333; 
+            padding: 15px; 
+            text-align: left; 
+            font-family: monospace; 
+            font-size: 14px;
+        }
+        .entry { border-bottom: 1px solid #222; padding: 5px 0; }
+        
+        /* COLORS FOR LOGS */
+        .sys { color: #0f0; } /* Πράσινο για συστήματα/αποδοχή */
+        .drv { color: #00ccff; } /* Μπλε για οδηγούς */
+        .me { color: #ffc107; } /* Κίτρινο για εμάς */
     </style>
 </head>
 <body>
-    <h1>ADMIN PANEL</h1>
-    
-    <button class="btn-order" onclick="sendOrder()">🔔 ΚΛΗΣΗ ΔΙΑΝΟΜΕΑ</button>
 
-    <h3>Chat / Activity Log</h3>
-    <div id="chat-log"></div>
+    <div class="container">
+        <h1 style="color:#ffc107; letter-spacing: 2px;">BELLGO ADMIN</h1>
+        
+        <button class="btn-bell" onclick="sendCall()">🔔 ΚΛΗΣΗ ΔΙΑΝΟΜΕΑ</button>
+
+        <h3>Live Activity:</h3>
+        <div id="log-box"></div>
+        
+        <div style="display:flex; margin-top:10px;">
+            <input type="text" id="admin-msg" placeholder="Γράψε μήνυμα..." style="flex:1; padding:10px; border:none;">
+            <button onclick="sendMsg()" style="padding:10px 20px; background:#444; color:white; border:none; cursor:pointer;">Send</button>
+        </div>
+    </div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const socket = io('https://bellgo-final.onrender.com'); // Βάλε το σωστό URL
-        const log = document.getElementById('chat-log');
+        // Σιγουρέψου ότι το URL είναι σωστό
+        const SERVER_URL = 'https://bellgo-final.onrender.com';
+        const socket = io(SERVER_URL);
+        const box = document.getElementById('log-box');
 
+        // 1. ΣΥΝΔΕΣΗ
         socket.on('connect', () => {
-            log.innerHTML += `<div style="color:cyan">● Συνδέθηκε στον Server</div>`;
-            socket.emit('login', { name: 'ADMIN', role: 'admin' });
+            log('Σύστημα', 'Συνδέθηκε στον Server επιτυχώς', 'sys');
+            socket.emit('login', { name: 'SHOP', role: 'admin' });
         });
 
-        function sendOrder() {
-            // Στέλνει την εντολή 'new-order' που περιμένει ο server
-            socket.emit('new-order', { table: 'Admin', total: '0' });
-            log.innerHTML += `<div style="color:yellow">🔔 Εστάλη κλήση!</div>`;
+        // 2. ΑΠΟΣΤΟΛΗ ΚΛΗΣΗΣ
+        function sendCall() {
+            // Στέλνει την εντολή που περιμένει το server.js και το android
+            socket.emit('new-order', { shop: 'Roasters' });
+            log('Me', '🔔 Η ΚΛΗΣΗ ΕΣΤΑΛΗ!', 'me');
         }
 
-        // Βλέπει τι γράφουν οι οδηγοί
+        // 3. ΛΗΨΗ CHAT & ΕΠΙΒΕΒΑΙΩΣΕΩΝ
         socket.on('chat-message', (data) => {
-            log.innerHTML += `<div><b>${data.user}:</b> ${data.text}</div>`;
-            log.scrollTop = log.scrollHeight;
+            let type = 'drv';
+            if(data.user === 'SYSTEM') type = 'sys'; // Μηνύματα συστήματος (π.χ. Αποδοχή)
+            if(data.user === 'SHOP') type = 'me';
+            
+            log(data.user, data.text, type);
         });
+
+        // 4. ΑΠΟΣΤΟΛΗ ΜΗΝΥΜΑΤΟΣ ΑΠΟ ADMIN
+        function sendMsg() {
+            const inp = document.getElementById('admin-msg');
+            if(inp.value) {
+                socket.emit('chat-message', { user: 'SHOP', text: inp.value });
+                inp.value = '';
+            }
+        }
+
+        // ΒΟΗΘΗΤΙΚΗ ΣΥΝΑΡΤΗΣΗ LOG
+        function log(user, text, type) {
+            const time = new Date().toLocaleTimeString();
+            box.innerHTML += `<div class="entry"><span style="color:#666">[${time}]</span> <b class="${type}">${user}:</b> ${text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
     </script>
 </body>
 </html>
