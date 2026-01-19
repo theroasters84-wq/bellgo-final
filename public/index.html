@@ -6,55 +6,53 @@
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
     <title>Bellgo Unified</title>
     <style>
-        /* --- ΣΤΥΛ (ΜΑΥΡΟ/ΚΙΤΡΙΝΟ) --- */
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
         .hidden { display: none !important; }
         .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         
-        /* INPUTS & BUTTONS */
         input, select { width: 90%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 8px; font-size: 16px; }
         .btn { width: 95%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; cursor: pointer; }
         .btn-outline { background: transparent; border: 1px solid #ffc107; color: #ffc107; }
+        .setting-row { display: flex; justify-content: space-between; width: 90%; margin: 10px 0; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
 
-        /* ADMIN LIST STYLES */
+        /* LIST & CHAT */
         #drivers-container { width: 100%; height: 50vh; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 10px; border-radius: 10px; background: #111; }
         .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
         .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em;}
-        .btn-call:active { background: red; transform: scale(0.95); }
 
-        /* CHAT STYLES (ΜΕΓΑΛΟ ΥΨΟΣ 55%) */
-        #chat-ui { width: 100%; height: 55vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
+        #chat-ui { width: 100%; height: 45vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
         #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
         .msg { margin-bottom: 8px; padding: 5px; }
         .mine { color: #ffc107; text-align: right; }
         .theirs { color: #00ccff; text-align: left; }
-
-        /* ADMIN CHAT UI */
         #admin-chat-ui { width: 100%; height: 30vh; border:1px solid #333; background:#111; display:flex; flex-direction:column; border-radius: 8px;}
 
-        /* ALERT LAYER */
+        /* ALERT */
         #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; animation: flash 0.5s infinite; }
         @keyframes flash { 50% { background: #900; } }
-
-        /* FAKE LOCK */
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
+        
+        /* SWITCH STYLE */
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #ffc107; }
+        input:checked + .slider:before { transform: translateX(26px); }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen">
         <h1 style="color:#ffc107; letter-spacing: 2px; font-size: 3em;">BELLGO</h1>
-        
         <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
         <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
         <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
-        
         <p style="color:#888; margin-top:10px;">ΕΠΙΛΟΓΗ ΡΟΛΟΥ:</p>
         <select id="role-select" style="padding:15px; font-size:1.1em;">
             <option value="driver">🛵 ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</option>
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
-
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
     </div>
 
@@ -62,6 +60,15 @@
         <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
             <h2 id="d-label" style="color:#ffc107; margin:0;">DRIVER</h2>
             <span style="color:#0f0">● ONLINE</span>
+        </div>
+
+        <div class="setting-row">
+            <span>🔊 Ήχος</span>
+            <label class="switch"><input type="checkbox" id="sound-toggle" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+            <span>📳 Δόνηση</span>
+            <label class="switch"><input type="checkbox" id="vib-toggle" checked><span class="slider"></span></label>
         </div>
 
         <div id="chat-ui">
@@ -81,11 +88,9 @@
     <div id="admin-ui" class="screen hidden">
         <h2 style="color:#ffc107; margin-bottom:5px;">ADMIN PANEL</h2>
         <p style="color:#888; margin-top:0;" id="shop-label">SHOP</p>
-
         <div id="drivers-container">
             <p style="color:#666; text-align:center; padding-top:20px;">Αναμονή για συνδέσεις...</p>
         </div>
-
         <div id="admin-chat-ui">
             <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
             <div style="display:flex;">
@@ -108,6 +113,7 @@
         const SERVER = 'https://bellgo-final.onrender.com';
         let socket, auth;
         const snd = document.getElementById('snd');
+        // Έλεγχος αν υπάρχει Capacitor Push
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
         function attemptLogin() {
@@ -120,7 +126,7 @@
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v3', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v4', JSON.stringify(auth));
             
             initUI();
             connect();
@@ -128,7 +134,6 @@
 
         function initUI() {
             document.getElementById('login-screen').classList.add('hidden');
-            
             if(auth.role === 'driver') {
                 document.getElementById('driver-ui').classList.remove('hidden');
                 document.getElementById('d-label').innerText = auth.name.toUpperCase();
@@ -145,37 +150,33 @@
                 socket.emit('login', auth);
                 if(auth.role === 'driver') {
                     setInterval(() => { if(socket.connected) socket.emit('heartbeat'); }, 25000);
+                    // Ενεργοποίηση Firebase
                     if(PushNotifications) setupPush();
                 }
             });
 
-            // UPDATE LIST (ADMIN ONLY)
+            // ADMIN: ΒΛΕΠΕΙ ΟΛΟΥΣ ΤΟΥΣ ΟΔΗΓΟΥΣ (ΚΑΙ ΤΟΥΣ OFFLINE)
             socket.on('update-drivers-list', (drivers) => {
                 if(auth.role !== 'admin') return;
-                
                 const list = document.getElementById('drivers-container');
                 list.innerHTML = ""; 
-                
                 if(drivers.length === 0) {
                     list.innerHTML = "<p style='color:#666; text-align:center; padding-top:20px;'>Κανείς Online</p>";
                     return;
                 }
-
                 drivers.forEach(d => {
                     list.innerHTML += `
                         <div class="driver-card">
                             <span style="font-size:1.2em; color:white; font-weight:bold;">🛵 ${d.name}</span>
-                            <button class="btn-call" onclick="callDriver('${d.id}')">ΚΛΗΣΗ 🔔</button>
+                            <button class="btn-call" onclick="callDriver('${d.name}')">ΚΛΗΣΗ 🔔</button>
                         </div>`;
                 });
             });
 
-            // GET CALL (DRIVER ONLY)
             socket.on('order-notification', () => {
                 if(auth.role === 'driver') triggerAlert();
             });
 
-            // CHAT (COMMON)
             socket.on('chat-message', (data) => {
                 const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
                 const isMe = data.user === auth.name;
@@ -184,8 +185,9 @@
             });
         }
 
-        function callDriver(targetId) {
-            socket.emit('call-driver', targetId);
+        function callDriver(targetName) {
+            // Στέλνουμε το ΟΝΟΜΑ του οδηγού, ο server θα βρει το Socket ID
+            socket.emit('call-driver', targetName);
         }
 
         function sendAdminChat() {
@@ -206,15 +208,41 @@
 
         function triggerAlert() {
             document.getElementById('alert-layer').style.display = 'flex';
-            snd.play().catch(e=>{});
-            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+            
+            // Έλεγχος ρυθμίσεων χρήστη
+            const soundOn = document.getElementById('sound-toggle').checked;
+            const vibOn = document.getElementById('vib-toggle').checked;
+
+            if(soundOn) snd.play().catch(e=>{});
+            if(vibOn && navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         }
 
         function acceptOrder() {
-            // ΣΤΑΜΑΤΑΕΙ Ο ΗΧΟΣ ΑΛΛΑ ΔΕΝ ΣΤΕΛΝΕΙ ΜΗΝΥΜΑ ΣΤΟ CHAT
             document.getElementById('alert-layer').style.display = 'none';
             snd.pause(); snd.currentTime = 0;
             if(navigator.vibrate) navigator.vibrate(0);
+        }
+
+        // LOGOUT ΜΕ ΑΦΑΙΡΕΣΗ ΑΠΟ ΤΗ ΛΙΣΤΑ
+        function logout() { 
+            if(socket) socket.emit('force-logout', auth); // Ενημέρωσε τον Server να με σβήσει
+            localStorage.clear(); 
+            location.reload(); 
+        }
+
+        async function setupPush() {
+            try {
+                await PushNotifications.requestPermissions();
+                await PushNotifications.register();
+                
+                PushNotifications.addListener('registration', (token) => {
+                    // Στέλνουμε το Token στον Server για να το αποθηκεύσει
+                    auth.fcmToken = token.value;
+                    socket.emit('update-token', { name: auth.name, token: token.value });
+                });
+
+                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
+            } catch(e) { console.log("Push Error", e); }
         }
 
         window.addEventListener('keydown', (e) => {
@@ -228,15 +256,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        function logout() { localStorage.clear(); location.reload(); }
-
-        async function setupPush() {
-            await PushNotifications.requestPermissions();
-            await PushNotifications.register();
-            PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
-        }
-
-        const saved = localStorage.getItem('unified_auth_v3');
+        const saved = localStorage.getItem('unified_auth_v4');
         if(saved) {
             auth = JSON.parse(saved);
             initUI();
