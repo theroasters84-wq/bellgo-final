@@ -6,27 +6,18 @@
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
     <title>Bellgo Driver</title>
     <style>
-        /* --- ΒΑΣΙΚΟ ΣΤΥΛ (ΜΑΥΡΟ ΘΕΜΑ) --- */
         body { background: #000; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; user-select: none; }
         .hidden { display: none !important; }
         .screen { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
-        
-        /* --- ΚΟΥΜΠΙΑ & INPUTS --- */
         .btn { background: #ffc107; color: black; padding: 18px; border-radius: 12px; width: 85%; border: none; font-weight: bold; font-size: 1.1em; cursor: pointer; margin: 10px 0; touch-action: manipulation; }
         input { width: 80%; padding: 15px; margin: 8px 0; border-radius: 10px; border: 1px solid #333; background: #111; color: white; text-align: center; font-size: 1em; }
-        
-        /* --- CHAT STYLES --- */
         #chat-box { width: 95%; background: #111; border: 1px solid #333; border-radius: 10px; margin: 15px 0; display: flex; flex-direction: column; height: 300px; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; font-size: 0.9em; border-bottom: 1px solid #333; }
         .msg { margin-bottom: 5px; padding: 5px; border-radius: 5px; }
         .msg.mine { background: #222; text-align: right; }
         .msg.others { background: #000; }
-        
-        /* --- RED ALERT SCREEN --- */
         #order-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f00; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; animation: flash 0.5s infinite; }
         @keyframes flash { 50% { background: #900; } }
-        
-        /* --- FAKE LOCK (BLACK SCREEN) --- */
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
         .lock-hint { color: #333; font-size: 0.8em; margin-top: 50px; }
     </style>
@@ -53,7 +44,6 @@
             <span id="d-name" style="color:#ffc107; font-weight:bold;">DRIVER</span>
             <span style="color:#0f0;">● ONLINE</span>
         </div>
-
         <div id="chat-box">
             <div id="chat-messages">
                 <div style="color:#666; text-align:center; margin-top:10px;">Καλωσήρθες στο Chat!</div>
@@ -63,8 +53,7 @@
                 <button onclick="sendChat()" style="background:#ffc107; border:none; padding:0 20px; border-radius: 0 10px 10px 0; font-weight:bold;">➤</button>
             </div>
         </div>
-
-        <button class="btn" style="background:#222; color:white; border:1px solid #444" onclick="toggleFakeLock()">🔒 FAKE LOCK (ΜΑΥΡΗ ΟΘΟΝΗ)</button>
+        <button class="btn" style="background:#222; color:white; border:1px solid #444" onclick="toggleFakeLock()">🔒 FAKE LOCK</button>
         <button onclick="logout()" style="background:none; color:#666; border:none; margin-top:20px; text-decoration:underline;">Αποσύνδεση</button>
     </div>
 
@@ -74,22 +63,23 @@
     </div>
 
     <div id="fake-lock" onclick="toggleFakeLock()">
-        <div class="screen">
-            <p class="lock-hint">Πατήστε οπουδήποτε για ξεκλείδωμα</p>
-        </div>
+        <div class="screen"><p class="lock-hint">Πατήστε οπουδήποτε για ξεκλείδωμα</p></div>
     </div>
 
     <audio id="snd" src="alert.mp3" loop></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const { PushNotifications } = window.Capacitor.Plugins || {};
+        // --- ΔΙΟΡΘΩΣΗ 1 & 3: ΟΡΙΣΜΟΣ ΜΕΤΑΒΛΗΤΩΝ ΣΤΗΝ ΑΡΧΗ ---
+        const SERVER_URL = 'https://bellgo-final.onrender.com'; 
         let socket;
         let auth = null;
         const snd = document.getElementById('snd');
-        const SERVER_URL = 'https://bellgo-final.onrender.com'; // TO URL ΣΟΥ
+        
+        // --- ΔΙΟΡΘΩΣΗ 2: ΑΣΦΑΛΗΣ ΦΟΡΤΩΣΗ PLUGIN ---
+        // Ελέγχουμε αν υπάρχει το Capacitor πριν ζητήσουμε Plugins
+        const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
-        // --- 1. ΕΚΚΙΝΗΣΗ ---
         function initApp() {
             document.getElementById('unlock-screen').classList.add('hidden');
             connectSocket();
@@ -101,37 +91,23 @@
             socket.on('connect', () => {
                 console.log("Connected to Server!");
                 checkAutoLogin();
-                setupPush();
+                if(PushNotifications) setupPush(); // Φορτώνουμε τα Push μόνο αν είμαστε σε κινητό
             });
 
-            // ΛΗΨΗ ΠΑΡΑΓΓΕΛΙΑΣ (Το όνομα ταιριάζει με τον server.js)
-            socket.on('order-notification', (data) => {
-                triggerAlert(data);
-            });
-
-            // ΛΗΨΗ CHAT (Το όνομα ταιριάζει με τον server.js)
-            socket.on('chat-message', (data) => {
-                appendMessage(data);
-            });
-
-            socket.on('disconnect', () => {
-                console.log("Disconnected...");
-            });
+            socket.on('order-notification', (data) => triggerAlert(data));
+            socket.on('chat-message', (data) => appendMessage(data));
         }
 
-        // --- 2. AUTHENTICATION ---
         function attemptLogin(role) {
             const shop = document.getElementById('shop').value.trim();
             const pass = document.getElementById('pass').value.trim();
             const name = document.getElementById('name').value.trim();
 
-            if (!shop || !name) return alert("Συμπλήρωσε Όνομα και Μαγαζί!");
+            if (!shop || !name) return alert("Συμπλήρωσε τα στοιχεία!");
             if (pass !== "1234") return alert("Λάθος κωδικός!");
 
             auth = { shop, name, role };
             localStorage.setItem('bellgo_auth', JSON.stringify(auth));
-            
-            // Στέλνουμε Login στον Server
             socket.emit('login', auth);
             showUI();
         }
@@ -158,12 +134,10 @@
             location.reload();
         }
 
-        // --- 3. CHAT LOGIC ---
         function sendChat() {
             const input = document.getElementById('chat-in');
             const text = input.value.trim();
             if (text && socket) {
-                // Στέλνουμε στον server: { user: 'Nikos', text: 'Geia sas' }
                 socket.emit('chat-message', { user: auth.name, text: text });
                 input.value = '';
             }
@@ -172,73 +146,44 @@
         function appendMessage(data) {
             const box = document.getElementById('chat-messages');
             const isMe = data.user === auth?.name;
-            
-            // Διαμόρφωση HTML για το μήνυμα
-            const html = `
-                <div class="msg ${isMe ? 'mine' : 'others'}">
-                    <b style="color: ${isMe ? '#ffc107' : '#00ccff'}">${data.user}:</b> ${data.text}
-                </div>`;
-            
+            const html = `<div class="msg ${isMe ? 'mine' : 'others'}"><b style="color: ${isMe ? '#ffc107' : '#00ccff'}">${data.user}:</b> ${data.text}</div>`;
             box.innerHTML += html;
-            box.scrollTop = box.scrollHeight; // Auto-scroll κάτω
+            box.scrollTop = box.scrollHeight;
         }
 
-        // --- 4. ALERT & VOLUME BUTTONS ---
         function triggerAlert(data) {
-            // Εμφάνιση κόκκινης οθόνης ΜΟΝΟ αν είμαστε Driver
             document.getElementById('order-layer').style.display = 'flex';
-            
-            // Ήχος και Δόνηση
-            snd.play().catch(e => console.log("Audio play error:", e));
-            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
+            // Έλεγχος αν υπάρχει το αρχείο ήχου πριν παίξει
+            if(snd) snd.play().catch(e => console.log("Δεν βρέθηκε ήχος (alert.mp3)"));
+            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500]);
         }
 
         function acceptOrder() {
-            // Σταμάτημα συναγερμού
             document.getElementById('order-layer').style.display = 'none';
-            snd.pause();
-            snd.currentTime = 0;
+            snd.pause(); snd.currentTime = 0;
             if (navigator.vibrate) navigator.vibrate(0);
-
-            // Ενημέρωση μέσω Chat ότι το λάβαμε
-            if (socket && auth) {
-                socket.emit('chat-message', { user: 'SYSTEM', text: `✅ Ο ${auth.name} έλαβε την κλήση!` });
-            }
+            if (socket && auth) socket.emit('chat-message', { user: 'SYSTEM', text: `✅ Ο ${auth.name} έλαβε την κλήση!` });
         }
 
-        // Ακρόαση Volume Buttons (Hardware)
         window.addEventListener('keydown', (e) => {
             const isVolumeKey = (e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25);
-            const isAlertActive = document.getElementById('order-layer').style.display === 'flex';
-
-            if (isVolumeKey && isAlertActive) {
-                e.preventDefault(); // Μην αλλάζεις την ένταση
-                acceptOrder();      // Αποδέξου την κλήση
+            if (isVolumeKey && document.getElementById('order-layer').style.display === 'flex') {
+                e.preventDefault();
+                acceptOrder();
             }
         });
 
-        // --- 5. FAKE LOCK ---
         function toggleFakeLock() {
             const lock = document.getElementById('fake-lock');
             lock.style.display = (lock.style.display === 'block') ? 'none' : 'block';
         }
 
-        // --- 6. PUSH NOTIFICATIONS (CAPACITOR) ---
         async function setupPush() {
-            if (!PushNotifications) return;
             try {
                 const perm = await PushNotifications.requestPermissions();
-                if (perm.receive === 'granted') {
-                    await PushNotifications.register();
-                }
-                
-                PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                    // Όταν έρχεται ειδοποίηση, βαράει ο συναγερμός
-                    triggerAlert();
-                });
-            } catch (e) {
-                console.log("Push Setup Error:", e);
-            }
+                if (perm.receive === 'granted') await PushNotifications.register();
+                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
+            } catch (e) { console.log("Push Error:", e); }
         }
     </script>
 </body>
