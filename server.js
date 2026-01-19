@@ -4,75 +4,89 @@ const socketIo = require('socket.io');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// Αρχικοποίηση Firebase (για ειδοποιήσεις)
-// Προσοχή: Βεβαιώσου ότι το αρχείο serviceAccountKey.json υπάρχει στον ίδιο φάκελο
-const serviceAccount = require('./serviceAccountKey.json');
-
+// --- ΡΥΘΜΙΣΕΙΣ FIREBASE ---
 try {
+    const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
     console.log("Firebase initialized successfully");
 } catch (error) {
-    console.error("Firebase init error:", error);
+    console.error("Firebase init error (Push won't work):", error.message);
 }
 
 const app = express();
 const server = http.createServer(app);
 
-// Ρυθμίσεις CORS για να δέχεται συνδέσεις από παντού (Render, Κινητό, Browser)
+// --- ΡΥΘΜΙΣΕΙΣ SOCKET.IO (ΕΠΙΚΟΙΝΩΝΙΑ) ---
 const io = socketIo(server, {
     cors: {
-        origin: "*",
+        origin: "*", // Επιτρέπει σύνδεση από παντού (Κινητό, Browser)
         methods: ["GET", "POST"]
     }
 });
 
-// Εξυπηρέτηση στατικών αρχείων (HTML, CSS, JS) από τον φάκελο 'public'
+// Εξυπηρέτηση των αρχείων από τον φάκελο 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Socket.io: Διαχείριση συνδέσεων
+// Λίστα συνδεδεμένων χρηστών (για να βλέπει ο Admin ποιος είναι online)
+let connectedUsers = {};
+
 io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
+    console.log('New connection:', socket.id);
 
-    // Όταν ο Admin στέλνει παραγγελία
-    socket.on('new-order', (orderData) => {
-        console.log('Order received:', orderData);
+    // 1. Δήλωση Ρόλου (Admin, Driver, Waiter)
+    socket.on('login', (userData) => {
+        // userData = { role: 'driver', name: 'Nikos' }
+        connectedUsers[socket.id] = userData;
+        console.log(`User logged in: ${userData.role} (${socket.id})`);
         
-        // 1. Στείλε την παραγγελία σε όλους (Admin Panel, Κινητά)
-        io.emit('order-notification', orderData);
+        // Ενημέρωσε όλους (π.χ. τον Admin) ότι μπήκε νέος χρήστης
+        io.emit('users-update', connectedUsers);
+    });
 
-        // 2. Στείλε Push Notification στα Android κινητά
+    // 2. CHAT: Όταν κάποιος στέλνει μήνυμα
+    socket.on('chat-message', (msgData) => {
+        console.log('Chat received:', msgData);
+        // Το στέλνουμε πίσω σε ΟΛΟΥΣ για να εμφανιστεί στην οθόνη
+        io.emit('chat-message', msgData);
+    });
+
+    // 3. ΠΑΡΑΓΓΕΛΙΕΣ: Όταν ο Admin στέλνει παραγγελία
+    socket.on('new-order', (orderData) => {
+        console.log('New Order:', orderData);
+        io.emit('order-notification', orderData); // Ειδοποίηση στην εφαρμογή
+        
+        // Στείλε και Push Notification (αν υπάρχει το token)
         sendPushNotification(orderData);
     });
 
+    // 4. Αποσύνδεση
     socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
+        console.log('User disconnected:', socket.id);
+        delete connectedUsers[socket.id];
+        io.emit('users-update', connectedUsers); // Ενημέρωσε τη λίστα
     });
 });
 
-// Συνάρτηση αποστολής Push Notification (FCM)
+// Συνάρτηση για Push Notifications (FCM)
 function sendPushNotification(data) {
     const message = {
         notification: {
             title: 'Νέα Παραγγελία!',
             body: `Τραπέζι: ${data.table} - Σύνολο: ${data.total}€`
         },
-        topic: 'orders' // Στέλνει σε όσους έχουν γραφτεί στο θέμα "orders"
+        topic: 'orders' 
     };
 
     admin.messaging().send(message)
-        .then((response) => {
-            console.log('Push sent successfully:', response);
-        })
-        .catch((error) => {
-            console.log('Error sending push:', error);
-        });
+        .then((response) => console.log('Push sent:', response))
+        .catch((error) => console.log('Push error:', error));
 }
 
-// Εκκίνηση Server (Σημαντικό για το Render: process.env.PORT)
+// Εκκίνηση Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server LIVE on port ${PORT}`);
 });
