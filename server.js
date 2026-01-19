@@ -4,64 +4,50 @@ const socketIo = require('socket.io');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// --- FIREBASE INIT (Αν λείπει το αρχείο, δεν κρασάρει) ---
+// --- FIREBASE (Αν υπάρχει, αλλιώς το προσπερνάει) ---
 try {
     const serviceAccount = require('./serviceAccountKey.json');
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("✅ Firebase connected");
-} catch (error) {
-    console.log("⚠️ Firebase not found (Push notifications won't work, but app will run)");
-}
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    console.log("✅ Firebase Active");
+} catch (e) { console.log("⚠️ Firebase not active"); }
 
 const app = express();
 const server = http.createServer(app);
-
-// --- SOCKET IO SETUP ---
-const io = socketIo(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+const io = socketIo(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // --- LOGIC ---
 io.on('connection', (socket) => {
-    console.log('New connection:', socket.id);
+    console.log('Device Connected:', socket.id);
 
-    // 1. LOGIN (Για να ξέρουμε ποιος είναι ποιος)
-    socket.on('login', (user) => {
-        console.log(`👤 User Logged in: ${user.name} (${user.role})`);
-        io.emit('chat-message', { user: 'SYSTEM', text: `Ο/Η ${user.name} συνδέθηκε!` });
+    // LOGIN
+    socket.on('login', (auth) => {
+        console.log(`👤 Login: ${auth.name} (${auth.role})`);
+        io.emit('chat-message', { user: 'SYSTEM', text: `🟢 ${auth.name} συνδέθηκε!` });
     });
 
-    // 2. CHAT (Αμφίδρομη επικοινωνία)
+    // HEARTBEAT (Για να μην σε πετάει)
+    socket.on('heartbeat', () => { /* Κρατάει τη σύνδεση ζωντανή */ });
+
+    // CHAT (Στέλνει σε όλους)
     socket.on('chat-message', (data) => {
-        console.log(`💬 Chat from ${data.user}: ${data.text}`);
-        io.emit('chat-message', data); // Στέλνει σε όλους
+        io.emit('chat-message', data);
     });
 
-    // 3. NEW ORDER (Από Admin -> Σε Drivers)
-    socket.on('new-order', (orderData) => {
-        console.log('🔔 New Order sent!');
-        // Ειδοποίηση στην εφαρμογή (κόκκινη οθόνη)
-        io.emit('order-notification', orderData);
-        // Ειδοποίηση Push (αν υπάρχει Firebase)
+    // ΠΑΡΑΓΓΕΛΙΑ (Κόκκινη Οθόνη)
+    socket.on('new-order', (data) => {
+        console.log('🔔 Κλήση εστάλη!');
+        io.emit('order-notification', data);
         sendPush();
     });
 });
 
 function sendPush() {
     try {
-        const message = {
-            notification: { title: 'Νέα Παραγγελία!', body: 'Πάτα για αποδοχή' },
-            topic: 'orders'
-        };
-        admin.messaging().send(message).catch(e => console.log(e));
+        const msg = { notification: { title: 'ΚΛΗΣΗ!', body: 'Πάτα το κουμπί!' }, topic: 'orders' };
+        admin.messaging().send(msg).catch(e=>{});
     } catch (e) {}
 }
 
