@@ -2,43 +2,41 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Bellgo</title>
+    <title>Admin Bellgo</title>
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        .card { background: #222; padding: 20px; border-radius: 15px; border: 1px solid #ffc107; max-width: 500px; margin: 0 auto; }
-        .btn-order { background: #ffc107; color: black; padding: 25px; border-radius: 15px; width: 100%; border: none; font-weight: bold; font-size: 1.5em; cursor: pointer; }
-        #messages { height: 200px; overflow-y: auto; background: #111; margin: 20px 0; padding: 10px; text-align: left; }
+        body { background: #222; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .btn-order { background: #ffc107; font-size: 2em; padding: 30px; border-radius: 20px; border: none; cursor: pointer; width: 100%; max-width: 400px; margin-bottom: 20px;}
+        #chat-log { background: #111; height: 300px; overflow-y: auto; padding: 10px; text-align: left; max-width: 600px; margin: 0 auto; border: 1px solid #444; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>ADMIN - BELLGO</h1>
-        <button class="btn-order" onclick="sendOrder()">ΑΠΟΣΤΟΛΗ ΚΛΗΣΗΣ 📢</button>
-        <div id="messages"></div>
-    </div>
+    <h1>ADMIN PANEL</h1>
+    
+    <button class="btn-order" onclick="sendOrder()">🔔 ΚΛΗΣΗ ΔΙΑΝΟΜΕΑ</button>
+
+    <h3>Chat / Activity Log</h3>
+    <div id="chat-log"></div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        // --- ΣΥΝΔΕΣΗ ΜΕ ΤΟΝ SERVER ΣΤΟ RENDER ---
-        const socket = io('https://bellgo-final.onrender.com'); 
-        const msgBox = document.getElementById('messages');
+        const socket = io('https://bellgo-final.onrender.com'); // Βάλε το σωστό URL
+        const log = document.getElementById('chat-log');
 
         socket.on('connect', () => {
-             msgBox.innerHTML += `<div style="color:cyan">● Συνδέθηκε στον Server</div>`;
-             // Δηλώνουμε ότι είμαστε Admin
-             socket.emit('login', { role: 'admin', name: 'AdminPanel' });
+            log.innerHTML += `<div style="color:cyan">● Συνδέθηκε στον Server</div>`;
+            socket.emit('login', { name: 'ADMIN', role: 'admin' });
         });
 
         function sendOrder() {
-            // ΔΙΟΡΘΩΣΗ: Στέλνουμε 'new-order' με τα δεδομένα που περιμένει ο server
-            const orderData = { table: "Admin Button", total: "0" };
-            socket.emit('new-order', orderData);
-            msgBox.innerHTML += `<div>[${new Date().toLocaleTimeString()}] Κλήση εστάλη!</div>`;
+            // Στέλνει την εντολή 'new-order' που περιμένει ο server
+            socket.emit('new-order', { table: 'Admin', total: '0' });
+            log.innerHTML += `<div style="color:yellow">🔔 Εστάλη κλήση!</div>`;
         }
 
-        // Ακούμε και για το Chat για να βλέπουμε τι λένε οι οδηγοί
+        // Βλέπει τι γράφουν οι οδηγοί
         socket.on('chat-message', (data) => {
-            msgBox.innerHTML += `<div style="color:#ffc107">${data.user}: ${data.text}</div>`;
+            log.innerHTML += `<div><b>${data.user}:</b> ${data.text}</div>`;
+            log.scrollTop = log.scrollHeight;
         });
     </script>
 </body>
