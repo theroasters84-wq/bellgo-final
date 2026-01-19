@@ -9,27 +9,30 @@
         /* --- ΣΤΥΛ (ΜΑΥΡΟ/ΚΙΤΡΙΝΟ) --- */
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
         .hidden { display: none !important; }
-        .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         
         /* INPUTS & BUTTONS */
-        input, select { width: 85%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 8px; font-size: 16px; }
-        .btn { width: 90%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; cursor: pointer; }
+        input, select { width: 90%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 8px; font-size: 16px; }
+        .btn { width: 95%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; cursor: pointer; }
         .btn-outline { background: transparent; border: 1px solid #ffc107; color: #ffc107; }
 
         /* ADMIN LIST STYLES */
-        #drivers-container { width: 100%; max-height: 40vh; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; padding: 10px; border-radius: 10px; }
+        #drivers-container { width: 100%; height: 50vh; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 10px; border-radius: 10px; background: #111; }
         .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
-        .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; }
+        .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em;}
         .btn-call:active { background: red; transform: scale(0.95); }
 
-        /* CHAT STYLES */
-        #chat-ui { width: 100%; height: 35vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; }
+        /* CHAT STYLES (ΜΕΓΑΛΩΣΑΜΕ ΤΟ ΥΨΟΣ ΕΔΩ) */
+        #chat-ui { width: 100%; height: 55vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
         #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
-        .msg { margin-bottom: 5px; padding: 5px; }
+        .msg { margin-bottom: 8px; padding: 5px; }
         .mine { color: #ffc107; text-align: right; }
         .theirs { color: #00ccff; text-align: left; }
 
-        /* ALERT LAYER (RED SCREEN) */
+        /* ADMIN CHAT UI */
+        #admin-chat-ui { width: 100%; height: 30vh; border:1px solid #333; background:#111; display:flex; flex-direction:column; border-radius: 8px;}
+
+        /* ALERT LAYER */
         #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; animation: flash 0.5s infinite; }
         @keyframes flash { 50% { background: #900; } }
 
@@ -40,14 +43,14 @@
 <body>
 
     <div id="login-screen" class="screen">
-        <h1 style="color:#ffc107; letter-spacing: 2px;">BELLGO</h1>
+        <h1 style="color:#ffc107; letter-spacing: 2px; font-size: 3em;">BELLGO</h1>
         
-        <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ (π.χ. Roasters)">
-        <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ (1234)">
+        <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
+        <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
         <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
         
         <p style="color:#888; margin-top:10px;">ΕΠΙΛΟΓΗ ΡΟΛΟΥ:</p>
-        <select id="role-select">
+        <select id="role-select" style="padding:15px; font-size:1.1em;">
             <option value="driver">🛵 ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</option>
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
@@ -56,38 +59,41 @@
     </div>
 
     <div id="driver-ui" class="screen hidden">
-        <h2 id="d-label" style="color:#ffc107">DRIVER</h2>
-        <span style="color:#0f0">● ONLINE</span>
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="d-label" style="color:#ffc107; margin:0;">DRIVER</h2>
+            <span style="color:#0f0">● ONLINE</span>
+        </div>
 
         <div id="chat-ui">
             <div id="chat-msgs"></div>
-            <div style="display:flex; border-top:1px solid #333;">
+            <div style="display:flex; border-top:1px solid #333; padding: 5px;">
                 <input type="text" id="c-in" placeholder="Μήνυμα..." style="border:none; margin:0; width:80%;">
-                <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold;">></button>
+                <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold; border-radius: 5px;">➤</button>
             </div>
         </div>
 
-        <button class="btn btn-outline" onclick="toggleLock()">🔒 FAKE LOCK</button>
-        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:20px;">Logout</button>
+        <div style="width:100%; display:flex; gap:10px;">
+            <button class="btn btn-outline" style="flex:1; margin:0;" onclick="toggleLock()">🔒 LOCK</button>
+            <button onclick="logout()" style="flex:1; background:#333; color:white; border:none; border-radius:8px; margin:0;">EXIT</button>
+        </div>
     </div>
 
     <div id="admin-ui" class="screen hidden">
-        <h2 style="color:#ffc107">ADMIN PANEL</h2>
-        <p style="color:#888" id="shop-label">SHOP</p>
+        <h2 style="color:#ffc107; margin-bottom:5px;">ADMIN PANEL</h2>
+        <p style="color:#888; margin-top:0;" id="shop-label">SHOP</p>
 
-        <div style="width:100%; text-align:left; color:#ffc107; margin-bottom:5px;">Διανομείς Online:</div>
         <div id="drivers-container">
-            <p style="color:#666; text-align:center;">Αναμονή για συνδέσεις...</p>
+            <p style="color:#666; text-align:center; padding-top:20px;">Αναμονή για συνδέσεις...</p>
         </div>
 
-        <div id="admin-chat-ui" style="width:100%; height: 25vh; border:1px solid #333; background:#111; display:flex; flex-direction:column;">
+        <div id="admin-chat-ui">
             <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
             <div style="display:flex;">
                 <input type="text" id="a-in" placeholder="Chat..." style="flex:1; margin:0; border:none;">
-                <button onclick="sendAdminChat()" style="background:#444; color:white; border:none; padding:10px;">Send</button>
+                <button onclick="sendAdminChat()" style="background:#444; color:white; border:none; padding:10px; width:60px;">➤</button>
             </div>
         </div>
-        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:20px;">Logout</button>
+        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:10px;">Logout</button>
     </div>
 
     <div id="alert-layer" onclick="acceptOrder()">
@@ -114,7 +120,7 @@
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v2', JSON.stringify(auth));
             
             initUI();
             connect();
@@ -143,36 +149,34 @@
                 }
             });
 
-            // --- ADMIN LOGIC: ΕΝΗΜΕΡΩΣΗ ΛΙΣΤΑΣ ---
+            // UPDATE LIST (ADMIN ONLY)
             socket.on('update-drivers-list', (drivers) => {
-                if(auth.role !== 'admin') return; // Μόνο ο admin το βλέπει
+                if(auth.role !== 'admin') return;
                 
                 const list = document.getElementById('drivers-container');
                 list.innerHTML = ""; 
                 
                 if(drivers.length === 0) {
-                    list.innerHTML = "<p style='color:#666; text-align:center;'>Κανείς Online</p>";
+                    list.innerHTML = "<p style='color:#666; text-align:center; padding-top:20px;'>Κανείς Online</p>";
                     return;
                 }
 
                 drivers.forEach(d => {
-                    // Δημιουργία κουμπιού για κάθε οδηγό
                     list.innerHTML += `
                         <div class="driver-card">
-                            <span style="font-size:1.1em; color:white;">🛵 ${d.name}</span>
+                            <span style="font-size:1.2em; color:white; font-weight:bold;">🛵 ${d.name}</span>
                             <button class="btn-call" onclick="callDriver('${d.id}')">ΚΛΗΣΗ 🔔</button>
                         </div>`;
                 });
             });
 
-            // --- DRIVER LOGIC: ΛΗΨΗ ΚΛΗΣΗΣ ---
+            // GET CALL (DRIVER ONLY)
             socket.on('order-notification', () => {
                 if(auth.role === 'driver') triggerAlert();
             });
 
-            // --- CHAT LOGIC (KOINO) ---
+            // CHAT (COMMON)
             socket.on('chat-message', (data) => {
-                // Επιλογή του σωστού κουτιού ανάλογα με τον ρόλο
                 const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
                 const isMe = data.user === auth.name;
                 box.innerHTML += `<div class="msg ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
@@ -180,11 +184,8 @@
             });
         }
 
-        // Λειτουργίες Admin
         function callDriver(targetId) {
-            socket.emit('call-driver', targetId); // Καλεί ΜΟΝΟ αυτόν
-            // Προσθήκη μηνύματος στο chat ότι έγινε κλήση
-            // socket.emit('chat-message', { shop: auth.shop, user: 'SYSTEM', text: `🔔 Κλήση προς διανομέα...` });
+            socket.emit('call-driver', targetId);
         }
 
         function sendAdminChat() {
@@ -195,7 +196,6 @@
             }
         }
 
-        // Λειτουργίες Driver
         function sendChat() {
             const txt = document.getElementById('c-in').value;
             if(txt) {
@@ -214,10 +214,9 @@
             document.getElementById('alert-layer').style.display = 'none';
             snd.pause(); snd.currentTime = 0;
             if(navigator.vibrate) navigator.vibrate(0);
-            socket.emit('chat-message', { shop: auth.shop, user: 'SYSTEM', text: `✅ Ο/Η ${auth.name} έλαβε την κλήση!` });
+            // ΔΕΝ ΣΤΕΛΝΟΥΜΕ ΠΙΑ ΜΗΝΥΜΑ ΣΤΟ CHAT!
         }
 
-        // Κοινές Λειτουργίες
         window.addEventListener('keydown', (e) => {
             if((e.key === "VolumeUp" || e.key === "VolumeDown") && document.getElementById('alert-layer').style.display === 'flex') {
                 acceptOrder();
@@ -237,8 +236,7 @@
             PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
         }
 
-        // Auto Login
-        const saved = localStorage.getItem('unified_auth');
+        const saved = localStorage.getItem('unified_auth_v2');
         if(saved) {
             auth = JSON.parse(saved);
             initUI();
