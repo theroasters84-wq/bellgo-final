@@ -52,7 +52,7 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="color:#666; font-size:0.8em;">v18.0 - Final Fix</p>
+        <p style="color:#666; font-size:0.8em;">v19.0 - With Silent Base64</p>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -120,7 +120,8 @@
         const sndAlert = document.getElementById('snd-alert');
         const sndSilent = document.getElementById('snd-silent');
         
-        // Αυτό είναι το "μαγικό" αθόρυβο MP3
+        // --- ΑΥΤΟ ΕΙΝΑΙ ΤΟ BASE64 ΠΟΥ ΖΗΤΗΣΕΣ ---
+        // Είναι ένας ήχος 0.1 δευτερολέπτου απόλυτης ησυχίας.
         sndSilent.src = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA";
 
         let vibrationInterval = null; 
@@ -139,35 +140,33 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // --- ΣΤΡΑΤΗΓΙΚΗ ΗΧΟΥ ---
+            // --- ΕΚΚΙΝΗΣΗ ΗΧΩΝ ---
             
-            // 1. Ξεκινάμε το SILENT Loop (Αθόρυβο)
-            // Αυτό κρατάει το νήμα ήχου ενεργό χωρίς να ενοχλεί
-            sndSilent.play().then(() => console.log("Silent Loop ON")).catch(e => console.log("Silent Blocked", e));
+            // 1. SILENT: Παίζει συνέχεια
+            sndSilent.play().then(() => console.log("✅ Silent Loop Started")).catch(e => console.log("Silent Error", e));
             
-            // 2. Ξεκλειδώνουμε το ALERT (Παίζει για 1ms και σταματάει)
+            // 2. ALERT: Παίζει για λίγο και σταματάει (Unlock)
             sndAlert.volume = 1.0; 
             sndAlert.play().then(() => {
                 sndAlert.pause(); 
                 sndAlert.currentTime = 0; 
             }).catch(e => {});
 
-            // 3. Ενεργοποίηση WAKE LOCK (Οθόνη ανοιχτή)
+            // 3. WAKE LOCK
             requestWakeLock();
 
-            // 4. ΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ "WATCHER" (Για το APK)
+            // 4. WATCHER: Αν σταματήσει ο σιωπηλός, τον ξαναβάζει μπρος
             if (keepAliveInterval) clearInterval(keepAliveInterval);
             keepAliveInterval = setInterval(() => {
-                // Αν το σύστημα σταμάτησε το silent, το ξαναβάζουμε
                 if(sndSilent.paused) {
-                    console.log("Keep-Alive restarting...");
+                    console.log("♻️ Restarting Silent Audio...");
                     sndSilent.play().catch(e=>{});
                 }
                 requestWakeLock();
             }, 5000); 
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v18', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v19', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
@@ -282,8 +281,7 @@
         function triggerAlert() {
             if(document.getElementById('alert-layer').style.display === 'flex') return;
 
-            // ΛΥΣΗ ΓΙΑ YOUTUBE: 
-            // Κάνουμε play() τον δυνατό ήχο. Αυτό αυτόματα κάνει pause το YouTube (Audio Focus).
+            // FORCE PLAY (Focus Stealing για YouTube)
             sndAlert.currentTime = 0;
             sndAlert.play().catch(e => console.log("Alert play error", e));
 
@@ -307,8 +305,8 @@
             sndAlert.pause();
             sndAlert.currentTime = 0;
             
-            // Ξεκινάμε πάλι το Silent Loop για να μην κοιμηθεί
-            sndSilent.play().catch(e=>{});
+            // Βεβαιωνόμαστε ότι ο Σιωπηλός παίζει ακόμα
+            if(sndSilent.paused) sndSilent.play().catch(e=>{});
 
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
@@ -334,7 +332,6 @@
             } catch(e) {}
         }
 
-        // --- VOLUME BUTTONS HANDLER ---
         document.addEventListener('keydown', (e) => {
             if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
                 if (document.getElementById('alert-layer').style.display === 'flex') {
@@ -350,7 +347,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v18');
+        const saved = localStorage.getItem('unified_auth_v19');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
