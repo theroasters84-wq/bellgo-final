@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
     <title>Bellgo Unified</title>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; }
+        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
         .hidden { display: none !important; }
         .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
         
@@ -19,8 +18,6 @@
         #drivers-container { width: 100%; height: 50vh; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 10px; border-radius: 10px; background: #111; }
         .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
         .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em; transition: 0.3s; }
-        .btn-call:active { transform: scale(0.95); }
-        .btn-calling { background: #555 !important; color: #bbb !important; cursor: not-allowed; } 
         .btn-accepted { background: #00cc00 !important; color: white !important; transform: scale(1.1); }
 
         #chat-ui { width: 100%; height: 45vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
@@ -30,11 +27,10 @@
         .theirs { color: #00ccff; text-align: left; }
         #admin-chat-ui { width: 100%; height: 30vh; border:1px solid #333; background:#111; display:flex; flex-direction:column; border-radius: 8px;}
 
-        /* ALERT */
-        #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; animation: flash 0.5s infinite; }
+        /* ALERT LAYER - ΤΩΡΑ ΠΙΑΝΕΙ ΟΛΗ ΤΗΝ ΟΘΟΝΗ ΓΙΑ ΚΛΙΚ */
+        #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: flash 0.5s infinite; cursor: pointer; }
         @keyframes flash { 50% { background: #900; } }
         
-        /* FAKE LOCK (ΜΑΥΡΗ ΟΘΟΝΗ) - ΣΗΜΑΝΤΙΚΟ ΓΙΑ ΤΑ VOLUME BUTTONS */
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
         
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
@@ -52,7 +48,6 @@
         <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
         <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
         <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
-        <p style="color:#888; margin-top:10px;">ΕΠΙΛΟΓΗ ΡΟΛΟΥ:</p>
         <select id="role-select" style="padding:15px; font-size:1.1em;">
             <option value="driver">🛵 ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</option>
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
@@ -81,7 +76,7 @@
             </div>
         </div>
         <div style="width:100%; display:flex; gap:10px;">
-            <button class="btn btn-outline" style="flex:1; margin:0;" onclick="toggleLock()">🔒 LOCK</button>
+            <button class="btn btn-outline" style="flex:1; margin:0;" onclick="toggleLock()">🔒 LOCK (ΜΑΥΡΟ)</button>
             <button onclick="logout()" style="flex:1; background:#333; color:white; border:none; border-radius:8px; margin:0;">EXIT</button>
         </div>
     </div>
@@ -104,19 +99,26 @@
 
     <div id="alert-layer" onclick="acceptOrder()">
         <h1 style="font-size:3em; color:white">ΚΛΗΣΗ!</h1>
-        <p style="font-size:1.5em; color:white">ΠΑΤΑ ΚΟΥΜΠΙ</p>
-        <p style="color:white; font-size:1em;">(ή κουμπιά έντασης)</p>
+        <p style="font-size:1.5em; color:white">ΠΑΤΑ ΟΘΟΝΗ</p>
+        <p style="font-size:1em; color:#ddd; margin-top:20px;">ή Κουμπιά Έντασης</p>
     </div>
     
-    <div id="fake-lock" onclick="toggleLock()"></div>
+    <div id="fake-lock" onclick="toggleLock()">
+        <div style="color:#222; margin-top:50px;">Touch to Unlock</div>
+    </div>
     
     <audio id="snd" src="alert.mp3" loop preload="auto"></audio>
+    
+    <audio id="silent-snd" loop>
+        <source src="data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA==" type="audio/mpeg">
+    </audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const SERVER = 'https://bellgo-final.onrender.com';
         let socket, auth;
         const snd = document.getElementById('snd');
+        const silentSnd = document.getElementById('silent-snd');
         let vibrationInterval = null; 
         let heartbeatInterval = null;
 
@@ -131,43 +133,38 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // Ξεκλείδωμα ήχου
+            // 1. ΞΕΚΙΝΑΜΕ ΤΟΝ ΣΙΩΠΗΛΟ ΗΧΟ (KEEP ALIVE)
+            silentSnd.play().then(() => console.log("Silent Loop Started")).catch(e => console.log("Silent error", e));
+
+            // 2. ΠΡΟΕΤΟΙΜΑΖΟΥΜΕ ΤΟΝ DYNATO ΗΧΟ
             snd.volume = 0;
             snd.play().then(() => {
                 snd.pause(); snd.currentTime = 0; snd.volume = 1.0;
             }).catch(e => console.log("Audio unlock failed", e));
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v9', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v10', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
             connect();
         }
 
-        // --- BACKGROUND MODE (ΕΠΙΘΕΤΙΚΟ) ---
+        // BACKGROUND MODE - ΜΕ ΚΟΛΠΑ ΓΙΑ ΝΑ ΜΗΝ ΚΟΒΕΤΑΙ Ο ΗΧΟΣ
         function enableBackgroundMode() {
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
                     cordova.plugins.backgroundMode.setDefaults({
-                        title: "Bellgo Active", 
-                        text: "Η εφαρμογή είναι ενεργή",
-                        silent: false, // Θέλουμε να φαίνεται
-                        resume: true, 
-                        hidden: false, 
-                        bigText: true
+                        title: "Bellgo", text: "Online", silent: true, resume: true, hidden: false
                     });
                     cordova.plugins.backgroundMode.enable();
                     
-                    // Απενεργοποίηση εξοικονόμησης ενέργειας WebView
+                    // Απαγορεύουμε στο Android να παγώσει το WebView
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
+                        // Αν χαθεί ο ήχος, τον ξαναπαίζουμε
+                        if(silentSnd.paused) silentSnd.play();
                     });
-                    
-                    // Αν είναι Admin, ας μην τρέχει στο background τόσο επιθετικά
-                    if (auth.role === 'admin') {
-                        cordova.plugins.backgroundMode.disable();
-                    }
                 }
             }, false);
         }
@@ -189,12 +186,10 @@
             socket.on('connect', () => {
                 socket.emit('login', auth);
                 if(auth.role === 'driver') {
-                    // HEARTBEAT ΚΑΘΕ 5 ΔΕΥΤΕΡΟΛΕΠΤΑ (ΓΙΑ ΝΑ ΜΗΝ ΓΙΝΕΙ ΦΑΝΤΑΣΜΑ)
                     if(heartbeatInterval) clearInterval(heartbeatInterval);
                     heartbeatInterval = setInterval(() => { 
                         if(socket.connected) socket.emit('heartbeat', { name: auth.name }); 
                     }, 5000);
-                    
                     if(PushNotifications) setupPush();
                 }
             });
@@ -256,15 +251,15 @@
         }
 
         function triggerAlert() {
-            const alertLayer = document.getElementById('alert-layer');
-            if(alertLayer.style.display === 'flex') return; // Αν χτυπάει ήδη, μην ξαναρχίσεις
+            // Αν χτυπάει ήδη, δεν κάνουμε τίποτα
+            if(document.getElementById('alert-layer').style.display === 'flex') return;
 
-            alertLayer.style.display = 'flex';
+            // Εμφάνιση κόκκινης οθόνης
+            document.getElementById('alert-layer').style.display = 'flex';
             
-            // ΞΕΚΛΕΙΔΩΣΕ ΤΟ FAKE LOCK ΑΝ ΥΠΑΡΧΕΙ ΓΙΑ ΝΑ ΔΕΙΣ ΤΟ ΚΟΚΚΙΝΟ
-            const fakeLock = document.getElementById('fake-lock');
-            if (fakeLock.style.display === 'block') {
-                fakeLock.style.display = 'none'; // Το κρύβουμε για να φανεί η κλήση
+            // Αν υπάρχει Fake Lock, το κρύβουμε προσωρινά για να δει την κλήση
+            if(document.getElementById('fake-lock').style.display === 'block') {
+                document.getElementById('fake-lock').style.display = 'none';
             }
 
             const soundOn = document.getElementById('sound-toggle').checked;
@@ -275,9 +270,8 @@
                 snd.currentTime = 0;
                 snd.play().catch(e => console.log("Play error", e));
             }
-            
             if(vibOn && navigator.vibrate) {
-                // Επιθετική δόνηση που δεν σταματάει
+                // Επιθετική δόνηση που επαναλαμβάνεται
                 navigator.vibrate([1000, 500, 1000, 500]); 
                 if (vibrationInterval) clearInterval(vibrationInterval);
                 vibrationInterval = setInterval(() => { 
@@ -288,16 +282,15 @@
 
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
-            snd.pause(); 
-            snd.currentTime = 0;
+            snd.pause(); snd.currentTime = 0;
             
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
             
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
             
-            // Επαναφορά Fake Lock αν ήταν ενεργό πριν (προαιρετικό)
-            // toggleLock(); 
+            // Ξεκινάμε πάλι το silent για να μην κοιμηθεί το app
+            silentSnd.play().catch(e=>{});
         }
 
         function logout() { 
@@ -317,16 +310,15 @@
             } catch(e) {}
         }
 
-        // --- ΕΛΕΓΧΟΣ ΚΟΥΜΠΙΩΝ ΕΝΤΑΣΗΣ (VOLUME BUTTONS) ---
-        // Αυτό δουλεύει καλύτερα όταν η οθόνη είναι αναμμένη (ή Fake Lock)
-        window.addEventListener('keydown', (e) => {
-            // KeyCode 24 = VolumeUp, 25 = VolumeDown
-            // Επίσης ελέγχουμε τα string "VolumeUp", "VolumeDown"
+        // --- VOLUME BUTTONS LISTENER (Δουλεύει μόνο όταν το App είναι Active ή Fake Lock) ---
+        document.addEventListener('keydown', (e) => {
+            // Αν πατήσει Volume Up/Down ΚΑΙ χτυπάει η κλήση
             if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
-                
-                // Αν χτυπάει η κλήση, τότε τα κουμπιά κάνουν ΑΠΟΔΟΧΗ
                 if (document.getElementById('alert-layer').style.display === 'flex') {
-                    e.preventDefault(); // Μη χαμηλώσεις τον ήχο του συστήματος
+                    // Σταματάμε την αλλαγή έντασης
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Κάνουμε αποδοχή
                     acceptOrder();
                 }
             }
@@ -337,7 +329,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v9');
+        const saved = localStorage.getItem('unified_auth_v10');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
