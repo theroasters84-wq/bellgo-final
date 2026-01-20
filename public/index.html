@@ -18,12 +18,10 @@
         /* LIST & CHAT */
         #drivers-container { width: 100%; height: 50vh; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 10px; border-radius: 10px; background: #111; }
         .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
-        
-        /* ΚΟΥΜΠΙΑ ΚΛΗΣΗΣ */
         .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em; transition: 0.3s; }
         .btn-call:active { transform: scale(0.95); }
-        .btn-calling { background: #555 !important; color: #bbb !important; cursor: not-allowed; } /* Γκρι */
-        .btn-accepted { background: #00cc00 !important; color: white !important; transform: scale(1.1); } /* Πράσινο */
+        .btn-calling { background: #555 !important; color: #bbb !important; cursor: not-allowed; } 
+        .btn-accepted { background: #00cc00 !important; color: white !important; transform: scale(1.1); }
 
         #chat-ui { width: 100%; height: 45vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
         #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
@@ -37,7 +35,6 @@
         @keyframes flash { 50% { background: #900; } }
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
         
-        /* SWITCH STYLE */
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
@@ -66,7 +63,6 @@
             <h2 id="d-label" style="color:#ffc107; margin:0;">DRIVER</h2>
             <span style="color:#0f0">● ONLINE</span>
         </div>
-
         <div class="setting-row">
             <span>🔊 Ήχος (Loop)</span>
             <label class="switch"><input type="checkbox" id="sound-toggle" checked><span class="slider"></span></label>
@@ -75,7 +71,6 @@
             <span>📳 Δόνηση (Loop)</span>
             <label class="switch"><input type="checkbox" id="vib-toggle" checked><span class="slider"></span></label>
         </div>
-
         <div id="chat-ui">
             <div id="chat-msgs"></div>
             <div style="display:flex; border-top:1px solid #333; padding: 5px;">
@@ -83,7 +78,6 @@
                 <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold; border-radius: 5px;">➤</button>
             </div>
         </div>
-
         <div style="width:100%; display:flex; gap:10px;">
             <button class="btn btn-outline" style="flex:1; margin:0;" onclick="toggleLock()">🔒 LOCK</button>
             <button onclick="logout()" style="flex:1; background:#333; color:white; border:none; border-radius:8px; margin:0;">EXIT</button>
@@ -112,7 +106,7 @@
     </div>
     <div id="fake-lock" onclick="toggleLock()"></div>
     
-    <audio id="snd" src="alert.mp3" loop></audio>
+    <audio id="snd" src="alert.mp3" loop preload="auto"></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
@@ -121,7 +115,6 @@
         const snd = document.getElementById('snd');
         let vibrationInterval = null; 
 
-        // Capacitor Push Notification Check
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
         function attemptLogin() {
@@ -133,31 +126,34 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
+            // 1. ΞΥΠΝΑΜΕ ΤΟΝ ΗΧΟ ΜΕ ΤΟ ΠΟΥ ΠΑΤΗΣΕΙΣ ΚΟΥΜΠΙ
+            snd.volume = 0;
+            snd.play().then(() => {
+                snd.pause();
+                snd.currentTime = 0;
+                snd.volume = 1.0;
+            }).catch(e => console.log("Audio unlock failed", e));
+
             auth = { shop: s, name: n, role: r };
-            // Version 7 για να είμαστε σίγουροι ότι κάνει refresh τα settings
-            localStorage.setItem('unified_auth_v7', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v8', JSON.stringify(auth));
             
-            // Ενεργοποίηση Background Mode (CORDOVA)
             enableBackgroundMode(); 
-            
             initUI();
             connect();
         }
 
-        // ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ CORDOVA BACKGROUND MODE
+        // BACKGROUND MODE (CORDOVA)
         function enableBackgroundMode() {
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
+                    cordova.plugins.backgroundMode.setDefaults({
+                        title: "Bellgo Active", text: "Αναμονή κλήσεων...", 
+                        resume: true, hidden: false, bigText: true
+                    });
                     cordova.plugins.backgroundMode.enable();
-                    
-                    // Κόλπο για να μην κοιμάται το WebView
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
                     });
-                    
-                    console.log("✅ Background Mode Enabled (Cordova)");
-                } else {
-                    console.log("⚠️ Background Mode Plugin missing");
                 }
             }, false);
         }
@@ -184,14 +180,12 @@
                 }
             });
 
-            // ADMIN: Λίστα Οδηγών
             socket.on('update-drivers-list', (drivers) => {
                 if(auth.role !== 'admin') return;
                 const list = document.getElementById('drivers-container');
                 list.innerHTML = ""; 
                 if(drivers.length === 0) {
-                    list.innerHTML = "<p style='color:#666; text-align:center; padding-top:20px;'>Κανείς Online</p>";
-                    return;
+                    list.innerHTML = "<p style='color:#666; text-align:center; padding-top:20px;'>Κανείς Online</p>"; return;
                 }
                 drivers.forEach(d => {
                     list.innerHTML += `
@@ -202,25 +196,20 @@
                 });
             });
 
-            // ADMIN: Οδηγός αποδέχτηκε
             socket.on('order-accepted', (driverName) => {
                 if(auth.role !== 'admin') return;
                 const btn = document.getElementById(`btn-${driverName}`);
                 if(btn) {
                     btn.classList.remove('btn-calling');
                     btn.classList.add('btn-accepted');
-                    btn.innerText = "ΑΠΟΔΟΧΗ! ✅";
-                    btn.disabled = false;
+                    btn.innerText = "ΑΠΟΔΟΧΗ! ✅"; btn.disabled = false;
                     setTimeout(() => {
-                        btn.classList.remove('btn-accepted');
-                        btn.innerText = "ΚΛΗΣΗ 🔔";
+                        btn.classList.remove('btn-accepted'); btn.innerText = "ΚΛΗΣΗ 🔔";
                     }, 4000);
                 }
             });
 
-            socket.on('order-notification', () => {
-                if(auth.role === 'driver') triggerAlert();
-            });
+            socket.on('order-notification', () => { if(auth.role === 'driver') triggerAlert(); });
 
             socket.on('chat-message', (data) => {
                 const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
@@ -234,26 +223,17 @@
             socket.emit('call-driver', targetName);
             const btn = document.getElementById(`btn-${targetName}`);
             if(btn) {
-                btn.classList.add('btn-calling');
-                btn.innerText = "ΚΛΗΣΗ...";
-                btn.disabled = true;
+                btn.classList.add('btn-calling'); btn.innerText = "ΚΛΗΣΗ..."; btn.disabled = true;
             }
         }
 
         function sendAdminChat() {
             const txt = document.getElementById('a-in').value;
-            if(txt) {
-                socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt });
-                document.getElementById('a-in').value = '';
-            }
+            if(txt) { socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt }); document.getElementById('a-in').value = ''; }
         }
-
         function sendChat() {
             const txt = document.getElementById('c-in').value;
-            if(txt) {
-                socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt });
-                document.getElementById('c-in').value = '';
-            }
+            if(txt) { socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt }); document.getElementById('c-in').value = ''; }
         }
 
         function triggerAlert() {
@@ -262,22 +242,24 @@
             const vibOn = document.getElementById('vib-toggle').checked;
 
             if(soundOn) {
+                // Φουλ Ένταση
+                snd.volume = 1.0;
                 snd.currentTime = 0;
-                snd.play().catch(e => console.log("Sound Error:", e));
+                var promise = snd.play();
+                if (promise !== undefined) {
+                    promise.catch(error => console.log("Play error", error));
+                }
             }
             if(vibOn && navigator.vibrate) {
                 navigator.vibrate([1000, 500]); 
                 if (vibrationInterval) clearInterval(vibrationInterval);
-                vibrationInterval = setInterval(() => {
-                    navigator.vibrate([1000, 500]);
-                }, 1500);
+                vibrationInterval = setInterval(() => { navigator.vibrate([1000, 500]); }, 1500);
             }
         }
 
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
-            snd.pause(); 
-            snd.currentTime = 0;
+            snd.pause(); snd.currentTime = 0;
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
@@ -285,8 +267,7 @@
 
         function logout() { 
             if(socket) socket.emit('force-logout', auth); 
-            localStorage.clear(); 
-            location.reload(); 
+            localStorage.clear(); location.reload(); 
         }
 
         async function setupPush() {
@@ -312,10 +293,10 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v7');
+        const saved = localStorage.getItem('unified_auth_v8');
         if(saved) {
             auth = JSON.parse(saved);
-            enableBackgroundMode(); // Κάλεσε το και εδώ αν υπάρχει ήδη login
+            enableBackgroundMode();
             initUI();
             connect();
         }
