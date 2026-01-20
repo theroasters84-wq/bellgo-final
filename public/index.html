@@ -121,6 +121,7 @@
         const snd = document.getElementById('snd');
         let vibrationInterval = null; 
 
+        // Capacitor Push Notification Check
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
         function attemptLogin() {
@@ -133,10 +134,32 @@
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v6', JSON.stringify(auth));
+            // Version 7 για να είμαστε σίγουροι ότι κάνει refresh τα settings
+            localStorage.setItem('unified_auth_v7', JSON.stringify(auth));
+            
+            // Ενεργοποίηση Background Mode (CORDOVA)
+            enableBackgroundMode(); 
             
             initUI();
             connect();
+        }
+
+        // ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ CORDOVA BACKGROUND MODE
+        function enableBackgroundMode() {
+            document.addEventListener('deviceready', function () {
+                if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
+                    cordova.plugins.backgroundMode.enable();
+                    
+                    // Κόλπο για να μην κοιμάται το WebView
+                    cordova.plugins.backgroundMode.on('activate', function() {
+                        cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
+                    });
+                    
+                    console.log("✅ Background Mode Enabled (Cordova)");
+                } else {
+                    console.log("⚠️ Background Mode Plugin missing");
+                }
+            }, false);
         }
 
         function initUI() {
@@ -289,9 +312,10 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v6');
+        const saved = localStorage.getItem('unified_auth_v7');
         if(saved) {
             auth = JSON.parse(saved);
+            enableBackgroundMode(); // Κάλεσε το και εδώ αν υπάρχει ήδη login
             initUI();
             connect();
         }
