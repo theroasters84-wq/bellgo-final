@@ -33,6 +33,8 @@
         /* ALERT */
         #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; animation: flash 0.5s infinite; }
         @keyframes flash { 50% { background: #900; } }
+        
+        /* FAKE LOCK (ΜΑΥΡΗ ΟΘΟΝΗ) - ΣΗΜΑΝΤΙΚΟ ΓΙΑ ΤΑ VOLUME BUTTONS */
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
         
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
@@ -103,7 +105,9 @@
     <div id="alert-layer" onclick="acceptOrder()">
         <h1 style="font-size:3em; color:white">ΚΛΗΣΗ!</h1>
         <p style="font-size:1.5em; color:white">ΠΑΤΑ ΚΟΥΜΠΙ</p>
+        <p style="color:white; font-size:1em;">(ή κουμπιά έντασης)</p>
     </div>
+    
     <div id="fake-lock" onclick="toggleLock()"></div>
     
     <audio id="snd" src="alert.mp3" loop preload="auto"></audio>
@@ -114,6 +118,7 @@
         let socket, auth;
         const snd = document.getElementById('snd');
         let vibrationInterval = null; 
+        let heartbeatInterval = null;
 
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
@@ -126,34 +131,43 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // 1. ΞΥΠΝΑΜΕ ΤΟΝ ΗΧΟ ΜΕ ΤΟ ΠΟΥ ΠΑΤΗΣΕΙΣ ΚΟΥΜΠΙ
+            // Ξεκλείδωμα ήχου
             snd.volume = 0;
             snd.play().then(() => {
-                snd.pause();
-                snd.currentTime = 0;
-                snd.volume = 1.0;
+                snd.pause(); snd.currentTime = 0; snd.volume = 1.0;
             }).catch(e => console.log("Audio unlock failed", e));
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v8', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v9', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
             connect();
         }
 
-        // BACKGROUND MODE (CORDOVA)
+        // --- BACKGROUND MODE (ΕΠΙΘΕΤΙΚΟ) ---
         function enableBackgroundMode() {
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
                     cordova.plugins.backgroundMode.setDefaults({
-                        title: "Bellgo Active", text: "Αναμονή κλήσεων...", 
-                        resume: true, hidden: false, bigText: true
+                        title: "Bellgo Active", 
+                        text: "Η εφαρμογή είναι ενεργή",
+                        silent: false, // Θέλουμε να φαίνεται
+                        resume: true, 
+                        hidden: false, 
+                        bigText: true
                     });
                     cordova.plugins.backgroundMode.enable();
+                    
+                    // Απενεργοποίηση εξοικονόμησης ενέργειας WebView
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
                     });
+                    
+                    // Αν είναι Admin, ας μην τρέχει στο background τόσο επιθετικά
+                    if (auth.role === 'admin') {
+                        cordova.plugins.backgroundMode.disable();
+                    }
                 }
             }, false);
         }
@@ -175,7 +189,12 @@
             socket.on('connect', () => {
                 socket.emit('login', auth);
                 if(auth.role === 'driver') {
-                    setInterval(() => { if(socket.connected) socket.emit('heartbeat'); }, 25000);
+                    // HEARTBEAT ΚΑΘΕ 5 ΔΕΥΤΕΡΟΛΕΠΤΑ (ΓΙΑ ΝΑ ΜΗΝ ΓΙΝΕΙ ΦΑΝΤΑΣΜΑ)
+                    if(heartbeatInterval) clearInterval(heartbeatInterval);
+                    heartbeatInterval = setInterval(() => { 
+                        if(socket.connected) socket.emit('heartbeat', { name: auth.name }); 
+                    }, 5000);
+                    
                     if(PushNotifications) setupPush();
                 }
             });
@@ -237,32 +256,48 @@
         }
 
         function triggerAlert() {
-            document.getElementById('alert-layer').style.display = 'flex';
+            const alertLayer = document.getElementById('alert-layer');
+            if(alertLayer.style.display === 'flex') return; // Αν χτυπάει ήδη, μην ξαναρχίσεις
+
+            alertLayer.style.display = 'flex';
+            
+            // ΞΕΚΛΕΙΔΩΣΕ ΤΟ FAKE LOCK ΑΝ ΥΠΑΡΧΕΙ ΓΙΑ ΝΑ ΔΕΙΣ ΤΟ ΚΟΚΚΙΝΟ
+            const fakeLock = document.getElementById('fake-lock');
+            if (fakeLock.style.display === 'block') {
+                fakeLock.style.display = 'none'; // Το κρύβουμε για να φανεί η κλήση
+            }
+
             const soundOn = document.getElementById('sound-toggle').checked;
             const vibOn = document.getElementById('vib-toggle').checked;
 
             if(soundOn) {
-                // Φουλ Ένταση
                 snd.volume = 1.0;
                 snd.currentTime = 0;
-                var promise = snd.play();
-                if (promise !== undefined) {
-                    promise.catch(error => console.log("Play error", error));
-                }
+                snd.play().catch(e => console.log("Play error", e));
             }
+            
             if(vibOn && navigator.vibrate) {
-                navigator.vibrate([1000, 500]); 
+                // Επιθετική δόνηση που δεν σταματάει
+                navigator.vibrate([1000, 500, 1000, 500]); 
                 if (vibrationInterval) clearInterval(vibrationInterval);
-                vibrationInterval = setInterval(() => { navigator.vibrate([1000, 500]); }, 1500);
+                vibrationInterval = setInterval(() => { 
+                    navigator.vibrate([1000, 500, 1000, 500]); 
+                }, 3000);
             }
         }
 
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
-            snd.pause(); snd.currentTime = 0;
+            snd.pause(); 
+            snd.currentTime = 0;
+            
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
+            
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
+            
+            // Επαναφορά Fake Lock αν ήταν ενεργό πριν (προαιρετικό)
+            // toggleLock(); 
         }
 
         function logout() { 
@@ -282,9 +317,18 @@
             } catch(e) {}
         }
 
+        // --- ΕΛΕΓΧΟΣ ΚΟΥΜΠΙΩΝ ΕΝΤΑΣΗΣ (VOLUME BUTTONS) ---
+        // Αυτό δουλεύει καλύτερα όταν η οθόνη είναι αναμμένη (ή Fake Lock)
         window.addEventListener('keydown', (e) => {
-            if((e.key === "VolumeUp" || e.key === "VolumeDown") && document.getElementById('alert-layer').style.display === 'flex') {
-                acceptOrder();
+            // KeyCode 24 = VolumeUp, 25 = VolumeDown
+            // Επίσης ελέγχουμε τα string "VolumeUp", "VolumeDown"
+            if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
+                
+                // Αν χτυπάει η κλήση, τότε τα κουμπιά κάνουν ΑΠΟΔΟΧΗ
+                if (document.getElementById('alert-layer').style.display === 'flex') {
+                    e.preventDefault(); // Μη χαμηλώσεις τον ήχο του συστήματος
+                    acceptOrder();
+                }
             }
         });
 
@@ -293,7 +337,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v8');
+        const saved = localStorage.getItem('unified_auth_v9');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
