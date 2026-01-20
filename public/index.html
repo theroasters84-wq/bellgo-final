@@ -52,6 +52,7 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
+        <p style="color:#666; font-size:0.8em;">v14.0 - Silent Fix</p>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -108,7 +109,7 @@
     </div>
     
     <audio id="snd" src="alert.mp3" loop></audio>
-
+    
     <audio id="silent-snd" loop></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -123,9 +124,8 @@
 
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
-        // ΒΑΖΟΥΜΕ ΤΟ SILENT MP3 (BASE64) ΕΔΩ ΜΕΣΑ ΣΤΟ SCRIPT ΓΙΑ ΑΣΦΑΛΕΙΑ
-        const silentBase64 = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA==";
-        silentSnd.src = silentBase64;
+        // ΝΕΟ, ΕΛΑΦΡΥ SILENT MP3 (0.1sec silence)
+        const silentBase64 = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA";
 
         function attemptLogin() {
             const s = document.getElementById('shop').value.trim();
@@ -136,17 +136,28 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // 1. ΞΕΚΙΝΑΕΙ ΤΟ SILENT MP3 (ΚΛΕΙΔΙ ΓΙΑ BACKGROUND)
-            silentSnd.play().then(() => console.log("Silent Loop Started")).catch(e => console.log("Silent error", e));
+            // --- 1. ΕΚΚΙΝΗΣΗ SILENT (ΜΕ ΕΛΕΓΧΟ) ---
+            silentSnd.src = silentBase64;
+            silentSnd.play()
+                .then(() => {
+                    console.log("✅ Silent Audio Started");
+                    // alert("Silent OK!"); // Βγάζω το alert για να μην ενοχλεί, αλλά δούλεψε
+                })
+                .catch(e => {
+                    console.error("❌ Silent Failed:", e);
+                    alert("ΠΡΟΣΟΧΗ: Ο ήχος φόντου απέτυχε. Πατήστε ξανά.");
+                });
 
-            // 2. ΞΕΚΛΕΙΔΩΝΕΙ ΤΟΝ DYNATO ΗΧΟ
+            // --- 2. ΕΚΚΙΝΗΣΗ ALERT (UNLOCK) ---
             snd.volume = 0;
             snd.play().then(() => {
-                snd.pause(); snd.currentTime = 0; snd.volume = 1.0;
-            }).catch(e => console.log("Audio unlock failed", e));
+                snd.pause(); 
+                snd.currentTime = 0; 
+                snd.volume = 1.0;
+            }).catch(e => console.log("Unlock failed", e));
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v13', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v14', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
@@ -157,14 +168,17 @@
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
                     cordova.plugins.backgroundMode.setDefaults({
-                        title: "Bellgo", text: "Online & Listening", silent: true, resume: true, hidden: false
+                        title: "Bellgo", text: "Online", silent: true, resume: true, hidden: false
                     });
                     cordova.plugins.backgroundMode.enable();
                     
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
-                        // ΑΝ ΤΟ ANDROID ΣΤΑΜΑΤΗΣΕΙ ΤΟΝ ΗΧΟ, ΤΟΝ ΞΑΝΑΒΑΖΟΥΜΕ
-                        if(silentSnd.paused) silentSnd.play().catch(e=>{});
+                        // Επανεκκίνηση ήχου αν κοπεί
+                        if(silentSnd.paused) {
+                            silentSnd.src = silentBase64;
+                            silentSnd.play().catch(e=>{});
+                        }
                     });
                 }
             }, false);
@@ -280,8 +294,8 @@
             if(navigator.vibrate) navigator.vibrate(0);
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
             
-            // ΞΕΚΙΝΑΜΕ ΠΑΛΙ ΤΟΝ SILENT ΓΙΑ ΝΑ ΜΗΝ ΚΟΙΜΗΘΕΙ
-            silentSnd.play().catch(e=>{});
+            // Re-activate silent just in case
+            if(silentSnd.paused) silentSnd.play().catch(e=>{});
         }
 
         function logout() { 
@@ -316,7 +330,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v13');
+        const saved = localStorage.getItem('unified_auth_v14');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
