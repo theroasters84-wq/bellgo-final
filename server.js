@@ -4,12 +4,14 @@ const socketIo = require('socket.io');
 const path = require('path');
 const admin = require('firebase-admin');
 
-// FIREBASE SETUP
+// --- FIREBASE SETUP (TO BOT EIDOPOIHSEWN) ---
 try {
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    console.log("✅ Firebase Active");
-} catch (e) { console.log("⚠️ Firebase Skipped (No serviceAccountKey.json)"); }
+    console.log("✅ FIREBASE BOT: ΕΝΕΡΓΟΠΟΙΗΘΗΚΕ");
+} catch (e) { 
+    console.log("⚠️ FIREBASE ERROR: Λείπει το serviceAccountKey.json"); 
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -18,7 +20,6 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Λίστα οδηγών (Δεν σβήνονται στο disconnect)
 let activeDrivers = {}; 
 
 io.on('connection', (socket) => {
@@ -26,63 +27,58 @@ io.on('connection', (socket) => {
     // 1. LOGIN
     socket.on('login', (user) => {
         socket.join(user.shop);
-        
         if (user.role === 'driver') {
-            // Αποθήκευση/Ενημέρωση του οδηγού
             activeDrivers[user.name] = { 
                 socketId: socket.id, 
                 shop: user.shop,
                 fcmToken: user.fcmToken || null 
             };
-            console.log(`✅ Driver ${user.name} checked in.`);
+            console.log(`✅ ${user.name} is ONLINE`);
         }
-        
-        // Ενημερώνουμε αμέσως τους Admin
         updateShopAdmins(user.shop);
     });
 
-    // 2. UPDATE FIREBASE TOKEN
+    // 2. ΕΝΗΜΕΡΩΣΗ TOKEN (Για να ξέρει το Bot πού να στείλει)
     socket.on('update-token', (data) => {
         if (activeDrivers[data.name]) {
             activeDrivers[data.name].fcmToken = data.token;
+            console.log(`📲 Token updated for ${data.name}`);
         }
     });
 
-    // 3. MANUAL LOGOUT (Μόνο τότε διαγράφεται)
+    // 3. LOGOUT (Μόνο τότε διαγράφεται)
     socket.on('force-logout', (user) => {
         if (activeDrivers[user.name]) {
             delete activeDrivers[user.name];
             updateShopAdmins(user.shop);
-            console.log(`🚪 Driver ${user.name} logged out.`);
         }
     });
 
-    // 4. ΚΛΗΣΗ (ADMIN -> DRIVER)
+    // 4. ΚΛΗΣΗ (ΤΟ ΚΡΙΣΙΜΟ ΣΗΜΕΙΟ)
     socket.on('call-driver', (targetName) => {
         const driver = activeDrivers[targetName];
         if (driver) {
-            console.log(`🔔 Calling ${targetName}...`);
-            // Μέσω Socket (αν είναι ανοιχτό)
+            console.log(`🔔 ΚΛΗΣΗ ΠΡΟΣ: ${targetName}`);
+            
+            // Τρόπος Α: Socket (Άμεσο, αν είναι ανοιχτή η οθόνη)
             io.to(driver.socketId).emit('order-notification');
-            // Μέσω Firebase (αν κοιμάται)
-            if (driver.fcmToken) sendPush(driver.fcmToken);
+
+            // Τρόπος Β: Firebase Bot (Αν είναι κλειστή/στο παρασκήνιο)
+            if (driver.fcmToken) {
+                sendPush(driver.fcmToken);
+            } else {
+                console.log("⚠️ Ο οδηγός δεν έχει Token για Push!");
+            }
         }
     });
 
-    // 5. ΑΠΟΔΟΧΗ (DRIVER -> ADMIN)
+    // 5. ΑΠΟΔΟΧΗ
     socket.on('accept-order', (data) => {
-        // Ειδοποιούμε το μαγαζί ότι ο τάδε το δέχτηκε (για να γίνει πράσινο το κουμπί)
         io.to(data.shop).emit('order-accepted', data.driverName);
     });
 
-    // 6. CHAT
     socket.on('chat-message', (data) => {
         io.to(data.shop).emit('chat-message', data);
-    });
-
-    // 7. DISCONNECT (Απλά ενημερώνουμε το socketId αν ξαναμπεί, δεν τον σβήνουμε)
-    socket.on('disconnect', () => {
-        // Δεν κάνουμε delete εδώ!
     });
 });
 
@@ -96,14 +92,26 @@ function updateShopAdmins(shopName) {
     io.to(shopName).emit('update-drivers-list', driversList);
 }
 
+// Η ΣΥΝΑΡΤΗΣΗ ΤΟΥ BOT
 function sendPush(token) {
     const message = {
         token: token,
-        notification: { title: 'ΚΛΗΣΗ!', body: 'Πατήστε για αποδοχή' },
-        android: { priority: 'high', notification: { sound: 'default' } },
+        notification: { 
+            title: '📣 ΚΛΗΣΗ!', 
+            body: 'ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ ΤΩΡΑ!' 
+        },
+        android: { 
+            priority: 'high', 
+            notification: { 
+                sound: 'default',
+                channelId: 'fcm_default_channel'
+            } 
+        },
         data: { type: 'call' }
     };
-    admin.messaging().send(message).catch(e => console.log("Push Error:", e));
+    admin.messaging().send(message)
+        .then(() => console.log("🚀 Push Notification Sent!"))
+        .catch(e => console.log("❌ Push Error:", e));
 }
 
 const PORT = process.env.PORT || 3000;
