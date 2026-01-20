@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; media-src * data: blob:;">
     <title>Bellgo Unified</title>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -52,7 +52,7 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="color:#666; font-size:0.8em;">v17.0 - iOS/Android Hybrid</p>
+        <p style="color:#666; font-size:0.8em;">v18.0 - Final Fix</p>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -120,7 +120,7 @@
         const sndAlert = document.getElementById('snd-alert');
         const sndSilent = document.getElementById('snd-silent');
         
-        // Base64 ενός πραγματικά αθόρυβου MP3 (Λύνει το θέμα iPhone)
+        // Αυτό είναι το "μαγικό" αθόρυβο MP3
         sndSilent.src = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA";
 
         let vibrationInterval = null; 
@@ -141,33 +141,33 @@
 
             // --- ΣΤΡΑΤΗΓΙΚΗ ΗΧΟΥ ---
             
-            // 1. Ξεκινάμε το SILENT Loop (Για να μένει ξύπνιο το iOS/Android)
+            // 1. Ξεκινάμε το SILENT Loop (Αθόρυβο)
+            // Αυτό κρατάει το νήμα ήχου ενεργό χωρίς να ενοχλεί
             sndSilent.play().then(() => console.log("Silent Loop ON")).catch(e => console.log("Silent Blocked", e));
             
-            // 2. Προετοιμάζουμε το ALERT (Για να είναι έτοιμο)
+            // 2. Ξεκλειδώνουμε το ALERT (Παίζει για 1ms και σταματάει)
             sndAlert.volume = 1.0; 
             sndAlert.play().then(() => {
                 sndAlert.pause(); 
                 sndAlert.currentTime = 0; 
             }).catch(e => {});
 
-            // 3. Ενεργοποίηση WAKE LOCK
+            // 3. Ενεργοποίηση WAKE LOCK (Οθόνη ανοιχτή)
             requestWakeLock();
 
-            // 4. ΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ "WATCHER" (Για το APK που κοιμάται)
+            // 4. ΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ "WATCHER" (Για το APK)
             if (keepAliveInterval) clearInterval(keepAliveInterval);
             keepAliveInterval = setInterval(() => {
-                // Αν σταμάτησε το silent (π.χ. από Youtube), το ξαναβάζουμε
+                // Αν το σύστημα σταμάτησε το silent, το ξαναβάζουμε
                 if(sndSilent.paused) {
-                    console.log("⚠️ Keep-Alive paused, restarting...");
+                    console.log("Keep-Alive restarting...");
                     sndSilent.play().catch(e=>{});
                 }
-                // Ανανέωση WakeLock
                 requestWakeLock();
-            }, 10000); // Κάθε 10 δευτερόλεπτα
+            }, 5000); 
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v17', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v18', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
@@ -282,8 +282,8 @@
         function triggerAlert() {
             if(document.getElementById('alert-layer').style.display === 'flex') return;
 
-            // ΕΔΩ ΕΙΝΑΙ Η ΛΥΣΗ ΓΙΑ ΤΟ YOUTUBE:
-            // Κάνουμε Force Play στον ήχο κλήσης. Αυτό θα παγώσει το Video (Focus Steal).
+            // ΛΥΣΗ ΓΙΑ YOUTUBE: 
+            // Κάνουμε play() τον δυνατό ήχο. Αυτό αυτόματα κάνει pause το YouTube (Audio Focus).
             sndAlert.currentTime = 0;
             sndAlert.play().catch(e => console.log("Alert play error", e));
 
@@ -307,10 +307,56 @@
             sndAlert.pause();
             sndAlert.currentTime = 0;
             
-            // ΑΛΛΑ ξεκινάμε πάλι τον αθόρυβο ήχο (αν τον σταμάτησε το σύστημα)
+            // Ξεκινάμε πάλι το Silent Loop για να μην κοιμηθεί
             sndSilent.play().catch(e=>{});
 
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
             
-            socket.emit('accept-order', { shop: auth.shop, driverName: auth
+            socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
+            requestWakeLock();
+        }
+
+        function logout() { 
+            if(socket) socket.emit('force-logout', auth); 
+            localStorage.clear(); location.reload(); 
+        }
+
+        async function setupPush() {
+            try {
+                await PushNotifications.requestPermissions();
+                await PushNotifications.register();
+                PushNotifications.addListener('registration', (token) => {
+                    auth.fcmToken = token.value;
+                    socket.emit('update-token', { name: auth.name, token: token.value });
+                });
+                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
+            } catch(e) {}
+        }
+
+        // --- VOLUME BUTTONS HANDLER ---
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
+                if (document.getElementById('alert-layer').style.display === 'flex') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    acceptOrder();
+                }
+            }
+        });
+
+        function toggleLock() {
+            const l = document.getElementById('fake-lock');
+            l.style.display = l.style.display === 'block' ? 'none' : 'block';
+        }
+
+        const saved = localStorage.getItem('unified_auth_v18');
+        if(saved) {
+            auth = JSON.parse(saved);
+            enableBackgroundMode();
+            initUI();
+            connect();
+        }
+    </script>
+</body>
+</html>
