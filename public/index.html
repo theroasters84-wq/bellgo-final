@@ -52,7 +52,7 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="color:#666; font-size:0.8em;">v15.0 - Volume Zero Trick</p>
+        <p style="color:#666; font-size:0.8em;">v16.0 - No Silent MP3</p>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -117,6 +117,7 @@
         const snd = document.getElementById('snd');
         let vibrationInterval = null; 
         let heartbeatInterval = null;
+        let wakeLock = null; // Για να μην κλείνει η οθόνη
 
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
@@ -129,28 +130,42 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // --- ΤΟ ΜΕΓΑΛΟ ΚΟΛΠΟ ---
-            // Ξεκινάμε τον ήχο alert.mp3 ΑΜΕΣΩΣ, αλλά τον βάζουμε στο MUTE
-            // Έτσι το Android νομίζει ότι παίζει μουσική και δεν το κλείνει.
-            snd.volume = 0.0001; // Σχεδόν μηδέν, αλλά ΟΧΙ μηδέν (μερικά browsers το σταματάνε στο 0)
+            // --- ΤΟ ΚΟΛΠΟ ΤΗΣ ΣΥΝΕΧΟΥΣ ΡΟΗΣ ---
+            // Παίζουμε το alert.mp3 στο 0.001% της έντασης ΣΥΝΕΧΕΙΑ.
+            snd.volume = 0.001; 
             snd.loop = true;
             
+            // Ξεκινάμε την αναπαραγωγή
             var playPromise = snd.play();
             if (playPromise !== undefined) {
                 playPromise.then(_ => {
-                    console.log("✅ Audio Keep-Alive Started (Muted)");
+                    console.log("✅ Audio Keep-Alive Started");
                 })
                 .catch(error => {
-                    alert("ΣΦΑΛΜΑ: Ο ήχος δεν ξεκίνησε. Πατήστε ξανά ΕΙΣΟΔΟΣ.");
+                    console.log("❌ Autoplay blocked. Will try on interaction.");
                 });
             }
 
+            // Ενεργοποίηση WAKE LOCK (Για να μην σβήνει η οθόνη)
+            requestWakeLock();
+
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v15', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v16', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
             connect();
+        }
+
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('✅ Screen Wake Lock Active');
+                }
+            } catch (err) {
+                console.log('Wake Lock Error:', err);
+            }
         }
 
         function enableBackgroundMode() {
@@ -162,6 +177,7 @@
                     cordova.plugins.backgroundMode.enable();
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
+                        requestWakeLock(); // Ξαναζητάμε Wake Lock
                     });
                 }
             }, false);
@@ -249,9 +265,7 @@
         }
 
         function triggerAlert() {
-            // Αν χτυπάει ήδη (Volume 1), δεν κάνουμε τίποτα
             if(document.getElementById('alert-layer').style.display === 'flex') return;
-
             document.getElementById('alert-layer').style.display = 'flex';
             if(document.getElementById('fake-lock').style.display === 'block') {
                 document.getElementById('fake-lock').style.display = 'none';
@@ -261,9 +275,9 @@
             const vibOn = document.getElementById('vib-toggle').checked;
 
             if(soundOn) {
-                // ΔΥΝΑΜΩΝΟΥΜΕ ΤΟΝ ΗΧΟ ΠΟΥ ΗΔΗ ΠΑΙΖΕΙ
-                snd.currentTime = 0; // Από την αρχή
-                snd.volume = 1.0;    // Φουλ ένταση
+                // Απλά δυναμώνουμε τον ήχο που ΗΔΗ παίζει
+                snd.volume = 1.0;    
+                snd.currentTime = 0; // Τον ξεκινάμε από την αρχή για να ακουστεί το "χτύπημα"
             }
             if(vibOn && navigator.vibrate) {
                 navigator.vibrate([1000, 500, 1000, 500]); 
@@ -275,13 +289,16 @@
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
             
-            // ΔΕΝ ΣΤΑΜΑΤΑΜΕ ΤΟΝ ΗΧΟ! ΑΠΛΑ ΤΟΝ ΧΑΜΗΛΩΝΟΥΜΕ ΣΤΟ "ΑΘΟΡΥΒΟ"
-            snd.volume = 0.0001; 
+            // ΔΕΝ ΣΤΑΜΑΤΑΜΕ ΤΟΝ ΗΧΟ! Απλά τον χαμηλώνουμε πάλι.
+            snd.volume = 0.001; 
             
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
             
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
+            
+            // Επαναφορά Wake Lock αν χάθηκε
+            requestWakeLock();
         }
 
         function logout() { 
@@ -316,7 +333,7 @@
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v15');
+        const saved = localStorage.getItem('unified_auth_v16');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
