@@ -52,7 +52,7 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="color:#666; font-size:0.8em;">v16.0 - No Silent MP3</p>
+        <p style="color:#666; font-size:0.8em;">v17.0 - iOS/Android Hybrid</p>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -108,16 +108,25 @@
         <div style="color:#222; margin-top:50px;">Touch to Unlock</div>
     </div>
     
-    <audio id="snd" src="alert.mp3" loop></audio>
+    <audio id="snd-alert" src="alert.mp3" loop preload="auto"></audio>
+
+    <audio id="snd-silent" loop preload="auto"></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const SERVER = 'https://bellgo-final.onrender.com';
         let socket, auth;
-        const snd = document.getElementById('snd');
+        
+        const sndAlert = document.getElementById('snd-alert');
+        const sndSilent = document.getElementById('snd-silent');
+        
+        // Base64 ενός πραγματικά αθόρυβου MP3 (Λύνει το θέμα iPhone)
+        sndSilent.src = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA";
+
         let vibrationInterval = null; 
         let heartbeatInterval = null;
-        let wakeLock = null; // Για να μην κλείνει η οθόνη
+        let wakeLock = null; 
+        let keepAliveInterval = null;
 
         const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
 
@@ -130,27 +139,35 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // --- ΤΟ ΚΟΛΠΟ ΤΗΣ ΣΥΝΕΧΟΥΣ ΡΟΗΣ ---
-            // Παίζουμε το alert.mp3 στο 0.001% της έντασης ΣΥΝΕΧΕΙΑ.
-            snd.volume = 0.001; 
-            snd.loop = true;
+            // --- ΣΤΡΑΤΗΓΙΚΗ ΗΧΟΥ ---
             
-            // Ξεκινάμε την αναπαραγωγή
-            var playPromise = snd.play();
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    console.log("✅ Audio Keep-Alive Started");
-                })
-                .catch(error => {
-                    console.log("❌ Autoplay blocked. Will try on interaction.");
-                });
-            }
+            // 1. Ξεκινάμε το SILENT Loop (Για να μένει ξύπνιο το iOS/Android)
+            sndSilent.play().then(() => console.log("Silent Loop ON")).catch(e => console.log("Silent Blocked", e));
+            
+            // 2. Προετοιμάζουμε το ALERT (Για να είναι έτοιμο)
+            sndAlert.volume = 1.0; 
+            sndAlert.play().then(() => {
+                sndAlert.pause(); 
+                sndAlert.currentTime = 0; 
+            }).catch(e => {});
 
-            // Ενεργοποίηση WAKE LOCK (Για να μην σβήνει η οθόνη)
+            // 3. Ενεργοποίηση WAKE LOCK
             requestWakeLock();
 
+            // 4. ΕΝΕΡΓΟΠΟΙΗΣΗ ΤΟΥ "WATCHER" (Για το APK που κοιμάται)
+            if (keepAliveInterval) clearInterval(keepAliveInterval);
+            keepAliveInterval = setInterval(() => {
+                // Αν σταμάτησε το silent (π.χ. από Youtube), το ξαναβάζουμε
+                if(sndSilent.paused) {
+                    console.log("⚠️ Keep-Alive paused, restarting...");
+                    sndSilent.play().catch(e=>{});
+                }
+                // Ανανέωση WakeLock
+                requestWakeLock();
+            }, 10000); // Κάθε 10 δευτερόλεπτα
+
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v16', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v17', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
@@ -161,23 +178,21 @@
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('✅ Screen Wake Lock Active');
                 }
-            } catch (err) {
-                console.log('Wake Lock Error:', err);
-            }
+            } catch (err) {}
         }
 
         function enableBackgroundMode() {
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
                     cordova.plugins.backgroundMode.setDefaults({
-                        title: "Bellgo", text: "Online", silent: true, resume: true, hidden: false
+                        title: "Bellgo", text: "Driver Active", silent: true, resume: true, hidden: false
                     });
                     cordova.plugins.backgroundMode.enable();
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
-                        requestWakeLock(); // Ξαναζητάμε Wake Lock
+                        requestWakeLock();
+                        if(sndSilent.paused) sndSilent.play();
                     });
                 }
             }, false);
@@ -266,19 +281,18 @@
 
         function triggerAlert() {
             if(document.getElementById('alert-layer').style.display === 'flex') return;
+
+            // ΕΔΩ ΕΙΝΑΙ Η ΛΥΣΗ ΓΙΑ ΤΟ YOUTUBE:
+            // Κάνουμε Force Play στον ήχο κλήσης. Αυτό θα παγώσει το Video (Focus Steal).
+            sndAlert.currentTime = 0;
+            sndAlert.play().catch(e => console.log("Alert play error", e));
+
             document.getElementById('alert-layer').style.display = 'flex';
             if(document.getElementById('fake-lock').style.display === 'block') {
                 document.getElementById('fake-lock').style.display = 'none';
             }
 
-            const soundOn = document.getElementById('sound-toggle').checked;
             const vibOn = document.getElementById('vib-toggle').checked;
-
-            if(soundOn) {
-                // Απλά δυναμώνουμε τον ήχο που ΗΔΗ παίζει
-                snd.volume = 1.0;    
-                snd.currentTime = 0; // Τον ξεκινάμε από την αρχή για να ακουστεί το "χτύπημα"
-            }
             if(vibOn && navigator.vibrate) {
                 navigator.vibrate([1000, 500, 1000, 500]); 
                 if (vibrationInterval) clearInterval(vibrationInterval);
@@ -289,57 +303,14 @@
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
             
-            // ΔΕΝ ΣΤΑΜΑΤΑΜΕ ΤΟΝ ΗΧΟ! Απλά τον χαμηλώνουμε πάλι.
-            snd.volume = 0.001; 
+            // Σταματάμε τον ήχο κλήσης
+            sndAlert.pause();
+            sndAlert.currentTime = 0;
             
+            // ΑΛΛΑ ξεκινάμε πάλι τον αθόρυβο ήχο (αν τον σταμάτησε το σύστημα)
+            sndSilent.play().catch(e=>{});
+
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
             
-            socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
-            
-            // Επαναφορά Wake Lock αν χάθηκε
-            requestWakeLock();
-        }
-
-        function logout() { 
-            if(socket) socket.emit('force-logout', auth); 
-            localStorage.clear(); location.reload(); 
-        }
-
-        async function setupPush() {
-            try {
-                await PushNotifications.requestPermissions();
-                await PushNotifications.register();
-                PushNotifications.addListener('registration', (token) => {
-                    auth.fcmToken = token.value;
-                    socket.emit('update-token', { name: auth.name, token: token.value });
-                });
-                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
-            } catch(e) {}
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
-                if (document.getElementById('alert-layer').style.display === 'flex') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    acceptOrder();
-                }
-            }
-        });
-
-        function toggleLock() {
-            const l = document.getElementById('fake-lock');
-            l.style.display = l.style.display === 'block' ? 'none' : 'block';
-        }
-
-        const saved = localStorage.getItem('unified_auth_v16');
-        if(saved) {
-            auth = JSON.parse(saved);
-            enableBackgroundMode();
-            initUI();
-            connect();
-        }
-    </script>
-</body>
-</html>
+            socket.emit('accept-order', { shop: auth.shop, driverName: auth
