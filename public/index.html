@@ -32,6 +32,9 @@
         
         #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
         
+        /* AUDIO ELEMENTS */
+        audio { display: none; }
+        
         .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
@@ -43,7 +46,7 @@
 <body>
 
     <div id="login-screen" class="screen">
-        <h1 style="color:#ffc107; letter-spacing: 2px; font-size: 3em;">BELLGO</h1>
+        <h1 style="color:#ffc107; letter-spacing: 2px; font-size: 3em;">BELLGO v23</h1>
         <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
         <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
         <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
@@ -52,7 +55,9 @@
             <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
         </select>
         <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="color:#666; font-size:0.8em;">v19.0 - With Silent Base64</p>
+        <div id="logs" style="width:90%; height:150px; background:#222; color:#0f0; font-family:monospace; font-size:10px; overflow-y:scroll; text-align:left; padding:5px; margin-top:20px;">
+            Αναμονή...
+        </div>
     </div>
 
     <div id="driver-ui" class="screen hidden">
@@ -60,7 +65,6 @@
             <h2 id="d-label" style="color:#ffc107; margin:0;">DRIVER</h2>
             <span style="color:#0f0">● ONLINE</span>
         </div>
-        
         <div class="setting-row">
             <span>🔊 Ήχος (Loop)</span>
             <label class="switch"><input type="checkbox" id="sound-toggle" checked><span class="slider"></span></label>
@@ -85,9 +89,7 @@
     <div id="admin-ui" class="screen hidden">
         <h2 style="color:#ffc107; margin-bottom:5px;">ADMIN PANEL</h2>
         <p style="color:#888; margin-top:0;" id="shop-label">SHOP</p>
-        <div id="drivers-container">
-            <p style="color:#666; text-align:center; padding-top:20px;">Αναμονή για συνδέσεις...</p>
-        </div>
+        <div id="drivers-container"><p style="color:#666; text-align:center; padding-top:20px;">Αναμονή...</p></div>
         <div id="admin-chat-ui">
             <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
             <div style="display:flex;">
@@ -101,35 +103,30 @@
     <div id="alert-layer" onclick="acceptOrder()">
         <h1 style="font-size:3em; color:white">ΚΛΗΣΗ!</h1>
         <p style="font-size:1.5em; color:white">ΠΑΤΑ ΟΘΟΝΗ</p>
-        <p style="font-size:1em; color:#ddd;">ή Κουμπιά Έντασης</p>
     </div>
-    
-    <div id="fake-lock" onclick="toggleLock()">
-        <div style="color:#222; margin-top:50px;">Touch to Unlock</div>
-    </div>
-    
-    <audio id="snd-alert" src="alert.mp3" loop preload="auto"></audio>
+    <div id="fake-lock" onclick="toggleLock()"><div style="color:#222; margin-top:50px;">Touch to Unlock</div></div>
 
+    <audio id="snd-alert" src="alert.mp3" loop preload="auto"></audio>
     <audio id="snd-silent" loop preload="auto"></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const SERVER = 'https://bellgo-final.onrender.com';
         let socket, auth;
-        
         const sndAlert = document.getElementById('snd-alert');
         const sndSilent = document.getElementById('snd-silent');
         
-        // --- ΑΥΤΟ ΕΙΝΑΙ ΤΟ BASE64 ΠΟΥ ΖΗΤΗΣΕΣ ---
-        // Είναι ένας ήχος 0.1 δευτερολέπτου απόλυτης ησυχίας.
-        sndSilent.src = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAIAbWFqb3JfYnJhbmQAbXA0MgBUWFhUAAAAEQACAG1pbm9yX3ZlcnNpb24AMABUWFhUAAAAHAAIAY29tcGF0aWJsZV9icmFuZHwAbXA0Mmlzb21tcDQxAFRTU0UAAAAOAAIATGF2ZjU3LjU2LjEwMQAAAAAAAAAAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA//tQAAAAA";
+        // Χρησιμοποιούμε WAV Base64 που είναι πιο ασφαλές για WebViews
+        const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
+        sndSilent.src = SILENT_WAV;
 
-        let vibrationInterval = null; 
-        let heartbeatInterval = null;
-        let wakeLock = null; 
-        let keepAliveInterval = null;
+        let vibrationInterval = null, heartbeatInterval = null, wakeLock = null, keepAliveInterval = null;
 
-        const PushNotifications = (window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins.PushNotifications : null;
+        function log(msg) {
+            const el = document.getElementById('logs');
+            el.innerHTML = `> ${msg}<br>` + el.innerHTML;
+            console.log(msg);
+        }
 
         function attemptLogin() {
             const s = document.getElementById('shop').value.trim();
@@ -140,33 +137,30 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // --- ΕΚΚΙΝΗΣΗ ΗΧΩΝ ---
+            // START AUDIO ENGINE
+            log("1. Εκκίνηση Ήχων...");
             
-            // 1. SILENT: Παίζει συνέχεια
-            sndSilent.play().then(() => console.log("✅ Silent Loop Started")).catch(e => console.log("Silent Error", e));
+            // Παίζουμε το silent
+            sndSilent.play().then(() => log("✅ Silent Loop OK")).catch(e => log("❌ Silent Error: " + e.message));
             
-            // 2. ALERT: Παίζει για λίγο και σταματάει (Unlock)
-            sndAlert.volume = 1.0; 
-            sndAlert.play().then(() => {
-                sndAlert.pause(); 
-                sndAlert.currentTime = 0; 
-            }).catch(e => {});
+            // Προετοιμάζουμε το Alert
+            sndAlert.volume = 1.0;
+            sndAlert.play().then(() => { sndAlert.pause(); sndAlert.currentTime = 0; }).catch(e => {});
 
-            // 3. WAKE LOCK
             requestWakeLock();
-
-            // 4. WATCHER: Αν σταματήσει ο σιωπηλός, τον ξαναβάζει μπρος
+            
+            // Watcher
             if (keepAliveInterval) clearInterval(keepAliveInterval);
             keepAliveInterval = setInterval(() => {
                 if(sndSilent.paused) {
-                    console.log("♻️ Restarting Silent Audio...");
+                    log("♻️ Restarting Silent...");
                     sndSilent.play().catch(e=>{});
                 }
                 requestWakeLock();
             }, 5000); 
 
             auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v19', JSON.stringify(auth));
+            localStorage.setItem('unified_auth_v23', JSON.stringify(auth));
             
             enableBackgroundMode(); 
             initUI();
@@ -174,19 +168,13 @@
         }
 
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) {}
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
         function enableBackgroundMode() {
             document.addEventListener('deviceready', function () {
                 if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
-                    cordova.plugins.backgroundMode.setDefaults({
-                        title: "Bellgo", text: "Driver Active", silent: true, resume: true, hidden: false
-                    });
+                    cordova.plugins.backgroundMode.setDefaults({ title: "Bellgo", text: "Active", silent: true, resume: true, hidden: false });
                     cordova.plugins.backgroundMode.enable();
                     cordova.plugins.backgroundMode.on('activate', function() {
                         cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
@@ -209,16 +197,16 @@
         }
 
         function connect() {
+            log("2. Σύνδεση με Server...");
             socket = io(SERVER, { transports: ['websocket'] });
 
             socket.on('connect', () => {
+                log("✅ Connected!");
                 socket.emit('login', auth);
                 if(auth.role === 'driver') {
                     if(heartbeatInterval) clearInterval(heartbeatInterval);
-                    heartbeatInterval = setInterval(() => { 
-                        if(socket.connected) socket.emit('heartbeat', { name: auth.name }); 
-                    }, 5000);
-                    if(PushNotifications) setupPush();
+                    heartbeatInterval = setInterval(() => { if(socket.connected) socket.emit('heartbeat', { name: auth.name }); }, 5000);
+                    setTimeout(setupPush, 1500); // Μικρή καθυστέρηση για σιγουριά
                 }
             });
 
@@ -226,15 +214,8 @@
                 if(auth.role !== 'admin') return;
                 const list = document.getElementById('drivers-container');
                 list.innerHTML = ""; 
-                if(drivers.length === 0) {
-                    list.innerHTML = "<p style='color:#666; text-align:center; padding-top:20px;'>Κανείς Online</p>"; return;
-                }
                 drivers.forEach(d => {
-                    list.innerHTML += `
-                        <div class="driver-card">
-                            <span style="font-size:1.2em; color:white; font-weight:bold;">🛵 ${d.name}</span>
-                            <button id="btn-${d.name}" class="btn-call" onclick="callDriver('${d.name}')">ΚΛΗΣΗ 🔔</button>
-                        </div>`;
+                    list.innerHTML += `<div class="driver-card"><span style="font-size:1.2em; color:white; font-weight:bold;">🛵 ${d.name}</span><button id="btn-${d.name}" class="btn-call" onclick="callDriver('${d.name}')">ΚΛΗΣΗ 🔔</button></div>`;
                 });
             });
 
@@ -242,21 +223,15 @@
                 if(auth.role !== 'admin') return;
                 const btn = document.getElementById(`btn-${driverName}`);
                 if(btn) {
-                    btn.classList.remove('btn-calling');
-                    btn.classList.add('btn-accepted');
-                    btn.innerText = "ΑΠΟΔΟΧΗ! ✅"; btn.disabled = false;
-                    setTimeout(() => {
-                        btn.classList.remove('btn-accepted'); btn.innerText = "ΚΛΗΣΗ 🔔";
-                    }, 4000);
+                    btn.classList.add('btn-accepted'); btn.innerText = "ΑΠΟΔΟΧΗ! ✅"; btn.disabled = false;
+                    setTimeout(() => { btn.classList.remove('btn-accepted'); btn.innerText = "ΚΛΗΣΗ 🔔"; }, 4000);
                 }
             });
 
             socket.on('order-notification', () => { if(auth.role === 'driver') triggerAlert(); });
-
             socket.on('chat-message', (data) => {
                 const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
-                const isMe = data.user === auth.name;
-                box.innerHTML += `<div class="msg ${isMe ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
+                box.innerHTML += `<div class="msg ${data.user === auth.name ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
                 box.scrollTop = box.scrollHeight;
             });
         }
@@ -264,9 +239,7 @@
         function callDriver(targetName) {
             socket.emit('call-driver', targetName);
             const btn = document.getElementById(`btn-${targetName}`);
-            if(btn) {
-                btn.classList.add('btn-calling'); btn.innerText = "ΚΛΗΣΗ..."; btn.disabled = true;
-            }
+            if(btn) { btn.classList.add('btn-calling'); btn.innerText = "ΚΛΗΣΗ..."; btn.disabled = true; }
         }
 
         function sendAdminChat() {
@@ -280,18 +253,15 @@
 
         function triggerAlert() {
             if(document.getElementById('alert-layer').style.display === 'flex') return;
-
-            // FORCE PLAY (Focus Stealing για YouTube)
-            sndAlert.currentTime = 0;
-            sndAlert.play().catch(e => console.log("Alert play error", e));
+            
+            // FORCE PLAY - Focus Stealing
+            sndAlert.currentTime = 0; 
+            sndAlert.play().catch(e => log("Alert Play Error: " + e));
 
             document.getElementById('alert-layer').style.display = 'flex';
-            if(document.getElementById('fake-lock').style.display === 'block') {
-                document.getElementById('fake-lock').style.display = 'none';
-            }
-
-            const vibOn = document.getElementById('vib-toggle').checked;
-            if(vibOn && navigator.vibrate) {
+            if(document.getElementById('fake-lock').style.display === 'block') document.getElementById('fake-lock').style.display = 'none';
+            
+            if(document.getElementById('vib-toggle').checked && navigator.vibrate) {
                 navigator.vibrate([1000, 500, 1000, 500]); 
                 if (vibrationInterval) clearInterval(vibrationInterval);
                 vibrationInterval = setInterval(() => { navigator.vibrate([1000, 500, 1000, 500]); }, 3000);
@@ -300,54 +270,60 @@
 
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
-            
-            // Σταματάμε τον ήχο κλήσης
-            sndAlert.pause();
-            sndAlert.currentTime = 0;
-            
-            // Βεβαιωνόμαστε ότι ο Σιωπηλός παίζει ακόμα
+            sndAlert.pause(); sndAlert.currentTime = 0;
             if(sndSilent.paused) sndSilent.play().catch(e=>{});
-
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
-            
             socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
             requestWakeLock();
         }
 
-        function logout() { 
-            if(socket) socket.emit('force-logout', auth); 
-            localStorage.clear(); location.reload(); 
-        }
+        function logout() { if(socket) socket.emit('force-logout', auth); localStorage.clear(); location.reload(); }
 
+        // --- PUSH NOTIFICATIONS ---
         async function setupPush() {
+            log("3. Έλεγχος Push Plugin...");
+            if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) {
+                log("❌ ERROR: Plugin not found (Αν είσαι σε κινητό, κάνε npx cap sync)");
+                return;
+            }
+
+            const PushNotifications = window.Capacitor.Plugins.PushNotifications;
+            log("✅ Plugin OK. Ζητάω άδεια...");
+
             try {
-                await PushNotifications.requestPermissions();
-                await PushNotifications.register();
+                const perm = await PushNotifications.requestPermissions();
+                if (perm.receive === 'granted') {
+                    log("✅ Άδεια Δόθηκε! Εγγραφή...");
+                    await PushNotifications.register();
+                } else {
+                    log("❌ Άδεια απορρίφθηκε!");
+                }
+
                 PushNotifications.addListener('registration', (token) => {
+                    log("🎉 TOKEN: " + token.value.substring(0, 10) + "...");
                     auth.fcmToken = token.value;
                     socket.emit('update-token', { name: auth.name, token: token.value });
+                    alert("ΕΤΟΙΜΟΣ! TOKEN FOUND:\n" + token.value);
                 });
-                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
-            } catch(e) {}
-        }
 
-        document.addEventListener('keydown', (e) => {
-            if ((e.key === "VolumeUp" || e.key === "VolumeDown" || e.keyCode === 24 || e.keyCode === 25)) {
-                if (document.getElementById('alert-layer').style.display === 'flex') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    acceptOrder();
-                }
+                PushNotifications.addListener('registrationError', (err) => {
+                    log("❌ Reg Error: " + JSON.stringify(err));
+                });
+
+                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
+                PushNotifications.addListener('pushNotificationActionPerformed', () => triggerAlert());
+            } catch(e) {
+                log("⚠️ Push Exception: " + JSON.stringify(e));
             }
-        });
+        }
 
         function toggleLock() {
             const l = document.getElementById('fake-lock');
             l.style.display = l.style.display === 'block' ? 'none' : 'block';
         }
 
-        const saved = localStorage.getItem('unified_auth_v19');
+        const saved = localStorage.getItem('unified_auth_v23');
         if(saved) {
             auth = JSON.parse(saved);
             enableBackgroundMode();
