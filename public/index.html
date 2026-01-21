@@ -116,9 +116,11 @@
         const sndAlert = document.getElementById('snd-alert');
         const sndSilent = document.getElementById('snd-silent');
         
-        // Χρησιμοποιούμε WAV Base64 που είναι πιο ασφαλές για WebViews
-        const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
-        sndSilent.src = SILENT_WAV;
+        // --- ΑΛΛΑΓΗ ΓΙΑ INSOMNIA MODE (Browser) ---
+        // Φορτώνουμε το silence.mp3 και βάζουμε την ένταση στο 0.001 (0.1%)
+        // Αυτό ξεγελάει τον browser ότι "ακούμε" κάτι σημαντικό.
+        sndSilent.src = 'silence.mp3'; 
+        sndSilent.volume = 0.001; 
 
         let vibrationInterval = null, heartbeatInterval = null, wakeLock = null, keepAliveInterval = null;
 
@@ -140,7 +142,7 @@
             // START AUDIO ENGINE
             log("1. Εκκίνηση Ήχων...");
             
-            // Παίζουμε το silent
+            // Παίζουμε το silent (σε ένταση 0.1% για να κρατάει ξύπνιο το κινητό)
             sndSilent.play().then(() => log("✅ Silent Loop OK")).catch(e => log("❌ Silent Error: " + e.message));
             
             // Προετοιμάζουμε το Alert
@@ -149,7 +151,7 @@
 
             requestWakeLock();
             
-            // Watcher
+            // Watcher για να μην σταματάει ποτέ το silent
             if (keepAliveInterval) clearInterval(keepAliveInterval);
             keepAliveInterval = setInterval(() => {
                 if(sndSilent.paused) {
@@ -206,7 +208,7 @@
                 if(auth.role === 'driver') {
                     if(heartbeatInterval) clearInterval(heartbeatInterval);
                     heartbeatInterval = setInterval(() => { if(socket.connected) socket.emit('heartbeat', { name: auth.name }); }, 5000);
-                    setTimeout(setupPush, 1500); // Μικρή καθυστέρηση για σιγουριά
+                    setTimeout(setupPush, 1500); 
                 }
             });
 
@@ -271,6 +273,7 @@
         function acceptOrder() {
             document.getElementById('alert-layer').style.display = 'none';
             sndAlert.pause(); sndAlert.currentTime = 0;
+            // Ξαναπαίζουμε το silent για να μείνει ξύπνιο
             if(sndSilent.paused) sndSilent.play().catch(e=>{});
             if(vibrationInterval) clearInterval(vibrationInterval);
             if(navigator.vibrate) navigator.vibrate(0);
@@ -284,7 +287,7 @@
         async function setupPush() {
             log("3. Έλεγχος Push Plugin...");
             if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) {
-                log("❌ ERROR: Plugin not found (Αν είσαι σε κινητό, κάνε npx cap sync)");
+                log("⚠️ Web Mode: Push Notifications not avail.");
                 return;
             }
 
