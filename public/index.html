@@ -87,9 +87,16 @@
     </div>
 
     <div id="admin-ui" class="screen hidden">
-        <h2 style="color:#ffc107; margin-bottom:5px;">ADMIN PANEL</h2>
-        <p style="color:#888; margin-top:0;" id="shop-label">SHOP</p>
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:10px;">
+            <div style="text-align:left;">
+                <h2 style="color:#ffc107; margin:0;">ADMIN</h2>
+                <span id="shop-label" style="color:#888; font-size:0.8em;">SHOP</span>
+            </div>
+            <div id="admin-status" style="font-weight:bold; color:red;">🔴 OFFLINE</div>
+        </div>
+
         <div id="drivers-container"><p style="color:#666; text-align:center; padding-top:20px;">Αναμονή...</p></div>
+        
         <div id="admin-chat-ui">
             <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
             <div style="display:flex;">
@@ -107,7 +114,7 @@
     <div id="fake-lock" onclick="toggleLock()"><div style="color:#222; margin-top:50px;">Touch to Unlock</div></div>
 
     <audio id="snd-alert" src="alert.mp3" loop preload="auto"></audio>
-    <audio id="snd-silent" loop preload="auto"></audio>
+    <audio id="snd-silent" src="silence.mp3" loop preload="auto"></audio>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
@@ -116,10 +123,8 @@
         const sndAlert = document.getElementById('snd-alert');
         const sndSilent = document.getElementById('snd-silent');
         
-        // --- ΑΛΛΑΓΗ ΓΙΑ INSOMNIA MODE (Browser) ---
-        // Φορτώνουμε το silence.mp3 και βάζουμε την ένταση στο 0.001 (0.1%)
-        // Αυτό ξεγελάει τον browser ότι "ακούμε" κάτι σημαντικό.
-        sndSilent.src = 'silence.mp3'; 
+        // --- INSOMNIA MODE (Browser) ---
+        // Βάζουμε την ένταση στο 0.001 (0.1%) για να ξεγελάμε τον browser
         sndSilent.volume = 0.001; 
 
         let vibrationInterval = null, heartbeatInterval = null, wakeLock = null, keepAliveInterval = null;
@@ -139,10 +144,10 @@
             if(p !== "1234") return alert("Λάθος Κωδικός");
             if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
 
-            // START AUDIO ENGINE
+            // START AUDIO ENGINE (Και για Admin και για Driver)
             log("1. Εκκίνηση Ήχων...");
             
-            // Παίζουμε το silent (σε ένταση 0.1% για να κρατάει ξύπνιο το κινητό)
+            // Παίζουμε το silent (σε ένταση 0.1%)
             sndSilent.play().then(() => log("✅ Silent Loop OK")).catch(e => log("❌ Silent Error: " + e.message));
             
             // Προετοιμάζουμε το Alert
@@ -151,7 +156,7 @@
 
             requestWakeLock();
             
-            // Watcher για να μην σταματάει ποτέ το silent
+            // Watcher για να μην σταματάει ποτέ το silent (ασφάλεια)
             if (keepAliveInterval) clearInterval(keepAliveInterval);
             keepAliveInterval = setInterval(() => {
                 if(sndSilent.paused) {
@@ -204,11 +209,28 @@
 
             socket.on('connect', () => {
                 log("✅ Connected!");
+                
+                // Ενημέρωση UI για Admin (ΠΡΑΣΙΝΟ)
+                if(document.getElementById('admin-status')) {
+                    document.getElementById('admin-status').innerText = "🟢 ONLINE";
+                    document.getElementById('admin-status').style.color = "#0f0"; 
+                }
+
                 socket.emit('login', auth);
                 if(auth.role === 'driver') {
                     if(heartbeatInterval) clearInterval(heartbeatInterval);
                     heartbeatInterval = setInterval(() => { if(socket.connected) socket.emit('heartbeat', { name: auth.name }); }, 5000);
                     setTimeout(setupPush, 1500); 
+                }
+            });
+
+            socket.on('disconnect', () => {
+                log("🔴 Disconnected!");
+                
+                // Ενημέρωση UI για Admin (ΚΟΚΚΙΝΟ)
+                if(document.getElementById('admin-status')) {
+                    document.getElementById('admin-status').innerText = "🔴 OFFLINE";
+                    document.getElementById('admin-status').style.color = "red"; 
                 }
             });
 
