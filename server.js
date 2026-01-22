@@ -12,7 +12,7 @@ try {
     });
     console.log("✅ FIREBASE: Ενεργοποιήθηκε επιτυχώς.");
 } catch (e) {
-    console.log("⚠️ FIREBASE ERROR: Δεν βρέθηκε το serviceAccountKey.json.");
+    console.log("⚠️ FIREBASE ERROR: Δεν βρέθηκε το serviceAccountKey.json ή είναι λάθος.");
 }
 
 const app = express();
@@ -24,7 +24,7 @@ const io = socketIo(server, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    // Σημαντικό: Ping κάθε 2 δευτερόλεπτα για να μην κλείνει η γραμμή
+    // Ping κάθε 2 δευτερόλεπτα για να κρατάμε τη γραμμή ζωντανή
     pingInterval: 2000, 
     pingTimeout: 5000 
 });
@@ -32,32 +32,26 @@ const io = socketIo(server, {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// Η Λίστα των Οδηγών
+// Η Λίστα των Οδηγών { "Nikos": { socketId: "...", shop: "Roasters", fcmToken: "..." } }
 let activeDrivers = {}; 
 
 // ==========================================================
 // 🚀 ΤΟ "ΜΠΟΤΑΚΙ" (KEEP-ALIVE SIGNAL)
 // ==========================================================
-// Στέλνει σήμα κάθε 3 δευτερόλεπτα σε ΟΛΟΥΣ για να μην κοιμάται η σύνδεση.
 setInterval(() => {
-    // Στέλνουμε ένα μικρό πακέτο 'ping'
     io.emit('server-keep-alive', { time: Date.now() });
-    // console.log("💓 Server Pulse Sent"); // (Ξε-σχολίασέ το αν θες να το βλέπεις)
 }, 3000);
-
 
 // ==========================================================
 // 👻 GHOST BUSTER (Ο ΕΞΟΛΟΘΡΕΥΤΗΣ)
 // ==========================================================
-// Τρέχει κάθε 10 δευτερόλεπτα (πιο συχνά τώρα). 
-// Αν κάποιος δεν έδωσε σήμα για 60'', τον διαγράφει.
 setInterval(() => {
     const now = Date.now();
     let updated = false;
 
     for (let name in activeDrivers) {
         const driver = activeDrivers[name];
-        // Αν πέρασαν 60 δευτερόλεπτα χωρίς Heartbeat
+        // Αν πέρασαν 60 δευτερόλεπτα χωρίς Heartbeat -> DELETE
         if (now - driver.lastBeat > 60000) {
             console.log(`💀 GHOST BUSTED: Ο ${name} διαγράφηκε (Dead Connection).`);
             delete activeDrivers[name];
@@ -70,78 +64,77 @@ setInterval(() => {
 
 io.on('connection', (socket) => {
     
-    // --- 1. LOGIN (Η ΔΙΟΡΘΩΣΗ) ---
+    // --- 1. LOGIN ---
     socket.on('login', (user) => {
         socket.join(user.shop); 
 
         if (user.role === 'driver') {
-            // ΕΔΩ ΕΙΝΑΙ Η ΜΑΓΕΙΑ:
-            // Αν υπάρχει ήδη ο χρήστης (π.χ. reconnect), απλά του αλλάζουμε το ID.
-            // Δεν φτιάχνουμε καινούργιο, ούτε έχουμε διπλότυπα.
+            // Αν υπάρχει ήδη, κρατάμε το παλιό FCM Token αν το καινούργιο είναι κενό
+            const oldToken = activeDrivers[user.name]?.fcmToken;
+            
             activeDrivers[user.name] = { 
-                socketId: socket.id, // <--- Το ΝΕΟ ID
+                socketId: socket.id, 
                 shop: user.shop,
-                fcmToken: user.fcmToken || (activeDrivers[user.name]?.fcmToken), // Κράτα το παλιό token αν δεν έστειλε νέο
+                // Αποθηκεύουμε το Token για να στέλνουμε ειδοποιήσεις όταν είναι κλειστό
+                fcmToken: user.fcmToken || oldToken, 
                 lastBeat: Date.now()
             };
             
-            console.log(`✅ LOGIN / RECONNECT: ${user.name} (New ID: ${socket.id})`);
+            console.log(`✅ LOGIN: ${user.name} (Socket: ${socket.id}) (FCM: ${user.fcmToken ? 'Yes' : 'No'})`);
         } else {
             console.log(`💻 ADMIN Connected: ${user.shop}`);
         }
         
-        // Ενημερώνουμε αμέσως το UI του Admin
         updateShopAdmins(user.shop);
     });
 
-    // --- 2. HEARTBEAT (Καρδιακός Παλμός από το Android) ---
+    // --- 2. HEARTBEAT ---
     socket.on('heartbeat', (data) => {
         if (activeDrivers[data.name]) {
             activeDrivers[data.name].lastBeat = Date.now();
-            // Αν άλλαξε το ID εν κινήσει (π.χ. WiFi -> 4G), το ενημερώνουμε κι εδώ
+            
+            // Αν άλλαξε Socket ID (π.χ. αλλαγή δικτύου), το ενημερώνουμε
             if (activeDrivers[data.name].socketId !== socket.id) {
                 activeDrivers[data.name].socketId = socket.id;
-                console.log(`🔄 IP CHANGED: ${data.name} updated socket ID.`);
             }
         }
     });
 
-    // --- 3. LOGOUT (Καθαρή Έξοδος) ---
+    // --- 3. LOGOUT ---
     socket.on('force-logout', (user) => {
         if (activeDrivers[user.name]) {
-            console.log(`🚪 MANUAL LOGOUT: ${user.name}`);
+            console.log(`🚪 LOGOUT: ${user.name}`);
             delete activeDrivers[user.name];
             updateShopAdmins(user.shop);
         }
     });
 
-    // --- 4. DISCONNECT (Πτώση Δικτύου) ---
+    // --- 4. DISCONNECT ---
     socket.on('disconnect', () => {
-        // ΠΡΟΣΟΧΗ: ΔΕΝ ΔΙΑΓΡΑΦΟΥΜΕ ΤΟΝ ΧΡΗΣΤΗ ΕΔΩ!
-        // Αν πέσει το ίντερνετ για 2 δευτερόλεπτα, θέλουμε να μείνει στη λίστα.
-        // Ο Ghost Buster θα τον διαγράψει αν περάσει 1 λεπτό.
-        console.log(`⚠️ Socket Disconnected: ${socket.id}`);
+        // Δεν διαγράφουμε εδώ. Αφήνουμε τον Ghost Buster να κρίνει.
+        // console.log(`⚠️ Socket Disconnected: ${socket.id}`);
     });
 
-    // --- 5. CALL DRIVER (Κλήση) ---
+    // --- 5. CALL DRIVER (Η ΚΛΗΣΗ) ---
     socket.on('call-driver', (targetName) => {
         const driver = activeDrivers[targetName];
         
         if (driver) {
-            console.log(`🔔 CALLING: ${targetName} on Socket: ${driver.socketId}`);
+            console.log(`🔔 CALLING: ${targetName}`);
             
-            // Ανανέωση χρόνου (αφού μιλάμε, υπάρχει)
-            driver.lastBeat = Date.now();
+            driver.lastBeat = Date.now(); // Ανανέωση χρόνου
 
-            // Στέλνουμε στο ΣΩΣΤΟ (τελευταίο) ID
+            // A. Στέλνουμε μέσω Socket (αν είναι ανοιχτή η εφαρμογή)
             io.to(driver.socketId).emit('order-notification');
 
-            // Στέλνουμε και Firebase για σιγουριά
+            // B. Στέλνουμε ΚΑΙ μέσω Firebase (αν είναι κλειστή/background)
             if (driver.fcmToken) {
                 sendAggressivePush(driver.fcmToken);
+            } else {
+                console.log("⚠️ No FCM Token for driver, notification might fail if app is closed.");
             }
         } else {
-            console.log(`❌ FAILED CALL: Ο ${targetName} δεν βρέθηκε στη λίστα.`);
+            console.log(`❌ FAILED CALL: Ο ${targetName} δεν είναι online.`);
         }
     });
 
@@ -157,7 +150,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Βοηθητική για ενημέρωση Admin
+// Ενημέρωση λίστας οδηγών στον Admin
 function updateShopAdmins(shopName) {
     const driversList = [];
     for (let name in activeDrivers) {
@@ -168,18 +161,28 @@ function updateShopAdmins(shopName) {
     io.to(shopName).emit('update-drivers-list', driversList);
 }
 
-// FIREBASE PUSH FUNCTION
+// FIREBASE PUSH FUNCTION (ΔΙΟΡΘΩΜΕΝΗ)
 function sendAggressivePush(token) {
     if (!token) return;
     
+    // Έλεγχος αν το Firebase έχει αρχικοποιηθεί
+    if (admin.apps.length === 0) return;
+
     const message = {
         token: token,
-        data: { type: 'call', force_wake: 'true' }, // Data-only για να το πιάσει το service
-        android: { priority: 'high', ttl: 0 }
+        // ΔΙΟΡΘΩΣΗ: Στέλνουμε action: 'ring' για να ταιριάζει με το Android Code
+        data: { 
+            action: 'ring', 
+            priority: 'high' 
+        }, 
+        android: { 
+            priority: 'high', 
+            ttl: 0 // Άμεση παράδοση ή θάνατος (μην το κρατάς στην ουρά)
+        }
     };
 
     admin.messaging().send(message)
-        .then(() => console.log("🚀 FCM Sent"))
+        .then(() => console.log("🚀 FCM Sent (High Priority)"))
         .catch(e => console.log("❌ FCM Error:", e.message));
 }
 
