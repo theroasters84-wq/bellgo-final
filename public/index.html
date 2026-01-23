@@ -2,125 +2,163 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BellGo Live</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo System</title>
     <style>
-        body { background-color: #121212; color: white; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .btn { padding: 20px 40px; font-size: 24px; border: none; border-radius: 10px; margin: 10px; cursor: pointer; width: 80%; max-width: 300px; touch-action: manipulation; }
-        .btn-sender { background-color: #4CAF50; color: white; }
-        .btn-receiver { background-color: #2196F3; color: white; }
-        .btn-stop { background-color: #f44336; color: white; display: none; margin-top: 20px; }
-        .mode-select { display: flex; flex-direction: column; gap: 20px; }
-        .active-screen { display: none; width: 100%; }
-        #status { margin-top: 15px; color: #888; font-size: 0.9em; }
+        /* Βασικό Στυλ - Dark Mode */
+        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
+        
+        /* Κουμπιά */
+        .btn { padding: 25px; font-size: 22px; border: none; border-radius: 12px; margin: 15px; cursor: pointer; width: 85%; max-width: 350px; font-weight: bold; touch-action: manipulation; transition: transform 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn:active { transform: scale(0.96); }
+        .btn-sender { background-color: #00C853; color: white; } /* Πράσινο */
+        .btn-receiver { background-color: #2962FF; color: white; } /* Μπλε */
+        .btn-stop { background-color: #D50000; color: white; display: none; margin-top: 30px; animation: pulse 1s infinite; }
+        .btn-fake-lock { background-color: #424242; color: #aaa; font-size: 14px; padding: 10px; width: auto; margin-top: 40px; }
+        .btn-logout { position: absolute; top: 10px; right: 10px; background: transparent; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; }
+
+        /* Οθόνες */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        #setupScreen { display: flex; } /* Αρχική οθόνη */
+
+        /* Fake Lock (Black Screen) */
+        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 9999; touch-action: none; }
+        #fakeLockText { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #222; font-size: 12px; }
+
+        /* Animation για το Alarm */
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .alarm-active { background-color: #ff0000 !important; }
     </style>
 </head>
 <body>
 
-    <div id="setupScreen" class="mode-select">
-        <h2>BellGo System</h2>
-        <button class="btn btn-sender" onclick="initMode('sender')">ΠΟΜΠΟΣ 🔔</button>
-        <button class="btn btn-receiver" onclick="initMode('receiver')">ΔΕΚΤΗΣ 👂</button>
-        <p style="color: #666; font-size: 12px;">v2.0 Socket.io</p>
+    <div id="setupScreen" class="screen">
+        <h2 style="margin-bottom: 40px;">BellGo System</h2>
+        <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΠΟΜΠΟΣ (Waiter)</button>
+        <button class="btn btn-receiver" onclick="initMode('receiver')">👂 ΔΕΚΤΗΣ (Kitchen)</button>
+        <p style="color: #444; margin-top: 50px; font-size: 12px;">v2.0 Socket Connected</p>
     </div>
 
-    <div id="senderScreen" class="active-screen">
+    <div id="senderScreen" class="screen">
+        <button class="btn-logout" onclick="location.reload()">Exit</button>
         <h1>ΠΟΜΠΟΣ</h1>
-        <button class="btn btn-sender" id="triggerBtn" onclick="sendAlert()">🔔 ΧΤΥΠΑ ΤΟ</button>
-        <p id="senderStatus">Συνδεδεμένο</p>
+        <button class="btn btn-sender" id="triggerBtn" onclick="sendAlert()">🔔 ΚΛΗΣΗ</button>
+        <p id="senderStatus" style="color: #888; margin-top: 20px;">Έτοιμο</p>
     </div>
 
-    <div id="receiverScreen" class="active-screen">
+    <div id="receiverScreen" class="screen">
+        <button class="btn-logout" onclick="location.reload()">Exit</button>
         <h1>ΔΕΚΤΗΣ</h1>
-        <div style="font-size: 60px;">👂</div>
-        <p>Αναμονή σήματος...</p>
-        <div style="color: orange; font-size: 12px;">🔊 Βεβαιώσου ότι η ένταση είναι τέρμα</div>
-        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP</button>
+        <div style="font-size: 80px; margin: 20px;">👂</div>
+        <p style="color: #aaa;">Σύνδεση Ενεργή</p>
+        
+        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP ALARM</button>
+
+        <button class="btn btn-fake-lock" onclick="toggleFakeLock(true)">🔒 Black Screen (Save Battery)</button>
+    </div>
+
+    <div id="fakeLockOverlay" onclick="toggleFakeLock(false)">
+        <div id="fakeLockText">Tap anywhere to unlock</div>
     </div>
 
     <audio id="silencePlayer" loop playsinline>
         <source src="silence.mp3" type="audio/mpeg">
     </audio>
     
-    <audio id="alertPlayer" preload="auto">
+    <audio id="alertPlayer" preload="auto" playsinline>
         <source src="alert.mp3" type="audio/mpeg">
     </audio>
 
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        // Σύνδεση με τον Server (αυτόματα βρίσκει το URL του Render)
         const socket = io();
         let wakeLock = null;
+        let heartbeatInterval = null;
 
-        // --- ANTI-SLEEP LOGIC ---
-        async function requestWakeLock() {
+        // --- 1. ANTI-SLEEP MECHANISMS ---
+        async function enableAntiSleep() {
+            // A. Audio Loop Hack
+            const silence = document.getElementById('silencePlayer');
+            silence.volume = 0.01; 
+            try {
+                await silence.play();
+                console.log("Silent loop playing...");
+            } catch (err) {
+                console.log("Audio play failed (waiting for interaction)");
+            }
+
+            // B. Wake Lock API (Screen)
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock active');
+                    console.log("WakeLock Active");
                 }
-            } catch (err) { console.log('Wake Lock error', err); }
+            } catch (err) { console.log("WakeLock Error:", err); }
+
+            // C. Heartbeat (Ping Server every 30s)
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (socket.connected) socket.emit('keep-alive');
+            }, 30000);
         }
 
-        function startSilenceLoop() {
-            const silence = document.getElementById('silencePlayer');
-            silence.volume = 0.01; 
-            // Το play πρέπει να γίνει μετά από user interaction
-            silence.play().then(() => {
-                console.log("Audio loop started");
-                requestWakeLock();
-            }).catch(e => console.log("Audio requires interaction"));
-        }
-
-        // --- APP LOGIC ---
+        // --- 2. INITIALIZATION ---
         function initMode(mode) {
+            // Ζητάμε Anti-Sleep με το πρώτο κλικ
+            enableAntiSleep();
+
+            // Αλλαγή UI
             document.getElementById('setupScreen').style.display = 'none';
             
-            // Ξεκινάμε το σύστημα Anti-Sleep
-            startSilenceLoop(); 
-
             if (mode === 'sender') {
-                document.getElementById('senderScreen').style.display = 'block';
+                document.getElementById('senderScreen').style.display = 'flex';
             } else {
-                document.getElementById('receiverScreen').style.display = 'block';
-                setupReceiver();
+                document.getElementById('receiverScreen').style.display = 'flex';
+                setupReceiverLogic();
             }
         }
 
-        // Λειτουργία ΠΟΜΠΟΥ
+        // --- 3. SENDER LOGIC ---
         function sendAlert() {
             const btn = document.getElementById('triggerBtn');
             btn.disabled = true;
             btn.innerText = "ΑΠΟΣΤΟΛΗ...";
+            btn.style.opacity = "0.7";
 
-            // Στέλνουμε μήνυμα στον Server
             socket.emit('trigger-alarm');
 
+            // Feedback & Reset κουμπιού
             setTimeout(() => {
                 btn.disabled = false;
-                btn.innerText = "🔔 ΧΤΥΠΑ ΤΟ";
-                document.getElementById('senderStatus').innerText = "Στάλθηκε στις " + new Date().toLocaleTimeString();
-            }, 1000);
+                btn.innerText = "🔔 ΚΛΗΣΗ";
+                btn.style.opacity = "1";
+                document.getElementById('senderStatus').innerText = "Στάλθηκε: " + new Date().toLocaleTimeString();
+            }, 1500);
         }
 
-        // Λειτουργία ΔΕΚΤΗ
-        function setupReceiver() {
-            // Όταν ο Server μας πει "ring-bell"
+        // --- 4. RECEIVER LOGIC ---
+        function setupReceiverLogic() {
             socket.on('ring-bell', () => {
                 console.log("ALARM RECEIVED!");
+                
+                // Αν είναι σε Black Screen, ξύπνα το UI (προαιρετικό, εδώ το αφήνω μαύρο αλλά παίζει ήχο)
+                // toggleFakeLock(false); // Ξε-σχολίασε αν θες να ανάβει η οθόνη αυτόματα
+
                 const alertPlayer = document.getElementById('alertPlayer');
                 const stopBtn = document.getElementById('stopBtn');
-                
+
+                // Ρυθμίσεις ήχου
                 alertPlayer.currentTime = 0;
                 alertPlayer.volume = 1.0;
-                alertPlayer.play().catch(e => alert("Πατήστε στην οθόνη για να επιτρέψετε τον ήχο!"));
-                
+                alertPlayer.play().catch(e => console.log("Sound blocked:", e));
+
+                // Visual Cues
+                document.body.classList.add('alarm-active');
                 stopBtn.style.display = 'block';
-                document.body.style.backgroundColor = 'red';
-                
-                // Δόνηση αν υποστηρίζεται
-                if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+
+                // Δόνηση (αν υποστηρίζεται)
+                if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
             });
         }
 
@@ -128,14 +166,27 @@
             const alertPlayer = document.getElementById('alertPlayer');
             alertPlayer.pause();
             alertPlayer.currentTime = 0;
+            
+            document.body.classList.remove('alarm-active');
             document.getElementById('stopBtn').style.display = 'none';
-            document.body.style.backgroundColor = '#121212';
         }
 
-        // Log connection status
-        socket.on('connect', () => {
-            console.log("Συνδέθηκε στο Socket.io");
-        });
+        // --- 5. FAKE LOCK (BLACK SCREEN) ---
+        function toggleFakeLock(enable) {
+            const overlay = document.getElementById('fakeLockOverlay');
+            if (enable) {
+                overlay.style.display = 'block';
+                // Προσπαθούμε να μπούμε σε Full Screen για να κρύψουμε και την μπάρα URL
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(e=>{});
+                }
+            } else {
+                overlay.style.display = 'none';
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(e=>{});
+                }
+            }
+        }
     </script>
 </body>
 </html>
