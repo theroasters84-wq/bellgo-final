@@ -3,38 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Universal</title>
+    <title>BellGo Pro</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
-        .btn { padding: 30px; font-size: 24px; border-radius: 15px; width: 90%; margin: 15px; font-weight: bold; border: none; cursor: pointer; color: white; }
-        .btn-sender { background-color: #00C853; }
-        .btn-receiver { background-color: #2962FF; }
-        .btn-stop { background-color: #D50000; display: none; margin-top: 20px; animation: pulse 0.5s infinite; font-size: 30px; height: 50vh; width: 90%; }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
         
-        #pocketMode { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        /* GENERAL UI */
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        input, select { padding: 15px; margin: 10px; width: 80%; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 18px; text-align: center; }
+        
+        .btn { padding: 20px; font-size: 20px; border-radius: 12px; width: 90%; margin: 10px; font-weight: bold; border: none; cursor: pointer; color: white; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-green { background-color: #00C853; } /* Login / Call */
+        .btn-blue { background-color: #2962FF; }  /* Roles */
+        .btn-red { background-color: #D50000; }   /* Stop */
+        .btn-user { background-color: #444; border: 1px solid #666; margin: 5px; width: 45%; display: inline-block; }
+        
+        /* ALARM STOP BTN */
+        .stop-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #b71c1c; z-index: 5000; flex-direction: column; justify-content: center; align-items: center; animation: pulse 0.5s infinite; }
+        .btn-stop-big { width: 90%; height: 50%; font-size: 40px; background: white; color: red; border-radius: 20px; font-weight: 900; }
+
+        /* CHAT & LISTS */
+        #usersContainer { max-height: 40vh; overflow-y: auto; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        #chatContainer { flex: 1; width: 95%; background: #1a1a1a; border-radius: 10px 10px 0 0; margin-top: auto; display: flex; flex-direction: column; border-top: 2px solid #333; }
+        #chatMessages { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; color: #ccc; max-height: 20vh; }
+        .chat-input-area { display: flex; width: 100%; }
+        .msg-sys { color: #fdd835; font-style: italic; }
+        .msg-usr { color: #fff; }
+
+        #pocketMode { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9000; }
+        @keyframes pulse { 0% { background-color: #b71c1c; } 50% { background-color: #ff0000; } 100% { background-color: #b71c1c; } }
     </style>
 </head>
 <body>
 
-    <div id="setupScreen" class="screen" style="display:flex;">
-        <h2 style="margin-bottom:30px">BELLGO UNIVERSAL</h2>
-        <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΠΟΜΠΟΣ</button>
-        <button class="btn btn-receiver" onclick="initMode('receiver')">👨‍🍳 ΔΕΚΤΗΣ</button>
-    </div>
-
-    <div id="senderScreen" class="screen" style="display:none;">
-        <button class="btn btn-sender" id="triggerBtn" onclick="sendAlert()">🔔 ΚΛΗΣΗ</button>
-        <p id="senderStatus" style="color:#888; margin-top:20px;">Έτοιμο</p>
-    </div>
-
-    <div id="receiverScreen" class="screen" style="display:none;">
-        <div style="font-size: 80px;">👂</div>
-        <h1>ΑΝΑΜΟΝΗ...</h1>
-        <p id="debugText" style="color:yellow; font-size:12px;">(Πάτα κουμπί για τεστ)</p>
+    <div id="loginScreen" class="screen" style="display:flex;">
+        <h2 style="color:#00C853;">BELLGO CONNECT</h2>
         
-        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🛑 STOP</button>
-        <button onclick="togglePocketMode(true)" style="margin-top:50px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:60%;">🔒 Λειτουργία Τσέπης</button>
+        <input type="text" id="storeName" placeholder="Όνομα Μαγαζιού (Δωμάτιο)">
+        <input type="text" id="username" placeholder="Το Όνομά σου (π.χ. Γιώργος)">
+        <input type="password" id="password" placeholder="Κωδικός (1234)" inputmode="numeric">
+
+        <h3 style="margin-top:20px; color:#888;">Είμαι:</h3>
+        <div style="display:flex; width:100%; justify-content:center;">
+            <button class="btn btn-green" style="width:40%;" onclick="attemptLogin('admin')">ADMIN</button>
+            <button class="btn btn-blue" style="width:40%;" onclick="attemptLogin('staff')">ΔΙΑΝΟΜΗ / ΣΕΡΒΙΣ</button>
+        </div>
+        <p id="loginError" style="color:red; display:none;">Λάθος Κωδικός!</p>
+    </div>
+
+    <div id="adminScreen" class="screen">
+        <h3 id="adminHeader">Panel Διαχείρισης</h3>
+        
+        <button class="btn btn-red" onclick="triggerAlarm(null)">🔔 ΕΙΔΟΠΟΙΗΣΗ ΣΕ ΟΛΟΥΣ</button>
+        <p style="color:#888; font-size:12px;">ή πάτα όνομα για ατομική κλήση:</p>
+        
+        <div id="usersContainer">
+            <p style="color:#555;">Αναμονή για συνδέσεις...</p>
+        </div>
+
+        <div id="chatContainer">
+            <div id="chatMessages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInputAdmin" placeholder="Μήνυμα..." style="margin:0; border-radius:0;">
+                <button class="btn btn-blue" style="width:60px; margin:0; border-radius:0;" onclick="sendChat('admin')">></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="receiverScreen" class="screen">
+        <div style="font-size: 60px;">👨‍🍳</div>
+        <h2 id="receiverHeader">Αναμονή...</h2>
+        <p style="color:#666; font-size:12px;">Συνδεδεμένος στο: <span id="storeLabel"></span></p>
+
+        <button onclick="togglePocketMode(true)" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:60%;">🔒 Fake Lock</button>
+
+        <div id="chatContainer" style="height: 30vh; margin-top: auto;">
+            <div id="chatMessagesReceiver" style="flex:1; overflow-y:auto; text-align:left; padding:10px; font-size:14px; color:#ccc;"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInputReceiver" placeholder="Μήνυμα..." style="margin:0; border-radius:0;">
+                <button class="btn btn-blue" style="width:60px; margin:0; border-radius:0;" onclick="sendChat('receiver')">></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stopOverlay" class="stop-overlay">
+        <h1 style="color:white; font-size:50px; margin-bottom:20px;">📞 ΚΛΗΣΗ!</h1>
+        <h2 id="callerName" style="color:yellow; margin-bottom:30px;">από Admin</h2>
+        <button class="btn btn-stop-big" onclick="stopAlarm()">STOP</button>
     </div>
 
     <div id="pocketMode" onclick="togglePocketMode(false)">
@@ -46,94 +102,207 @@
 
     <script>
         const socket = io();
+        let myRole = '';
+        let myName = '';
         let isRinging = false;
         let vibrationInterval = null;
+        let audioContext = null;
 
-        // --- ΚΩΔΙΚΑΣ ΠΟΥ "ΑΚΟΥΕΙ" ΤΑ ΠΑΝΤΑ ---
-        window.addEventListener('keydown', (e) => {
-            console.log("Key:", e.key, "Code:", e.keyCode);
+        // --- 1. LOGIN LOGIC ---
+        function attemptLogin(role) {
+            const store = document.getElementById('storeName').value.trim();
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
             
-            // Εμφανίζουμε στην οθόνη τι πατήθηκε (για έλεγχο)
-            if(document.getElementById('receiverScreen').style.display === 'flex') {
-                document.getElementById('debugText').innerText = "Πατήθηκε: " + e.key + " (" + e.keyCode + ")";
+            if (!store || !user) { alert("Συμπλήρωσε όλα τα πεδία!"); return; }
+            if (pass !== '1234') { 
+                document.getElementById('loginError').style.display = 'block';
+                return;
             }
 
-            // Λίστα με όλα τα κουμπιά Media που μπορεί να πατήσεις
-            // 176=Next, 177=Previous, 179=Play/Pause, 85=Media, 13=Enter
-            if (e.keyCode === 176 || e.keyCode === 177 || e.keyCode === 179 || e.keyCode === 85 || e.key === 'MediaTrackNext' || e.key === 'MediaTrackPrevious' || e.key === 'Enter') {
-                
-                if (isRinging) {
-                    stopAlarm();
-                    e.preventDefault(); 
+            // Ξεκινάμε τα συστήματα (Audio/Bot) ΤΩΡΑ που πάτησε ο χρήστης
+            initSystem(role);
+
+            // Στέλνουμε στο server
+            socket.emit('join-store', { storeName: store, username: user, role: role });
+            
+            // UI Switch
+            document.getElementById('loginScreen').style.display = 'none';
+            myRole = role;
+            myName = user;
+            document.getElementById('storeLabel').innerText = store;
+
+            if (role === 'admin') {
+                document.getElementById('adminScreen').style.display = 'flex';
+                document.getElementById('adminHeader').innerText = "Admin: " + user;
+            } else {
+                document.getElementById('receiverScreen').style.display = 'flex';
+                document.getElementById('receiverHeader').innerText = "Γεια σου " + user;
+            }
+        }
+
+        // --- 2. ADMIN LOGIC (User List) ---
+        socket.on('update-user-list', (users) => {
+            if (myRole !== 'admin') return;
+
+            const container = document.getElementById('usersContainer');
+            container.innerHTML = ''; // Καθαρισμός
+
+            // Φτιάχνουμε κουμπιά για κάθε Staff (όχι για άλλους admin)
+            users.forEach(u => {
+                if (u.role === 'staff') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-user';
+                    btn.innerHTML = `🔔 <b>${u.name}</b>`;
+                    btn.onclick = () => triggerAlarm(u.id); // Κλήση συγκεκριμένου ID
+                    container.appendChild(btn);
                 }
+            });
+
+            if (container.innerHTML === '') {
+                container.innerHTML = '<p style="color:#555;">Κανείς συνδεδεμένος...</p>';
             }
         });
 
-        // --- SETUP ---
-        function initMode(mode) {
-            document.getElementById('setupScreen').style.display = 'none';
-            if (mode === 'sender') {
-                document.getElementById('senderScreen').style.display = 'flex';
-            } else {
-                document.getElementById('receiverScreen').style.display = 'flex';
-                setupReceiverLogic();
+        function triggerAlarm(targetId) {
+            // Αν targetId == null, χτυπάει σε όλους
+            socket.emit('trigger-alarm', { targetId: targetId });
+            
+            // Feedback κουμπιού (προσωρινό)
+            // Δεν μπλοκάρουμε το UI για να μπορείς να πατάς γρήγορα
+        }
+
+        // --- 3. RECEIVER LOGIC (Alarm) ---
+        socket.on('ring-bell', (data) => {
+            if (isRinging) return;
+            isRinging = true;
+
+            const sender = data.sender || "Admin";
+            document.getElementById('callerName').innerText = "Από: " + sender;
+
+            // 1. Wake Up Fully Kiosk
+            if (window.fully) {
+                fully.turnScreenOn();
+                fully.bringToForeground();
             }
-        }
 
-        function sendAlert() {
-            socket.emit('trigger-alarm');
-            const btn = document.getElementById('triggerBtn');
-            btn.disabled = true;
-            btn.innerText = "ΣΤΑΛΘΗΚΕ!";
-            setTimeout(() => { btn.disabled = false; btn.innerText = "🔔 ΚΛΗΣΗ"; }, 2000);
-        }
+            // 2. Remove Pocket Mode
+            togglePocketMode(false);
 
-        function setupReceiverLogic() {
-            socket.on('ring-bell', () => {
-                if(isRinging) return;
-                isRinging = true;
+            // 3. Show Overlay
+            document.getElementById('stopOverlay').style.display = 'flex';
 
-                // Audio
-                const player = document.getElementById('alertPlayer');
-                player.currentTime = 0;
-                player.volume = 1.0;
-                player.play().catch(e => console.log(e));
-
-                // Vibration Loop
-                startVibrationLoop();
-
-                // UI
-                document.getElementById('stopBtn').style.display = 'block';
-                document.body.style.backgroundColor = '#900';
-            });
-        }
+            // 4. Sound & Vibrate
+            const player = document.getElementById('alertPlayer');
+            player.currentTime = 0;
+            player.volume = 1.0;
+            player.play().catch(e => console.log(e));
+            startVibration();
+        });
 
         function stopAlarm() {
-            if(!isRinging) return;
+            if (!isRinging) return;
             isRinging = false;
             
             const player = document.getElementById('alertPlayer');
             player.pause();
             player.currentTime = 0;
+            stopVibration();
 
-            stopVibrationLoop();
-            
-            document.getElementById('stopBtn').style.display = 'none';
-            document.body.style.backgroundColor = '#000';
-            document.getElementById('debugText').innerText = "Alarm Stopped";
+            document.getElementById('stopOverlay').style.display = 'none';
         }
 
-        function startVibrationLoop() {
-            if(navigator.vibrate) navigator.vibrate([1000, 200, 1000]);
-            if(vibrationInterval) clearInterval(vibrationInterval);
+        // --- 4. CHAT LOGIC ---
+        function sendChat(view) {
+            const inputId = view === 'admin' ? 'chatInputAdmin' : 'chatInputReceiver';
+            const input = document.getElementById(inputId);
+            const msg = input.value.trim();
+            if (msg) {
+                socket.emit('send-chat', msg);
+                input.value = '';
+            }
+        }
+
+        socket.on('chat-message', (data) => {
+            const line = document.createElement('div');
+            line.style.marginBottom = "5px";
+            
+            if (data.sender === 'System') {
+                line.className = 'msg-sys';
+                line.innerText = `[INFO] ${data.text}`;
+            } else {
+                line.className = 'msg-usr';
+                line.innerHTML = `<b>${data.sender}:</b> ${data.text}`;
+            }
+
+            // Ενημέρωση και στα δύο views (για σιγουριά)
+            const box1 = document.getElementById('chatMessages');
+            const box2 = document.getElementById('chatMessagesReceiver');
+            
+            if(box1) { box1.appendChild(line.cloneNode(true)); box1.scrollTop = box1.scrollHeight; }
+            if(box2) { box2.appendChild(line); box2.scrollTop = box2.scrollHeight; }
+        });
+
+        // --- 5. SYSTEM UTILS (Volume Buttons, Bot, etc) ---
+        
+        function initSystem(role) {
+            // Audio Context Hack
+            try {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContext();
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                g.gain.value = 0.0001;
+                o.connect(g);
+                g.connect(audioContext.destination);
+                o.start();
+            } catch(e) {}
+
+            // Nav Bot (Μόνο αν είναι Staff/Receiver το χρειάζεται πραγματικά, αλλά το βάζουμε παντού)
+            if (role === 'staff') {
+                startNavBot();
+                if (window.fully) {
+                    fully.bind('onScreensaverStart', 'fully.stopScreensaver()');
+                    fully.turnScreenOn();
+                }
+            }
+        }
+
+        // Volume Buttons = Stop
+        window.addEventListener('keydown', (e) => {
+            // 179=PlayPause, 24=VolUp, 85=Media, 13=Enter
+            const stopKeys = [179, 24, 85, 13]; 
+            if (stopKeys.includes(e.keyCode) || e.key === 'VolumeUp') {
+                if (isRinging) {
+                    stopAlarm();
+                    e.preventDefault();
+                }
+            }
+        });
+
+        function startNavBot() {
+            if ("geolocation" in navigator) {
+                setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => console.log("Bot Pulse"), 
+                        (e) => console.log("Bot Err"),
+                        {enableHighAccuracy:true}
+                    );
+                }, 20000);
+            }
+        }
+
+        function startVibration() {
+            if (navigator.vibrate) navigator.vibrate([1000, 200, 1000]);
+            if (vibrationInterval) clearInterval(vibrationInterval);
             vibrationInterval = setInterval(() => {
-                if(navigator.vibrate) navigator.vibrate([1000, 200, 1000]);
+                if (navigator.vibrate) navigator.vibrate([1000, 200, 1000]);
             }, 2500);
         }
 
-        function stopVibrationLoop() {
-            if(vibrationInterval) clearInterval(vibrationInterval);
-            if(navigator.vibrate) navigator.vibrate(0);
+        function stopVibration() {
+            if (vibrationInterval) clearInterval(vibrationInterval);
+            if (navigator.vibrate) navigator.vibrate(0);
         }
 
         function togglePocketMode(enable) {
