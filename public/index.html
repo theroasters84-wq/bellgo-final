@@ -3,217 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Fully Kiosk Edition</title>
+    <title>BellGo Media Button</title>
     <style>
-        /* --- CSS STYLES --- */
-        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
-        
-        /* Buttons */
-        .btn { padding: 20px; font-size: 20px; border: none; border-radius: 12px; margin: 10px; cursor: pointer; width: 85%; max-width: 350px; font-weight: bold; touch-action: manipulation; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: white; transition: transform 0.1s; z-index: 10; }
-        .btn:active { transform: scale(0.96); }
-        .btn-sender { background-color: #00C853; }
-        .btn-receiver { background-color: #2962FF; }
-        .btn-pip { background-color: #9C27B0; font-size: 16px; margin-top: 20px; }
-        .btn-fake-lock { background-color: #424242; color: #aaa; font-size: 14px; margin-top: 10px; width: auto; padding: 10px 20px; }
-        .btn-stop { background-color: #D50000; display: none; margin-top: 30px; animation: pulse 0.8s infinite; font-size: 24px; padding: 30px; z-index: 20; }
-        .btn-logout { position: absolute; top: 15px; right: 15px; background: transparent; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 12px; border-radius: 5px; z-index: 20; }
-
-        /* Screens */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 60px; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
+        .btn { padding: 30px; font-size: 24px; border-radius: 15px; width: 90%; margin: 10px; font-weight: bold; border: none; cursor: pointer; }
+        .btn-sender { background-color: #00C853; color: white; }
+        .btn-receiver { background-color: #2962FF; color: white; }
+        .btn-stop { background-color: #D50000; display: none; margin-top: 20px; animation: pulse 0.5s infinite; }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         #setupScreen { display: flex; }
-
-        /* Fake Lock Overlay */
-        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 9000; }
-        #fakeLockText { position: absolute; bottom: 80px; width: 100%; text-align: center; color: #333; font-size: 12px; }
-
-        /* Animations */
+        #pocketMode { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        .alarm-active { background-color: #ff0000 !important; }
-        .strobe { animation: strobe-anim 0.2s infinite; }
-        @keyframes strobe-anim { 0% { background-color: red; } 50% { background-color: white; } 100% { background-color: red; } }
-
-        /* Hidden Elements for PiP */
-        #pipVideo { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-
-        /* --- ΤΑ ΚΟΚΚΙΝΑ ΚΟΥΜΠΙΑ (ΠΑΓΙΔΕΣ) --- */
-        /* Αν χρησιμοποιείς Fully Kiosk Kiosk Mode, αυτές οι παγίδες είναι λιγότερο χρήσιμες, 
-           αλλά τις αφήνω όπως τις ζήτησες */
-        .trap-zone {
-            position: fixed; z-index: 99999;
-            background-color: rgba(255, 0, 0, 0.4); /* Κόκκινο με διαφάνεια */
-            border: 1px solid red; pointer-events: auto;
-        }
-        .trap-bottom { bottom: 0; left: 0; width: 100%; height: 40px; } 
-        .trap-right { top: 0; right: 0; width: 30px; height: 100%; } 
     </style>
 </head>
 <body>
 
     <div id="setupScreen" class="screen">
-        <h2 style="margin-bottom: 40px;">BellGo Kiosk Edition</h2>
-        <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΠΟΜΠΟΣ</button>
-        <button class="btn btn-receiver" onclick="initMode('receiver')">👂 ΔΕΚΤΗΣ</button>
-        <p style="color: #888; margin-top: 40px; font-size: 12px;">Fully Kiosk Optimized</p>
+        <h2 style="margin-bottom:30px">RUMBA ALARM</h2>
+        <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΣΕΡΒΙΤΟΡΟΣ</button>
+        <button class="btn btn-receiver" onclick="initMode('receiver')">👨‍🍳 ΚΟΥΖΙΝΑ</button>
     </div>
 
     <div id="senderScreen" class="screen">
-        <button class="btn-logout" onclick="location.reload()">Exit</button>
-        <h1>ΠΟΜΠΟΣ</h1>
         <button class="btn btn-sender" id="triggerBtn" onclick="sendAlert()">🔔 ΚΛΗΣΗ</button>
-        <p id="senderStatus" style="color: #888; margin-top: 20px;">Έτοιμο</p>
+        <p id="senderStatus" style="color:#888; margin-top:20px;">Έτοιμο</p>
     </div>
 
     <div id="receiverScreen" class="screen">
-        <button class="btn-logout" onclick="location.reload()">Exit</button>
-        <h1>ΔΕΚΤΗΣ</h1>
-        
-        <div style="font-size: 60px; margin: 10px;">👂</div>
-        <p id="statusText" style="color: #aaa;">Αναμονή...</p>
-
-        <button class="btn btn-pip" onclick="togglePiP()">📺 MANUAL PiP</button>
-        <button class="btn btn-fake-lock" onclick="toggleFakeLock(true)">🔒 Black Screen</button>
-
-        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP ALARM</button>
+        <div style="font-size: 80px;">👂</div>
+        <h1>ΑΝΑΜΟΝΗ...</h1>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP</button>
+        <button onclick="togglePocketMode(true)" style="margin-top:50px; background:#333; color:#aaa; border:none; padding:20px; border-radius:10px; width:80%;">🔒 Λειτουργία Τσέπης</button>
     </div>
 
-    <div id="trapBottom" class="trap-zone trap-bottom" ontouchstart="tryAutoPiP()">
-        <span style="font-size:10px; color:white; position:absolute; left:50%;">TRAP</span>
-    </div>
-    <div id="trapRight" class="trap-zone trap-right" ontouchstart="tryAutoPiP()"></div>
-
-    <div id="fakeLockOverlay" onclick="toggleFakeLock(false)">
-        <div id="fakeLockText">Double tap to unlock</div>
+    <div id="pocketMode" onclick="togglePocketMode(false)">
+        <div style="position:absolute; bottom:50px; width:100%; text-align:center; color:#444; font-size:12px;">Double Tap to Unlock</div>
     </div>
 
-    <audio id="silencePlayer" loop playsinline>
-        <source src="silence.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="alertPlayer" preload="auto" loop playsinline>
-        <source src="alert.mp3" type="audio/mpeg">
-    </audio>
-
-    <canvas id="canvas" width="100" height="100" style="display:none;"></canvas>
-    <video id="pipVideo" muted playsinline></video>
-
+    <audio id="alertPlayer" preload="auto" loop playsinline><source src="alert.mp3" type="audio/mpeg"></audio>
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
         const socket = io();
-        let wakeLock = null;
-        let heartbeatInterval = null;
+        let isRinging = false;
         let vibrationInterval = null;
 
-        // --- 1. FULLY KIOSK VIBRATION LOGIC ---
-        function startVibration() {
-            if (vibrationInterval) clearInterval(vibrationInterval);
-
-            // ΠΕΡΙΠΤΩΣΗ 1: Είμαστε μέσα στο Fully Kiosk App
-            if (window.fully) {
-                console.log("Starting Fully Kiosk Native Vibration");
-                fully.vibrate(); 
-                vibrationInterval = setInterval(() => { fully.vibrate(); }, 1000);
-            } 
-            // ΠΕΡΙΠΤΩΣΗ 2: Απλός Browser
-            else if (navigator.vibrate) {
-                const pattern = [500, 200, 500, 1000];
-                navigator.vibrate(pattern);
-                const totalDuration = pattern.reduce((a, b) => a + b, 0);
-                vibrationInterval = setInterval(() => { navigator.vibrate(pattern); }, totalDuration);
-            }
-        }
-
-        function stopVibration() {
-            if (vibrationInterval) clearInterval(vibrationInterval);
+        // --- ΕΔΩ ΠΙΑΝΟΥΜΕ ΤΟ "PLAY/PAUSE" ---
+        window.addEventListener('keydown', (e) => {
+            console.log("Key Pressed: ", e.key, e.keyCode);
             
-            // Σταμάτημα για Fully Kiosk
-            if (window.fully) { 
-                // Δεν υπάρχει explicit stop loop, απλά σταματάμε το interval, 
-                // αλλά μπορούμε να κάνουμε ένα μικρό hack αν κολλήσει
-            }
-            
-            // Σταμάτημα για Browser
-            if (navigator.vibrate) navigator.vibrate(0);
-        }
-
-        // --- PIP LOGIC ---
-        const canvas = document.getElementById('canvas');
-        const video = document.getElementById('pipVideo');
-        const ctx = canvas.getContext('2d');
-        let pipColorToggle = false;
-
-        ctx.fillStyle = 'green';
-        ctx.fillRect(0, 0, 100, 100);
-        const stream = canvas.captureStream(10);
-        video.srcObject = stream;
-
-        setInterval(() => {
-            pipColorToggle = !pipColorToggle;
-            ctx.fillStyle = pipColorToggle ? '#00C853' : '#2962FF';
-            ctx.fillRect(0, 0, 100, 100);
-            ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText("LIVE", 20, 55);
-        }, 1000);
-
-        async function togglePiP() {
-            try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else {
-                    await video.play();
-                    await video.requestPictureInPicture();
+            // Ελέγχουμε αν πατήθηκε Play/Pause (Κωδικοί 179, 85) ή Enter (13)
+            // Το Button Mapper στέλνει συνήθως MediaPlayPause
+            if (e.key === 'MediaPlayPause' || e.keyCode === 179 || e.keyCode === 85 || e.keyCode === 13) {
+                if (isRinging) {
+                    stopAlarm();
+                    e.preventDefault(); 
                 }
-            } catch (error) { console.log("PiP Error:", error); }
-        }
-
-        // --- TRAP LOGIC ---
-        function tryAutoPiP() {
-            // Αν είμαστε σε Fully Kiosk, δεν χρειάζεται PiP, αλλά το αφήνουμε για ασφάλεια
-            console.log("Trap touched!");
-            if (navigator.vibrate) navigator.vibrate(50);
-            
-            if (!document.pictureInPictureElement) {
-                video.play().then(() => {
-                    video.requestPictureInPicture().catch(e => console.log("Auto-PiP blocked"));
-                }).catch(e => console.log("Video not ready"));
             }
-        }
+        });
 
-        // --- MEDIA SESSION ---
-        function setupAdvancedBackground() {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ',
-                    artist: 'Πάτα PAUSE/NEXT για Αποδοχή',
-                    album: 'BellGo System',
-                    artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/565/565422.png', sizes: '512x512', type: 'image/png' }]
-                });
-                const stopHandler = () => { stopAlarm(); };
-                navigator.mediaSession.setActionHandler('pause', stopHandler);
-                navigator.mediaSession.setActionHandler('previoustrack', stopHandler);
-                navigator.mediaSession.setActionHandler('nexttrack', stopHandler);
-                navigator.mediaSession.setActionHandler('play', stopHandler);
-            }
-            if ("Notification" in window) Notification.requestPermission();
-        }
-
-        // --- INIT ---
-        async function enableAntiSleep() {
-            const silence = document.getElementById('silencePlayer');
-            silence.volume = 0.01;
-            try { await silence.play(); } catch(e) {}
-            
-            // Προσπάθεια για WakeLock Browser API
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
-            
-            // Καρδιοχτύπι (Socket Heartbeat)
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => { if (socket.connected) socket.emit('keep-alive'); }, 30000);
-        }
-
+        // --- Rest of Logic ---
         function initMode(mode) {
-            enableAntiSleep();
-            setupAdvancedBackground();
             document.getElementById('setupScreen').style.display = 'none';
             if (mode === 'sender') {
                 document.getElementById('senderScreen').style.display = 'flex';
@@ -223,84 +73,51 @@
             }
         }
 
-        // --- ACTIONS ---
         function sendAlert() {
+            socket.emit('trigger-alarm');
             const btn = document.getElementById('triggerBtn');
             btn.disabled = true;
-            btn.innerText = "ΑΠΟΣΤΟΛΗ...";
-            socket.emit('trigger-alarm');
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.innerText = "🔔 ΚΛΗΣΗ";
-                document.getElementById('senderStatus').innerText = "Στάλθηκε: " + new Date().toLocaleTimeString();
-            }, 1000);
+            btn.innerText = "ΣΤΑΛΘΗΚΕ!";
+            setTimeout(() => { btn.disabled = false; btn.innerText = "🔔 ΚΛΗΣΗ"; }, 2000);
         }
 
         function setupReceiverLogic() {
             socket.on('ring-bell', () => {
-                console.log("ALARM RECEIVED!");
-
-                // --- FULLY KIOSK NATIVE COMMANDS ---
-                if (window.fully) {
-                    // 1. Ξύπνα την οθόνη (ακόμα κι αν είναι μαύρη)
-                    fully.turnScreenOn();
-                    
-                    // 2. Φέρε την εφαρμογή μπροστά (αν έχει κατεβασμένη μπάρα)
-                    fully.bringToForeground();
-                    
-                    // 3. Βάλε ήχο στο τέρμα (Stream 3 = Music)
-                    try { fully.setAudioVolume(100, 3); } catch(e) {}
-                }
-
-                // Ξύπνα από Fake Lock
-                toggleFakeLock(false);
-
-                // Παίξε Ήχο
-                const alertPlayer = document.getElementById('alertPlayer');
-                alertPlayer.currentTime = 0;
-                alertPlayer.volume = 1.0;
-                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-                alertPlayer.play().catch(e => console.log("Interaction needed"));
-
-                // UI Updates
-                document.body.classList.add('alarm-active');
-                document.body.classList.add('strobe');
-                document.getElementById('stopBtn').style.display = 'block';
-                document.getElementById('statusText').innerText = "🚨 ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ 🚨";
-
-                // Ξεκίνα τη δόνηση (Native ή Browser)
+                isRinging = true;
+                const player = document.getElementById('alertPlayer');
+                player.currentTime = 0;
+                player.play();
                 startVibration();
-
-                if (document.hidden && Notification.permission === "granted") {
-                    new Notification("🚨 ΚΟΥΔΟΥΝΙ!", { body: "Πάτα για άνοιγμα", tag: 'alarm' });
-                }
+                document.getElementById('stopBtn').style.display = 'block';
+                document.body.style.backgroundColor = '#900';
             });
         }
 
         function stopAlarm() {
-            const alertPlayer = document.getElementById('alertPlayer');
-            alertPlayer.pause();
-            alertPlayer.currentTime = 0;
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
-            
+            isRinging = false;
+            const player = document.getElementById('alertPlayer');
+            player.pause();
+            player.currentTime = 0;
             stopVibration();
-            
-            document.body.classList.remove('alarm-active');
-            document.body.classList.remove('strobe');
             document.getElementById('stopBtn').style.display = 'none';
-            document.getElementById('statusText').innerText = "Αναμονή...";
+            document.body.style.backgroundColor = '#000';
         }
 
-        function toggleFakeLock(enable) {
-            const overlay = document.getElementById('fakeLockOverlay');
-            if (enable) {
-                overlay.style.display = 'block';
-                // Αν είμαστε σε Fully Kiosk, μπορεί να μην χρειάζεται Fullscreen API, αλλά το κρατάμε
-                if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(e=>{});
-            } else {
-                overlay.style.display = 'none';
-                if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen().catch(e=>{});
+        function startVibration() {
+            if(navigator.vibrate) {
+                if(vibrationInterval) clearInterval(vibrationInterval);
+                navigator.vibrate([500, 200, 500, 500]);
+                vibrationInterval = setInterval(() => { navigator.vibrate([500, 200, 500, 500]); }, 1700);
             }
+        }
+
+        function stopVibration() {
+            if(vibrationInterval) clearInterval(vibrationInterval);
+            if(navigator.vibrate) navigator.vibrate(0);
+        }
+
+        function togglePocketMode(enable) {
+            document.getElementById('pocketMode').style.display = enable ? 'block' : 'none';
         }
     </script>
 </body>
