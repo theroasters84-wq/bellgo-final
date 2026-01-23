@@ -75,7 +75,32 @@
         const socket = io();
         let wakeLock = null;
         let heartbeatInterval = null;
+let vibrationInterval = null;
 
+function startVibration() {
+    // Hack: Ελέγχουμε αν υποστηρίζεται
+    if (navigator.vibrate) {
+        // Κάνουμε καθαρισμό αν τρέχει ήδη
+        if (vibrationInterval) clearInterval(vibrationInterval);
+
+        // Ξεκινάμε τη δόνηση αμέσως
+        navigator.vibrate([500, 300, 500, 300]);
+
+        // Και την επαναλαμβάνουμε κάθε 1.6 δευτερόλεπτα (όσο διαρκεί το pattern)
+        vibrationInterval = setInterval(() => {
+            navigator.vibrate([500, 300, 500, 300]);
+        }, 1600);
+    }
+}
+
+function stopVibration() {
+    if (vibrationInterval) {
+        clearInterval(vibrationInterval);
+        vibrationInterval = null;
+    }
+    // Σταματάει ακαριαία τη δόνηση
+    if (navigator.vibrate) navigator.vibrate(0); 
+}
         // --- 1. ANTI-SLEEP MECHANISMS ---
         async function enableAntiSleep() {
             // A. Audio Loop Hack
@@ -190,3 +215,4 @@
     </script>
 </body>
 </html>
+
