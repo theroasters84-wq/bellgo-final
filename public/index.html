@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo System V4</title>
+    <title>BellGo Spotify Mode</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -26,14 +26,11 @@
         
         .btn { padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; margin: 5px 0; font-weight: bold; border: none; cursor: pointer; color: white; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .btn:active { transform: scale(0.96); }
-        
         .btn-green { background-color: #00C853; } 
         .btn-blue { background-color: #2962FF; }  
         .btn-red { background-color: #D50000; } 
         .btn-grey { background-color: #424242; font-size: 14px; padding: 10px; margin-top: 10px; width: 50%; }  
-        
         .btn-user { background-color: #37474F; border: 1px solid #546E7A; margin: 4px; width: 46%; display: inline-block; font-size: 14px; padding: 12px; }
-        .btn-user:active { background-color: #00C853; }
 
         /* STOP OVERLAY */
         .stop-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #b71c1c; z-index: 2147483647; flex-direction: column; justify-content: center; align-items: center; animation: pulse 0.3s infinite; }
@@ -45,11 +42,10 @@
         .chat-input-area { display: flex; width: 100%; }
         .chat-input { flex:1; margin:0; border-radius:0 0 0 10px; border:none; border-top:1px solid #444; }
         .chat-btn { width:50px; margin:0; border-radius:0 0 10px 0; }
-        
         .msg-usr { color: #fff; margin-bottom: 4px; }
         #usersContainer { max-height: 30vh; overflow-y: auto; width: 100%; padding-bottom: 5px; }
 
-        /* PLAYER STATUS */
+        /* PLAYER STATUS INDICATOR */
         .spotify-indicator { font-size: 12px; color: #00C853; margin-top: 5px; display: none; align-items: center; justify-content: center; gap: 5px; background: #000; padding: 5px 15px; border-radius: 20px; border: 1px solid #333; }
         .dot { height: 8px; width: 8px; background-color: #00C853; border-radius: 50%; display: inline-block; animation: blink 2s infinite; }
 
@@ -60,7 +56,7 @@
 <body>
 
     <div id="loginScreen" class="screen" style="display:flex;">
-        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO SYSTEM</h2>
+        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO SPOTIFY MODE</h2>
         <input type="text" id="storeName" placeholder="Όνομα Μαγαζιού">
         <input type="text" id="username" placeholder="Όνομα Χρήστη">
         <input type="password" id="password" placeholder="Κωδικός (1234)" inputmode="numeric">
@@ -76,12 +72,9 @@
         <div style="width:100%; border-bottom:1px solid #444; padding-bottom:5px;">
             <h3 id="adminHeader" style="margin:0; font-size:16px;">Admin Panel</h3>
         </div>
-        
         <button class="btn btn-red" onclick="triggerAlarm(null)">📢 ΚΛΗΣΗ ΣΕ ΟΛΟΥΣ</button>
-        
         <p style="color:#888; font-size:12px; margin:5px;">Ενεργοί Χρήστες:</p>
         <div id="usersContainer"></div>
-
         <div id="chatContainer">
             <div id="chatMessagesAdmin"></div>
             <div class="chat-input-area">
@@ -89,7 +82,6 @@
                 <button class="btn btn-blue chat-btn" onclick="sendChat('admin')">></button>
             </div>
         </div>
-        
         <button class="btn btn-grey" onclick="logout()">ΑΠΟΣΥΝΔΕΣΗ</button>
     </div>
 
@@ -98,7 +90,7 @@
         <h2 id="receiverHeader">Αναμονή...</h2>
         
         <div class="spotify-indicator" id="spotifyStatus">
-            <span class="dot"></span> <span id="playerText">Service Active</span>
+            <span class="dot"></span> Running in Background
         </div>
 
         <button onclick="toggleFakeLock(true)" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:80%;">
@@ -112,7 +104,6 @@
                 <button class="btn btn-blue chat-btn" onclick="sendChat('staff')">></button>
             </div>
         </div>
-
         <button class="btn btn-grey" onclick="logout()">ΑΠΟΣΥΝΔΕΣΗ</button>
     </div>
 
@@ -129,21 +120,18 @@
 
     <audio id="alertPlayer" preload="auto" loop playsinline><source src="alert.mp3" type="audio/mpeg"></audio>
     
-    <audio id="silentPlayer" loop playsinline></audio>
+    <audio id="silentPlayer" src="silence.mp3" loop playsinline></audio>
 
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        const socket = io();
+        const socket = io(); // Ναι, εδώ είναι το socket connection
         let myRole = '';
         let isRinging = false;
         let vibrationInterval = null;
         let foregroundInterval = null;
 
-        // Base64 Silent MP3 (1 sec silence) - Δεν χρειάζεται εξωτερικό αρχείο!
-        const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////8AAAAATGF2YzU4LjM1AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCC8iEAAAAA//oeZAAAAABAAAAA";
-
-        // --- LOGIN & SETUP ---
+        // --- LOGIN & MEDIA START ---
         function attemptLogin(role) {
             const store = document.getElementById('storeName').value.trim();
             const user = document.getElementById('username').value.trim();
@@ -152,19 +140,20 @@
             if (!store || !user) { alert("Συμπλήρωσε τα πεδία!"); return; }
             if (pass !== '1234') { document.getElementById('loginError').style.display = 'block'; return; }
 
-            // 1. Ενεργοποίηση "Fake Spotify" Notification
-            initFakeSpotifyNotification();
-            
-            // 2. Ενεργοποίηση Fully Kiosk Bot
+            // 1. Ξεκινάμε το "Spotify" Player (Media Session)
+            // Αυτό πρέπει να γίνει ΕΔΩ, με το πάτημα του κουμπιού (User Gesture)
+            startFakeSpotify();
+
+            // 2. Fully Kiosk Bot
             runFullyKioskBot();
 
-            // 3. Ενεργοποίηση Fake GPS (μόνο Staff)
+            // 3. Fake GPS
             if(role === 'staff') startNavBot();
 
-            // Σύνδεση Socket
+            // 4. Socket Join
             socket.emit('join-store', { storeName: store, username: user, role: role });
 
-            // UI Changes
+            // UI
             document.getElementById('loginScreen').style.display = 'none';
             myRole = role;
             
@@ -175,49 +164,49 @@
                 document.getElementById('receiverScreen').style.display = 'flex';
                 document.getElementById('receiverHeader').innerText = "Γεια σου " + user;
                 document.getElementById('spotifyStatus').style.display = 'flex';
-                document.getElementById('playerText').innerText = "BellGo Active";
             }
         }
 
-        // --- LOGOUT ---
-        function logout() {
-            // Σταματάμε τυχόν συναγερμούς
-            stopAlarm();
-            // Reload τη σελίδα για πλήρη καθαρισμό και αποσύνδεση
-            window.location.reload();
-        }
-
-        // --- FAKE SPOTIFY NOTIFICATION (MEDIA SESSION) ---
-        function initFakeSpotifyNotification() {
-            const silentPlayer = document.getElementById('silentPlayer');
-            silentPlayer.src = silentAudioBase64;
-            silentPlayer.volume = 0.1; // Ελάχιστο, ίσα να παίζει
+        // --- FAKE SPOTIFY / NOTIFICATION BAR LOGIC ---
+        function startFakeSpotify() {
+            const silent = document.getElementById('silentPlayer');
+            silent.volume = 0.1; // Χαμηλή ένταση για να μην ενοχλεί, αλλά να είναι "ενεργό"
             
-            // Ξεκινάμε την αναπαραγωγή
-            silentPlayer.play().then(() => {
-                console.log("Silent Player Started");
-                
-                // ΕΔΩ ΕΙΝΑΙ ΤΟ ΜΑΓΙΚΟ: Φτιάχνουμε την μπάρα ειδοποιήσεων
+            silent.play().then(() => {
+                console.log("Silence.mp3 playing...");
+
+                // Ενεργοποίηση Media Session API (Η Μπάρα Ειδοποιήσεων)
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
-                        title: 'BellGo Active Protection',
-                        artist: 'System Online',
+                        title: 'System Online',
+                        artist: 'BellGo Connected',
                         album: 'Do Not Close',
                         artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png', sizes: '96x96', type: 'image/png' },
+                            { src: 'https://cdn-icons-png.flaticon.com/512/84/84183.png', sizes: '96x96', type: 'image/png' },
+                            { src: 'https://cdn-icons-png.flaticon.com/512/84/84183.png', sizes: '128x128', type: 'image/png' },
                         ]
                     });
 
                     navigator.mediaSession.playbackState = 'playing';
-                    
-                    // Κουμπιά ελέγχου (εικονικά)
-                    navigator.mediaSession.setActionHandler('play', function() {});
-                    navigator.mediaSession.setActionHandler('pause', function() {});
+
+                    // Ορίζουμε άδειες ενέργειες για να φαίνονται τα κουμπιά
+                    navigator.mediaSession.setActionHandler('play', function() { silent.play(); });
+                    navigator.mediaSession.setActionHandler('pause', function() { silent.play(); }); // Αν πατήσει pause, το ξαναξεκινάμε!
+                    navigator.mediaSession.setActionHandler('stop', function() { /* Do nothing */ });
                 }
-            }).catch(e => console.log("Audio Play Failed (User interaction needed?):", e));
+            }).catch(e => {
+                console.error("Silent Play Failed:", e);
+                // Αν αποτύχει, δοκιμάζουμε πάλι σε 1 δευτερόλεπτο
+                setTimeout(startFakeSpotify, 1000);
+            });
         }
 
-        // --- SOCKET LISTENERS ---
+        function logout() {
+            stopAlarm();
+            window.location.reload();
+        }
+
+        // --- SOCKET LOGIC ---
         socket.on('update-user-list', (users) => {
             if (myRole !== 'admin') return;
             const container = document.getElementById('usersContainer');
@@ -236,6 +225,7 @@
             socket.emit('trigger-alarm', { targetId: targetId });
         }
 
+        // ΕΔΩ ΕΙΝΑΙ ΤΟ ΚΡΙΣΙΜΟ SOCKET.ON ΠΟΥ ΖΗΤΗΣΕΣ
         socket.on('ring-bell', (data) => {
             if (isRinging) return;
             isRinging = true;
@@ -279,7 +269,6 @@
             document.getElementById('stopOverlay').style.display = 'none';
         }
 
-        // --- UTILS ---
         function runFullyKioskBot() {
             if (window.fully) {
                 try {
