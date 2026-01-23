@@ -71,39 +71,35 @@
 
     <script src="/socket.io/socket.io.js"></script>
 
-    <script>
+<script>
         const socket = io();
         let wakeLock = null;
         let heartbeatInterval = null;
-let vibrationInterval = null;
+        let vibrationInterval = null; // Μεταβλητή για το Loop δόνησης
 
-function startVibration() {
-    // Hack: Ελέγχουμε αν υποστηρίζεται
-    if (navigator.vibrate) {
-        // Κάνουμε καθαρισμό αν τρέχει ήδη
-        if (vibrationInterval) clearInterval(vibrationInterval);
+        // --- ΛΕΙΤΟΥΡΓΙΕΣ ΔΟΝΗΣΗΣ ---
+        function startVibration() {
+            if (navigator.vibrate) {
+                if (vibrationInterval) clearInterval(vibrationInterval);
+                // Πρώτη δόνηση
+                navigator.vibrate([500, 300, 500, 300]);
+                // Επανάληψη (Loop) κάθε 1.6 δευτερόλεπτα
+                vibrationInterval = setInterval(() => {
+                    navigator.vibrate([500, 300, 500, 300]);
+                }, 1600);
+            }
+        }
 
-        // Ξεκινάμε τη δόνηση αμέσως
-        navigator.vibrate([500, 300, 500, 300]);
+        function stopVibration() {
+            if (vibrationInterval) {
+                clearInterval(vibrationInterval);
+                vibrationInterval = null;
+            }
+            if (navigator.vibrate) navigator.vibrate(0); // Σταμάτα αμέσως
+        }
 
-        // Και την επαναλαμβάνουμε κάθε 1.6 δευτερόλεπτα (όσο διαρκεί το pattern)
-        vibrationInterval = setInterval(() => {
-            navigator.vibrate([500, 300, 500, 300]);
-        }, 1600);
-    }
-}
-
-function stopVibration() {
-    if (vibrationInterval) {
-        clearInterval(vibrationInterval);
-        vibrationInterval = null;
-    }
-    // Σταματάει ακαριαία τη δόνηση
-    if (navigator.vibrate) navigator.vibrate(0); 
-}
         // --- 1. ANTI-SLEEP MECHANISMS ---
         async function enableAntiSleep() {
-            // A. Audio Loop Hack
             const silence = document.getElementById('silencePlayer');
             silence.volume = 0.01; 
             try {
@@ -113,7 +109,6 @@ function stopVibration() {
                 console.log("Audio play failed (waiting for interaction)");
             }
 
-            // B. Wake Lock API (Screen)
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
@@ -121,7 +116,6 @@ function stopVibration() {
                 }
             } catch (err) { console.log("WakeLock Error:", err); }
 
-            // C. Heartbeat (Ping Server every 30s)
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 if (socket.connected) socket.emit('keep-alive');
@@ -130,10 +124,7 @@ function stopVibration() {
 
         // --- 2. INITIALIZATION ---
         function initMode(mode) {
-            // Ζητάμε Anti-Sleep με το πρώτο κλικ
             enableAntiSleep();
-
-            // Αλλαγή UI
             document.getElementById('setupScreen').style.display = 'none';
             
             if (mode === 'sender') {
@@ -153,7 +144,6 @@ function stopVibration() {
 
             socket.emit('trigger-alarm');
 
-            // Feedback & Reset κουμπιού
             setTimeout(() => {
                 btn.disabled = false;
                 btn.innerText = "🔔 ΚΛΗΣΗ";
@@ -167,23 +157,21 @@ function stopVibration() {
             socket.on('ring-bell', () => {
                 console.log("ALARM RECEIVED!");
                 
-                // Αν είναι σε Black Screen, ξύπνα το UI (προαιρετικό, εδώ το αφήνω μαύρο αλλά παίζει ήχο)
-                // toggleFakeLock(false); // Ξε-σχολίασε αν θες να ανάβει η οθόνη αυτόματα
+                // Προαιρετικό: Ξυπνάμε την οθόνη αν είναι μαύρη
+                toggleFakeLock(false); 
 
                 const alertPlayer = document.getElementById('alertPlayer');
                 const stopBtn = document.getElementById('stopBtn');
 
-                // Ρυθμίσεις ήχου
                 alertPlayer.currentTime = 0;
                 alertPlayer.volume = 1.0;
                 alertPlayer.play().catch(e => console.log("Sound blocked:", e));
 
-                // Visual Cues
                 document.body.classList.add('alarm-active');
                 stopBtn.style.display = 'block';
 
-                // Δόνηση (αν υποστηρίζεται)
-                if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+                // ΕΔΩ ΕΓΙΝΕ Η ΔΙΟΡΘΩΣΗ:
+                startVibration(); 
             });
         }
 
@@ -192,16 +180,18 @@ function stopVibration() {
             alertPlayer.pause();
             alertPlayer.currentTime = 0;
             
+            // ΕΔΩ ΕΓΙΝΕ Η ΔΙΟΡΘΩΣΗ:
+            stopVibration();
+
             document.body.classList.remove('alarm-active');
             document.getElementById('stopBtn').style.display = 'none';
         }
 
-        // --- 5. FAKE LOCK (BLACK SCREEN) ---
+        // --- 5. FAKE LOCK ---
         function toggleFakeLock(enable) {
             const overlay = document.getElementById('fakeLockOverlay');
             if (enable) {
                 overlay.style.display = 'block';
-                // Προσπαθούμε να μπούμε σε Full Screen για να κρύψουμε και την μπάρα URL
                 if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen().catch(e=>{});
                 }
@@ -215,4 +205,5 @@ function stopVibration() {
     </script>
 </body>
 </html>
+
 
