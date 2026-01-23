@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Commando</title>
+    <title>BellGo System V4</title>
     <style>
-        /* --- ΒΑΣΙΚΟ ΣΤΗΣΙΜΟ ΓΙΑ ΝΑ ΜΗΝ ΚΟΒΕΤΑΙ ΤΙΠΟΤΑ --- */
         * { box-sizing: border-box; }
         body { 
             background-color: #121212; 
@@ -14,11 +13,11 @@
             text-align: center; 
             display: flex; 
             flex-direction: column; 
-            height: 100vh; /* Full Height */
+            height: 100vh; 
             margin: 0; 
             overflow: hidden; 
             user-select: none;
-            padding: 2vh 5vw; /* Κενό γύρω γύρω για να μην κόβεται */
+            padding: 2vh 5vw; 
         }
 
         .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
@@ -30,29 +29,28 @@
         
         .btn-green { background-color: #00C853; } 
         .btn-blue { background-color: #2962FF; }  
-        .btn-red { background-color: #D50000; }   
+        .btn-red { background-color: #D50000; } 
+        .btn-grey { background-color: #424242; font-size: 14px; padding: 10px; margin-top: 10px; width: 50%; }  
         
         .btn-user { background-color: #37474F; border: 1px solid #546E7A; margin: 4px; width: 46%; display: inline-block; font-size: 14px; padding: 12px; }
         .btn-user:active { background-color: #00C853; }
 
-        /* --- STOP OVERLAY (ΕΠΙΘΕΤΙΚΟ) --- */
-        .stop-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #b71c1c; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; animation: pulse 0.3s infinite; }
+        /* STOP OVERLAY */
+        .stop-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #b71c1c; z-index: 2147483647; flex-direction: column; justify-content: center; align-items: center; animation: pulse 0.3s infinite; }
         .btn-stop-big { width: 80%; height: 30%; font-size: 35px; background: white; color: red; border-radius: 20px; font-weight: 900; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 5px solid yellow; }
 
-        /* --- CHAT (ΜΙΚΡΟΤΕΡΟ ΚΑΙ ΜΑΖΕΜΕΝΟ) --- */
+        /* CHAT */
         #chatContainer { flex: 1; width: 100%; background: #1a1a1a; border-radius: 10px 10px 0 0; margin-top: 10px; display: flex; flex-direction: column; border: 1px solid #333; min-height: 25vh; max-height: 35vh; }
         #chatMessagesAdmin, #chatMessagesStaff { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 13px; color: #ccc; }
         .chat-input-area { display: flex; width: 100%; }
         .chat-input { flex:1; margin:0; border-radius:0 0 0 10px; border:none; border-top:1px solid #444; }
         .chat-btn { width:50px; margin:0; border-radius:0 0 10px 0; }
         
-        .msg-sys { color: #fdd835; font-style: italic; font-size: 11px; margin-bottom: 2px; }
         .msg-usr { color: #fff; margin-bottom: 4px; }
-
         #usersContainer { max-height: 30vh; overflow-y: auto; width: 100%; padding-bottom: 5px; }
 
-        /* Fake Spotify Indicator */
-        .spotify-indicator { font-size: 10px; color: #00C853; margin-top: 5px; display: none; align-items: center; justify-content: center; gap: 5px; }
+        /* PLAYER STATUS */
+        .spotify-indicator { font-size: 12px; color: #00C853; margin-top: 5px; display: none; align-items: center; justify-content: center; gap: 5px; background: #000; padding: 5px 15px; border-radius: 20px; border: 1px solid #333; }
         .dot { height: 8px; width: 8px; background-color: #00C853; border-radius: 50%; display: inline-block; animation: blink 2s infinite; }
 
         @keyframes pulse { 0% { background-color: #b71c1c; transform: scale(1); } 50% { background-color: #ff0000; transform: scale(1.02); } 100% { background-color: #b71c1c; transform: scale(1); } }
@@ -62,7 +60,7 @@
 <body>
 
     <div id="loginScreen" class="screen" style="display:flex;">
-        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO v3.0</h2>
+        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO SYSTEM</h2>
         <input type="text" id="storeName" placeholder="Όνομα Μαγαζιού">
         <input type="text" id="username" placeholder="Όνομα Χρήστη">
         <input type="password" id="password" placeholder="Κωδικός (1234)" inputmode="numeric">
@@ -91,6 +89,8 @@
                 <button class="btn btn-blue chat-btn" onclick="sendChat('admin')">></button>
             </div>
         </div>
+        
+        <button class="btn btn-grey" onclick="logout()">ΑΠΟΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="receiverScreen" class="screen">
@@ -98,7 +98,7 @@
         <h2 id="receiverHeader">Αναμονή...</h2>
         
         <div class="spotify-indicator" id="spotifyStatus">
-            <span class="dot"></span> Media Service Active (No Sleep)
+            <span class="dot"></span> <span id="playerText">Service Active</span>
         </div>
 
         <button onclick="toggleFakeLock(true)" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:80%;">
@@ -112,17 +112,15 @@
                 <button class="btn btn-blue chat-btn" onclick="sendChat('staff')">></button>
             </div>
         </div>
+
+        <button class="btn btn-grey" onclick="logout()">ΑΠΟΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="stopOverlay" class="stop-overlay">
         <h1 style="color:white; font-size:40px; margin:0;">🔔 ΚΛΗΣΗ!</h1>
         <h2 id="callerName" style="color:yellow; margin:10px 0 30px 0;">...</h2>
-        
         <button class="btn btn-stop-big" onclick="stopAlarm()">STOP</button>
-        
-        <p style="color:white; font-size:14px; margin-top:20px; font-weight:bold;">
-            ΠΑΤΑ ΤΩΡΑ STOP<br>ή Volume Up
-        </p>
+        <p style="color:white; font-size:14px; margin-top:20px; font-weight:bold;">ΠΑΤΑ ΤΩΡΑ STOP<br>ή Volume Up</p>
     </div>
 
     <div id="fakeLock" onclick="toggleFakeLock(false)" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9000;">
@@ -130,6 +128,8 @@
     </div>
 
     <audio id="alertPlayer" preload="auto" loop playsinline><source src="alert.mp3" type="audio/mpeg"></audio>
+    
+    <audio id="silentPlayer" loop playsinline></audio>
 
     <script src="/socket.io/socket.io.js"></script>
 
@@ -138,10 +138,12 @@
         let myRole = '';
         let isRinging = false;
         let vibrationInterval = null;
-        let audioContext = null;
-        let silentOscillator = null;
+        let foregroundInterval = null;
 
-        // --- 1. LOGIN & START ENGINES ---
+        // Base64 Silent MP3 (1 sec silence) - Δεν χρειάζεται εξωτερικό αρχείο!
+        const silentAudioBase64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////8AAAAATGF2YzU4LjM1AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCC8iEAAAAA//oeZAAAAABAAAAA";
+
+        // --- LOGIN & SETUP ---
         function attemptLogin(role) {
             const store = document.getElementById('storeName').value.trim();
             const user = document.getElementById('username').value.trim();
@@ -150,15 +152,19 @@
             if (!store || !user) { alert("Συμπλήρωσε τα πεδία!"); return; }
             if (pass !== '1234') { document.getElementById('loginError').style.display = 'block'; return; }
 
-            // 🔥 ΕΝΑΡΞΗ ΟΛΩΝ ΤΩΝ ΜΗΧΑΝΙΣΜΩΝ 🔥
-            startSilentSpotifyMode(); // Το "κόλπο" για το WiFi
-            if(role === 'staff') startNavBot(); // Fake GPS
-            runFullyKioskBot(); // Ρυθμίσεις Fully
+            // 1. Ενεργοποίηση "Fake Spotify" Notification
+            initFakeSpotifyNotification();
+            
+            // 2. Ενεργοποίηση Fully Kiosk Bot
+            runFullyKioskBot();
 
-            // Σύνδεση
+            // 3. Ενεργοποίηση Fake GPS (μόνο Staff)
+            if(role === 'staff') startNavBot();
+
+            // Σύνδεση Socket
             socket.emit('join-store', { storeName: store, username: user, role: role });
 
-            // UI
+            // UI Changes
             document.getElementById('loginScreen').style.display = 'none';
             myRole = role;
             
@@ -169,16 +175,54 @@
                 document.getElementById('receiverScreen').style.display = 'flex';
                 document.getElementById('receiverHeader').innerText = "Γεια σου " + user;
                 document.getElementById('spotifyStatus').style.display = 'flex';
+                document.getElementById('playerText').innerText = "BellGo Active";
             }
         }
 
-        // --- 2. ADMIN LIST ---
+        // --- LOGOUT ---
+        function logout() {
+            // Σταματάμε τυχόν συναγερμούς
+            stopAlarm();
+            // Reload τη σελίδα για πλήρη καθαρισμό και αποσύνδεση
+            window.location.reload();
+        }
+
+        // --- FAKE SPOTIFY NOTIFICATION (MEDIA SESSION) ---
+        function initFakeSpotifyNotification() {
+            const silentPlayer = document.getElementById('silentPlayer');
+            silentPlayer.src = silentAudioBase64;
+            silentPlayer.volume = 0.1; // Ελάχιστο, ίσα να παίζει
+            
+            // Ξεκινάμε την αναπαραγωγή
+            silentPlayer.play().then(() => {
+                console.log("Silent Player Started");
+                
+                // ΕΔΩ ΕΙΝΑΙ ΤΟ ΜΑΓΙΚΟ: Φτιάχνουμε την μπάρα ειδοποιήσεων
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'BellGo Active Protection',
+                        artist: 'System Online',
+                        album: 'Do Not Close',
+                        artwork: [
+                            { src: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png', sizes: '96x96', type: 'image/png' },
+                        ]
+                    });
+
+                    navigator.mediaSession.playbackState = 'playing';
+                    
+                    // Κουμπιά ελέγχου (εικονικά)
+                    navigator.mediaSession.setActionHandler('play', function() {});
+                    navigator.mediaSession.setActionHandler('pause', function() {});
+                }
+            }).catch(e => console.log("Audio Play Failed (User interaction needed?):", e));
+        }
+
+        // --- SOCKET LISTENERS ---
         socket.on('update-user-list', (users) => {
             if (myRole !== 'admin') return;
             const container = document.getElementById('usersContainer');
             container.innerHTML = ''; 
             if (users.length === 0) container.innerHTML = '<p style="color:#555; font-size:12px;">Κανείς συνδεδεμένος...</p>';
-
             users.forEach(u => {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-user';
@@ -192,30 +236,33 @@
             socket.emit('trigger-alarm', { targetId: targetId });
         }
 
-        // --- 3. ALARM (ΕΠΙΘΕΤΙΚΟ) ---
         socket.on('ring-bell', (data) => {
             if (isRinging) return;
             isRinging = true;
             document.getElementById('callerName').innerText = data.sender || "Admin";
 
-            // 1. Fully Kiosk: WAKE UP & MAX VOLUME
             if (window.fully) {
                 fully.turnScreenOn();
                 fully.bringToForeground();
-                fully.setMusicVolume(100); // ΤΕΡΜΑ ΗΧΟΣ
+                fully.setMusicVolume(100);
             }
 
-            // 2. Unlock & Show Overlay
+            // Video Killer Loop
+            if (window.fully) {
+                if(foregroundInterval) clearInterval(foregroundInterval);
+                foregroundInterval = setInterval(() => {
+                    fully.bringToForeground();
+                    fully.turnScreenOn();
+                }, 500); 
+            }
+
             toggleFakeLock(false);
             document.getElementById('stopOverlay').style.display = 'flex';
 
-            // 3. Play Loud Sound
             const player = document.getElementById('alertPlayer');
             player.currentTime = 0;
             player.volume = 1.0;
-            player.play().catch(e => console.log("Audio Error:", e));
-
-            // 4. Aggressive Vibration
+            player.play().catch(e => console.log("Alert Error:", e));
             startVibration();
         });
 
@@ -223,39 +270,16 @@
             if (!isRinging) return;
             isRinging = false;
             
+            if (foregroundInterval) { clearInterval(foregroundInterval); foregroundInterval = null; }
+            
             const player = document.getElementById('alertPlayer');
             player.pause();
             player.currentTime = 0;
             stopVibration();
-
             document.getElementById('stopOverlay').style.display = 'none';
-            
-            // Το Silent Mode συνεχίζει να τρέχει από πίσω!
         }
 
-        // --- 4. SPOTIFY MODE (SILENT PLAYER) ---
-        // Αυτό κρατάει το Internet ζωντανό νομίζοντας ότι παίζει μουσική
-        function startSilentSpotifyMode() {
-            try {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioContext = new AudioContext();
-                
-                // Δημιουργία μόνιμου θορύβου (πολύ χαμηλού)
-                silentOscillator = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                gain.gain.value = 0.0001; // Σχεδόν αθόρυβο, αλλά "ενεργό"
-                
-                silentOscillator.connect(gain);
-                gain.connect(audioContext.destination);
-                silentOscillator.start();
-                
-                console.log("Spotify Silent Mode: ACTIVE");
-            } catch(e) {
-                console.log("AudioContext Error");
-            }
-        }
-
-        // --- 5. FULLY KIOSK BOT ---
+        // --- UTILS ---
         function runFullyKioskBot() {
             if (window.fully) {
                 try {
@@ -268,18 +292,14 @@
             }
         }
 
-        // --- 6. NAV BOT (Fake GPS) ---
         function startNavBot() {
             if ("geolocation" in navigator) {
                 setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(
-                        (p) => {}, (e) => {}, {enableHighAccuracy:true}
-                    );
+                    navigator.geolocation.getCurrentPosition((p) => {}, (e) => {}, {enableHighAccuracy:true});
                 }, 15000);
             }
         }
 
-        // --- 7. CHAT & UTILS ---
         function sendChat(role) {
             const inputId = role === 'admin' ? 'chatInputAdmin' : 'chatInputStaff';
             const input = document.getElementById(inputId);
@@ -291,22 +311,14 @@
         }
 
         socket.on('chat-message', (data) => {
+            if (data.sender === 'System') return;
             const line = document.createElement('div');
-            if (data.sender === 'System') return; // Αγνοούμε συστημικά μηνύματα αν υπάρχουν
-            
             line.className = 'msg-usr';
             line.innerHTML = `<b style="color:#00C853">${data.sender}:</b> ${data.text}`;
-
             const containers = [document.getElementById('chatMessagesAdmin'), document.getElementById('chatMessagesStaff')];
-            containers.forEach(c => {
-                if (c) {
-                    c.appendChild(line.cloneNode(true));
-                    c.scrollTop = c.scrollHeight;
-                }
-            });
+            containers.forEach(c => { if (c) { c.appendChild(line.cloneNode(true)); c.scrollTop = c.scrollHeight; } });
         });
 
-        // Volume Button Handler
         window.addEventListener('keydown', (e) => {
             const stopKeys = [179, 24, 25, 85, 13];
             if (stopKeys.includes(e.keyCode) || e.key === "VolumeUp" || e.key === "VolumeDown") {
@@ -318,7 +330,7 @@
         });
 
         function startVibration() {
-            if (navigator.vibrate) navigator.vibrate([1000, 100, 1000, 100, 1000]); // Πιο επιθετικό
+            if (navigator.vibrate) navigator.vibrate([1000, 100, 1000, 100, 1000]); 
             if (vibrationInterval) clearInterval(vibrationInterval);
             vibrationInterval = setInterval(() => {
                 if (navigator.vibrate) navigator.vibrate([1000, 100, 1000, 100, 1000]);
