@@ -3,40 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo System</title>
+    <title>BellGo Ultimate</title>
     <style>
-        /* Βασικό Στυλ - Dark Mode */
-        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
+        /* --- CSS STYLES --- */
+        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
         
-        /* Κουμπιά */
-        .btn { padding: 25px; font-size: 22px; border: none; border-radius: 12px; margin: 15px; cursor: pointer; width: 85%; max-width: 350px; font-weight: bold; touch-action: manipulation; transition: transform 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        /* Buttons */
+        .btn { padding: 20px; font-size: 20px; border: none; border-radius: 12px; margin: 10px; cursor: pointer; width: 85%; max-width: 350px; font-weight: bold; touch-action: manipulation; box-shadow: 0 4px 6px rgba(0,0,0,0.3); color: white; transition: transform 0.1s; }
         .btn:active { transform: scale(0.96); }
-        .btn-sender { background-color: #00C853; color: white; } /* Πράσινο */
-        .btn-receiver { background-color: #2962FF; color: white; } /* Μπλε */
-        .btn-stop { background-color: #D50000; color: white; display: none; margin-top: 30px; animation: pulse 1s infinite; }
-        .btn-fake-lock { background-color: #424242; color: #aaa; font-size: 14px; padding: 10px; width: auto; margin-top: 40px; }
-        .btn-logout { position: absolute; top: 10px; right: 10px; background: transparent; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; }
+        .btn-sender { background-color: #00C853; }
+        .btn-receiver { background-color: #2962FF; }
+        .btn-pip { background-color: #9C27B0; font-size: 16px; margin-top: 20px; }
+        .btn-fake-lock { background-color: #424242; color: #aaa; font-size: 14px; margin-top: 10px; width: auto; padding: 10px 20px; }
+        .btn-stop { background-color: #D50000; display: none; margin-top: 30px; animation: pulse 0.8s infinite; font-size: 24px; padding: 30px; }
+        .btn-logout { position: absolute; top: 15px; right: 15px; background: transparent; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 12px; border-radius: 5px; }
 
-        /* Οθόνες */
+        /* Screens */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
-        #setupScreen { display: flex; } /* Αρχική οθόνη */
+        #setupScreen { display: flex; }
 
-        /* Fake Lock (Black Screen) */
-        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 9999; touch-action: none; }
-        #fakeLockText { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #222; font-size: 12px; }
+        /* Fake Lock Overlay */
+        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: black; z-index: 9999; }
+        #fakeLockText { position: absolute; bottom: 30px; width: 100%; text-align: center; color: #333; font-size: 12px; }
 
-        /* Animation για το Alarm */
+        /* Animations & Visuals */
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .alarm-active { background-color: #ff0000 !important; }
+        .strobe { animation: strobe-anim 0.2s infinite; }
+        @keyframes strobe-anim { 0% { background-color: red; } 50% { background-color: white; } 100% { background-color: red; } }
+
+        /* Hidden Elements for PiP */
+        #pipVideo { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="setupScreen" class="screen">
-        <h2 style="margin-bottom: 40px;">BellGo System</h2>
+        <h2 style="margin-bottom: 40px;">BellGo Ultimate</h2>
         <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΠΟΜΠΟΣ (Waiter)</button>
         <button class="btn btn-receiver" onclick="initMode('receiver')">👂 ΔΕΚΤΗΣ (Kitchen)</button>
-        <p style="color: #444; margin-top: 50px; font-size: 12px;">v2.0 Socket Connected</p>
+        <p style="color: #444; margin-top: 40px; font-size: 12px;">v3.0 All Hacks Included</p>
     </div>
 
     <div id="senderScreen" class="screen">
@@ -49,82 +55,143 @@
     <div id="receiverScreen" class="screen">
         <button class="btn-logout" onclick="location.reload()">Exit</button>
         <h1>ΔΕΚΤΗΣ</h1>
-        <div style="font-size: 80px; margin: 20px;">👂</div>
-        <p style="color: #aaa;">Σύνδεση Ενεργή</p>
         
-        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP ALARM</button>
+        <div style="font-size: 60px; margin: 10px;">👂</div>
+        <p id="statusText" style="color: #aaa;">Αναμονή...</p>
 
-        <button class="btn btn-fake-lock" onclick="toggleFakeLock(true)">🔒 Black Screen (Save Battery)</button>
+        <button class="btn btn-pip" onclick="togglePiP()">📺 BACKGROUND MODE (PiP)</button>
+        <button class="btn btn-fake-lock" onclick="toggleFakeLock(true)">🔒 Black Screen</button>
+
+        <button class="btn btn-stop" id="stopBtn" onclick="stopAlarm()">🔕 STOP ALARM</button>
     </div>
 
     <div id="fakeLockOverlay" onclick="toggleFakeLock(false)">
-        <div id="fakeLockText">Tap anywhere to unlock</div>
+        <div id="fakeLockText">Tap twice or swipe to unlock</div>
     </div>
 
     <audio id="silencePlayer" loop playsinline>
         <source src="silence.mp3" type="audio/mpeg">
     </audio>
     
-    <audio id="alertPlayer" preload="auto" playsinline>
+    <audio id="alertPlayer" preload="auto" loop playsinline>
         <source src="alert.mp3" type="audio/mpeg">
     </audio>
 
+    <canvas id="canvas" width="100" height="100" style="display:none;"></canvas>
+    <video id="pipVideo" muted playsinline></video>
+
     <script src="/socket.io/socket.io.js"></script>
 
-<script>
+    <script>
         const socket = io();
         let wakeLock = null;
         let heartbeatInterval = null;
-        let vibrationInterval = null; // Μεταβλητή για το Loop δόνησης
+        let vibrationInterval = null;
 
-        // --- ΛΕΙΤΟΥΡΓΙΕΣ ΔΟΝΗΣΗΣ ---
+        // --- 1. VIBRATION LOGIC ---
         function startVibration() {
             if (navigator.vibrate) {
                 if (vibrationInterval) clearInterval(vibrationInterval);
-                // Πρώτη δόνηση
-                navigator.vibrate([500, 300, 500, 300]);
-                // Επανάληψη (Loop) κάθε 1.6 δευτερόλεπτα
+                // Pattern: Buzz (500ms) - Wait (200ms) - Buzz (500ms) - Wait (1000ms)
+                const pattern = [500, 200, 500, 1000];
+                navigator.vibrate(pattern);
+                
+                // Υπολογισμός διάρκειας pattern για το Loop
+                const totalDuration = pattern.reduce((a, b) => a + b, 0);
+                
                 vibrationInterval = setInterval(() => {
-                    navigator.vibrate([500, 300, 500, 300]);
-                }, 1600);
+                    navigator.vibrate(pattern);
+                }, totalDuration);
             }
         }
 
         function stopVibration() {
-            if (vibrationInterval) {
-                clearInterval(vibrationInterval);
-                vibrationInterval = null;
-            }
-            if (navigator.vibrate) navigator.vibrate(0); // Σταμάτα αμέσως
+            if (vibrationInterval) clearInterval(vibrationInterval);
+            if (navigator.vibrate) navigator.vibrate(0);
         }
 
-        // --- 1. ANTI-SLEEP MECHANISMS ---
-        async function enableAntiSleep() {
-            const silence = document.getElementById('silencePlayer');
-            silence.volume = 0.01; 
+        // --- 2. PiP HACK (Background Persistence) ---
+        const canvas = document.getElementById('canvas');
+        const video = document.getElementById('pipVideo');
+        const ctx = canvas.getContext('2d');
+        let pipColorToggle = false;
+
+        // Φτιάχνουμε μια ροή βίντεο από το Canvas
+        ctx.fillStyle = 'green';
+        ctx.fillRect(0, 0, 100, 100);
+        const stream = canvas.captureStream(10); // 10 FPS είναι αρκετά
+        video.srcObject = stream;
+
+        // Loop ζωγραφικής για να φαίνεται ενεργό το βίντεο
+        setInterval(() => {
+            pipColorToggle = !pipColorToggle;
+            ctx.fillStyle = pipColorToggle ? '#00C853' : '#2962FF'; // Πράσινο / Μπλε
+            ctx.fillRect(0, 0, 100, 100);
+            
+            // Γράφουμε και την ώρα για να αλλάζει σίγουρα η εικόνα
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText("LIVE", 20, 55);
+        }, 1000);
+
+        async function togglePiP() {
             try {
-                await silence.play();
-                console.log("Silent loop playing...");
-            } catch (err) {
-                console.log("Audio play failed (waiting for interaction)");
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await video.play();
+                    await video.requestPictureInPicture();
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Το PiP δεν υποστηρίζεται ή δεν έχει πατηθεί το Play.");
+            }
+        }
+
+        // --- 3. MEDIA SESSION & NOTIFICATIONS ---
+        function setupAdvancedBackground() {
+            // Media Session Metadata
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'BellGo Alert System',
+                    artist: 'Active Connection',
+                    album: 'Kitchen'
+                });
+                navigator.mediaSession.setActionHandler('play', () => {});
+                navigator.mediaSession.setActionHandler('pause', () => {});
             }
 
+            // Notifications
+            if ("Notification" in window) {
+                Notification.requestPermission();
+            }
+        }
+
+        // --- 4. ANTI-SLEEP & INIT ---
+        async function enableAntiSleep() {
+            // Audio Loop
+            const silence = document.getElementById('silencePlayer');
+            silence.volume = 0.01;
+            try { await silence.play(); } catch(e) {}
+
+            // Screen WakeLock
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log("WakeLock Active");
                 }
-            } catch (err) { console.log("WakeLock Error:", err); }
+            } catch (e) {}
 
+            // Heartbeat
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => {
                 if (socket.connected) socket.emit('keep-alive');
             }, 30000);
         }
 
-        // --- 2. INITIALIZATION ---
         function initMode(mode) {
             enableAntiSleep();
+            setupAdvancedBackground();
+
             document.getElementById('setupScreen').style.display = 'none';
             
             if (mode === 'sender') {
@@ -135,7 +202,7 @@
             }
         }
 
-        // --- 3. SENDER LOGIC ---
+        // --- 5. SENDER ---
         function sendAlert() {
             const btn = document.getElementById('triggerBtn');
             btn.disabled = true;
@@ -149,29 +216,40 @@
                 btn.innerText = "🔔 ΚΛΗΣΗ";
                 btn.style.opacity = "1";
                 document.getElementById('senderStatus').innerText = "Στάλθηκε: " + new Date().toLocaleTimeString();
-            }, 1500);
+            }, 1000);
         }
 
-        // --- 4. RECEIVER LOGIC ---
+        // --- 6. RECEIVER ---
         function setupReceiverLogic() {
             socket.on('ring-bell', () => {
                 console.log("ALARM RECEIVED!");
                 
-                // Προαιρετικό: Ξυπνάμε την οθόνη αν είναι μαύρη
-                toggleFakeLock(false); 
+                // A. Ξυπνάμε οθόνη (αν είναι σε Fake Lock)
+                toggleFakeLock(false);
 
+                // B. Ήχος (Loop μέσω HTML)
                 const alertPlayer = document.getElementById('alertPlayer');
-                const stopBtn = document.getElementById('stopBtn');
-
                 alertPlayer.currentTime = 0;
                 alertPlayer.volume = 1.0;
-                alertPlayer.play().catch(e => console.log("Sound blocked:", e));
+                alertPlayer.play().catch(e => console.log("Audio requires interaction"));
 
-                document.body.classList.add('alarm-active');
-                stopBtn.style.display = 'block';
+                // C. Visuals
+                document.body.classList.add('alarm-active'); // Κόκκινο φόντο
+                document.body.classList.add('strobe'); // Flash effect
+                document.getElementById('stopBtn').style.display = 'block';
 
-                // ΕΔΩ ΕΓΙΝΕ Η ΔΙΟΡΘΩΣΗ:
-                startVibration(); 
+                // D. Δόνηση (Loop)
+                startVibration();
+
+                // E. Notification (Αν είναι background)
+                if (document.hidden && Notification.permission === "granted") {
+                    const notif = new Notification("🚨 ΚΟΥΔΟΥΝΙ!", {
+                        body: "Σε φωνάζουν από τη σάλα!",
+                        tag: 'alarm',
+                        renotify: true
+                    });
+                    notif.onclick = () => { window.focus(); notif.close(); };
+                }
             });
         }
 
@@ -180,14 +258,14 @@
             alertPlayer.pause();
             alertPlayer.currentTime = 0;
             
-            // ΕΔΩ ΕΓΙΝΕ Η ΔΙΟΡΘΩΣΗ:
             stopVibration();
-
+            
             document.body.classList.remove('alarm-active');
+            document.body.classList.remove('strobe');
             document.getElementById('stopBtn').style.display = 'none';
         }
 
-        // --- 5. FAKE LOCK ---
+        // --- 7. FAKE LOCK ---
         function toggleFakeLock(enable) {
             const overlay = document.getElementById('fakeLockOverlay');
             if (enable) {
@@ -197,7 +275,7 @@
                 }
             } else {
                 overlay.style.display = 'none';
-                if (document.exitFullscreen) {
+                if (document.exitFullscreen && document.fullscreenElement) {
                     document.exitFullscreen().catch(e=>{});
                 }
             }
@@ -205,5 +283,3 @@
     </script>
 </body>
 </html>
-
-
