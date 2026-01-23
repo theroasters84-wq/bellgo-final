@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Visible Traps</title>
+    <title>BellGo Fully Kiosk Edition</title>
     <style>
         /* --- CSS STYLES --- */
         body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', sans-serif; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; user-select: none; }
@@ -19,7 +19,7 @@
         .btn-logout { position: absolute; top: 15px; right: 15px; background: transparent; color: #666; border: 1px solid #444; padding: 5px 10px; font-size: 12px; border-radius: 5px; z-index: 20; }
 
         /* Screens */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 60px; /* Χώρος για να μην πατάμε την κάτω παγίδα κατά λάθος */ }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 60px; }
         #setupScreen { display: flex; }
 
         /* Fake Lock Overlay */
@@ -36,31 +36,24 @@
         #pipVideo { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
         /* --- ΤΑ ΚΟΚΚΙΝΑ ΚΟΥΜΠΙΑ (ΠΑΓΙΔΕΣ) --- */
+        /* Αν χρησιμοποιείς Fully Kiosk Kiosk Mode, αυτές οι παγίδες είναι λιγότερο χρήσιμες, 
+           αλλά τις αφήνω όπως τις ζήτησες */
         .trap-zone {
-            position: fixed;
-            z-index: 99999; /* Πάνω από όλα */
-            
-            /* ΕΔΩ ΕΒΑΛΑ ΧΡΩΜΑ ΓΙΑ ΝΑ ΤΑ ΒΛΕΠΕΙΣ */
-            background-color: rgba(255, 0, 0, 0.4); /* Κόκκινο με 40% διαφάνεια */
-            
-            border: 1px solid red;
-            pointer-events: auto; /* Να πιάνουν το άγγιγμα */
+            position: fixed; z-index: 99999;
+            background-color: rgba(255, 0, 0, 0.4); /* Κόκκινο με διαφάνεια */
+            border: 1px solid red; pointer-events: auto;
         }
-        
-        /* Η κάτω παγίδα (λίγο πιο χοντρή για να την πετυχαίνεις εύκολα στο τεστ) */
         .trap-bottom { bottom: 0; left: 0; width: 100%; height: 40px; } 
-        
-        /* Η δεξιά παγίδα */
         .trap-right { top: 0; right: 0; width: 30px; height: 100%; } 
     </style>
 </head>
 <body>
 
     <div id="setupScreen" class="screen">
-        <h2 style="margin-bottom: 40px;">BellGo Test Mode</h2>
+        <h2 style="margin-bottom: 40px;">BellGo Kiosk Edition</h2>
         <button class="btn btn-sender" onclick="initMode('sender')">🔔 ΠΟΜΠΟΣ</button>
         <button class="btn btn-receiver" onclick="initMode('receiver')">👂 ΔΕΚΤΗΣ</button>
-        <p style="color: #f44336; margin-top: 40px; font-size: 14px;">⚠️ RED ZONES VISIBLE ⚠️</p>
+        <p style="color: #888; margin-top: 40px; font-size: 12px;">Fully Kiosk Optimized</p>
     </div>
 
     <div id="senderScreen" class="screen">
@@ -84,9 +77,8 @@
     </div>
 
     <div id="trapBottom" class="trap-zone trap-bottom" ontouchstart="tryAutoPiP()">
-        <span style="font-size:10px; color:white; position:absolute; left:50%;">SWIPE UP HERE</span>
+        <span style="font-size:10px; color:white; position:absolute; left:50%;">TRAP</span>
     </div>
-    
     <div id="trapRight" class="trap-zone trap-right" ontouchstart="tryAutoPiP()"></div>
 
     <div id="fakeLockOverlay" onclick="toggleFakeLock(false)">
@@ -111,10 +103,18 @@
         let heartbeatInterval = null;
         let vibrationInterval = null;
 
-        // --- VIBRATION ---
+        // --- 1. FULLY KIOSK VIBRATION LOGIC ---
         function startVibration() {
-            if (navigator.vibrate) {
-                if (vibrationInterval) clearInterval(vibrationInterval);
+            if (vibrationInterval) clearInterval(vibrationInterval);
+
+            // ΠΕΡΙΠΤΩΣΗ 1: Είμαστε μέσα στο Fully Kiosk App
+            if (window.fully) {
+                console.log("Starting Fully Kiosk Native Vibration");
+                fully.vibrate(); 
+                vibrationInterval = setInterval(() => { fully.vibrate(); }, 1000);
+            } 
+            // ΠΕΡΙΠΤΩΣΗ 2: Απλός Browser
+            else if (navigator.vibrate) {
                 const pattern = [500, 200, 500, 1000];
                 navigator.vibrate(pattern);
                 const totalDuration = pattern.reduce((a, b) => a + b, 0);
@@ -124,6 +124,14 @@
 
         function stopVibration() {
             if (vibrationInterval) clearInterval(vibrationInterval);
+            
+            // Σταμάτημα για Fully Kiosk
+            if (window.fully) { 
+                // Δεν υπάρχει explicit stop loop, απλά σταματάμε το interval, 
+                // αλλά μπορούμε να κάνουμε ένα μικρό hack αν κολλήσει
+            }
+            
+            // Σταμάτημα για Browser
             if (navigator.vibrate) navigator.vibrate(0);
         }
 
@@ -160,8 +168,8 @@
 
         // --- TRAP LOGIC ---
         function tryAutoPiP() {
+            // Αν είμαστε σε Fully Kiosk, δεν χρειάζεται PiP, αλλά το αφήνουμε για ασφάλεια
             console.log("Trap touched!");
-            // Κάνουμε μια μικρή δόνηση για να καταλάβεις ότι έπιασε η παγίδα
             if (navigator.vibrate) navigator.vibrate(50);
             
             if (!document.pictureInPictureElement) {
@@ -194,7 +202,11 @@
             const silence = document.getElementById('silencePlayer');
             silence.volume = 0.01;
             try { await silence.play(); } catch(e) {}
+            
+            // Προσπάθεια για WakeLock Browser API
             try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+            
+            // Καρδιοχτύπι (Socket Heartbeat)
             if (heartbeatInterval) clearInterval(heartbeatInterval);
             heartbeatInterval = setInterval(() => { if (socket.connected) socket.emit('keep-alive'); }, 30000);
         }
@@ -226,18 +238,37 @@
 
         function setupReceiverLogic() {
             socket.on('ring-bell', () => {
+                console.log("ALARM RECEIVED!");
+
+                // --- FULLY KIOSK NATIVE COMMANDS ---
+                if (window.fully) {
+                    // 1. Ξύπνα την οθόνη (ακόμα κι αν είναι μαύρη)
+                    fully.turnScreenOn();
+                    
+                    // 2. Φέρε την εφαρμογή μπροστά (αν έχει κατεβασμένη μπάρα)
+                    fully.bringToForeground();
+                    
+                    // 3. Βάλε ήχο στο τέρμα (Stream 3 = Music)
+                    try { fully.setAudioVolume(100, 3); } catch(e) {}
+                }
+
+                // Ξύπνα από Fake Lock
                 toggleFakeLock(false);
+
+                // Παίξε Ήχο
                 const alertPlayer = document.getElementById('alertPlayer');
                 alertPlayer.currentTime = 0;
                 alertPlayer.volume = 1.0;
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
                 alertPlayer.play().catch(e => console.log("Interaction needed"));
 
+                // UI Updates
                 document.body.classList.add('alarm-active');
                 document.body.classList.add('strobe');
                 document.getElementById('stopBtn').style.display = 'block';
                 document.getElementById('statusText').innerText = "🚨 ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ 🚨";
 
+                // Ξεκίνα τη δόνηση (Native ή Browser)
                 startVibration();
 
                 if (document.hidden && Notification.permission === "granted") {
@@ -251,7 +282,9 @@
             alertPlayer.pause();
             alertPlayer.currentTime = 0;
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+            
             stopVibration();
+            
             document.body.classList.remove('alarm-active');
             document.body.classList.remove('strobe');
             document.getElementById('stopBtn').style.display = 'none';
@@ -262,6 +295,7 @@
             const overlay = document.getElementById('fakeLockOverlay');
             if (enable) {
                 overlay.style.display = 'block';
+                // Αν είμαστε σε Fully Kiosk, μπορεί να μην χρειάζεται Fullscreen API, αλλά το κρατάμε
                 if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(e=>{});
             } else {
                 overlay.style.display = 'none';
