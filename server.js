@@ -12,8 +12,8 @@ const io = new Server(server, {
         maxDisconnectionDuration: 2 * 60 * 1000,
         skipMiddlewares: true,
     },
-    pingInterval: 25000,
-    pingTimeout: 20000
+    pingInterval: 25000, 
+    pingTimeout: 20000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -22,60 +22,58 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Αποθήκευση χρηστών: { socketId: { name, role, room } }
-let users = {};
+// Βάση δεδομένων στη μνήμη RAM
+let users = {}; 
 
 io.on('connection', (socket) => {
-    console.log(`[CONNECT] ${socket.id}`);
+    console.log(`[CONNECT] New Socket: ${socket.id}`);
 
-    // 1. ΕΙΣΟΔΟΣ ΣΤΟ ΔΩΜΑΤΙΟ (Login)
+    // 1. ΕΙΣΟΔΟΣ
     socket.on('join-store', (data) => {
         const { storeName, username, role } = data;
         
-        // Αποθήκευση στοιχείων χρήστη
-        users[socket.id] = { name: username, role: role, room: storeName };
+        // Αποθήκευση χρήστη με το ΤΡΕΧΟΝ socket.id
+        users[socket.id] = { 
+            id: socket.id, // Κρατάμε το ID για σιγουριά
+            name: username, 
+            role: role, 
+            room: storeName 
+        };
         
-        // Ο χρήστης μπαίνει στο δωμάτιο του μαγαζιού
         socket.join(storeName);
-        
-        console.log(`[LOGIN] ${username} (${role}) joined ${storeName}`);
+        console.log(`[LOGIN] ${username} (${role}) -> ${storeName}`);
 
-        // Ενημέρωση λίστας χρηστών (μόνο για το συγκεκριμένο δωμάτιο)
-        updateUserList(storeName);
+        // Ενημερώνουμε ΑΜΕΣΩΣ τον Admin του δωματίου
+        broadcastUserList(storeName);
         
-        // Καλωσόρισμα στο Chat
-        io.to(storeName).emit('chat-message', {
-            sender: 'System',
-            text: `${username} συνδέθηκε!`
-        });
+        // Μήνυμα στο Chat
+        io.to(storeName).emit('chat-message', { sender: 'System', text: `${username} συνδέθηκε.` });
     });
 
-    // 2. ΚΛΗΣΗ (Alarm)
+    // 2. ΚΛΗΣΗ (ALARM)
     socket.on('trigger-alarm', (data) => {
-        const currentUser = users[socket.id];
-        if (!currentUser) return;
+        const sender = users[socket.id];
+        if (!sender) return;
 
-        const targetId = data.targetId; // Αν υπάρχει ID, είναι για συγκεκριμένο άτομο
+        const targetId = data.targetId;
 
         if (targetId) {
-            // Χτυπάει ΜΟΝΟ ο συγκεκριμένος
-            console.log(`[ALARM] Direct to ${targetId}`);
-            io.to(targetId).emit('ring-bell', { sender: currentUser.name });
+            // ΑΤΟΜΙΚΗ ΚΛΗΣΗ
+            console.log(`[ALARM] ${sender.name} calls -> ${targetId}`);
+            // Στέλνουμε MONO στον συγκεκριμένο
+            io.to(targetId).emit('ring-bell', { sender: sender.name });
         } else {
-            // Χτυπάει ΟΛΟΙ στο δωμάτιο (εκτός από τον αποστολέα)
-            console.log(`[ALARM] To ALL in ${currentUser.room}`);
-            socket.to(currentUser.room).emit('ring-bell', { sender: currentUser.name });
+            // ΟΜΑΔΙΚΗ ΚΛΗΣΗ
+            console.log(`[ALARM] ${sender.name} calls ALL in ${sender.room}`);
+            socket.to(sender.room).emit('ring-bell', { sender: sender.name });
         }
     });
 
-    // 3. CHAT MESSAGE
-    socket.on('send-chat', (message) => {
+    // 3. CHAT
+    socket.on('send-chat', (msg) => {
         const user = users[socket.id];
         if (user) {
-            io.to(user.room).emit('chat-message', {
-                sender: user.name,
-                text: message
-            });
+            io.to(user.room).emit('chat-message', { sender: user.name, text: msg });
         }
     });
 
@@ -85,26 +83,25 @@ io.on('connection', (socket) => {
         if (user) {
             console.log(`[DISCONNECT] ${user.name}`);
             const room = user.room;
-            delete users[socket.id];
+            delete users[socket.id]; // Διαγραφή από τη μνήμη
             
-            // Ενημέρωση των υπολοίπων
-            updateUserList(room);
+            // Ενημέρωση της λίστας για να φύγει το κουμπί
+            broadcastUserList(room);
             io.to(room).emit('chat-message', { sender: 'System', text: `${user.name} αποσυνδέθηκε.` });
         }
     });
 });
 
-// Βοηθητική συνάρτηση για αποστολή λίστας
-function updateUserList(room) {
-    // Βρες όλους τους χρήστες σε αυτό το δωμάτιο
-    const roomUsers = [];
-    for (const [id, info] of Object.entries(users)) {
-        if (info.room === room) {
-            roomUsers.push({ id: id, name: info.name, role: info.role });
+// Συνάρτηση που στέλνει τη λίστα σε όλους στο δωμάτιο
+function broadcastUserList(room) {
+    const userList = [];
+    for (const [key, value] of Object.entries(users)) {
+        if (value.room === room && value.role === 'staff') {
+            userList.push({ id: value.id, name: value.name });
         }
     }
-    // Στείλε τη λίστα σε όλους στο δωμάτιο (ο Admin θα τη διαβάσει)
-    io.to(room).emit('update-user-list', roomUsers);
+    // Στέλνουμε τη λίστα σε όλους (ο Admin θα τη χρησιμοποιήσει)
+    io.to(room).emit('update-user-list', userList);
 }
 
 const PORT = process.env.PORT || 3000;
