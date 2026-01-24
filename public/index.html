@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo ACTIVE</title>
+    <title>BellGo Auto-Setup</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -22,7 +22,7 @@
 
         .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
         
-        input { padding: 12px; margin: 8px; width: 90%; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 16px; text-align: center; }
+        input { padding: 15px; margin: 10px; width: 90%; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 16px; text-align: center; }
         
         .btn { padding: 15px; font-size: 18px; border-radius: 12px; width: 100%; margin: 5px 0; font-weight: bold; border: none; cursor: pointer; color: white; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .btn:active { transform: scale(0.96); }
@@ -30,6 +30,10 @@
         .btn-blue { background-color: #2962FF; }  
         .btn-red { background-color: #D50000; } 
         .btn-grey { background-color: #424242; font-size: 14px; padding: 10px; margin-top: 10px; width: 50%; }  
+        
+        /* Κουμπί Setup - Πορτοκαλί για να ξεχωρίζει */
+        .btn-setup { background-color: #FF9800; color: #000; font-weight: 900; margin-bottom: 20px; animation: glow 2s infinite; }
+        
         .btn-user { background-color: #37474F; border: 1px solid #546E7A; margin: 4px; width: 46%; display: inline-block; font-size: 14px; padding: 12px; }
 
         /* STOP OVERLAY */
@@ -50,13 +54,16 @@
         .dot { height: 8px; width: 8px; background-color: #00C853; border-radius: 50%; display: inline-block; animation: blink 2s infinite; }
 
         @keyframes pulse { 0% { background-color: #b71c1c; transform: scale(1); } 50% { background-color: #ff0000; transform: scale(1.02); } 100% { background-color: #b71c1c; transform: scale(1); } }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes glow { 0% { box-shadow: 0 0 5px #FF9800; } 50% { box-shadow: 0 0 20px #FF9800; } 100% { box-shadow: 0 0 5px #FF9800; } }
     </style>
 </head>
 <body>
 
     <div id="loginScreen" class="screen" style="display:flex;">
-        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO HACKED V5</h2>
+        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO V6</h2>
+        
+        <button class="btn btn-setup" onclick="runSetupBot()">🛠️ ΠΑΤΑ ΓΙΑ ΡΥΘΜΙΣΗ (BOT)</button>
+        
         <input type="text" id="storeName" placeholder="Όνομα Μαγαζιού">
         <input type="text" id="username" placeholder="Όνομα Χρήστη">
         <input type="password" id="password" placeholder="Κωδικός (1234)" inputmode="numeric">
@@ -90,7 +97,7 @@
         <h2 id="receiverHeader">Αναμονή...</h2>
         
         <div class="spotify-indicator" id="spotifyStatus">
-            <span class="dot"></span> CPU Lock Active
+            <span class="dot"></span> Bar Player Active
         </div>
 
         <button onclick="activateFakeSleep()" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:80%;">
@@ -128,23 +135,45 @@
         let foregroundInterval = null;
         let wakeLock = null;
 
-        // --- HACK 1: WAKE LOCK API ---
+        // --- 🤖 BOT: SETUP SETTINGS ---
+        function runSetupBot() {
+            if (window.fully) {
+                // 1. Εμφάνιση Μηνύματος
+                fully.showToast("🤖 Το Bot ξεκίνησε τις ρυθμίσεις...");
+                
+                try {
+                    // 2. Ρυθμίσεις Fully Kiosk (Αυτόματα)
+                    fully.setBooleanSetting("keepScreenOn", true);       // Μην κοιμάσαι
+                    fully.setBooleanSetting("unlockScreen", true);       // Ξεκλείδωμα
+                    fully.setBooleanSetting("listenVolumeButtons", true); // Κουμπιά έντασης
+                    fully.setBooleanSetting("screensaverAlways", true);   // Για το Fake Sleep
+                    fully.setBooleanSetting("foregroundOnActivity", true); // Έλα μπροστά
+                    fully.setBooleanSetting("forceWifi", true);          // Κράτα WiFi
+                    
+                    fully.showToast("✅ Ρυθμίσεις Fully OK!");
+
+                    // 3. Ρυθμίσεις Android (Χειροκίνητα - Ανοίγει το μενού)
+                    setTimeout(() => {
+                        alert("Τώρα θα ανοίξω τις ρυθμίσεις 'Draw over other apps'.\n\n👉 Βρες το Fully Kiosk και κάντο ON!");
+                        fully.requestOverlayPermission();
+                    }, 1000);
+
+                } catch (e) {
+                    alert("Κάτι πήγε στραβά. Είσαι μέσα στο Fully Kiosk?");
+                }
+            } else {
+                alert("Αυτό δουλεύει μόνο μέσα στην εφαρμογή Fully Kiosk!");
+            }
+        }
+
+        // --- HACK: WAKE LOCK ---
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock active!');
                 }
-            } catch (err) {
-                console.log('Wake Lock Error:', err);
-            }
+            } catch (err) { console.log(err); }
         }
-
-        // --- HACK 2: TITLE BLINKER (Keeps Browser Busy) ---
-        setInterval(() => {
-            if (isRinging) document.title = "🔔 ΚΛΗΣΗ! 🔔";
-            else document.title = document.title === "BellGo ACTIVE" ? "..." : "BellGo ACTIVE";
-        }, 2000);
 
         // --- LOGIN ---
         function attemptLogin(role) {
@@ -155,11 +184,10 @@
             if (!store || !user) { alert("Συμπλήρωσε τα πεδία!"); return; }
             if (pass !== '1234') { document.getElementById('loginError').style.display = 'block'; return; }
 
-            // START HACKS
-            startFakeSpotify();
-            requestWakeLock(); // CPU Lock
-            runFullyKioskBot();
-
+            // Start Systems
+            startNotificationBarPlayer(); // Μπάρα Ειδοποιήσεων
+            requestWakeLock();
+            
             if(role === 'staff') startNavBot();
 
             socket.emit('join-store', { storeName: store, username: user, role: role });
@@ -177,31 +205,40 @@
             }
         }
 
-        // --- HACK 3: FAKE SLEEP (SCREENSAVER) ---
+        // --- FAKE SLEEP (Safe Mode) ---
         function activateFakeSleep() {
             if (window.fully) {
-                // Αντί να κλείσουμε την εφαρμογή, λέμε στο Fully να ξεκινήσει Screensaver
-                // Πρέπει να έχεις βάλει Screensaver = Dim Screen ή Black Screen στο Fully
+                // Ρυθμίζουμε τον Screensaver να είναι μαύρος και σκοτεινός
+                fully.setStringSetting("screensaverUrl", "about:blank");
+                fully.setStringSetting("screensaverBrightness", "0");
                 fully.startScreensaver();
             } else {
-                alert("Αυτή η λειτουργία θέλει Fully Kiosk.");
+                alert("Λειτουργεί μόνο στο Fully Kiosk");
             }
         }
 
-        // --- FAKE SPOTIFY ---
-        function startFakeSpotify() {
+        // --- PLAYER ΜΠΑΡΑΣ ΕΙΔΟΠΟΙΗΣΕΩΝ ---
+        function startNotificationBarPlayer() {
             const silent = document.getElementById('silentPlayer');
-            silent.volume = 0.05;
+            silent.volume = 0.1;
+            
             silent.play().then(() => {
+                console.log("Silent Player OK");
+                // Φτιάχνουμε την μπάρα
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: 'BellGo Protection',
                         artist: 'System Online',
-                        album: 'Do Not Close'
+                        album: 'Do Not Close',
+                        artwork: [ { src: 'https://cdn-icons-png.flaticon.com/512/84/84183.png', sizes: '96x96', type: 'image/png' } ]
                     });
                     navigator.mediaSession.playbackState = 'playing';
+                    // Εικονικά κουμπιά για να μείνει η μπάρα ενεργή
+                    navigator.mediaSession.setActionHandler('play', function() { silent.play(); });
+                    navigator.mediaSession.setActionHandler('pause', function() { silent.play(); });
+                    navigator.mediaSession.setActionHandler('stop', function() { /* Block stop */ });
                 }
-            }).catch(e => setTimeout(startFakeSpotify, 1000));
+            }).catch(e => console.log("Silent Play Blocked:", e));
         }
 
         function logout() {
@@ -232,21 +269,21 @@
             isRinging = true;
             document.getElementById('callerName').innerText = data.sender || "Admin";
 
-            // FULLY KIOSK WAKE UP
+            // Fully Wake Up
             if (window.fully) {
-                fully.stopScreensaver(); // Ξύπνα από Screensaver
+                fully.stopScreensaver();
                 fully.turnScreenOn();
                 fully.bringToForeground();
                 fully.setMusicVolume(100);
             }
 
-            // LOOP ΓΙΑ ΝΑ ΠΕΤΑΓΕΤΑΙ ΣΥΝΕΧΕΙΑ
+            // Loop Foreground
             if (window.fully) {
                 if(foregroundInterval) clearInterval(foregroundInterval);
                 foregroundInterval = setInterval(() => {
                     fully.bringToForeground();
                     fully.turnScreenOn();
-                }, 800); 
+                }, 500); 
             }
 
             document.getElementById('stopOverlay').style.display = 'flex';
@@ -267,17 +304,6 @@
             player.currentTime = 0;
             stopVibration();
             document.getElementById('stopOverlay').style.display = 'none';
-        }
-
-        function runFullyKioskBot() {
-            if (window.fully) {
-                try {
-                    fully.requestOverlayPermission();
-                    fully.setMusicVolume(100);
-                    // ΑΥΤΟ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ:
-                    fully.setBooleanSetting("keepScreenOn", true); 
-                } catch (e) {}
-            }
         }
 
         function startNavBot() {
