@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo WEAPONIZED</title>
     <style>
+        /* CSS ΓΙΑ ΜΕΓΙΣΤΗ ΑΠΟΔΟΣΗ */
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { 
             background-color: #000; color: #fff; 
-            font-family: sans-serif; text-align: center; 
+            font-family: 'Segoe UI', sans-serif; text-align: center; 
             margin: 0; height: 100vh; overflow: hidden; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
@@ -21,15 +22,16 @@
         .btn { width: 90%; padding: 25px; font-size: 22px; margin: 10px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; color: white; }
         .btn-green { background: #00E676; color: #000; box-shadow: 0 0 15px #00E676; }
         .btn-blue { background: #2962FF; box-shadow: 0 0 15px #2962FF; }
-        
-        /* FAKE LOCK (ΜΑΥΡΗ ΟΘΟΝΗ) */
+        .btn-dark { background: #222; color: #888; border: 1px solid #444; }
+
+        /* FAKE LOCK (Η ΠΑΓΙΔΑ ΓΙΑ ΤΟΝ ΥΠΝΟ) */
         #fakeLockScreen {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: black; z-index: 5000; cursor: pointer;
             flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* ΟΘΟΝΗ ΚΛΗΣΗΣ (ALARM WEAPON) */
+        /* ΟΘΟΝΗ ΚΛΗΣΗΣ (ΤΟ ΟΠΛΟ) */
         #alarmScreen {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #D50000; z-index: 9999; /* Πάνω από όλα */
@@ -37,7 +39,6 @@
             animation: panic 0.2s infinite;
         }
 
-        /* ANIMATION ΠΑΝΙΚΟΥ */
         @keyframes panic { 
             0% { background: #D50000; transform: scale(1); } 
             50% { background: #FF1744; transform: scale(1.02); } 
@@ -55,7 +56,7 @@
 <body>
 
     <div id="loginScreen" class="screen active">
-        <h1 style="color:#00E676;">BELLGO WEAPONIZED</h1>
+        <h1 style="color:#00E676;">BELLGO V7</h1>
         <button class="btn btn-green" onclick="startSystem('admin')">ΕΙΜΑΙ ADMIN (ΠΟΜΠΟΣ)</button>
         <button class="btn btn-blue" onclick="startSystem('staff')">ΕΙΜΑΙ STAFF (ΔΕΚΤΗΣ)</button>
     </div>
@@ -63,19 +64,22 @@
     <div id="adminScreen" class="screen">
         <h1>ADMIN PANEL</h1>
         <button class="btn btn-green" id="callBtn" onclick="sendCall()">📢 ΚΛΗΣΗ ΟΛΩΝ</button>
-        <p id="adminStatus" style="color:#888;">System Ready</p>
+        <p style="color:#888; margin-top:20px;">Ο Πομπός είναι έτοιμος.</p>
     </div>
 
     <div id="staffScreen" class="screen">
         <h1 style="font-size: 50px;">🎧</h1>
-        <h2>SERVICE ACTIVE</h2>
-        <div style="font-size:12px; color:#00E676; border:1px solid #00E676; padding:10px; border-radius:10px;">
-            ● Anti-Sleep Engine: ON<br>
-            ● Hardware Buttons: MAPPED
+        <h2>SYSTEM ARMED</h2>
+        
+        <div style="margin: 20px 0; font-size: 14px; color: #00E676;">
+            🔊 Audio Engine: ACTIVE<br>
+            📡 Socket: CONNECTED
         </div>
-        <button class="btn btn-blue" style="background:#222; margin-top:50px;" onclick="enableFakeLock()">
+
+        <button class="btn btn-dark" onclick="enableFakeLock()">
             🌙 FAKE LOCK (SAFE MODE)
         </button>
+        <p style="font-size:12px; color:#555;">Μην κλείνεις την οθόνη. Πάτα το Fake Lock.</p>
     </div>
 
     <div id="fakeLockScreen" onclick="disableFakeLock()">
@@ -86,38 +90,36 @@
         <h1 style="font-size:50px; color:white; margin-bottom:20px;">🚨 ΚΛΗΣΗ! 🚨</h1>
         <div class="stop-btn" onclick="stopAlarm()">STOP</div>
         <p style="color:white; font-weight:bold; margin-top:30px;">
-            Πάτα STOP ή οποιοδήποτε κουμπί στο πλάι
+            Πάτα STOP ή Volume Up/Down
         </p>
     </div>
 
     <audio id="alertSound" src="alert.mp3" loop preload="auto"></audio>
-    <audio id="silentLoop" loop>
-        <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////8AAAAATGF2YzU4LjM1AAAAAAAAAAAAAAAAJAAAAAAAAAAAASCC8iEAAAAA//oeZAAAAABAAAAA" type="audio/mpeg">
-    </audio>
+    
+    <audio id="silentLoop" src="silence.mp3" loop preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let myRole = '';
         let wakeLock = null;
-        let fightLoop = null; // Για το Fully Kiosk
+        let fightLoop = null; 
 
         // --- ΕΚΚΙΝΗΣΗ ΣΥΣΤΗΜΑΤΟΣ ---
         async function startSystem(role) {
             myRole = role;
             
-            // 1. Ενεργοποίηση Ήχου (Anti-Sleep)
+            // 1. Ενεργοποίηση "Σιωπηλού Κινητήρα" (Κρατάει το browser ξύπνιο)
             const silent = document.getElementById('silentLoop');
-            silent.volume = 0.01;
-            await silent.play().catch(e => console.log("Audio block"));
+            silent.volume = 0.05; 
+            await silent.play().catch(e => console.log("Click needed for audio"));
 
-            // 2. Ενεργοποίηση Wake Lock (Anti-Dim)
+            // 2. Ενεργοποίηση Wake Lock (Να μην σβήνει η οθόνη μόνη της)
             if ('wakeLock' in navigator) {
                 try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
             }
 
-            // 3. Σύνδεση με Server
-            // Εδώ απλά χρησιμοποιούμε το store 'General' για ευκολία, μπορείς να το αλλάξεις
+            // 3. Σύνδεση Socket
             socket.emit('join-store', { storeName: 'General', username: role, role: role });
 
             // 4. Αλλαγή Οθόνης
@@ -125,12 +127,11 @@
             if(role === 'admin') document.getElementById('adminScreen').classList.add('active');
             else document.getElementById('staffScreen').classList.add('active');
 
-            // 5. MEDIA SESSION API (ΤΟ ΚΟΛΠΟ ΓΙΑ ΤΑ ΚΟΥΜΠΙΑ)
+            // 5. ΟΠΛΙΣΜΟΣ MEDIA SESSION (Για να πιάνουν τα κουμπιά)
             setupMediaSession("BellGo Standby");
         }
 
-        // --- MEDIA SESSION "WEAPON" ---
-        // Αυτό κάνει το κινητό να νομίζει ότι είμαστε Player, άρα ακούει τα κουμπιά
+        // --- MEDIA SESSION (ΧΕΙΡΙΣΜΟΣ ΚΟΥΜΠΙΩΝ) ---
         function setupMediaSession(state) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -139,13 +140,12 @@
                     album: 'Do Not Close'
                 });
 
-                // ΟΛΑ τα κουμπιά κάνουν STOP
+                // Όλα τα κουμπιά κάνουν STOP τον συναγερμό
                 const actionHandler = () => {
                     if(document.getElementById('alarmScreen').style.display === 'flex') {
                         stopAlarm();
                     }
                 };
-
                 navigator.mediaSession.setActionHandler('play', actionHandler);
                 navigator.mediaSession.setActionHandler('pause', actionHandler);
                 navigator.mediaSession.setActionHandler('stop', actionHandler);
@@ -165,10 +165,9 @@
 
         // --- RECEIVE CALL (STAFF) ---
         socket.on('ring-bell', () => {
-            // Αν είμαι admin δεν χτυπάω
             if(myRole === 'admin') return;
 
-            // 1. ΕΜΦΑΝΙΣΗ ALARM SCREEN (OVERLAY)
+            // 1. ΠΕΤΑΓΜΑΤΑΙ Η ΟΘΟΝΗ ΚΛΗΣΗΣ
             document.getElementById('alarmScreen').style.display = 'flex';
             
             // 2. ΗΧΟΣ ΣΥΝΑΓΕΡΜΟΥ
@@ -177,17 +176,17 @@
             alertSnd.volume = 1.0;
             alertSnd.play();
 
-            // 3. ΑΛΛΑΓΗ MEDIA SESSION (Για να δούμε τίτλο στο Lock Screen)
+            // 3. ΑΛΛΑΓΗ MEDIA SESSION (Για να φαίνεται στο Lock Screen)
             setupMediaSession("🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ! 🚨");
 
-            // 4. ΔΟΝΗΣΗ (Επιθετική)
+            // 4. ΔΟΝΗΣΗ
             if(navigator.vibrate) navigator.vibrate([1000, 200, 1000, 200, 1000]);
 
-            // 5. FULLY KIOSK ATTACK (Αν υπάρχει)
+            // 5. FULLY KIOSK FORCE (Αν υπάρχει)
             if(window.fully) {
                 fully.turnScreenOn();
                 fully.bringToForeground();
-                // Loop για να μένει μπροστά
+                // Loop για να επιμένει
                 if(fightLoop) clearInterval(fightLoop);
                 fightLoop = setInterval(() => {
                     fully.bringToForeground();
@@ -207,13 +206,13 @@
             if(navigator.vibrate) navigator.vibrate(0);
             if(fightLoop) clearInterval(fightLoop);
 
-            // Επιστροφή στο ήρεμο session
             setupMediaSession("BellGo Standby");
         }
 
         // --- FAKE LOCK ---
         function enableFakeLock() {
             document.getElementById('fakeLockScreen').style.display = 'flex';
+            // Ζητάμε Full Screen για να κρύψουμε τις μπάρες
             if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
         }
         function disableFakeLock() {
