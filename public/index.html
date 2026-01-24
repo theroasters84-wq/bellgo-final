@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Spotify Mode</title>
+    <title>BellGo ACTIVE</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -56,7 +56,7 @@
 <body>
 
     <div id="loginScreen" class="screen" style="display:flex;">
-        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO SPOTIFY MODE</h2>
+        <h2 style="color:#00C853; margin-bottom:10px;">BELLGO HACKED V5</h2>
         <input type="text" id="storeName" placeholder="Όνομα Μαγαζιού">
         <input type="text" id="username" placeholder="Όνομα Χρήστη">
         <input type="password" id="password" placeholder="Κωδικός (1234)" inputmode="numeric">
@@ -90,12 +90,13 @@
         <h2 id="receiverHeader">Αναμονή...</h2>
         
         <div class="spotify-indicator" id="spotifyStatus">
-            <span class="dot"></span> Running in Background
+            <span class="dot"></span> CPU Lock Active
         </div>
 
-        <button onclick="toggleFakeLock(true)" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:80%;">
-            🔒 Fake Lock (Οθόνη Τσέπης)
+        <button onclick="activateFakeSleep()" style="margin-top:20px; background:#222; color:#888; border:1px solid #444; padding:15px; border-radius:10px; width:80%;">
+            🌙 ΛΕΙΤΟΥΡΓΙΑ ΥΠΝΟΥ (SAFE)
         </button>
+        <p style="font-size:10px; color:#555;">*Μην πατάς Home Button, πάτα το από πάνω</p>
 
         <div id="chatContainer" style="margin-top:auto;">
             <div id="chatMessagesStaff"></div>
@@ -114,24 +115,38 @@
         <p style="color:white; font-size:14px; margin-top:20px; font-weight:bold;">ΠΑΤΑ ΤΩΡΑ STOP<br>ή Volume Up</p>
     </div>
 
-    <div id="fakeLock" onclick="toggleFakeLock(false)" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:black; z-index:9000;">
-        <div style="position:absolute; bottom:50px; width:100%; text-align:center; color:#333; font-size:12px;">Double Tap to Unlock</div>
-    </div>
-
     <audio id="alertPlayer" preload="auto" loop playsinline><source src="alert.mp3" type="audio/mpeg"></audio>
-    
     <audio id="silentPlayer" src="silence.mp3" loop playsinline></audio>
 
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        const socket = io(); // Ναι, εδώ είναι το socket connection
+        const socket = io();
         let myRole = '';
         let isRinging = false;
         let vibrationInterval = null;
         let foregroundInterval = null;
+        let wakeLock = null;
 
-        // --- LOGIN & MEDIA START ---
+        // --- HACK 1: WAKE LOCK API ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock active!');
+                }
+            } catch (err) {
+                console.log('Wake Lock Error:', err);
+            }
+        }
+
+        // --- HACK 2: TITLE BLINKER (Keeps Browser Busy) ---
+        setInterval(() => {
+            if (isRinging) document.title = "🔔 ΚΛΗΣΗ! 🔔";
+            else document.title = document.title === "BellGo ACTIVE" ? "..." : "BellGo ACTIVE";
+        }, 2000);
+
+        // --- LOGIN ---
         function attemptLogin(role) {
             const store = document.getElementById('storeName').value.trim();
             const user = document.getElementById('username').value.trim();
@@ -140,20 +155,15 @@
             if (!store || !user) { alert("Συμπλήρωσε τα πεδία!"); return; }
             if (pass !== '1234') { document.getElementById('loginError').style.display = 'block'; return; }
 
-            // 1. Ξεκινάμε το "Spotify" Player (Media Session)
-            // Αυτό πρέπει να γίνει ΕΔΩ, με το πάτημα του κουμπιού (User Gesture)
+            // START HACKS
             startFakeSpotify();
-
-            // 2. Fully Kiosk Bot
+            requestWakeLock(); // CPU Lock
             runFullyKioskBot();
 
-            // 3. Fake GPS
             if(role === 'staff') startNavBot();
 
-            // 4. Socket Join
             socket.emit('join-store', { storeName: store, username: user, role: role });
 
-            // UI
             document.getElementById('loginScreen').style.display = 'none';
             myRole = role;
             
@@ -167,38 +177,31 @@
             }
         }
 
-        // --- FAKE SPOTIFY / NOTIFICATION BAR LOGIC ---
+        // --- HACK 3: FAKE SLEEP (SCREENSAVER) ---
+        function activateFakeSleep() {
+            if (window.fully) {
+                // Αντί να κλείσουμε την εφαρμογή, λέμε στο Fully να ξεκινήσει Screensaver
+                // Πρέπει να έχεις βάλει Screensaver = Dim Screen ή Black Screen στο Fully
+                fully.startScreensaver();
+            } else {
+                alert("Αυτή η λειτουργία θέλει Fully Kiosk.");
+            }
+        }
+
+        // --- FAKE SPOTIFY ---
         function startFakeSpotify() {
             const silent = document.getElementById('silentPlayer');
-            silent.volume = 0.1; // Χαμηλή ένταση για να μην ενοχλεί, αλλά να είναι "ενεργό"
-            
+            silent.volume = 0.05;
             silent.play().then(() => {
-                console.log("Silence.mp3 playing...");
-
-                // Ενεργοποίηση Media Session API (Η Μπάρα Ειδοποιήσεων)
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
-                        title: 'System Online',
-                        artist: 'BellGo Connected',
-                        album: 'Do Not Close',
-                        artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/84/84183.png', sizes: '96x96', type: 'image/png' },
-                            { src: 'https://cdn-icons-png.flaticon.com/512/84/84183.png', sizes: '128x128', type: 'image/png' },
-                        ]
+                        title: 'BellGo Protection',
+                        artist: 'System Online',
+                        album: 'Do Not Close'
                     });
-
                     navigator.mediaSession.playbackState = 'playing';
-
-                    // Ορίζουμε άδειες ενέργειες για να φαίνονται τα κουμπιά
-                    navigator.mediaSession.setActionHandler('play', function() { silent.play(); });
-                    navigator.mediaSession.setActionHandler('pause', function() { silent.play(); }); // Αν πατήσει pause, το ξαναξεκινάμε!
-                    navigator.mediaSession.setActionHandler('stop', function() { /* Do nothing */ });
                 }
-            }).catch(e => {
-                console.error("Silent Play Failed:", e);
-                // Αν αποτύχει, δοκιμάζουμε πάλι σε 1 δευτερόλεπτο
-                setTimeout(startFakeSpotify, 1000);
-            });
+            }).catch(e => setTimeout(startFakeSpotify, 1000));
         }
 
         function logout() {
@@ -206,12 +209,11 @@
             window.location.reload();
         }
 
-        // --- SOCKET LOGIC ---
+        // --- SOCKETS ---
         socket.on('update-user-list', (users) => {
             if (myRole !== 'admin') return;
             const container = document.getElementById('usersContainer');
             container.innerHTML = ''; 
-            if (users.length === 0) container.innerHTML = '<p style="color:#555; font-size:12px;">Κανείς συνδεδεμένος...</p>';
             users.forEach(u => {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-user';
@@ -225,43 +227,41 @@
             socket.emit('trigger-alarm', { targetId: targetId });
         }
 
-        // ΕΔΩ ΕΙΝΑΙ ΤΟ ΚΡΙΣΙΜΟ SOCKET.ON ΠΟΥ ΖΗΤΗΣΕΣ
         socket.on('ring-bell', (data) => {
             if (isRinging) return;
             isRinging = true;
             document.getElementById('callerName').innerText = data.sender || "Admin";
 
+            // FULLY KIOSK WAKE UP
             if (window.fully) {
+                fully.stopScreensaver(); // Ξύπνα από Screensaver
                 fully.turnScreenOn();
                 fully.bringToForeground();
                 fully.setMusicVolume(100);
             }
 
-            // Video Killer Loop
+            // LOOP ΓΙΑ ΝΑ ΠΕΤΑΓΕΤΑΙ ΣΥΝΕΧΕΙΑ
             if (window.fully) {
                 if(foregroundInterval) clearInterval(foregroundInterval);
                 foregroundInterval = setInterval(() => {
                     fully.bringToForeground();
                     fully.turnScreenOn();
-                }, 500); 
+                }, 800); 
             }
 
-            toggleFakeLock(false);
             document.getElementById('stopOverlay').style.display = 'flex';
 
             const player = document.getElementById('alertPlayer');
             player.currentTime = 0;
             player.volume = 1.0;
-            player.play().catch(e => console.log("Alert Error:", e));
+            player.play().catch(e => console.log(e));
             startVibration();
         });
 
         function stopAlarm() {
             if (!isRinging) return;
             isRinging = false;
-            
             if (foregroundInterval) { clearInterval(foregroundInterval); foregroundInterval = null; }
-            
             const player = document.getElementById('alertPlayer');
             player.pause();
             player.currentTime = 0;
@@ -274,9 +274,8 @@
                 try {
                     fully.requestOverlayPermission();
                     fully.setMusicVolume(100);
-                    fully.setBooleanSetting("keepScreenOn", true);
-                    fully.setBooleanSetting("unlockScreen", true);
-                    fully.setBooleanSetting("listenVolumeButtons", true);
+                    // ΑΥΤΟ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ:
+                    fully.setBooleanSetting("keepScreenOn", true); 
                 } catch (e) {}
             }
         }
@@ -284,7 +283,7 @@
         function startNavBot() {
             if ("geolocation" in navigator) {
                 setInterval(() => {
-                    navigator.geolocation.getCurrentPosition((p) => {}, (e) => {}, {enableHighAccuracy:true});
+                    navigator.geolocation.getCurrentPosition((p)=>{}, (e)=>{}, {enableHighAccuracy:true});
                 }, 15000);
             }
         }
@@ -329,10 +328,6 @@
         function stopVibration() {
             if (vibrationInterval) clearInterval(vibrationInterval);
             if (navigator.vibrate) navigator.vibrate(0);
-        }
-
-        function toggleFakeLock(enable) {
-            document.getElementById('fakeLock').style.display = enable ? 'block' : 'none';
         }
     </script>
 </body>
