@@ -4,96 +4,101 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require('firebase-admin');
 
-// 1. ΦΟΡΤΩΣΗ ΚΛΕΙΔΙΟΥ FIREBASE
-const serviceAccount = require('./serviceAccountKey.json');
-
-// 2. ΕΚΚΙΝΗΣΗ ADMIN SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+// --- 1. ΦΟΡΤΩΣΗ ΚΛΕΙΔΙΟΥ ---
+// Προσοχή: Στο Render αυτό το αρχείο δημιουργείται από τα "Secret Files"
+// Στο PC σου πρέπει να το έχεις στον φάκελο (αλλά να είναι γκρι στο gitignore!)
+try {
+    const serviceAccount = require('./serviceAccountKey.json');
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("✅ [SYSTEM] Firebase Admin συνδέθηκε επιτυχώς.");
+} catch (error) {
+    console.error("❌ [ERROR] Το serviceAccountKey.json λείπει ή είναι λάθος!", error.message);
+}
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*" },
-    pingInterval: 5000, // Κρατάει τη σύνδεση ζωντανή
-    pingTimeout: 4000
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let users = {};
-let fcmTokens = {}; // Αποθήκη για τα tokens των κινητών
+let fcmTokens = {}; // Εδώ αποθηκεύουμε τα Tokens των κινητών
 
 io.on('connection', (socket) => {
-    
-    // LOGIN & SETUP
-    socket.on('join-store', (data) => {
-        users[socket.id] = { room: data.storeName, name: data.username, role: data.role };
-        socket.join(data.storeName);
+    console.log(`[CONNECT] Νέα σύνδεση: ${socket.id}`);
 
-        // Αν το κινητό έστειλε Token, το αποθηκεύουμε
+    // --- ΒΗΜΑ 1: Ο ΔΕΚΤΗΣ ΣΤΕΛΝΕΙ ΤΟ TOKEN ΤΟΥ ---
+    socket.on('join-store', (data) => {
+        socket.join(data.storeName);
+        
+        // Καταγραφή στοιχείων
+        console.log(`[LOGIN] User: ${data.username} | Role: ${data.role}`);
+
+        // ΕΛΕΓΧΟΣ: Μας έστειλε Token για Firebase;
         if (data.fcmToken) {
             fcmTokens[socket.id] = data.fcmToken;
-            console.log(`[FCM] Νέο Token από: ${data.username}`);
+            console.log(`📲 [TOKEN] Λήφθηκε FCM Token από ${data.username}: ${data.fcmToken.substring(0, 15)}...`);
+        } else {
+            console.log(`⚠️ [TOKEN] Ο χρήστης ${data.username} ΔΕΝ έστειλε FCM Token (Ίσως είναι σε PC ή δεν δέχτηκε ειδοποιήσεις).`);
         }
-        console.log(`[LOGIN] ${data.username} (${data.role}) -> ${data.storeName}`);
     });
 
-    // HEARTBEAT (Για να μην κλείνει το Socket)
-    socket.on('im-alive', (data) => {
-        // Απλά επιβεβαίωση ότι ζει
-    });
-
-    // 🚨 TRIGGER ALARM (ΔΙΠΛΗ ΕΠΙΘΕΣΗ) 🚨
+    // --- ΒΗΜΑ 2: Ο ΠΟΜΠΟΣ ΠΑΤΑΕΙ ΤΟ ΚΟΥΜΠΙ ---
     socket.on('trigger-alarm', () => {
-        const sender = users[socket.id];
-        if (!sender) return;
+        console.log(`🔴 [ALARM] Πατήθηκε το κουμπί από ${socket.id}`);
+        
+        // Στέλνουμε σε όλους τους άλλους (Εκτός από τον εαυτό μας)
+        socket.broadcast.emit('ring-bell'); 
 
-        console.log(`[ATTACK] Ο ${sender.name} πατάει το κουμπί!`);
-
-        // 1. SOCKET ATTACK (Άμεσο)
-        socket.to(sender.room).emit('ring-bell', { sender: sender.name });
-
-        // 2. FIREBASE ATTACK (Ασφάλεια)
-        // Βρες όλους τους άλλους στο δωμάτιο
-        const socketsInRoom = io.sockets.adapter.rooms.get(sender.room);
-        if (socketsInRoom) {
-            for (const targetId of socketsInRoom) {
-                const token = fcmTokens[targetId];
-                // Στείλε μόνο αν είναι staff και έχουμε token
-                if (token && users[targetId] && users[targetId].role === 'staff') {
-                    sendFirebaseAttack(token);
-                }
-            }
+        // --- ΒΗΜΑ 3: ΣΤΕΛΝΟΥΜΕ FIREBASE TEST ---
+        // Ψάχνουμε αν υπάρχουν αποθηκευμένα Tokens
+        const allSocketIds = Object.keys(fcmTokens);
+        
+        if (allSocketIds.length === 0) {
+            console.log("⚠️ [FIREBASE] Δεν βρέθηκαν συσκευές με Token για να στείλω ειδοποίηση.");
         }
-    });
 
-    socket.on('disconnect', () => {
-        delete users[socket.id];
-        delete fcmTokens[socket.id];
+        allSocketIds.forEach((targetSocketId) => {
+            // Μην στείλεις στον εαυτό σου (αν είσαι και πομπός και δέκτης)
+            if (targetSocketId !== socket.id) {
+                const token = fcmTokens[targetSocketId];
+                sendTestNotification(token);
+            }
+        });
     });
 });
 
-// ΣΥΝΑΡΤΗΣΗ ΠΟΥ ΣΤΕΛΝΕΙ ΤΗΝ ΕΝΤΟΛΗ ΣΤΟ ANDROID SYSTEM
-function sendFirebaseAttack(token) {
+// --- Η ΣΥΝΑΡΤΗΣΗ ΤΗΣ GOOGLE ---
+function sendTestNotification(token) {
     const message = {
         token: token,
-        data: {
-            title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ!',
-            body: 'ΑΝΟΙΞΕ ΤΩΡΑ',
-            priority: 'high',
-            sound: 'default'
+        notification: {
+            title: "🔥 FIREBASE TEST",
+            body: "Αν το διαβάζεις αυτό, το σύστημα ΔΟΥΛΕΥΕΙ!"
         },
         android: {
-            priority: 'high',
-            ttl: 0 // Παράδοση ΤΩΡΑ
+            priority: "high",
+            notification: {
+                sound: "default",
+                channelId: "alarm_channel" // Προαιρετικό
+            }
+        },
+        data: {
+            url: "/", // Για να ανοίγει το app όταν το πατάς
+            action: "alarm"
         }
     };
 
+    console.log(`🚀 [SENDING] Προσπάθεια αποστολής στο Token: ${token.substring(0, 10)}...`);
+
     admin.messaging().send(message)
-        .then((response) => console.log('[FCM SENT] Επιτυχία:', response))
-        .catch((error) => console.log('[FCM ERROR]', error));
+        .then((response) => {
+            console.log('✅ [SUCCESS] Η Google παρέλαβε το μήνυμα:', response);
+        })
+        .catch((error) => {
+            console.log('❌ [FAIL] Η αποστολή απέτυχε:', error);
+        });
 }
 
 const PORT = process.env.PORT || 3000;
