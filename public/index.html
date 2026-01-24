@@ -3,142 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Test Run</title>
+    <title>BellGo Hybrid</title>
     
     <style>
-        body { background: #111; color: white; font-family: monospace; text-align: center; padding: 20px; }
-        .box { border: 1px solid #333; padding: 20px; margin: 10px auto; max-width: 400px; border-radius: 10px; background: #222; }
-        button { padding: 15px; width: 100%; margin-top: 10px; cursor: pointer; font-size: 16px; font-weight: bold; border: none; border-radius: 5px; }
+        body { background: #000; color: white; font-family: sans-serif; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+        .btn { padding: 20px; width: 80%; font-size: 20px; margin: 10px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; }
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; color: white; }
-        input { padding: 10px; width: 90%; background: #333; border: 1px solid #555; color: white; text-align: center; margin-bottom: 10px; }
-        #logs { text-align: left; font-size: 12px; color: #00E676; margin-top: 20px; white-space: pre-wrap; }
+        .status { font-size: 14px; color: #666; margin-top: 20px; }
+        
+        /* ALARM OVERLAY */
+        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; }
+        @keyframes flash { 0% { background: red; } 50% { background: #500; } 100% { background: red; } }
+        .stop-btn { width: 200px; height: 200px; border-radius: 50%; background: white; color: red; font-size: 30px; font-weight: 900; border: 5px solid yellow; }
     </style>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
-    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-    <h1>🔥 FIREBASE TESTER</h1>
-
-    <div id="loginSection" class="box">
-        <h3>Βήμα 1: Σύνδεση</h3>
-        <input type="text" id="username" placeholder="Όνομα (π.χ. Giorgos)" value="User1">
-        <button class="btn-blue" onclick="loginAs('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ (ΚΙΝΗΤΟ)</button>
-        <button class="btn-green" onclick="loginAs('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ (ADMIN)</button>
+    <div id="loginSection">
+        <h1>BELLGO v10</h1>
+        <p id="deviceType" style="color: cyan;">Ανίχνευση Συσκευής...</p>
+        <button class="btn btn-blue" onclick="startApp('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ (TABLET)</button>
+        <button class="btn btn-green" onclick="startApp('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ</button>
     </div>
 
-    <div id="controlSection" class="box" style="display:none;">
-        <h2 id="roleDisplay"></h2>
-        <p id="tokenStatus" style="color:yellow;">Αναμονή για Token...</p>
-        <button id="fireBtn" class="btn-green" style="display:none;" onclick="triggerTest()">🚀 ΠΥΡΟΔΟΤΗΣΗ FIREBASE</button>
+    <div id="mainScreen" style="display:none;">
+        <h2 id="roleText">...</h2>
+        <p id="connectionStatus">🔴 Disconnected</p>
+        <button id="fireBtn" class="btn btn-green" style="display:none;" onclick="triggerAlarm()">🔔 ΚΛΗΣΗ</button>
+        <div id="logs" class="status"></div>
     </div>
 
-    <div class="box">
-        <h4>System Logs:</h4>
-        <div id="logs">...</div>
+    <div id="alarmScreen">
+        <h1>🚨 ΚΛΗΣΗ!</h1>
+        <button class="stop-btn" onclick="stopAlarm()">STOP</button>
     </div>
+
+    <audio id="siren" src="alert.mp3" loop></audio>
+    <audio id="silence" src="silence.mp3" loop></audio>
 
     <script>
-        // --- 1. ΔΗΛΩΣΗ ΜΕΤΑΒΛΗΤΩΝ ΣΤΗΝ ΚΟΡΥΦΗ (Global Scope) ---
         const socket = io();
-        let messaging = null; // Το δηλώνουμε εδώ για να το βλέπουν όλοι
+        let isFully = typeof fully !== 'undefined'; // Εδώ καταλαβαίνουμε αν είμαστε στο Fully Kiosk
+        let messaging = null;
         let myToken = null;
 
-        // Βοηθητική συνάρτηση για Logs
-        function log(msg) {
-            const logDiv = document.getElementById('logs');
-            logDiv.innerHTML += `> ${msg}\n`;
-            console.log(msg);
+        // --- 1. ΑΝΙΧΝΕΥΣΗ ΣΥΣΚΕΥΗΣ ---
+        const deviceLabel = document.getElementById('deviceType');
+        if (isFully) {
+            deviceLabel.innerText = "🤖 Mode: Fully Kiosk (Native Control)";
+            // Ρυθμίσεις Fully Kiosk για να μην κοιμάται
+            fully.setBooleanSetting("keepScreenOn", true);
+            fully.setBooleanSetting("unlockScreen", true);
+        } else {
+            deviceLabel.innerText = "🌐 Mode: Standard Browser (Chrome)";
         }
 
-        // --- 2. CONFIG & INITIALIZATION (ΑΜΕΣΗ ΕΚΤΕΛΕΣΗ) ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
-            authDomain: "bellgo-5dbe5.firebaseapp.com",
-            projectId: "bellgo-5dbe5",
-            storageBucket: "bellgo-5dbe5.firebasestorage.app",
-            messagingSenderId: "799314495253",
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
-            measurementId: "G-379ETZJP8H"
-        };
-
-        try {
-            firebase.initializeApp(firebaseConfig);
-            messaging = firebase.messaging(); // ΕΔΩ ΕΝΕΡΓΟΠΟΙΕΙΤΑΙ ΤΟ MESSAGING
-            log("✅ System: Firebase Initialized OK.");
-        } catch (error) {
-            log("❌ System Error: Firebase Failed! " + error.message);
+        // --- 2. FIREBASE SETUP (ΜΟΝΟ ΓΙΑ CHROME) ---
+        // Αν είμαστε Fully Kiosk και βγάζει error, το προσπερνάμε!
+        if (!isFully) {
+            const firebaseConfig = {
+                apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
+                authDomain: "bellgo-5dbe5.firebaseapp.com",
+                projectId: "bellgo-5dbe5",
+                storageBucket: "bellgo-5dbe5.firebasestorage.app",
+                messagingSenderId: "799314495253",
+                appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+                measurementId: "G-379ETZJP8H"
+            };
+            try {
+                firebase.initializeApp(firebaseConfig);
+                messaging = firebase.messaging();
+                console.log("Firebase initialized for Chrome.");
+            } catch(e) { console.log("Firebase skipped."); }
         }
 
-        // --- 3. LOGIC ---
-        async function loginAs(role) {
-            const user = document.getElementById('username').value;
-            
-            // Έλεγχος ασφαλείας
-            if (!messaging && role === 'staff') {
-                alert("Το Firebase δεν έχει φορτώσει σωστά. Κάνε Refresh.");
-                return;
-            }
-
+        // --- 3. ΕΚΚΙΝΗΣΗ ---
+        async function startApp(role) {
             document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('controlSection').style.display = 'block';
-            document.getElementById('roleDisplay').innerText = role === 'admin' ? "ΠΟΜΠΟΣ" : "ΔΕΚΤΗΣ";
+            document.getElementById('mainScreen').style.display = 'block';
+            document.getElementById('roleText').innerText = role === 'admin' ? "ΠΟΜΠΟΣ" : "ΔΕΚΤΗΣ";
 
-            if (role === 'staff') {
-                log("Ζητάω άδεια ειδοποιήσεων...");
+            // Αν είναι Chrome Δέκτης, πάρε Token. Αν είναι Fully, μην ασχοληθείς.
+            if (role === 'staff' && !isFully && messaging) {
                 try {
-                    // Ζητάμε το Token (Τώρα το 'messaging' υπάρχει σίγουρα)
-                    const token = await messaging.getToken();
-                    if (token) {
-                        myToken = token;
-                        log("✅ TOKEN ΒΡΕΘΗΚΕ!");
-                        log("Token: " + token.substring(0, 15) + "...");
-                        document.getElementById('tokenStatus').innerText = "✅ Token OK";
-                        document.getElementById('tokenStatus').style.color = "#00E676";
-                    } else {
-                        log("⚠️ Δεν βρέθηκε Token. Πάτα Allow!");
-                        document.getElementById('tokenStatus').innerText = "❌ No Token";
-                    }
-                } catch (err) {
-                    log("❌ ERROR Token: " + err.message);
-                    alert("Πρέπει να πατήσεις 'Allow/Επιτρέπεται' στις ειδοποιήσεις!");
-                }
-            } else {
-                // Admin
-                document.getElementById('fireBtn').style.display = 'block';
-                document.getElementById('tokenStatus').innerText = "Δεν χρειάζεσαι Token.";
+                    myToken = await messaging.getToken();
+                    console.log("Token:", myToken);
+                } catch(e) { console.log("Token failed or denied"); }
             }
 
-            log("Στέλνω στοιχεία στον Server...");
+            if (role === 'admin') document.getElementById('fireBtn').style.display = 'block';
+            
+            // Παίξε σιωπή για να ξεκλειδώσει ο ήχος
+            document.getElementById('silence').play().catch(()=>{});
+
+            // Σύνδεση στον Server
             socket.emit('join-store', {
-                storeName: 'TestRoom',
-                username: user,
+                storeName: 'MainStore',
+                username: role,
                 role: role,
-                fcmToken: myToken
+                fcmToken: myToken,
+                device: isFully ? 'fully' : 'chrome' // Λέμε στον Server τι είμαστε
             });
         }
 
-        function triggerTest() {
-            log("🔴 Πατάω το κουμπί...");
+        // --- 4. ΟΤΑΝ ΧΤΥΠΑΕΙ (Η ΚΑΡΔΙΑ ΤΟΥ ΣΥΣΤΗΜΑΤΟΣ) ---
+        socket.on('ring-bell', () => {
+            console.log("⚡ ALARM TRIGGERED!");
+
+            // Α. ΕΜΦΑΝΙΣΗ
+            document.getElementById('alarmScreen').style.display = 'flex';
+            
+            // Β. ΗΧΟΣ
+            const audio = document.getElementById('siren');
+            audio.currentTime = 0;
+            audio.play();
+
+            // Γ. ΕΙΔΙΚΟΣ ΧΕΙΡΙΣΜΟΣ FULLY KIOSK (Εδώ είναι η μαγκιά)
+            if (isFully) {
+                fully.turnScreenOn();        // Άναψε οθόνη
+                fully.bringToForeground();   // Έλα μπροστά
+                fully.showToast("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!"); // Μήνυμα
+                fully.setMusicVolume(100);   // Τέρμα ήχος
+                
+                // Δόνηση μέσω Fully
+                // fully.vibrate(); // (Αν το υποστηρίζει το tablet)
+            }
+        });
+
+        // --- 5. ΛΕΙΤΟΥΡΓΙΕΣ ---
+        function triggerAlarm() {
             socket.emit('trigger-alarm');
         }
 
-        // Λήψη ειδοποίησης όταν είσαι μέσα (Foreground)
-        if (messaging) {
-            messaging.onMessage((payload) => {
-                log("🔔 ΗΡΘΕ ΕΙΔΟΠΟΙΗΣΗ!");
-                log("Title: " + payload.notification.title);
-                alert("🔥 TEST SUCCESS: " + payload.notification.title);
-            });
+        function stopAlarm() {
+            document.getElementById('alarmScreen').style.display = 'none';
+            document.getElementById('siren').pause();
+            if (isFully) fully.turnScreenOff(); // Προαιρετικό: σβήνει οθόνη μετά το Stop
         }
 
-        socket.on('ring-bell', () => {
-            log("⚡ Socket Signal Received!");
-            document.body.style.background = "darkred";
-            setTimeout(() => document.body.style.background = "#111", 500);
+        // Status Updates
+        socket.on('connect', () => { 
+            document.getElementById('connectionStatus').innerText = "🟢 Connected (" + (isFully ? "Fully" : "Web") + ")";
+            document.getElementById('connectionStatus').style.color = "#00E676";
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('connectionStatus').innerText = "🔴 Disconnected";
+            document.getElementById('connectionStatus').style.color = "red";
         });
 
     </script>
