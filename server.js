@@ -4,18 +4,12 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require('firebase-admin');
 
-// --- 1. ΦΟΡΤΩΣΗ ΚΛΕΙΔΙΟΥ ---
-// Προσοχή: Στο Render αυτό το αρχείο δημιουργείται από τα "Secret Files"
-// Στο PC σου πρέπει να το έχεις στον φάκελο (αλλά να είναι γκρι στο gitignore!)
+// --- FIREBASE SETUP ---
 try {
     const serviceAccount = require('./serviceAccountKey.json');
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("✅ [SYSTEM] Firebase Admin συνδέθηκε επιτυχώς.");
-} catch (error) {
-    console.error("❌ [ERROR] Το serviceAccountKey.json λείπει ή είναι λάθος!", error.message);
-}
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    console.log("✅ Firebase Connected");
+} catch (error) { console.error("❌ Firebase Error:", error.message); }
 
 const app = express();
 const server = http.createServer(app);
@@ -23,83 +17,75 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let fcmTokens = {}; // Εδώ αποθηκεύουμε τα Tokens των κινητών
+// ΕΔΩ ΚΡΑΤΑΜΕ ΤΟΥΣ ΧΡΗΣΤΕΣ: { socketId: { name, role, store, token } }
+let activeUsers = {}; 
 
 io.on('connection', (socket) => {
-    console.log(`[CONNECT] Νέα σύνδεση: ${socket.id}`);
+    console.log(`[+] New Connection: ${socket.id}`);
 
-    // --- ΒΗΜΑ 1: Ο ΔΕΚΤΗΣ ΣΤΕΛΝΕΙ ΤΟ TOKEN ΤΟΥ ---
+    // 1. ΕΙΣΟΔΟΣ ΧΡΗΣΤΗ
     socket.on('join-store', (data) => {
-        socket.join(data.storeName);
+        socket.join(data.storeName); // Μπαίνει στο "Δωμάτιο" του μαγαζιού
         
-        // Καταγραφή στοιχείων
-        console.log(`[LOGIN] User: ${data.username} | Role: ${data.role}`);
+        // Αποθηκεύουμε τα στοιχεία του
+        activeUsers[socket.id] = {
+            id: socket.id,
+            username: data.username,
+            role: data.role,
+            store: data.storeName,
+            fcmToken: data.fcmToken
+        };
 
-        // ΕΛΕΓΧΟΣ: Μας έστειλε Token για Firebase;
-        if (data.fcmToken) {
-            fcmTokens[socket.id] = data.fcmToken;
-            console.log(`📲 [TOKEN] Λήφθηκε FCM Token από ${data.username}: ${data.fcmToken.substring(0, 15)}...`);
-        } else {
-            console.log(`⚠️ [TOKEN] Ο χρήστης ${data.username} ΔΕΝ έστειλε FCM Token (Ίσως είναι σε PC ή δεν δέχτηκε ειδοποιήσεις).`);
+        console.log(`👤 ${data.username} (${data.role}) joined ${data.storeName}`);
+
+        // Ενημερώνουμε τους Admin του ΙΔΙΟΥ μαγαζιού να φτιάξουν κουμπάκια
+        updateAdmins(data.storeName);
+    });
+
+    // 2. ΚΛΗΣΗ (ΣΤΟΧΕΥΜΕΝΗ)
+    socket.on('trigger-alarm', (targetId) => {
+        console.log(`🔔 Alarm trigged for: ${targetId}`);
+        
+        // Στέλνουμε εντολή ΜΟΝΟ στον συγκεκριμένο χρήστη
+        io.to(targetId).emit('ring-bell', { from: 'Admin' });
+
+        // Στέλνουμε και Firebase Notification (αν έχει Token)
+        const user = activeUsers[targetId];
+        if (user && user.fcmToken) {
+            sendPushNotification(user.fcmToken);
         }
     });
 
-    // --- ΒΗΜΑ 2: Ο ΠΟΜΠΟΣ ΠΑΤΑΕΙ ΤΟ ΚΟΥΜΠΙ ---
-    socket.on('trigger-alarm', () => {
-        console.log(`🔴 [ALARM] Πατήθηκε το κουμπί από ${socket.id}`);
-        
-        // Στέλνουμε σε όλους τους άλλους (Εκτός από τον εαυτό μας)
-        socket.broadcast.emit('ring-bell'); 
-
-        // --- ΒΗΜΑ 3: ΣΤΕΛΝΟΥΜΕ FIREBASE TEST ---
-        // Ψάχνουμε αν υπάρχουν αποθηκευμένα Tokens
-        const allSocketIds = Object.keys(fcmTokens);
-        
-        if (allSocketIds.length === 0) {
-            console.log("⚠️ [FIREBASE] Δεν βρέθηκαν συσκευές με Token για να στείλω ειδοποίηση.");
+    // 3. ΑΠΟΣΥΝΔΕΣΗ
+    socket.on('disconnect', () => {
+        const user = activeUsers[socket.id];
+        if (user) {
+            console.log(`[-] ${user.username} left.`);
+            const storeName = user.store;
+            delete activeUsers[socket.id]; // Τον σβήνουμε
+            updateAdmins(storeName); // Ενημερώνουμε τους Admin ότι έφυγε
         }
-
-        allSocketIds.forEach((targetSocketId) => {
-            // Μην στείλεις στον εαυτό σου (αν είσαι και πομπός και δέκτης)
-            if (targetSocketId !== socket.id) {
-                const token = fcmTokens[targetSocketId];
-                sendTestNotification(token);
-            }
-        });
     });
+
+    // ΒΟΗΘΗΤΙΚΗ: Στέλνει τη λίστα προσωπικού στους Admins
+    function updateAdmins(storeName) {
+        // Βρες όλους τους χρήστες αυτού του μαγαζιού
+        const storeStaff = Object.values(activeUsers).filter(u => u.store === storeName && u.role !== 'admin');
+        // Στείλε τη λίστα σε όλους στο δωμάτιο (οι Admins θα την ακούσουν)
+        io.to(storeName).emit('update-staff-list', storeStaff);
+    }
 });
 
-// --- Η ΣΥΝΑΡΤΗΣΗ ΤΗΣ GOOGLE ---
-function sendTestNotification(token) {
+// FIREBASE FUNCTION
+function sendPushNotification(token) {
     const message = {
         token: token,
-        notification: {
-            title: "🔥 FIREBASE TEST",
-            body: "Αν το διαβάζεις αυτό, το σύστημα ΔΟΥΛΕΥΕΙ!"
-        },
-        android: {
-            priority: "high",
-            notification: {
-                sound: "default",
-                channelId: "alarm_channel" // Προαιρετικό
-            }
-        },
-        data: {
-            url: "/", // Για να ανοίγει το app όταν το πατάς
-            action: "alarm"
-        }
+        notification: { title: "🚨 ΕΠΕΙΓΟΥΣΑ ΚΛΗΣΗ", body: "Σε καλούν από την κουζίνα!" },
+        android: { priority: "high", notification: { sound: "default" } },
+        data: { url: "/", action: "alarm" }
     };
-
-    console.log(`🚀 [SENDING] Προσπάθεια αποστολής στο Token: ${token.substring(0, 10)}...`);
-
-    admin.messaging().send(message)
-        .then((response) => {
-            console.log('✅ [SUCCESS] Η Google παρέλαβε το μήνυμα:', response);
-        })
-        .catch((error) => {
-            console.log('❌ [FAIL] Η αποστολή απέτυχε:', error);
-        });
+    admin.messaging().send(message).catch(e => console.log("Push Failed:", e.message));
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
