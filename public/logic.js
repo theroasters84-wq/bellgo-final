@@ -4,13 +4,11 @@ let messaging = null;
 let myToken = null;
 let currentUser = null;
 
-// SAFETY: Stop alarm on load
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
 };
 
-// FIREBASE
 if (!isFully) {
     try {
         const firebaseConfig = { 
@@ -28,22 +26,19 @@ if (!isFully) {
     } catch(e) {}
 }
 
-// LOGIN FUNCTION
 async function login(store, name, role, pass) {
-    // 1. ΑΜΕΣΗ ΕΚΤΕΛΕΣΗ ΗΧΟΥ (Χωρίς await πριν από αυτό)
+    // 1. ΕΚΚΙΝΗΣΗ ΗΧΟΥ ΓΙΑ ΤΗΝ ΜΠΑΡΑ
     const silence = document.getElementById('silence');
     if (silence) {
         silence.volume = 1.0; 
-        // Force Play Promise
         const playPromise = silence.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                console.log("🤫 Silence playing successfully.");
-                setupMediaSession(); // Ενεργοποίηση μπάρας
-            }).catch(error => {
-                console.error("Audio blocked:", error);
-                alert("⚠️ Πάτα κάπου στην οθόνη για να ενεργοποιηθεί ο ήχος!");
-            });
+                console.log("🤫 Silence playing.");
+                // ΚΡΙΣΙΜΗ ΓΡΑΜΜΗ ΓΙΑ CHROME ANDROID:
+                if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+                setupMediaSession(); 
+            }).catch(error => console.error("Audio blocked:", error));
         }
     }
 
@@ -51,7 +46,6 @@ async function login(store, name, role, pass) {
 
     if (isFully) { try { Watchdog.runSetup(); } catch(e) {} }
     
-    // Τώρα κάνουμε τα αργά (Async)
     if (role !== 'admin' && !isFully && messaging) {
         try { myToken = await messaging.getToken(); } catch(e){}
     }
@@ -59,12 +53,16 @@ async function login(store, name, role, pass) {
     Watchdog.start(isFully);
     
     socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
+    
+    // Ζητάμε αμέσως τη λίστα αν είμαστε Admin
+    if (role === 'admin') {
+        socket.emit('get-staff-list');
+    }
 
     document.getElementById('displayStore').innerText = store;
     document.getElementById('displayUser').innerText = name + (role === 'admin' ? ' (Admin)' : '');
 }
 
-// MEDIA SESSION
 function setupMediaSession() {
     if ('mediaSession' in navigator) {
         updateMediaSession('idle');
@@ -77,6 +75,8 @@ function setupMediaSession() {
 
 function updateMediaSession(state) {
     if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING ΓΙΑ ΝΑ ΦΑΙΝΕΤΑΙ
+    
     if (state === 'alarm') {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", artist: "ΠΑΤΑ ΓΙΑ STOP", album: "BellGo Alert",
@@ -90,32 +90,19 @@ function updateMediaSession(state) {
     }
 }
 
-// ADMIN UI UPDATE (ΕΔΩ ΕΙΝΑΙ ΤΟ ΠΡΟΒΛΗΜΑ ΤΩΝ ΡΟΛΩΝ)
 socket.on('update-staff-list', (staffList) => {
-    console.log("📥 Staff List Received:", staffList);
-    
     if (!currentUser || currentUser.role !== 'admin') return;
-    
     const waiterContainer = document.getElementById('waiter-list');
     const driverContainer = document.getElementById('driver-list');
-    
-    // Reset
     waiterContainer.innerHTML = '<h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3>';
     driverContainer.innerHTML = '<h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3>';
 
-    if (staffList.length === 0) {
-        waiterContainer.innerHTML += '<p style="color:gray; font-size:12px;">Κανείς συνδεδεμένος...</p>';
-    }
-
     staffList.forEach(user => {
         const btn = document.createElement('button');
-        // Έλεγχος Ρόλου (Case Insensitive για σιγουριά)
         const role = user.role.toLowerCase();
-        
         btn.className = role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
         btn.innerText = `🔔 ${user.username}`;
         btn.onclick = () => socket.emit('trigger-alarm', user.id);
-        
         if (role === 'driver') driverContainer.appendChild(btn);
         else waiterContainer.appendChild(btn);
     });
