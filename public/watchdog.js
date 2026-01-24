@@ -1,91 +1,74 @@
-// --- watchdog.js ---
+// --- watchdog.js v4 (Aggressive) ---
 const Watchdog = {
     interval: null,
     panicInterval: null,
     isRinging: false,
 
-    // Καλείται στο ξεκίνημα
     start: function(isFully) {
-        console.log("🛡️ Watchdog: Activated");
-
-        // ΑΥΤΟΜΑΤΟ SETUP ΓΙΑ FULLY KIOSK
-        if (isFully) {
-            try {
-                fully.setBooleanSetting("keepScreenOn", true);       // Μην σβήνεις ποτέ
-                fully.setBooleanSetting("unlockScreen", true);       // Ξεκλείδωσε
-                fully.setBooleanSetting("turnScreenOnOnPowerConnect", true);
-                fully.setBooleanSetting("forceWifi", true);          // Κράτα WiFi με το ζόρι
-                fully.setMusicVolume(100);                           // Τέρμα ήχος
-                console.log("🤖 Fully Kiosk Configured");
-            } catch (e) { console.log("Fully Error:", e); }
-        }
-
-        // Heartbeat (Κάθε 10 sec λέει "Είμαι εδώ" για να μην κοιμηθεί ο Chrome)
+        console.log("🛡️ Watchdog: Active");
         this.interval = setInterval(() => {
-             // Fake Activity
-             if (typeof socket !== 'undefined' && socket.connected) {
-                 socket.emit('heartbeat'); 
-             }
+             if (typeof socket !== 'undefined' && socket.connected) socket.emit('heartbeat'); 
         }, 10000);
     },
 
-    // 🚨 PANIC MODE: LOOP ΠΟΥ ΞΥΠΝΑΕΙ ΤΟΥΣ ΝΕΚΡΟΥΣ 🚨
-    triggerPanicMode: function() {
-        if (this.isRinging) return; // Αν χτυπάει ήδη, μην ξαναρχίζεις
-        this.isRinging = true;
-        console.log("🚨 PANIC MODE START");
+    runSetup: function() {
+        if (typeof fully === 'undefined') return;
+        try {
+            fully.setBooleanSetting("keepScreenOn", true);
+            fully.setBooleanSetting("unlockScreen", true);
+            fully.setBooleanSetting("turnScreenOnOnPowerConnect", true);
+            fully.setBooleanSetting("forceWifi", true);
+            fully.setMusicVolume(100);
+            fully.showToast("Setup OK ✅");
+        } catch (e) {}
+    },
 
-        // 1. Ξεκινάμε Ήχο
+    triggerPanicMode: function() {
+        if (this.isRinging) return;
+        this.isRinging = true;
+
+        // 1. ΗΧΟΣ (LOOP μέσω JS για σιγουριά)
         const audio = document.getElementById('siren');
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log("Audio Blocked:", e));
+        if (audio) { 
+            audio.currentTime = 0; 
+            audio.loop = true; // ΤΟ ΕΝΕΡΓΟΠΟΙΟΥΜΕ ΕΔΩ
+            audio.play().catch(e=>{}); 
         }
 
-        // 2. Εμφανίζουμε Κόκκινη Οθόνη
+        // 2. ΕΜΦΑΝΙΣΗ (Το CSS κάνει το flashing)
         document.getElementById('alarmScreen').style.display = 'flex';
 
-        // 3. Loop Επίθεσης (Κάθε 1 δευτερόλεπτο)
+        // 3. ΕΠΙΘΕΣΗ (Κάθε μισό δευτερόλεπτο)
         this.panicInterval = setInterval(() => {
             if (!this.isRinging) return;
 
-            // Δόνηση (500ms δόνηση, 200 παύση, 500 δόνηση)
-            if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+            // ΔΟΝΗΣΗ: Πολύ δυνατή
+            if (navigator.vibrate) navigator.vibrate([1000, 50, 1000, 50, 1000]);
 
-            // Fully Kiosk Wake Up Calls
+            // FULLY KIOSK: Spamming για να βγει μπροστά
             if (typeof fully !== 'undefined') {
                 fully.turnScreenOn();
-                fully.bringToForeground();
-                fully.setMusicVolume(100); // Βεβαιώσου ότι είναι τέρμα
+                fully.bringToForeground(); // Τραβάει την εφαρμογή μπροστά
+                fully.showToast("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ 🚨"); // Πετάει μήνυμα
             }
-        }, 1000);
+            
+            // Focus Window (Για Desktop/Chrome)
+            window.focus();
+        }, 500);
     },
 
-    // 🛑 STOP MODE: ΣΤΑΜΑΤΑΕΙ ΤΑ ΠΑΝΤΑ
     stopPanicMode: function() {
         this.isRinging = false;
-        
-        // 1. ΣΚΟΤΩΣΕ ΤΟ LOOP ΑΜΕΣΩΣ
         if (this.panicInterval) clearInterval(this.panicInterval);
         
-        // 2. ΣΚΟΤΩΣΕ ΤΟΝ ΗΧΟ (Το πιο σημαντικό)
         const audio = document.getElementById('siren');
-        if (audio) {
-            audio.pause();
-            audio.currentTime = 0; // Γύρνα στην αρχή
-        }
-
-        // 3. Σταμάτα Δόνηση
-        if (navigator.vibrate) navigator.vibrate(0);
-
-        // 4. Κρύψε οθόνη
-        document.getElementById('alarmScreen').style.display = 'none';
-
-        // 5. Προαιρετικό: Σβήσε οθόνη Fully μετά από λίγο
-        if (typeof fully !== 'undefined') {
-            // fully.turnScreenOff(); // <-- Αν θες να σβήνει τελείως, βγάλε τα σχόλια
+        if (audio) { 
+            audio.pause(); 
+            audio.currentTime = 0; 
+            audio.loop = false;
         }
         
-        console.log("🛑 STOPPED");
+        if (navigator.vibrate) navigator.vibrate(0);
+        document.getElementById('alarmScreen').style.display = 'none';
     }
 };
