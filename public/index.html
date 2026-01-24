@@ -3,52 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BellGo Setup</title>
-    
+    <title>BellGo Pro</title>
     <style>
-        /* ΤΟ CSS ΠΟΥ ΕΔΩΣΕΣ + ΠΡΟΣΘΗΚΕΣ ΓΙΑ INPUTS */
-        body { background-color: #121212; color: #fff; font-family: sans-serif; text-align: center; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
-        /* ΟΘΟΝΕΣ */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.3s ease-in; }
+        /* BASE STYLES */
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex; }
 
-        /* INPUTS (ΤΑ ΚΟΥΤΑΚΙΑ ΠΟΥ ΓΡΑΦΕΙΣ) */
-        input {
-            background: #222;
-            border: 1px solid #444;
-            color: white;
-            padding: 15px;
-            font-size: 22px;
-            width: 80%;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            outline: none;
-        }
-        input:focus { border-color: #00E676; }
-
-        /* ΚΟΥΜΠΙΑ */
-        button { width: 90%; padding: 20px; font-size: 20px; margin: 10px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; color: white; transition: transform 0.1s; }
-        button:active { transform: scale(0.95); }
+        /* INPUTS */
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
         
-        .btn-pompos { background-color: #00C853; color: black; } /* Πράσινο για Admin */
-        .btn-dekths { background-color: #2962FF; } /* Μπλε για Σερβιτόρους */
-        .btn-driver { background-color: #FF6D00; color: black; } /* Πορτοκαλί για Διανομείς */
-        .btn-next { background-color: #444; border: 1px solid white; margin-top: 20px;}
+        /* BUTTONS */
+        button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; }
+        .btn-green { background: #00E676; color: black; }
+        .btn-blue { background: #2962FF; }
+        .btn-orange { background: #FF6D00; color: black; }
+        
+        /* ADMIN PANEL LAYOUT */
+        #adminPanel { width: 100%; height: 100%; display: flex; flex-direction: row; }
+        .column { width: 50%; height: 100%; overflow-y: auto; padding: 10px; box-sizing: border-box; }
+        .column h3 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+        
+        /* STAFF BUTTONS */
+        .btn-staff { width: 95%; height: 80px; font-size: 22px; margin-bottom: 15px; display: block; }
+        .driver { background: #E65100; border-left: 5px solid #FFD180; }
+        .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
+        .driver:active, .waiter:active { transform: scale(0.95); opacity: 0.8; }
 
-        /* ΚΕΙΜΕΝΑ */
-        h1 { color: #00E676; margin-bottom: 10px; }
-        h2 { color: #ccc; margin-bottom: 30px; font-weight: normal; }
-
-        /* ALARM OVERLAY */
+        /* ALARM SCREEN */
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; }
         @keyframes flash { 0% { background: red; } 50% { background: #500; } 100% { background: red; } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         
-        .status-log { font-size: 12px; color: #555; position: fixed; bottom: 10px; width: 100%; }
+        .stop-btn { width: 200px; height: 200px; border-radius: 50%; background: white; color: red; font-size: 35px; border: 8px solid yellow; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -58,207 +45,77 @@
 <body>
 
     <div id="step1" class="screen active">
-        <h1>🔐 Βήμα 1/4</h1>
-        <h2>Όνομα Επιχείρησης</h2>
-        <input type="text" id="storeNameInput" placeholder="π.χ. CoffeeIsland1">
-        <button class="btn-next" onclick="goToStep(2)">ΕΠΟΜΕΝΟ ➜</button>
+        <h2>🏬 Όνομα Μαγαζιού</h2>
+        <input type="text" id="inpStore" placeholder="CoffeeRoom1">
+        <button class="btn-green" onclick="nextStep(2)">Επόμενο</button>
     </div>
 
     <div id="step2" class="screen">
-        <h1>👤 Βήμα 2/4</h1>
-        <h2>Το Όνομά σου</h2>
-        <input type="text" id="usernameInput" placeholder="π.χ. Γιώργος">
-        <button class="btn-next" onclick="goToStep(3)">ΕΠΟΜΕΝΟ ➜</button>
+        <h2>👤 Το Όνομά σου</h2>
+        <input type="text" id="inpName" placeholder="Μάριος">
+        <button class="btn-green" onclick="nextStep(3)">Επόμενο</button>
     </div>
 
     <div id="step3" class="screen">
-        <h1>👔 Βήμα 3/4</h1>
-        <h2>Επίλεξε Ρόλο</h2>
-        <button class="btn-pompos" onclick="selectRole('admin')">ΔΙΑΧΕΙΡΙΣΤΗΣ (ΠΟΜΠΟΣ)</button>
-        <button class="btn-dekths" onclick="selectRole('waiter')">ΣΕΡΒΙΤΟΡΟΣ (ΔΕΚΤΗΣ)</button>
-        <button class="btn-driver" onclick="selectRole('driver')">ΔΙΑΝΟΜΕΑΣ (ΔΕΚΤΗΣ)</button>
-    </div>
-
-    <div id="step4" class="screen">
-        <h1>🔑 Βήμα 4/4</h1>
-        <h2>Κωδικός Ασφαλείας</h2>
-        <input type="password" id="passwordInput" placeholder="****">
-        <button class="btn-pompos" onclick="finishSetup()">ΣΥΝΔΕΣΗ ✅</button>
+        <h2>👔 Ο Ρόλος σου</h2>
+        <button class="btn-green" onclick="doLogin('admin')">ADMIN (Κουζίνα)</button>
+        <button class="btn-blue" onclick="doLogin('waiter')">ΣΕΡΒΙΤΟΡΟΣ</button>
+        <button class="btn-orange" onclick="doLogin('driver')">ΔΙΑΝΟΜΕΑΣ</button>
     </div>
 
     <div id="mainApp" class="screen">
-        <h1 id="displayStore" style="font-size: 20px; color: #666;">...</h1>
-        <h2 id="displayUser" style="color: white; font-size: 30px; font-weight: bold;">...</h2>
-        
-        <div id="adminPanel" style="display:none; width: 100%;">
-            <button class="btn-pompos" style="height: 200px; font-size: 40px;" onclick="triggerAlarm()">🔔 ΚΛΗΣΗ 🔔</button>
+        <div style="background: #222; width: 100%; padding: 10px;">
+            <span id="displayStore" style="color:#00E676; font-weight:bold;"></span> | 
+            <span id="displayUser"></span>
         </div>
 
-        <div id="staffPanel" style="display:none;">
-            <p style="color: #00E676; font-size: 20px;">🟢 ONLINE - ΑΝΑΜΟΝΗ...</p>
-            <p style="font-size: 14px; color: #555;">Μην κλείνεις την εφαρμογή.</p>
+        <div id="adminPanel" style="display:none;">
+            <div id="driver-list" class="column" style="border-right: 1px solid #333;">
+                <h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3>
+            </div>
+            <div id="waiter-list" class="column">
+                <h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3>
+            </div>
         </div>
 
-        <div class="status-log" id="statusLog">Αναμονή...</div>
+        <div id="staffPanel" style="display:none; margin-top: 50px;">
+            <h1 style="color: cyan; font-size: 40px;">🟢 ONLINE</h1>
+            <p>Αναμονή για κλήση...</p>
+            <p style="color:gray; font-size:12px;">Watchdog Active</p>
+        </div>
     </div>
 
     <div id="alarmScreen">
-        <h1 style="color:white; font-size: 50px;">🚨 ΚΛΗΣΗ!</h1>
-        <h2 id="callerName" style="color:yellow;">ΑΠΟ ΚΟΥΖΙΝΑ</h2>
-        <button class="stop-btn" onclick="stopAlarm()">STOP</button>
+        <h1 style="color:white; font-size: 50px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <button class="stop-btn" onclick="Watchdog.stopPanicMode()">STOP</button>
     </div>
 
     <audio id="siren" src="alert.mp3" loop></audio>
-    <audio id="silence" loop>
-        <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////////////////////////////////////wAAAP//AAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
-    </audio>
 
+    <script src="watchdog.js?v=2"></script>
+    <script src="logic.js?v=2"></script>
     <script>
-        const socket = io();
-        let isFully = typeof fully !== 'undefined';
-        let messaging = null;
-        let myToken = null;
-
-        // Μεταβλητές Χρήστη
-        let userConfig = {
-            store: "",
-            name: "",
-            role: "",
-            password: ""
-        };
-
-        // --- FIREBASE (ΓΙΑ CHROME) ---
-        if (!isFully) {
-            const firebaseConfig = {
-                apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
-                authDomain: "bellgo-5dbe5.firebaseapp.com",
-                projectId: "bellgo-5dbe5",
-                storageBucket: "bellgo-5dbe5.firebasestorage.app",
-                messagingSenderId: "799314495253",
-                appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
-                measurementId: "G-379ETZJP8H"
-            };
-            try {
-                firebase.initializeApp(firebaseConfig);
-                messaging = firebase.messaging();
-            } catch(e) { console.log("Firebase skipped."); }
+        // Inline Helper για το Login UI
+        function nextStep(n) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- NAVIGATION STEPS ---
-        function goToStep(stepNum) {
-            // Validate Inputs
-            if (stepNum === 2 && document.getElementById('storeNameInput').value.trim() === "") {
-                alert("Γράψε όνομα μαγαζιού!"); return;
-            }
-            if (stepNum === 3 && document.getElementById('usernameInput').value.trim() === "") {
-                alert("Γράψε το όνομά σου!"); return;
-            }
+        function doLogin(role) {
+            const store = document.getElementById('inpStore').value.trim();
+            const name = document.getElementById('inpName').value.trim();
+            if(!store || !name) return alert("Συμπλήρωσε τα πάντα!");
 
-            // Hide all screens
-            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-            // Show target screen
-            document.getElementById('step' + stepNum).classList.add('active');
-        }
-
-        function selectRole(role) {
-            userConfig.role = role;
-            goToStep(4);
-        }
-
-        async function finishSetup() {
-            // Συλλογή Δεδομένων
-            userConfig.store = document.getElementById('storeNameInput').value.trim();
-            userConfig.name = document.getElementById('usernameInput').value.trim();
-            userConfig.password = document.getElementById('passwordInput').value.trim();
-
-            if (userConfig.password === "") {
-                alert("Βάλε κωδικό!"); return;
-            }
-
-            // Εμφάνιση Κύριας Οθόνης
-            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            // Εμφάνιση κατάλληλου Panel
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('mainApp').classList.add('active');
 
-            // Ενημέρωση UI
-            document.getElementById('displayStore').innerText = "🏢 " + userConfig.store;
-            document.getElementById('displayUser').innerText = userConfig.name;
+            if(role === 'admin') document.getElementById('adminPanel').style.display = 'flex';
+            else document.getElementById('staffPanel').style.display = 'block';
 
-            // Ρύθμιση Ανάλογα με το Ρόλο
-            if (userConfig.role === 'admin') {
-                document.getElementById('adminPanel').style.display = 'block';
-            } else {
-                document.getElementById('staffPanel').style.display = 'block';
-                // Αν είναι Staff (Σερβιτόρος/Διανομέας), προσπάθησε να πάρεις Token
-                await getFirebaseToken();
-            }
-
-            // Ξεκλείδωμα Ήχου (Αθόρυβο)
-            document.getElementById('silence').play().catch(e => console.log("Audio lock:", e));
-
-            // FULLY KIOSK SETUP
-            if (isFully) {
-                fully.setBooleanSetting("keepScreenOn", true);
-                fully.setBooleanSetting("unlockScreen", true);
-                document.getElementById('statusLog').innerText = "Mode: Fully Kiosk 🤖";
-            } else {
-                document.getElementById('statusLog').innerText = "Mode: Web Browser 🌐";
-            }
-
-            // ΣΥΝΔΕΣΗ ΜΕ SERVER
-            socket.emit('join-store', {
-                storeName: userConfig.store,
-                username: userConfig.name,
-                role: userConfig.role,
-                password: userConfig.password, // Το στέλνουμε για έλεγχο (αν το βάλουμε στο μέλλον)
-                fcmToken: myToken,
-                device: isFully ? 'fully' : 'chrome'
-            });
+            // Κλήση Logic
+            login(store, name, role, '1234');
         }
-
-        async function getFirebaseToken() {
-            if (!isFully && messaging) {
-                try {
-                    document.getElementById('statusLog').innerText = "Ζητάω Token...";
-                    myToken = await messaging.getToken();
-                    console.log("Token:", myToken);
-                    document.getElementById('statusLog').innerText = "✅ Token OK";
-                } catch(e) { 
-                    console.log("Token failed"); 
-                    document.getElementById('statusLog').innerText = "⚠️ No Token (Check Permissions)";
-                }
-            }
-        }
-
-        // --- ALARM LOGIC ---
-        function triggerAlarm() {
-            socket.emit('trigger-alarm');
-        }
-
-        socket.on('ring-bell', () => {
-            console.log("⚡ ALARM!");
-            
-            // Εμφάνιση
-            document.getElementById('alarmScreen').style.display = 'flex';
-            
-            // Ήχος
-            const audio = document.getElementById('siren');
-            audio.currentTime = 0;
-            audio.play();
-
-            // Fully Kiosk Wake Up
-            if (isFully) {
-                fully.turnScreenOn();
-                fully.bringToForeground();
-                fully.setMusicVolume(100);
-            }
-        });
-
-        function stopAlarm() {
-            document.getElementById('alarmScreen').style.display = 'none';
-            document.getElementById('siren').pause();
-            if (isFully) fully.turnScreenOff();
-        }
-
     </script>
 </body>
 </html>
