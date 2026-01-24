@@ -11,31 +11,47 @@
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex; }
 
-        /* INPUTS */
+        /* INPUTS & BUTTONS */
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
-        
-        /* BUTTONS */
         button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; }
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; }
         .btn-orange { background: #FF6D00; color: black; }
         
-        /* ADMIN PANEL LAYOUT */
+        /* ADMIN PANEL */
         #adminPanel { width: 100%; height: 100%; display: flex; flex-direction: row; }
         .column { width: 50%; height: 100%; overflow-y: auto; padding: 10px; box-sizing: border-box; }
         .column h3 { border-bottom: 2px solid #333; padding-bottom: 10px; }
         
-        /* STAFF BUTTONS */
         .btn-staff { width: 95%; height: 80px; font-size: 22px; margin-bottom: 15px; display: block; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
-        .driver:active, .waiter:active { transform: scale(0.95); opacity: 0.8; }
 
-        /* ALARM SCREEN */
-        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; }
-        @keyframes flash { 0% { background: red; } 50% { background: #500; } 100% { background: red; } }
+        /* 🚨 ALARM SCREEN (ΕΠΙΘΕΤΙΚΟ) 🚨 */
+        #alarmScreen { 
+            display: none; 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: red; 
+            z-index: 9999999; /* ΠΑΝΩ ΑΠΟ ΟΛΑ */
+            flex-direction: column; align-items: center; justify-content: center; 
+            animation: flash 0.3s infinite; /* Πιο γρήγορο φλας */
+        }
+        @keyframes flash { 
+            0% { background: #ff0000; } 
+            25% { background: #000000; } 
+            50% { background: #ff0000; } 
+            75% { background: #ffffff; } 
+            100% { background: #ff0000; } 
+        }
         
-        .stop-btn { width: 200px; height: 200px; border-radius: 50%; background: white; color: red; font-size: 35px; border: 8px solid yellow; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+        .stop-btn { 
+            width: 250px; height: 250px; border-radius: 50%; 
+            background: white; color: red; font-size: 40px; font-weight: 900; 
+            border: 10px solid yellow; 
+            box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); 
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -70,50 +86,47 @@
         </div>
 
         <div id="adminPanel" style="display:none;">
-            <div id="driver-list" class="column" style="border-right: 1px solid #333;">
-                <h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3>
-            </div>
-            <div id="waiter-list" class="column">
-                <h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3>
-            </div>
+            <div id="driver-list" class="column" style="border-right: 1px solid #333;"><h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3></div>
+            <div id="waiter-list" class="column"><h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3></div>
         </div>
 
         <div id="staffPanel" style="display:none; margin-top: 50px;">
             <h1 style="color: cyan; font-size: 40px;">🟢 ONLINE</h1>
             <p>Αναμονή για κλήση...</p>
-            <p style="color:gray; font-size:12px;">Watchdog Active</p>
+            <p style="color:gray; font-size:12px;">Anti-Sleep Active</p>
         </div>
     </div>
 
     <div id="alarmScreen">
-        <h1 style="color:white; font-size: 50px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <h1 style="color:white; font-size: 60px; font-weight:900; text-shadow: 2px 2px 0 #000;">🚨 ΚΛΗΣΗ!</h1>
+        <h2 style="color:yellow; font-size: 30px;">ΕΛΑ ΚΟΥΖΙΝΑ</h2>
         <button class="stop-btn" onclick="Watchdog.stopPanicMode()">STOP</button>
     </div>
 
-    <audio id="siren" src="alert.mp3" loop></audio>
+    <audio id="siren" src="alert.mp3" preload="auto"></audio>
+    <audio id="silence" loop>
+        <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//////////////////////////////////////////////////////////////////wAAAP//AAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
+    </audio>
 
-    <script src="watchdog.js?v=2"></script>
-    <script src="logic.js?v=2"></script>
+    <script src="watchdog.js?v=4"></script>
+    <script src="logic.js?v=4"></script>
     <script>
-        // Inline Helper για το Login UI
+        // Inline Helper
         function nextStep(n) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('step'+n).classList.add('active');
         }
-
         function doLogin(role) {
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             if(!store || !name) return alert("Συμπλήρωσε τα πάντα!");
-
-            // Εμφάνιση κατάλληλου Panel
+            
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('mainApp').classList.add('active');
 
             if(role === 'admin') document.getElementById('adminPanel').style.display = 'flex';
             else document.getElementById('staffPanel').style.display = 'block';
 
-            // Κλήση Logic
             login(store, name, role, '1234');
         }
     </script>
