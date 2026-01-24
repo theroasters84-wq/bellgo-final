@@ -3,222 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo WEAPONIZED</title>
+    <title>BellGo Setup Bot</title>
     <style>
-        /* CSS ΓΙΑ ΜΕΓΙΣΤΗ ΑΠΟΔΟΣΗ */
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { 
-            background-color: #000; color: #fff; 
-            font-family: 'Segoe UI', sans-serif; text-align: center; 
-            margin: 0; height: 100vh; overflow: hidden; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        /* ΟΘΟΝΕΣ */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
-        .active { display: flex; }
-
-        /* ΚΟΥΜΠΙΑ */
-        .btn { width: 90%; padding: 25px; font-size: 22px; margin: 10px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; color: white; }
-        .btn-green { background: #00E676; color: #000; box-shadow: 0 0 15px #00E676; }
-        .btn-blue { background: #2962FF; box-shadow: 0 0 15px #2962FF; }
-        .btn-dark { background: #222; color: #888; border: 1px solid #444; }
-
-        /* FAKE LOCK (Η ΠΑΓΙΔΑ ΓΙΑ ΤΟΝ ΥΠΝΟ) */
-        #fakeLockScreen {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 5000; cursor: pointer;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        /* ΟΘΟΝΗ ΚΛΗΣΗΣ (ΤΟ ΟΠΛΟ) */
-        #alarmScreen {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #D50000; z-index: 9999; /* Πάνω από όλα */
-            flex-direction: column; align-items: center; justify-content: center;
-            animation: panic 0.2s infinite;
-        }
-
-        @keyframes panic { 
-            0% { background: #D50000; transform: scale(1); } 
-            50% { background: #FF1744; transform: scale(1.02); } 
-            100% { background: #D50000; transform: scale(1); } 
-        }
-
-        .stop-btn {
-            width: 250px; height: 250px; border-radius: 50%;
-            background: white; color: red; font-size: 40px; font-weight: 900;
-            border: 10px solid yellow; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            display: flex; align-items: center; justify-content: center;
-        }
+        body { background: #121212; color: white; font-family: sans-serif; margin: 0; text-align: center; }
+        .setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 400px; }
+        .status-item { display: flex; justify-content: space-between; margin: 15px 0; padding: 10px; border-bottom: 1px solid #333; }
+        .ok { color: #00E676; }
+        .error { color: #FF1744; }
+        .btn-fix { background: #2962FF; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+        #mainApp { display: none; } /* Κρυφό μέχρι να δοθούν οι άδειες */
+        
+        /* ALARM OVERLAY */
+        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <div id="loginScreen" class="screen active">
-        <h1 style="color:#00E676;">BELLGO V7</h1>
-        <button class="btn btn-green" onclick="startSystem('admin')">ΕΙΜΑΙ ADMIN (ΠΟΜΠΟΣ)</button>
-        <button class="btn btn-blue" onclick="startSystem('staff')">ΕΙΜΑΙ STAFF (ΔΕΚΤΗΣ)</button>
-    </div>
+    <div id="setupBot" class="setup-screen">
+        <div class="card">
+            <h2>🤖 Setup Bot</h2>
+            <p style="font-size: 12px; color: #888;">Ελέγχω τις άδειες της συσκευής...</p>
+            
+            <div class="status-item">
+                <span>Fully Kiosk Mode</span>
+                <span id="statFully" class="error">❌ Όχι</span>
+            </div>
 
-    <div id="adminScreen" class="screen">
-        <h1>ADMIN PANEL</h1>
-        <button class="btn btn-green" id="callBtn" onclick="sendCall()">📢 ΚΛΗΣΗ ΟΛΩΝ</button>
-        <p style="color:#888; margin-top:20px;">Ο Πομπός είναι έτοιμος.</p>
-    </div>
+            <div class="status-item">
+                <span>Overlay (Pop-up)</span>
+                <button id="btnOverlay" class="btn-fix" onclick="fixOverlay()">FIX IT</button>
+            </div>
 
-    <div id="staffScreen" class="screen">
-        <h1 style="font-size: 50px;">🎧</h1>
-        <h2>SYSTEM ARMED</h2>
-        
-        <div style="margin: 20px 0; font-size: 14px; color: #00E676;">
-            🔊 Audio Engine: ACTIVE<br>
-            📡 Socket: CONNECTED
+            <div class="status-item">
+                <span>Battery (Anti-Sleep)</span>
+                <button class="btn-fix" onclick="fixBattery()">FIX IT</button>
+            </div>
+
+            <button id="btnStart" class="btn-fix" style="width:100%; margin-top:20px; background:#00E676; color:black; display:none;" onclick="enterApp()">
+                ΕΚΚΙΝΗΣΗ ΕΦΑΡΜΟΓΗΣ
+            </button>
         </div>
-
-        <button class="btn btn-dark" onclick="enableFakeLock()">
-            🌙 FAKE LOCK (SAFE MODE)
-        </button>
-        <p style="font-size:12px; color:#555;">Μην κλείνεις την οθόνη. Πάτα το Fake Lock.</p>
     </div>
 
-    <div id="fakeLockScreen" onclick="disableFakeLock()">
-        <div style="color:#333; font-size:12px;">Double Tap to Wake</div>
+    <div id="mainApp" class="setup-screen">
+        <h1>🔔 BellGo Active</h1>
+        <button onclick="socket.emit('trigger-alarm')">ΔΟΚΙΜΑΣΤΙΚΗ ΚΛΗΣΗ</button>
+        <button style="background:#333; color:white; margin-top:20px;" onclick="fully.startScreensaver()">🌙 FAKE LOCK</button>
     </div>
 
-    <div id="alarmScreen">
-        <h1 style="font-size:50px; color:white; margin-bottom:20px;">🚨 ΚΛΗΣΗ! 🚨</h1>
-        <div class="stop-btn" onclick="stopAlarm()">STOP</div>
-        <p style="color:white; font-weight:bold; margin-top:30px;">
-            Πάτα STOP ή Volume Up/Down
-        </p>
+    <div id="alarmOverlay">
+        <h1 style="font-size: 50px;">🚨 ΚΛΗΣΗ!</h1>
+        <button style="width:80%; height:40%; font-size:40px;" onclick="stopAlarm()">STOP</button>
     </div>
 
-    <audio id="alertSound" src="alert.mp3" loop preload="auto"></audio>
-    
-    <audio id="silentLoop" src="silence.mp3" loop preload="auto"></audio>
+    <audio id="alertSound" src="alert.mp3" loop></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myRole = '';
-        let wakeLock = null;
-        let fightLoop = null; 
 
-        // --- ΕΚΚΙΝΗΣΗ ΣΥΣΤΗΜΑΤΟΣ ---
-        async function startSystem(role) {
-            myRole = role;
+        function checkPermissions() {
+            if (typeof fully !== 'undefined') {
+                document.getElementById('statFully').innerText = "✅ OK";
+                document.getElementById('statFully').className = "ok";
+
+                // Έλεγχος αν έχουμε Overlay Permission
+                // Σημείωση: Το Fully API μας δίνει πρόσβαση, αλλά το Android θέλει το switch ON
+                document.getElementById('btnStart').style.display = "block";
+            } else {
+                alert("ΠΡΟΣΟΧΗ: Πρέπει να ανοίξεις το site μέσα από το Fully Kiosk Browser!");
+            }
+        }
+
+        // BOT ΕΝΤΟΛΕΣ ΠΟΥ "ΔΕΙΧΝΟΥΝ ΤΟΝ ΔΡΟΜΟ"
+        function fixOverlay() {
+            if (typeof fully !== 'undefined') {
+                alert("Το Bot θα σε πάει στις ρυθμίσεις Android.\n\n👉 Βρες το Fully Kiosk και πάτα 'Allow/Να επιτρέπεται'.");
+                fully.requestOverlayPermission();
+            }
+        }
+
+        function fixBattery() {
+            if (typeof fully !== 'undefined') {
+                alert("Το Bot θα ανοίξει τις ρυθμίσεις μπαταρίας.\n\n👉 Επίλεξε 'No Restrictions' ή 'Don't Optimize'.");
+                fully.requestIgnoreBatteryOptimizations();
+            }
+        }
+
+        function enterApp() {
+            document.getElementById('setupBot').style.display = "none";
+            document.getElementById('mainApp').style.display = "flex";
             
-            // 1. Ενεργοποίηση "Σιωπηλού Κινητήρα" (Κρατάει το browser ξύπνιο)
-            const silent = document.getElementById('silentLoop');
-            silent.volume = 0.05; 
-            await silent.play().catch(e => console.log("Click needed for audio"));
-
-            // 2. Ενεργοποίηση Wake Lock (Να μην σβήνει η οθόνη μόνη της)
-            if ('wakeLock' in navigator) {
-                try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
-            }
-
-            // 3. Σύνδεση Socket
-            socket.emit('join-store', { storeName: 'General', username: role, role: role });
-
-            // 4. Αλλαγή Οθόνης
-            document.getElementById('loginScreen').classList.remove('active');
-            if(role === 'admin') document.getElementById('adminScreen').classList.add('active');
-            else document.getElementById('staffScreen').classList.add('active');
-
-            // 5. ΟΠΛΙΣΜΟΣ MEDIA SESSION (Για να πιάνουν τα κουμπιά)
-            setupMediaSession("BellGo Standby");
-        }
-
-        // --- MEDIA SESSION (ΧΕΙΡΙΣΜΟΣ ΚΟΥΜΠΙΩΝ) ---
-        function setupMediaSession(state) {
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: state,
-                    artist: 'System Online',
-                    album: 'Do Not Close'
-                });
-
-                // Όλα τα κουμπιά κάνουν STOP τον συναγερμό
-                const actionHandler = () => {
-                    if(document.getElementById('alarmScreen').style.display === 'flex') {
-                        stopAlarm();
-                    }
-                };
-                navigator.mediaSession.setActionHandler('play', actionHandler);
-                navigator.mediaSession.setActionHandler('pause', actionHandler);
-                navigator.mediaSession.setActionHandler('stop', actionHandler);
-                navigator.mediaSession.setActionHandler('previoustrack', actionHandler);
-                navigator.mediaSession.setActionHandler('nexttrack', actionHandler);
+            // Αυτόματες ρυθμίσεις μέσω Bot (Native Commands)
+            if (typeof fully !== 'undefined') {
+                fully.setBooleanSetting("keepScreenOn", true);
+                fully.setBooleanSetting("unlockScreen", true);
+                fully.setBooleanSetting("bringToForeground", true);
             }
         }
 
-        // --- SEND CALL (ADMIN) ---
-        function sendCall() {
-            socket.emit('trigger-alarm', { targetId: null });
-            const btn = document.getElementById('callBtn');
-            btn.style.background = "#555";
-            btn.innerText = "ΚΑΛΕΙ...";
-            setTimeout(() => { btn.style.background = "#00E676"; btn.innerText = "📢 ΚΛΗΣΗ ΟΛΩΝ"; }, 2000);
-        }
-
-        // --- RECEIVE CALL (STAFF) ---
+        // SOCKET LISTENERS
         socket.on('ring-bell', () => {
-            if(myRole === 'admin') return;
-
-            // 1. ΠΕΤΑΓΜΑΤΑΙ Η ΟΘΟΝΗ ΚΛΗΣΗΣ
-            document.getElementById('alarmScreen').style.display = 'flex';
-            
-            // 2. ΗΧΟΣ ΣΥΝΑΓΕΡΜΟΥ
-            const alertSnd = document.getElementById('alertSound');
-            alertSnd.currentTime = 0;
-            alertSnd.volume = 1.0;
-            alertSnd.play();
-
-            // 3. ΑΛΛΑΓΗ MEDIA SESSION (Για να φαίνεται στο Lock Screen)
-            setupMediaSession("🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ! 🚨");
-
-            // 4. ΔΟΝΗΣΗ
-            if(navigator.vibrate) navigator.vibrate([1000, 200, 1000, 200, 1000]);
-
-            // 5. FULLY KIOSK FORCE (Αν υπάρχει)
-            if(window.fully) {
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            document.getElementById('alertSound').play();
+            if (typeof fully !== 'undefined') {
                 fully.turnScreenOn();
                 fully.bringToForeground();
-                // Loop για να επιμένει
-                if(fightLoop) clearInterval(fightLoop);
-                fightLoop = setInterval(() => {
-                    fully.bringToForeground();
-                    fully.turnScreenOn();
-                }, 800);
             }
         });
 
-        // --- STOP ALARM ---
         function stopAlarm() {
-            document.getElementById('alarmScreen').style.display = 'none';
-            
-            const alertSnd = document.getElementById('alertSound');
-            alertSnd.pause();
-            alertSnd.currentTime = 0;
-
-            if(navigator.vibrate) navigator.vibrate(0);
-            if(fightLoop) clearInterval(fightLoop);
-
-            setupMediaSession("BellGo Standby");
+            document.getElementById('alarmOverlay').style.display = 'none';
+            document.getElementById('alertSound').pause();
         }
 
-        // --- FAKE LOCK ---
-        function enableFakeLock() {
-            document.getElementById('fakeLockScreen').style.display = 'flex';
-            // Ζητάμε Full Screen για να κρύψουμε τις μπάρες
-            if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-        }
-        function disableFakeLock() {
-            document.getElementById('fakeLockScreen').style.display = 'none';
-            if(document.exitFullscreen) document.exitFullscreen();
-        }
+        // Έναρξη ελέγχου
+        setInterval(checkPermissions, 3000);
     </script>
 </body>
 </html>
