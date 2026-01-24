@@ -1,21 +1,16 @@
-// --- logic.js v4 (Aggressive Fix) ---
 const socket = io();
 let isFully = typeof fully !== 'undefined';
 let messaging = null;
 let myToken = null;
-let currentUser = null; // Αρχικά NULL για να ξέρουμε αν έχει γίνει login
+let currentUser = null;
 
-// 🛡️ SAFETY CHECK: ΜΟΛΙΣ ΑΝΟΙΞΕΙ, ΣΚΟΤΩΣΕ ΤΟΝ ΗΧΟ
+// SAFETY: Stop alarm on load
 window.onload = function() {
     const siren = document.getElementById('siren');
-    if(siren) {
-        siren.pause();
-        siren.currentTime = 0;
-    }
-    console.log("🔒 System Loaded - Alarm Disarmed");
+    if(siren) { siren.pause(); siren.currentTime = 0; }
 };
 
-// FIREBASE INIT
+// FIREBASE
 if (!isFully) {
     try {
         const firebaseConfig = { 
@@ -29,32 +24,34 @@ if (!isFully) {
         };
         firebase.initializeApp(firebaseConfig);
         messaging = firebase.messaging();
-        messaging.onMessage(() => {
-            if(currentUser) { // Μόνο αν έχει κάνει Login
-                updateMediaSession('alarm'); 
-                Watchdog.triggerPanicMode();
-            }
-        });
+        messaging.onMessage(() => { if(currentUser) { updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
     } catch(e) {}
 }
 
+// LOGIN FUNCTION
 async function login(store, name, role, pass) {
-    currentUser = { store, name, role }; // ΤΩΡΑ ΓΙΝΕΤΑΙ ΕΝΕΡΓΟΣ
-    
-    // Ξεκινάμε τον Σιωπηλό Παίκτη (Anti-Sleep)
+    // 1. ΑΜΕΣΗ ΕΚΤΕΛΕΣΗ ΗΧΟΥ (Χωρίς await πριν από αυτό)
     const silence = document.getElementById('silence');
     if (silence) {
         silence.volume = 1.0; 
-        try {
-            await silence.play();
-            setupMediaSession(); 
-        } catch(e) { console.error("Silence blocked:", e); }
+        // Force Play Promise
+        const playPromise = silence.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log("🤫 Silence playing successfully.");
+                setupMediaSession(); // Ενεργοποίηση μπάρας
+            }).catch(error => {
+                console.error("Audio blocked:", error);
+                alert("⚠️ Πάτα κάπου στην οθόνη για να ενεργοποιηθεί ο ήχος!");
+            });
+        }
     }
 
-    if (isFully) {
-        try { Watchdog.runSetup(); } catch(e) {}
-    }
+    currentUser = { store, name, role };
 
+    if (isFully) { try { Watchdog.runSetup(); } catch(e) {} }
+    
+    // Τώρα κάνουμε τα αργά (Async)
     if (role !== 'admin' && !isFully && messaging) {
         try { myToken = await messaging.getToken(); } catch(e){}
     }
@@ -71,10 +68,7 @@ async function login(store, name, role, pass) {
 function setupMediaSession() {
     if ('mediaSession' in navigator) {
         updateMediaSession('idle');
-        const stopHandler = function() {
-            Watchdog.stopPanicMode();
-            updateMediaSession('idle'); 
-        };
+        const stopHandler = function() { Watchdog.stopPanicMode(); updateMediaSession('idle'); };
         navigator.mediaSession.setActionHandler('play', stopHandler);
         navigator.mediaSession.setActionHandler('pause', stopHandler);
         navigator.mediaSession.setActionHandler('stop', stopHandler);
@@ -85,44 +79,48 @@ function updateMediaSession(state) {
     if (!('mediaSession' in navigator)) return;
     if (state === 'alarm') {
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ! 🚨",
-            artist: "ΠΑΤΑ ΓΙΑ STOP",
-            album: "BellGo Alert",
+            title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", artist: "ΠΑΤΑ ΓΙΑ STOP", album: "BellGo Alert",
             artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
         });
     } else {
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: "🟢 BellGo Active",
-            artist: "Αναμονή...",
-            album: currentUser.store || "System",
+            title: "🟢 BellGo Active", artist: "Αναμονή...", album: currentUser.store || "System",
             artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
         });
     }
 }
 
-// ADMIN UPDATE
+// ADMIN UI UPDATE (ΕΔΩ ΕΙΝΑΙ ΤΟ ΠΡΟΒΛΗΜΑ ΤΩΝ ΡΟΛΩΝ)
 socket.on('update-staff-list', (staffList) => {
+    console.log("📥 Staff List Received:", staffList);
+    
     if (!currentUser || currentUser.role !== 'admin') return;
+    
     const waiterContainer = document.getElementById('waiter-list');
     const driverContainer = document.getElementById('driver-list');
+    
+    // Reset
     waiterContainer.innerHTML = '<h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3>';
     driverContainer.innerHTML = '<h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3>';
 
+    if (staffList.length === 0) {
+        waiterContainer.innerHTML += '<p style="color:gray; font-size:12px;">Κανείς συνδεδεμένος...</p>';
+    }
+
     staffList.forEach(user => {
         const btn = document.createElement('button');
-        btn.className = user.role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
+        // Έλεγχος Ρόλου (Case Insensitive για σιγουριά)
+        const role = user.role.toLowerCase();
+        
+        btn.className = role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
         btn.innerText = `🔔 ${user.username}`;
         btn.onclick = () => socket.emit('trigger-alarm', user.id);
-        if (user.role === 'driver') driverContainer.appendChild(btn);
+        
+        if (role === 'driver') driverContainer.appendChild(btn);
         else waiterContainer.appendChild(btn);
     });
 });
 
-// ALARM LISTENER (SAFEGUARD)
 socket.on('ring-bell', () => {
-    // ΜΟΝΟ ΑΝ ΕΧΟΥΜΕ ΚΑΝΕΙ LOGIN
-    if (currentUser) {
-        updateMediaSession('alarm');
-        Watchdog.triggerPanicMode();
-    }
+    if (currentUser) { updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }
 });
