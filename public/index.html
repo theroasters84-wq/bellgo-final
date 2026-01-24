@@ -2,60 +2,51 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultimate</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Test Run</title>
     
+    <style>
+        body { background: #111; color: white; font-family: monospace; text-align: center; padding: 20px; }
+        .box { border: 1px solid #333; padding: 20px; margin: 10px auto; max-width: 400px; border-radius: 10px; background: #222; }
+        button { padding: 15px; width: 100%; margin-top: 10px; cursor: pointer; font-size: 16px; font-weight: bold; border: none; border-radius: 5px; }
+        .btn-green { background: #00E676; color: black; }
+        .btn-blue { background: #2962FF; color: white; }
+        input { padding: 10px; width: 90%; background: #333; border: 1px solid #555; color: white; text-align: center; margin-bottom: 10px; }
+        #logs { text-align: left; font-size: 12px; color: #00E676; margin-top: 20px; white-space: pre-wrap; }
+    </style>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
-
-    <script src="setup-bot.js"></script>
-    <script src="watchdog.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-    <div id="loginScreen" class="screen active">
-        <h1>BELLGO</h1>
-        <div style="border:1px solid #FF6D00; padding:10px; border-radius:10px; margin-bottom:20px;">
-            <p style="color:#FF6D00; margin:0;">🤖 Πρώτη φορά;</p>
-            <button class="btn-setup" onclick="SetupBot.run()">ΡΥΘΜΙΣΗ ΑΔΕΙΩΝ (AUTO)</button>
-        </div>
+    <h1>🔥 FIREBASE TESTER</h1>
+
+    <div id="loginSection" class="box">
+        <h3>Βήμα 1: Σύνδεση</h3>
+        <input type="text" id="username" placeholder="Όνομα (π.χ. Giorgos)" value="User1">
+        <button class="btn-blue" onclick="loginAs('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ (ΚΙΝΗΤΟ)</button>
+        <button class="btn-green" onclick="loginAs('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ (ADMIN)</button>
+    </div>
+
+    <div id="controlSection" class="box" style="display:none;">
+        <h2 id="roleDisplay"></h2>
+        <p id="tokenStatus" style="color:yellow;">Αναμονή για Token...</p>
         
-        <button class="btn-pompos" onclick="startApp('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ</button>
-        <button class="btn-dekths" onclick="startApp('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ</button>
+        <button id="fireBtn" class="btn-green" style="display:none;" onclick="triggerTest()">🚀 ΠΥΡΟΔΟΤΗΣΗ FIREBASE</button>
     </div>
 
-    <div id="pomposScreen" class="screen">
-        <h1>ΠΟΜΠΟΣ</h1>
-        <button class="btn-pompos" onclick="triggerAlarm()">🔔 ΚΛΗΣΗ</button>
-        <p id="statusMsg">Ready</p>
+    <div class="box">
+        <h4>System Logs:</h4>
+        <div id="logs">...</div>
     </div>
 
-    <div id="dekthsScreen" class="screen">
-        <h1>ΔΕΚΤΗΣ</h1>
-        <h2 style="color:#00C853">● ONLINE</h2>
-        <button class="btn-fake" onclick="enableFakeLock()">🌙 FAKE LOCK</button>
-        <p style="font-size:12px; color:#666;">Μην κλείνεις την οθόνη.</p>
-    </div>
-
-    <div id="fakeLockScreen" onclick="disableFakeLock()">
-        <p>Double Tap to Unlock</p>
-    </div>
-
-    <div id="alarmOverlay">
-        <h1>🚨 ΚΛΗΣΗ!</h1>
-        <button class="stop-btn" onclick="stopAlarm()">STOP</button>
-    </div>
-
-    <audio id="alertSound" src="alert.mp3" loop></audio>
-    <audio id="silenceSound" src="silence.mp3" loop></audio>
-
-    <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myFcmToken = null;
+        let myToken = null;
 
-        // --- FIREBASE CONFIG ---
+        // --- ΤΟ CONFIG ΣΟΥ (Αυτό που μου έστειλες) ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -65,80 +56,76 @@
             appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
             measurementId: "G-379ETZJP8H"
         };
+
+        // Αρχικοποίηση Firebase
         firebase.initializeApp(firebaseConfig);
         const messaging = firebase.messaging();
 
-        // --- INIT APP ---
-        async function startApp(role) {
-            // Αν είναι δέκτης, πάρε το Token
+        function log(msg) {
+            const logDiv = document.getElementById('logs');
+            logDiv.innerHTML += `> ${msg}\n`;
+            console.log(msg);
+        }
+
+        async function loginAs(role) {
+            const user = document.getElementById('username').value;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('controlSection').style.display = 'block';
+            document.getElementById('roleDisplay').innerText = role === 'admin' ? "ΠΟΜΠΟΣ" : "ΔΕΚΤΗΣ";
+
+            // Αν είναι Δέκτης, ζητάμε άδεια για Token
             if (role === 'staff') {
+                log("Ζητάω άδεια ειδοποιήσεων...");
                 try {
+                    // Ζητάμε το Token
                     const token = await messaging.getToken();
-                    if(token) myFcmToken = token;
-                    console.log("Token:", token);
-                } catch(e) { console.log("Token Error", e); }
-                
-                // Ξεκίνα τα Robots
-                Watchdog.start();
-                
-                // Ξεκίνα τον σιωπηλό ήχο
-                document.getElementById('silenceSound').volume = 0.05;
-                document.getElementById('silenceSound').play().catch(()=>{});
+                    if (token) {
+                        myToken = token;
+                        log("✅ TOKEN ΒΡΕΘΗΚΕ!");
+                        document.getElementById('tokenStatus').innerText = "✅ Token OK";
+                        document.getElementById('tokenStatus').style.color = "#00E676";
+                    } else {
+                        log("⚠️ Δεν βρέθηκε Token. Έδωσες άδεια;");
+                        document.getElementById('tokenStatus').innerText = "❌ No Token";
+                    }
+                } catch (err) {
+                    log("❌ ERROR: " + err);
+                    alert("Πρέπει να πατήσεις 'Allow' στις ειδοποιήσεις!");
+                }
+            } else {
+                // Αν είναι Admin
+                document.getElementById('fireBtn').style.display = 'block';
+                document.getElementById('tokenStatus').innerText = "Δεν χρειάζεσαι Token.";
             }
 
-            // Σύνδεση Socket
-            socket.emit('join-store', { 
-                storeName: 'General', 
-                username: role, 
+            // Στέλνουμε τα στοιχεία στον Server
+            log("Στέλνω στοιχεία στον Server...");
+            socket.emit('join-store', {
+                storeName: 'TestRoom',
+                username: user,
                 role: role,
-                fcmToken: myFcmToken 
+                fcmToken: myToken // Εδώ στέλνουμε το Token (αν υπάρχει)
             });
-
-            // Αλλαγή Οθόνης
-            document.getElementById('loginScreen').classList.remove('active');
-            if (role === 'admin') document.getElementById('pomposScreen').classList.add('active');
-            else document.getElementById('dekthsScreen').classList.add('active');
-
-            // Media Session (Κουμπιά)
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({ title: 'BellGo Active' });
-                navigator.mediaSession.setActionHandler('play', stopAlarm);
-                navigator.mediaSession.setActionHandler('pause', stopAlarm);
-            }
         }
 
-        // --- ALARM LOGIC ---
-        function triggerAlarm() {
+        function triggerTest() {
+            log("🔴 Πατάω το κουμπί...");
             socket.emit('trigger-alarm');
-            document.getElementById('statusMsg').innerText = "Καλεί...";
-            setTimeout(() => document.getElementById('statusMsg').innerText = "Ready", 3000);
         }
 
-        socket.on('ring-bell', () => {
-            // UI
-            document.getElementById('alarmOverlay').style.display = 'flex';
-            // Audio
-            document.getElementById('alertSound').currentTime = 0;
-            document.getElementById('alertSound').play();
-            // Robots Attack
-            Watchdog.triggerPanicMode();
+        // Ακούμε για ειδοποιήσεις όταν η εφαρμογή είναι ανοιχτή (Foreground)
+        messaging.onMessage((payload) => {
+            log("🔔 ΗΡΘΕ ΕΙΔΟΠΟΙΗΣΗ (Foreground)!");
+            log("Title: " + payload.notification.title);
+            alert("🔥 TEST SUCCESS: " + payload.notification.title);
         });
 
-        function stopAlarm() {
-            document.getElementById('alarmOverlay').style.display = 'none';
-            document.getElementById('alertSound').pause();
-            Watchdog.stopPanicMode();
-        }
+        socket.on('ring-bell', () => {
+            log("⚡ Socket Signal Received!");
+            document.body.style.background = "darkred";
+            setTimeout(() => document.body.style.background = "#111", 500);
+        });
 
-        // --- FAKE LOCK ---
-        function enableFakeLock() {
-            document.getElementById('fakeLockScreen').style.display = 'flex';
-            if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-        }
-        function disableFakeLock() {
-            document.getElementById('fakeLockScreen').style.display = 'none';
-            if(document.exitFullscreen) document.exitFullscreen();
-        }
     </script>
 </body>
 </html>
