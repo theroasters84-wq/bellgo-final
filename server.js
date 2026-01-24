@@ -7,25 +7,24 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Σερβίρουμε τον φάκελο public (εκεί πρέπει να έχεις το alert.mp3)
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.id}`);
+    console.log(`[SYSTEM] Νέα σύνδεση: ${socket.id}`);
 
-    // Όταν ο Πομπός καλεί
-    socket.on('call-receiver', () => {
-        console.log("Call initiated!");
-        // Στέλνει σήμα σε ΟΛΟΥΣ τους άλλους (δηλαδή στον Δέκτη)
-        socket.broadcast.emit('incoming-call');
+    socket.on('join-setup', (data) => {
+        socket.join(data.storeName);
+        console.log(`[SETUP] Ο ${data.username} ξεκίνησε τη διαδικασία αδειών.`);
     });
 
-    // Όταν ο Δέκτης το αποδέχεται
-    socket.on('call-accepted', () => {
-        console.log("Call accepted/stopped");
-        // Προαιρετικά ενημερώνει πίσω τον πομπό (αν θες)
+    // Ο Server μπορεί να στείλει εντολή για επανέλεγχο αδειών
+    socket.on('request-recheck', (room) => {
+        io.to(room).emit('force-check-permissions');
+    });
+
+    socket.on('trigger-alarm', (data) => {
+        socket.broadcast.emit('ring-bell');
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(3000, () => console.log("Server running on port 3000"));
