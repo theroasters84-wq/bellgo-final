@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BellGo Pro</title>
     <style>
-        /* CSS (ΙΔΙΟ ΜΕ ΠΡΙΝ) */
+        /* CSS ΙΔΙΟ ΜΕ ΠΡΙΝ + Refresh Button */
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex; }
@@ -14,12 +14,21 @@
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; }
         .btn-orange { background: #FF6D00; color: black; }
-        #adminPanel { width: 100%; height: 100%; display: flex; flex-direction: row; }
+        
+        #adminPanel { width: 100%; height: 100%; display: flex; flex-direction: column; } /* Αλλαγή σε column για το header */
+        .lists-container { display: flex; flex: 1; width: 100%; }
         .column { width: 50%; height: 100%; overflow-y: auto; padding: 10px; box-sizing: border-box; }
         .column h3 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+        
         .btn-staff { width: 95%; height: 80px; font-size: 22px; margin-bottom: 15px; display: block; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
+
+        /* HEADER ADMIN */
+        .admin-header { height: 50px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
+        .refresh-btn { width: 40px; height: 40px; background: #444; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; }
+
+        /* ALARM POPUP */
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
@@ -50,17 +59,26 @@
     </div>
 
     <div id="mainApp" class="screen">
-        <div style="background: #222; width: 100%; padding: 10px;">
-            <span id="displayStore" style="color:#00E676; font-weight:bold;"></span> | <span id="displayUser"></span>
+        
+        <div class="admin-header">
+            <span id="displayUser" style="font-weight:bold;">User</span>
+            <span id="displayStore" style="color:#00E676;">Store</span>
+            <button class="refresh-btn" onclick="location.reload()">↻</button>
         </div>
+
         <div id="adminPanel" style="display:none;">
-            <div id="driver-list" class="column" style="border-right: 1px solid #333;"><h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3></div>
-            <div id="waiter-list" class="column"><h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3></div>
+            <div style="padding:5px;">
+                <button class="btn-green" style="height:40px; font-size:16px;" onclick="socket.emit('get-staff-list')">🔄 ΑΝΑΝΕΩΣΗ ΛΙΣΤΑΣ</button>
+            </div>
+            <div class="lists-container">
+                <div id="driver-list" class="column" style="border-right: 1px solid #333;"><h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3></div>
+                <div id="waiter-list" class="column"><h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3></div>
+            </div>
         </div>
+
         <div id="staffPanel" style="display:none; margin-top: 50px;">
             <h1 style="color: cyan; font-size: 40px;">🟢 ONLINE</h1>
-            <p>Αναμονή για κλήση...</p>
-            <p style="color:gray; font-size:12px;">Player Active</p>
+            <p>Η εφαρμογή τρέχει στο παρασκήνιο.</p>
         </div>
     </div>
 
@@ -70,12 +88,13 @@
     </div>
 
     <audio id="siren" src="alert.mp3" preload="auto"></audio>
+    
     <audio id="silence" loop>
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=5"></script>
-    <script src="logic.js?v=5"></script>
+    <script src="watchdog.js?v=6"></script>
+    <script src="logic.js?v=6"></script>
     <script>
         function nextStep(n) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
