@@ -3,19 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BellGo Hybrid</title>
-    
+    <title>BellGo Pro</title>
     <style>
-        body { background: #000; color: white; font-family: sans-serif; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .btn { padding: 20px; width: 80%; font-size: 20px; margin: 10px; border-radius: 15px; border: none; font-weight: bold; cursor: pointer; }
+        /* CSS (ΙΔΙΟ ΜΕ ΠΡΙΝ) */
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .active { display: flex; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
+        button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; }
         .btn-green { background: #00E676; color: black; }
-        .btn-blue { background: #2962FF; color: white; }
-        .status { font-size: 14px; color: #666; margin-top: 20px; }
-        
-        /* ALARM OVERLAY */
-        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; }
-        @keyframes flash { 0% { background: red; } 50% { background: #500; } 100% { background: red; } }
-        .stop-btn { width: 200px; height: 200px; border-radius: 50%; background: white; color: red; font-size: 30px; font-weight: 900; border: 5px solid yellow; }
+        .btn-blue { background: #2962FF; }
+        .btn-orange { background: #FF6D00; color: black; }
+        #adminPanel { width: 100%; height: 100%; display: flex; flex-direction: row; }
+        .column { width: 50%; height: 100%; overflow-y: auto; padding: 10px; box-sizing: border-box; }
+        .column h3 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .btn-staff { width: 95%; height: 80px; font-size: 22px; margin-bottom: 15px; display: block; }
+        .driver { background: #E65100; border-left: 5px solid #FFD180; }
+        .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
+        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; }
+        @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
+        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -24,138 +32,68 @@
 </head>
 <body>
 
-    <div id="loginSection">
-        <h1>BELLGO v10</h1>
-        <p id="deviceType" style="color: cyan;">Ανίχνευση Συσκευής...</p>
-        <button class="btn btn-blue" onclick="startApp('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ (TABLET)</button>
-        <button class="btn btn-green" onclick="startApp('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ</button>
+    <div id="step1" class="screen active">
+        <h2>🏬 Όνομα Μαγαζιού</h2>
+        <input type="text" id="inpStore" placeholder="CoffeeRoom1">
+        <button class="btn-green" onclick="nextStep(2)">Επόμενο</button>
+    </div>
+    <div id="step2" class="screen">
+        <h2>👤 Το Όνομά σου</h2>
+        <input type="text" id="inpName" placeholder="Μάριος">
+        <button class="btn-green" onclick="nextStep(3)">Επόμενο</button>
+    </div>
+    <div id="step3" class="screen">
+        <h2>👔 Ο Ρόλος σου</h2>
+        <button class="btn-green" onclick="doLogin('admin')">ADMIN (Κουζίνα)</button>
+        <button class="btn-blue" onclick="doLogin('waiter')">ΣΕΡΒΙΤΟΡΟΣ</button>
+        <button class="btn-orange" onclick="doLogin('driver')">ΔΙΑΝΟΜΕΑΣ</button>
     </div>
 
-    <div id="mainScreen" style="display:none;">
-        <h2 id="roleText">...</h2>
-        <p id="connectionStatus">🔴 Disconnected</p>
-        <button id="fireBtn" class="btn btn-green" style="display:none;" onclick="triggerAlarm()">🔔 ΚΛΗΣΗ</button>
-        <div id="logs" class="status"></div>
+    <div id="mainApp" class="screen">
+        <div style="background: #222; width: 100%; padding: 10px;">
+            <span id="displayStore" style="color:#00E676; font-weight:bold;"></span> | <span id="displayUser"></span>
+        </div>
+        <div id="adminPanel" style="display:none;">
+            <div id="driver-list" class="column" style="border-right: 1px solid #333;"><h3>🛵 ΔΙΑΝΟΜΕΙΣ</h3></div>
+            <div id="waiter-list" class="column"><h3>🤵 ΣΕΡΒΙΤΟΡΟΙ</h3></div>
+        </div>
+        <div id="staffPanel" style="display:none; margin-top: 50px;">
+            <h1 style="color: cyan; font-size: 40px;">🟢 ONLINE</h1>
+            <p>Αναμονή για κλήση...</p>
+            <p style="color:gray; font-size:12px;">Player Active</p>
+        </div>
     </div>
 
     <div id="alarmScreen">
-        <h1>🚨 ΚΛΗΣΗ!</h1>
-        <button class="stop-btn" onclick="stopAlarm()">STOP</button>
+        <h1 style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <button class="stop-btn" onclick="Watchdog.stopPanicMode()">STOP</button>
     </div>
 
-    <audio id="siren" src="alert.mp3" loop></audio>
-    <audio id="silence" src="silence.mp3" loop></audio>
+    <audio id="siren" src="alert.mp3" preload="auto"></audio>
+    <audio id="silence" loop>
+        <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
+    </audio>
 
+    <script src="watchdog.js?v=5"></script>
+    <script src="logic.js?v=5"></script>
     <script>
-        const socket = io();
-        let isFully = typeof fully !== 'undefined'; // Εδώ καταλαβαίνουμε αν είμαστε στο Fully Kiosk
-        let messaging = null;
-        let myToken = null;
-
-        // --- 1. ΑΝΙΧΝΕΥΣΗ ΣΥΣΚΕΥΗΣ ---
-        const deviceLabel = document.getElementById('deviceType');
-        if (isFully) {
-            deviceLabel.innerText = "🤖 Mode: Fully Kiosk (Native Control)";
-            // Ρυθμίσεις Fully Kiosk για να μην κοιμάται
-            fully.setBooleanSetting("keepScreenOn", true);
-            fully.setBooleanSetting("unlockScreen", true);
-        } else {
-            deviceLabel.innerText = "🌐 Mode: Standard Browser (Chrome)";
+        function nextStep(n) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('step'+n).classList.add('active');
         }
-
-        // --- 2. FIREBASE SETUP (ΜΟΝΟ ΓΙΑ CHROME) ---
-        // Αν είμαστε Fully Kiosk και βγάζει error, το προσπερνάμε!
-        if (!isFully) {
-            const firebaseConfig = {
-                apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
-                authDomain: "bellgo-5dbe5.firebaseapp.com",
-                projectId: "bellgo-5dbe5",
-                storageBucket: "bellgo-5dbe5.firebasestorage.app",
-                messagingSenderId: "799314495253",
-                appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
-                measurementId: "G-379ETZJP8H"
-            };
-            try {
-                firebase.initializeApp(firebaseConfig);
-                messaging = firebase.messaging();
-                console.log("Firebase initialized for Chrome.");
-            } catch(e) { console.log("Firebase skipped."); }
-        }
-
-        // --- 3. ΕΚΚΙΝΗΣΗ ---
-        async function startApp(role) {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('mainScreen').style.display = 'block';
-            document.getElementById('roleText').innerText = role === 'admin' ? "ΠΟΜΠΟΣ" : "ΔΕΚΤΗΣ";
-
-            // Αν είναι Chrome Δέκτης, πάρε Token. Αν είναι Fully, μην ασχοληθείς.
-            if (role === 'staff' && !isFully && messaging) {
-                try {
-                    myToken = await messaging.getToken();
-                    console.log("Token:", myToken);
-                } catch(e) { console.log("Token failed or denied"); }
-            }
-
-            if (role === 'admin') document.getElementById('fireBtn').style.display = 'block';
+        function doLogin(role) {
+            const store = document.getElementById('inpStore').value.trim();
+            const name = document.getElementById('inpName').value.trim();
+            if(!store || !name) return alert("Συμπλήρωσε τα πάντα!");
             
-            // Παίξε σιωπή για να ξεκλειδώσει ο ήχος
-            document.getElementById('silence').play().catch(()=>{});
-
-            // Σύνδεση στον Server
-            socket.emit('join-store', {
-                storeName: 'MainStore',
-                username: role,
-                role: role,
-                fcmToken: myToken,
-                device: isFully ? 'fully' : 'chrome' // Λέμε στον Server τι είμαστε
-            });
-        }
-
-        // --- 4. ΟΤΑΝ ΧΤΥΠΑΕΙ (Η ΚΑΡΔΙΑ ΤΟΥ ΣΥΣΤΗΜΑΤΟΣ) ---
-        socket.on('ring-bell', () => {
-            console.log("⚡ ALARM TRIGGERED!");
-
-            // Α. ΕΜΦΑΝΙΣΗ
-            document.getElementById('alarmScreen').style.display = 'flex';
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('mainApp').classList.add('active');
             
-            // Β. ΗΧΟΣ
-            const audio = document.getElementById('siren');
-            audio.currentTime = 0;
-            audio.play();
+            if(role === 'admin') document.getElementById('adminPanel').style.display = 'flex';
+            else document.getElementById('staffPanel').style.display = 'block';
 
-            // Γ. ΕΙΔΙΚΟΣ ΧΕΙΡΙΣΜΟΣ FULLY KIOSK (Εδώ είναι η μαγκιά)
-            if (isFully) {
-                fully.turnScreenOn();        // Άναψε οθόνη
-                fully.bringToForeground();   // Έλα μπροστά
-                fully.showToast("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!"); // Μήνυμα
-                fully.setMusicVolume(100);   // Τέρμα ήχος
-                
-                // Δόνηση μέσω Fully
-                // fully.vibrate(); // (Αν το υποστηρίζει το tablet)
-            }
-        });
-
-        // --- 5. ΛΕΙΤΟΥΡΓΙΕΣ ---
-        function triggerAlarm() {
-            socket.emit('trigger-alarm');
+            login(store, name, role, '1234');
         }
-
-        function stopAlarm() {
-            document.getElementById('alarmScreen').style.display = 'none';
-            document.getElementById('siren').pause();
-            if (isFully) fully.turnScreenOff(); // Προαιρετικό: σβήνει οθόνη μετά το Stop
-        }
-
-        // Status Updates
-        socket.on('connect', () => { 
-            document.getElementById('connectionStatus').innerText = "🟢 Connected (" + (isFully ? "Fully" : "Web") + ")";
-            document.getElementById('connectionStatus').style.color = "#00E676";
-        });
-        socket.on('disconnect', () => {
-            document.getElementById('connectionStatus').innerText = "🔴 Disconnected";
-            document.getElementById('connectionStatus').style.color = "red";
-        });
-
     </script>
 </body>
 </html>
