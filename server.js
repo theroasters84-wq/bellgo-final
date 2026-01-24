@@ -4,7 +4,7 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require('firebase-admin');
 
-// --- FIREBASE SETUP ---
+// FIREBASE INIT
 try {
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
@@ -17,74 +17,67 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ΕΔΩ ΚΡΑΤΑΜΕ ΤΟΥΣ ΧΡΗΣΤΕΣ: { socketId: { name, role, store, token } }
 let activeUsers = {}; 
 
 io.on('connection', (socket) => {
     console.log(`[+] New Connection: ${socket.id}`);
 
-    // 1. ΕΙΣΟΔΟΣ ΧΡΗΣΤΗ
     socket.on('join-store', (data) => {
-        socket.join(data.storeName); // Μπαίνει στο "Δωμάτιο" του μαγαζιού
+        // Καθαρίζουμε το όνομα μαγαζιού (Trim) για να μην έχει κενά
+        const cleanStoreName = data.storeName.trim();
         
-        // Αποθηκεύουμε τα στοιχεία του
+        socket.join(cleanStoreName); 
+        
         activeUsers[socket.id] = {
             id: socket.id,
             username: data.username,
-            role: data.role,
-            store: data.storeName,
+            role: data.role, // 'admin', 'waiter', 'driver'
+            store: cleanStoreName,
             fcmToken: data.fcmToken
         };
 
-        console.log(`👤 ${data.username} (${data.role}) joined ${data.storeName}`);
+        console.log(`👤 ${data.username} (${data.role}) joined ${cleanStoreName}`);
 
-        // Ενημερώνουμε τους Admin του ΙΔΙΟΥ μαγαζιού να φτιάξουν κουμπάκια
-        updateAdmins(data.storeName);
+        // ΕΝΗΜΕΡΩΣΗ: Στέλνουμε τη νέα λίστα σε ΟΛΟΥΣ τους Admin του μαγαζιού
+        updateAdmins(cleanStoreName);
     });
 
-    // 2. ΚΛΗΣΗ (ΣΤΟΧΕΥΜΕΝΗ)
     socket.on('trigger-alarm', (targetId) => {
-        console.log(`🔔 Alarm trigged for: ${targetId}`);
-        
-        // Στέλνουμε εντολή ΜΟΝΟ στον συγκεκριμένο χρήστη
+        console.log(`🔔 Alarm for: ${targetId}`);
         io.to(targetId).emit('ring-bell', { from: 'Admin' });
 
-        // Στέλνουμε και Firebase Notification (αν έχει Token)
         const user = activeUsers[targetId];
-        if (user && user.fcmToken) {
-            sendPushNotification(user.fcmToken);
-        }
+        if (user && user.fcmToken) sendPushNotification(user.fcmToken);
     });
 
-    // 3. ΑΠΟΣΥΝΔΕΣΗ
     socket.on('disconnect', () => {
         const user = activeUsers[socket.id];
         if (user) {
-            console.log(`[-] ${user.username} left.`);
             const storeName = user.store;
-            delete activeUsers[socket.id]; // Τον σβήνουμε
-            updateAdmins(storeName); // Ενημερώνουμε τους Admin ότι έφυγε
+            delete activeUsers[socket.id];
+            updateAdmins(storeName); // Ενημέρωση λίστας κατά την έξοδο
         }
     });
 
-    // ΒΟΗΘΗΤΙΚΗ: Στέλνει τη λίστα προσωπικού στους Admins
     function updateAdmins(storeName) {
-        // Βρες όλους τους χρήστες αυτού του μαγαζιού
+        // Φιλτράρουμε ΟΛΟΥΣ εκτός από τους Admin
         const storeStaff = Object.values(activeUsers).filter(u => u.store === storeName && u.role !== 'admin');
-        // Στείλε τη λίστα σε όλους στο δωμάτιο (οι Admins θα την ακούσουν)
+        
+        console.log(`📋 Sending List to ${storeName}:`, storeStaff.length, "staff members.");
+        
+        // Στέλνουμε τη λίστα στο δωμάτιο (οι clients θα αποφασίσουν αν θα τη δείξουν)
         io.to(storeName).emit('update-staff-list', storeStaff);
     }
 });
 
-// FIREBASE FUNCTION
 function sendPushNotification(token) {
     const message = {
         token: token,
-        notification: { title: "🚨 ΕΠΕΙΓΟΥΣΑ ΚΛΗΣΗ", body: "Σε καλούν από την κουζίνα!" },
+        notification: { title: "🚨 ΚΛΗΣΗ", body: "Έλα Κουζίνα!" },
         android: { priority: "high", notification: { sound: "default" } },
         data: { url: "/", action: "alarm" }
     };
-    admin.messaging().send(message).catch(e => console.log("Push Failed:", e.message));
+    admin.messaging().send(message).catch(e => {});
 }
 
 const PORT = process.env.PORT || 3000;
