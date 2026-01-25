@@ -6,31 +6,30 @@ let currentUser = null;
 
 const Logic = {
     login: async function(store, name, role, pass) {
-        // --- 1. AUDIO PLAYER START ---
-        // Η εντολή .play() πρέπει να είναι η ΠΡΩΤΗ που τρέχει
-        const silence = document.getElementById('silence');
-        if (silence) {
-            silence.volume = 1.0;
-            // Προσπαθούμε να παίξουμε αμέσως
-            silence.play().then(() => {
-                // Μόλις ξεκινήσει, ενημερώνουμε το Android ότι "ΠΑΙΖΟΥΜΕ ΜΟΥΣΙΚΗ"
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.playbackState = "playing";
-                    this.updateMediaSession('idle'); 
-                    this.setupMediaSession();
-                }
-            }).catch(e => console.log("Audio block:", e));
+        // Ο ήχος έχει ήδη ξεκινήσει από το HTML (forcePlayAndLogin).
+        // Εδώ απλά στήνουμε την μπάρα ειδοποιήσεων (Spotify style).
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = "playing";
+            this.updateMediaSession('idle'); 
+            this.setupMediaSession();
         }
 
+        // Ξεκινάμε προστασίες
         Watchdog.start(isFully);
+        
         currentUser = { store, name, role, pass };
 
+        // Firebase (Μόνο για Web/Mobile)
         if (!isFully && role !== 'admin') {
             try { this.initFirebase(); } catch(e){}
         }
 
+        // Σύνδεση
         socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
         document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
+        
+        // Ζητάμε αμέσως λίστα αν είμαστε Admin
+        if (role === 'admin') socket.emit('get-staff-list');
     },
 
     logout: function() {
@@ -78,7 +77,6 @@ const Logic = {
         if (!('mediaSession' in navigator)) return;
         navigator.mediaSession.playbackState = "playing";
         
-        // Βάζουμε εικόνα placeholder για να φαίνεται "Επίσημο"
         const artwork = state === 'alarm' 
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
             : [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }];
@@ -92,7 +90,7 @@ const Logic = {
     }
 };
 
-// GLOBAL LISTENERS
+// LISTENERS
 socket.on('update-staff-list', (staffList) => {
     const container = document.getElementById('staffListContainer');
     container.innerHTML = ''; 
@@ -127,6 +125,7 @@ socket.on('ring-bell', () => {
     Watchdog.triggerPanicMode();
 });
 
+// Αρχικό Reset Ήχου
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
