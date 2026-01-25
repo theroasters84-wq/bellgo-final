@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MEDIA BAR MINIMAL</title>
+<title>Media Bar Test</title>
 <style>
 body {
     background:#000;
     color:#fff;
     font-family:sans-serif;
+    text-align:center;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -16,53 +17,64 @@ body {
     height:100vh;
     margin:0;
 }
+#status {
+    margin-top:20px;
+    font-size:18px;
+    color:yellow;
+    border:1px solid #333;
+    padding:10px;
+    width:90%;
+}
 button {
-    font-size:24px;
     padding:20px 40px;
+    font-size:20px;
 }
 </style>
 </head>
 <body>
 
 <h1>MEDIA BAR TEST</h1>
-<button id="start">PLAY ALERT</button>
+<div id="status">Αναμονή...</div>
+<button id="playBtn">PLAY TEST.MP3</button>
 
-<audio id="audio" src="alert.mp3" preload="auto"></audio>
+<audio id="audio" src="test.mp3" preload="auto" loop></audio>
 
 <script>
-const btn = document.getElementById('start');
 const audio = document.getElementById('audio');
+const status = document.getElementById('status');
+const log = t => status.innerHTML = t + "<br>" + status.innerHTML;
 
-btn.addEventListener('click', async () => {
-    audio.volume = 0.7;
-
+document.getElementById('playBtn').addEventListener('click', async () => {
+    audio.volume = 0.5;
     try {
         await audio.play();
+        log("✅ test.mp3 παίζει!");
 
-        if ('mediaSession' in navigator) {
+        if('mediaSession' in navigator){
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'ALERT TEST',
+                title: 'TEST ALERT',
                 artist: 'SYSTEM',
-                album: 'MEDIA BAR',
-                artwork: [{
-                    src: 'https://cdn-icons-png.flaticon.com/512/565/565547.png',
-                    sizes: '512x512',
-                    type: 'image/png'
-                }]
+                album: 'Media Bar Test',
+                artwork: [{src:'https://cdn-icons-png.flaticon.com/512/565/565547.png',sizes:'512x512',type:'image/png'}]
             });
 
-            navigator.mediaSession.setPositionState({
-                duration: 300,
-                playbackRate: 1,
-                position: 0
-            });
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: 600,
+                    position: 0,
+                    playbackRate: 1.0
+                });
+                log("✅ PositionState set (10 λεπτά)");
+            } catch(e){ log("⚠️ PositionState error: " + e.message); }
 
             navigator.mediaSession.playbackState = 'playing';
+            log("👉 Σύρε την οθόνη από πάνω για να δεις media bar!");
+        } else {
+            log("❌ MediaSession not supported");
         }
 
-        console.log('✅ Playing');
-    } catch (e) {
-        console.error('❌ Play failed', e);
+    } catch(e){
+        log("❌ Play failed: " + e.message);
     }
 });
 </script>
