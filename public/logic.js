@@ -8,8 +8,8 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. Set Media Session Immediately
-        this.updateMediaSession('idle');
+        // 1. ΡΥΘΜΙΣΗ SESSION ΣΕ 'PLAYING' (Ποτέ 'idle')
+        this.updateMediaSession('active'); 
         this.setupMediaSession();
 
         // 2. Start Watchdog
@@ -19,7 +19,7 @@ const Logic = {
 
         // 3. Firebase (Web Only)
         if (!isFully && role !== 'admin') {
-            try { this.initFirebase(); } catch(e) { console.log("Firebase Error:", e); }
+            try { this.initFirebase(); } catch(e) {}
         }
 
         // 4. Socket Join
@@ -62,7 +62,6 @@ const Logic = {
             
             messaging.getToken().then((token) => {
                 myToken = token;
-                console.log("Token:", token);
                 if (currentUser) {
                     socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                 }
@@ -74,7 +73,7 @@ const Logic = {
 
     setupMediaSession: function() {
         if ('mediaSession' in navigator) {
-            const stopHandler = () => { if(typeof Watchdog !== 'undefined') Watchdog.stopPanicMode(); this.updateMediaSession('idle'); };
+            const stopHandler = () => { if(typeof Watchdog !== 'undefined') Watchdog.stopPanicMode(); this.updateMediaSession('active'); };
             navigator.mediaSession.setActionHandler('play', stopHandler);
             navigator.mediaSession.setActionHandler('pause', stopHandler);
             navigator.mediaSession.setActionHandler('stop', stopHandler);
@@ -83,14 +82,19 @@ const Logic = {
 
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
+        
+        // ΚΛΕΙΔΙ: Πάντα 'playing' για να μην φεύγει η μπάρα
         navigator.mediaSession.playbackState = "playing";
-        const artwork = state === 'alarm' 
+        
+        const isAlarm = state === 'alarm';
+        
+        const artwork = isAlarm
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
             : [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }];
 
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: state === 'alarm' ? "🚨 ΚΛΗΣΗ!" : "🟢 BellGo Active",
-            artist: state === 'alarm' ? "ΠΑΤΑ ΓΙΑ STOP" : "Online",
+            title: isAlarm ? "🚨 ΚΛΗΣΗ!" : "🟢 BellGo Active",
+            artist: isAlarm ? "ΠΑΤΑ ΓΙΑ STOP" : "System Online",
             album: currentUser ? currentUser.store : "System",
             artwork: artwork
         });
