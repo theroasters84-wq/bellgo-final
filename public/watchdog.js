@@ -3,22 +3,20 @@ const Watchdog = {
     panicInterval: null,
     isRinging: false,
     wakeLock: null,
-    audioMonitor: null, // ΝΕΟ: Για έλεγχο του Media Player
 
     start: function(isFully) {
         console.log("🛡️ Watchdog: Active");
         
-        // 1. ΕΚΚΙΝΗΣΗ MEDIA PLAYER (SILENCE LOOP)
-        // Ξεκινάμε τον σιωπηλό ήχο για να κρατάμε το Android ξύπνιο (ΚΑΙ σε Kiosk ΚΑΙ σε Web)
+        // 1. ΕΚΚΙΝΗΣΗ SILENCE LOOP (ΚΑΙ ΓΙΑ KIOSK KAI ΓΙΑ WEB)
+        // Αυτό κρατάει τη σύνδεση ανοιχτή
         this.ensureAudioPlaying();
 
-        // 2. WEB WAKELOCK (Για Chrome Android)
+        // 2. WEB WAKELOCK
         this.requestWakeLock();
-        // Αν πέσει το WakeLock (π.χ. αλλάξεις tab), ξαναζήτα το
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 this.requestWakeLock();
-                this.ensureAudioPlaying(); // Τσεκάρουμε και τον ήχο αν γυρίσει ο χρήστης
+                this.ensureAudioPlaying();
             }
         });
 
@@ -29,51 +27,39 @@ const Watchdog = {
                 fully.setBooleanSetting("unlockScreen", true);
                 fully.setBooleanSetting("forceWifi", true);
                 fully.setMusicVolume(100);
-                console.log("🤖 Fully Kiosk Settings Applied");
-            } catch(e){ console.log("Fully Error:", e); }
+            } catch(e){}
         }
 
-        // 4. HEARTBEAT & MONITORING (Κάθε 5 δευτερόλεπτα)
-        // Ελέγχει Socket, WakeLock και Audio Player
+        // 4. HEARTBEAT & AUDIO CHECK (Κάθε 5 δευτερόλεπτα)
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
-             // A. Socket Heartbeat
+             // A. Socket
              if (typeof socket !== 'undefined' && socket.connected) {
                  socket.emit('heartbeat'); 
-             } else {
-                 console.log("⚠️ Watchdog: Socket disconnected!");
              }
+             
+             // B. WakeLock
+             this.requestWakeLock();
 
-             // B. WakeLock Refresh
-             this.requestWakeLock(); 
-
-             // C. Audio Keep-Alive (Αν σταματήσει, το ξαναβάζουμε μπρος)
+             // C. Audio Check (Αν σταματήσει, το ξαναβάζουμε μπρος)
              this.ensureAudioPlaying();
 
-        }, 5000); // Πιο συχνός έλεγχος (5 sec) για ασφάλεια
+        }, 5000);
     },
 
-    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ: ΕΛΕΓΧΟΣ MEDIA PLAYER ---
+    // Ελέγχει αν παίζει ο ήχος. Αν όχι, πατάει Play.
     ensureAudioPlaying: function() {
         const silence = document.getElementById('silence');
-        // Αν βρούμε τον ήχο και είναι παυμένος (paused) ΚΑΙ δεν χτυπάει συναγερμός -> ΠΑΤΑ PLAY!
         if (silence && silence.paused && !this.isRinging) {
-            console.log("💤 Audio was sleeping. Kicking it awake!");
-            silence.play().catch(e => {
-                // Αθόρυβο fail, δεν μπορούμε να κάνουμε πολλά αν ο browser το μπλοκάρει τελείως,
-                // αλλά θα ξαναπροσπαθήσουμε στο επόμενο interval.
-            });
+            silence.play().catch(e => {}); // Προσπάθεια επαναφοράς
         }
     },
 
     requestWakeLock: async function() {
-        if ('wakeLock' in navigator && !this.wakeLock) { // Ζητάμε μόνο αν δεν έχουμε ήδη
+        if ('wakeLock' in navigator && !this.wakeLock) {
             try {
                 this.wakeLock = await navigator.wakeLock.request('screen');
-                console.log("💡 Screen Wake Lock active");
-            } catch (err) {
-                // console.log(`${err.name}, ${err.message}`); // Δεν χρειάζεται spam στο log
-            }
+            } catch (err) {}
         }
     },
 
@@ -81,9 +67,8 @@ const Watchdog = {
         if (this.isRinging) return;
         this.isRinging = true;
 
-        // Σταματάμε το silence για να παίξει η σειρήνα
         const silence = document.getElementById('silence');
-        if(silence) silence.pause();
+        if(silence) silence.pause(); // Παύση σιωπής
 
         const audio = document.getElementById('siren');
         if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
@@ -113,21 +98,20 @@ const Watchdog = {
         if (navigator.vibrate) navigator.vibrate(0);
         document.getElementById('alarmScreen').style.display = 'none';
 
-        // ΞΕΚΙΝΑΜΕ ΠΑΛΙ ΤΟ SILENCE LOOP ΜΕΤΑ ΤΟΝ ΣΥΝΑΓΕΡΜΟ
+        // Ξεκινάμε πάλι τη σιωπή
         this.ensureAudioPlaying();
     },
 
-    // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ: STOP ALL (ΓΙΑ LOGOUT) ---
+    // ΚΑΘΑΡΙΣΜΟΣ ΣΤΟ LOGOUT
     stopAll: function() {
-        console.log("🛑 Watchdog: Stopping all services");
         if (this.interval) clearInterval(this.interval);
         if (this.panicInterval) clearInterval(this.panicInterval);
         
         const silence = document.getElementById('silence');
         if (silence) { silence.pause(); silence.currentTime = 0; }
-
+        
         if (this.wakeLock) {
-            this.wakeLock.release().then(() => this.wakeLock = null);
+            this.wakeLock.release().then(()=> this.wakeLock=null);
         }
     }
 };
