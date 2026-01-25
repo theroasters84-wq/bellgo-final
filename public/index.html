@@ -1,129 +1,87 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANDROID MEDIA PLAYER TEST</title>
-
-<style>
-body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    margin:0;
-}
-button {
-    padding:20px 40px;
-    font-size:24px;
-    font-weight:bold;
-    background:#2962FF;
-    color:#fff;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-}
-#status {
-    margin-top:20px;
-    padding:10px;
-    width:90%;
-    border:1px solid #333;
-    color:yellow;
-    font-size:16px;
-}
-.instructions {
-    margin-top:20px;
-    font-size:14px;
-    color:#ccc;
-    width:90%;
-    text-align:left;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PODCAST MODE</title>
+    <style>
+        body { background-color: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        button { padding: 30px 40px; font-size: 22px; font-weight: bold; background: #FFD600; color: black; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 20px rgba(255, 214, 0, 0.4); }
+        #status { margin-top: 20px; font-size: 16px; color: #00E676; border: 1px solid #333; padding: 10px; width: 90%; }
+    </style>
 </head>
-
 <body>
 
-<h1>MEDIA PLAYER MODE</h1>
-<p>Εμφάνιση τύπου Spotify στο Android</p>
+    <h1>PODCAST TRICK 🎧</h1>
+    <p>Θα ξεγελάσουμε το Android ότι ακούς Podcast.</p>
 
-<button onclick="startPlayer()">▶ PLAY</button>
+    <audio id="myAudio" src="alert.mp3" loop preload="auto"></audio>
 
-<div id="status">Αναμονή…</div>
+    <button onclick="startPodcast()">START FAKE PODCAST ▶</button>
 
-<audio id="player" src="music.mp3" preload="metadata"></audio>
+    <div id="status">Αναμονή...</div>
 
-<div class="instructions">
-<b>Αν δεν βλέπεις μπάρα:</b><br>
-• Σύρε από ΠΑΝΩ προς τα ΚΑΤΩ<br>
-• Έλεγξε Fully Kiosk → status bar<br>
-• ΜΗΝ χρησιμοποιείς alert.mp3
-</div>
-
-<script>
-let timer = null;
-
-function log(t){
-    const s = document.getElementById("status");
-    s.innerHTML = t + "<br>" + s.innerHTML;
-}
-
-function startPlayer(){
-    const audio = document.getElementById("player");
-
-    audio.volume = 0.7;
-
-    audio.play().then(() => {
-        log("✅ Παίζει");
-
-        if(!("mediaSession" in navigator)){
-            log("❌ MediaSession not supported");
-            return;
+    <script>
+        function log(text) {
+            const el = document.getElementById('status');
+            el.innerHTML = text + "<br>" + el.innerHTML;
         }
 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: "TEST PLAYER",
-            artist: "Android MediaSession",
-            album: "System Audio",
-            artwork: [{
-                src: "https://cdn-icons-png.flaticon.com/512/727/727245.png",
-                sizes: "512x512",
-                type: "image/png"
-            }]
-        });
+        function startPodcast() {
+            const audio = document.getElementById('myAudio');
+            log("⏳ Ξεκινάω...");
 
-        navigator.mediaSession.setActionHandler("play", () => {
-            audio.play();
-            navigator.mediaSession.playbackState = "playing";
-        });
+            // 1. ΔΥΝΑΤΟΣ ΗΧΟΣ
+            audio.volume = 1.0;
 
-        navigator.mediaSession.setActionHandler("pause", () => {
-            audio.pause();
-            navigator.mediaSession.playbackState = "paused";
-        });
+            audio.play().then(() => {
+                log("🔊 Ο ήχος παίζει!");
 
-        navigator.mediaSession.playbackState = "playing";
+                if ('mediaSession' in navigator) {
+                    
+                    // 2. METADATA (Σαν να είναι Podcast)
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                        artist: "Πάτα Pause/Next για Stop",
+                        album: "BellGo System Alert",
+                        artwork: [
+                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+                        ]
+                    });
 
-        // 🔑 ΤΟ ΚΛΕΙΔΙ: συνεχή update θέσης
-        timer = setInterval(() => {
-            try {
-                navigator.mediaSession.setPositionState({
-                    duration: audio.duration,
-                    playbackRate: audio.playbackRate,
-                    position: audio.currentTime
-                });
-            } catch(e){}
-        }, 500);
+                    // 3. HANDLERS (Κουμπιά)
+                    const dummy = () => log("🔘 Κουμπί πατήθηκε!");
+                    navigator.mediaSession.setActionHandler('play', () => { audio.play(); });
+                    navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
+                    navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); });
+                    navigator.mediaSession.setActionHandler('seekbackward', dummy);
+                    navigator.mediaSession.setActionHandler('seekforward', dummy);
+                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
+                    navigator.mediaSession.setActionHandler('nexttrack', dummy);
 
-        log("🎵 Κατέβασε το notification bar");
-    }).catch(err => {
-        log("❌ Play error: " + err.message);
-    });
-}
-</script>
+                    // 4. 🔥 ΤΟ ΚΟΛΠΟ (Fake Duration) 🔥
+                    // Λέμε ότι διαρκεί 3600 δευτερόλεπτα (1 ώρα)
+                    try {
+                        navigator.mediaSession.setPositionState({
+                            duration: 3600, 
+                            playbackRate: 1.0,
+                            position: 0
+                        });
+                        log("✅ Fake Duration Set (1 ώρα)");
+                    } catch(e) { log("⚠️ Error Position: " + e.message); }
 
+                    navigator.mediaSession.playbackState = "playing";
+                    log("👉 ΤΩΡΑ ΣΥΡΕ ΤΗΝ ΜΠΑΡΑ ΑΠΟ ΠΑΝΩ!");
+
+                } else {
+                    log("❌ MediaSession Not Supported");
+                }
+            })
+            .catch(e => {
+                log("❌ Play Error: " + e.message);
+                log("💡 Κάνε κλικ ξανά στην οθόνη!");
+            });
+        }
+    </script>
 </body>
 </html>
