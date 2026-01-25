@@ -9,10 +9,17 @@ const SetupBot = {
         fully.showToast("🤖 Setup Bot: Ξεκινάω ρυθμίσεις...");
 
         // 1. Ενεργοποίηση Ρυθμίσεων Fully (Native)
-        fully.setBooleanSetting("keepScreenOn", true);
-        fully.setBooleanSetting("unlockScreen", true);
-        fully.setBooleanSetting("foregroundOnActivity", true);
-        fully.setBooleanSetting("listenVolumeButtons", true);
+        fully.setBooleanSetting("keepScreenOn", true);          // Να μην σβήνει η οθόνη
+        fully.setBooleanSetting("unlockScreen", true);          // Να ξεκλειδώνει αυτόματα
+        fully.setBooleanSetting("foregroundOnActivity", true);  // Να έρχεται μπροστά
+        fully.setBooleanSetting("listenVolumeButtons", true);   // Να ακούει τα κουμπιά έντασης
+
+        // --- ΟΙ ΝΕΕΣ ΕΝΤΟΛΕΣ (CPU & WiFi) ---
+        // Prevent from Sleep while Screen Off (Κρατάει τον επεξεργαστή ξύπνιο)
+        fully.setBooleanSetting("preventSleep", true); 
+        
+        // Set Wifi Wakelock (Απαγορεύει στο WiFi να κοιμηθεί)
+        fully.setBooleanSetting("wifiWakeLock", true); 
 
         // 2. ΑΝΟΙΓΜΑ ΠΑΡΑΘΥΡΩΝ ANDROID (Για να πατήσει ο χρήστης)
         setTimeout(() => {
