@@ -6,20 +6,16 @@ let currentUser = null;
 
 const Logic = {
     login: async function(store, name, role, pass) {
-        // Ο ήχος έχει ήδη ξεκινήσει από το HTML (forcePlayAndLogin).
-        // Εδώ απλά στήνουμε την μπάρα ειδοποιήσεων (Spotify style).
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = "playing";
-            this.updateMediaSession('idle'); 
-            this.setupMediaSession();
-        }
+        // Ενημέρωση Metadata για να φανεί ο Player
+        this.updateMediaSession('idle');
+        this.setupMediaSession();
 
-        // Ξεκινάμε προστασίες
+        // Watchdog & WakeLock
         Watchdog.start(isFully);
         
         currentUser = { store, name, role, pass };
 
-        // Firebase (Μόνο για Web/Mobile)
+        // Firebase (Web Only)
         if (!isFully && role !== 'admin') {
             try { this.initFirebase(); } catch(e){}
         }
@@ -28,7 +24,6 @@ const Logic = {
         socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
         document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
         
-        // Ζητάμε αμέσως λίστα αν είμαστε Admin
         if (role === 'admin') socket.emit('get-staff-list');
     },
 
@@ -60,6 +55,12 @@ const Logic = {
             };
             firebase.initializeApp(firebaseConfig);
             messaging = firebase.messaging();
+            
+            messaging.getToken().then((token) => {
+                myToken = token;
+                console.log("FCM Token:", token); // ΓΙΑ DEBUG
+            });
+
             messaging.onMessage(() => { if(currentUser) { Logic.updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
         }
     },
@@ -75,7 +76,7 @@ const Logic = {
 
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
-        navigator.mediaSession.playbackState = "playing";
+        navigator.mediaSession.playbackState = "playing"; // ΚΡΑΤΑ ΤΟ "PLAYING"
         
         const artwork = state === 'alarm' 
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
@@ -125,7 +126,6 @@ socket.on('ring-bell', () => {
     Watchdog.triggerPanicMode();
 });
 
-// Αρχικό Reset Ήχου
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
