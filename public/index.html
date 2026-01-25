@@ -81,7 +81,7 @@
     <div id="mainApp">
         <div class="header">
             <div id="userInfo" style="font-size: 14px;">User | Store</div>
-            <button class="btn-red" onclick="Logic.logout()">Exit</button>
+            <button class="btn-red" onclick="fullExit()">Exit</button>
         </div>
         <div class="content-area">
             <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
@@ -117,6 +117,18 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
+        // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΚΑΘΑΡΟ EXIT ---
+        function fullExit() {
+            // 1. Σβήνουμε τον αποθηκευμένο χρήστη
+            localStorage.removeItem('bellgo_user');
+            // 2. Σβήνουμε τον συναγερμό αν υπάρχει
+            localStorage.removeItem('bellgo_is_ringing');
+            
+            // 3. Καλούμε το Logout
+            if(typeof Logic !== 'undefined') Logic.logout();
+            else location.reload();
+        }
+
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
             
@@ -131,12 +143,11 @@
                 });
             }
 
-            // 2. Play Audio (Κρίσιμο για Fully Kiosk)
+            // 2. Play Audio
             if(silence) {
                 silence.volume = 1.0;
                 silence.play().catch(e => {
                     console.log("Audio Error:", e);
-                    // Αν υπάρχει Fully Kiosk και αποτύχει το HTML5 audio, δοκιμάζουμε backup
                     if(typeof fully !== 'undefined') fully.playSound("silence.mp3", true);
                 });
             }
@@ -155,7 +166,7 @@
             const pass = document.getElementById('inpPass').value.trim();
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΧΡΗΣΤΗ ΓΙΑ AUTO-LOGIN
+            // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΧΡΗΣΤΗ
             localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -172,10 +183,7 @@
 
         // 🔥 AUTO-LOGIN LOGIC ON RELOAD 🔥
         window.onload = function() {
-            // Έλεγχος αν χτυπούσε πριν το refresh
             const wasRinging = localStorage.getItem('bellgo_is_ringing');
-            
-            // Έλεγχος αποθηκευμένου χρήστη
             const savedUser = localStorage.getItem('bellgo_user');
             const isLoginPage = document.getElementById('step1') && document.getElementById('step1').classList.contains('active');
 
@@ -183,18 +191,15 @@
                 const u = JSON.parse(savedUser);
                 console.log("🔄 Auto-Login:", u.name);
                 
-                // Γεμίζουμε τα πεδία
                 document.getElementById('inpStore').value = u.store;
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
                 selectedRole = u.role;
 
-                // Μπαίνουμε αυτόματα μετά από λίγο
                 setTimeout(() => {
                     if(typeof forcePlayAndLogin === 'function') {
                         forcePlayAndLogin();
 
-                        // Αν χτυπούσε πριν, ΒΑΡΕΣΕ ΞΑΝΑ!
                         if (wasRinging === 'true') {
                             console.log("🚨 ALARM RESTORED!");
                             setTimeout(() => {
