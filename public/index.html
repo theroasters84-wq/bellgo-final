@@ -3,32 +3,59 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kitchen Alarm Client</title>
-<link rel="stylesheet" href="style.css">
+<title>Media Bar Auto Test</title>
+<style>
+body { background:#000; color:#fff; font-family:sans-serif; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; }
+#status { margin-top:20px; font-size:18px; color:yellow; border:1px solid #333; padding:10px; width:90%; }
+</style>
 </head>
 <body>
 
-<h1>Kitchen Alarm Client</h1>
-<button id="startBtn">▶ START SYSTEM</button>
+<h1>Media Bar Auto Test</h1>
 <div id="status">Αναμονή...</div>
 
-<!-- Silent audio -->
-<audio id="silence" src="silence.mp3" loop preload="auto"></audio>
+<!-- Audible ήχος για media bar -->
+<audio id="silence" src="alert.mp3" loop preload="auto"></audio>
 
-<!-- Siren audio -->
-<audio id="siren" src="alert.mp3" preload="auto"></audio>
-
-<!-- Alarm screen overlay -->
-<div id="alarmScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:red; color:white; font-size:50px; justify-content:center; align-items:center; text-align:center;">
-🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ 🚨
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="logic.js"></script>
 <script>
-const startBtn = document.getElementById('startBtn');
-startBtn.addEventListener('click', () => {
-    Logic.init();    // Socket + Watchdog start
+const status = document.getElementById('status');
+const log = t => status.innerHTML = t + "<br>" + status.innerHTML;
+
+window.addEventListener('load', async ()=>{
+
+    const audio = document.getElementById('silence');
+    audio.volume = 0.5;
+
+    try {
+        await audio.play();
+        log("✅ Ήχος παίζει αυτόματα!");
+
+        if('mediaSession' in navigator){
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title:"Auto Alert Test",
+                artist:"Kitchen System",
+                album:"MediaBar",
+                artwork:[{src:"https://cdn-icons-png.flaticon.com/512/727/727245.png",sizes:"512x512",type:"image/png"}]
+            });
+
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration:600, // 10 λεπτά
+                    position:0,
+                    playbackRate:1.0
+                });
+                log("✅ PositionState set (10 λεπτά)");
+            } catch(e){ log("⚠️ PositionState Error: "+e.message); }
+
+            navigator.mediaSession.playbackState = "playing";
+            log("👉 Τώρα σύρε την οθόνη από πάνω! Η media bar πρέπει να εμφανιστεί.");
+        } else {
+            log("❌ MediaSession Not Supported");
+        }
+
+    } catch(e){
+        log("❌ Play Error: "+e.message);
+    }
 });
 </script>
 
