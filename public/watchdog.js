@@ -7,15 +7,17 @@ const Watchdog = {
     start: function(isFully) {
         console.log("🛡️ Watchdog: Active");
         
-        // 1. ΕΚΚΙΝΗΣΗ SILENCE LOOP (ΑΜΕΣΩΣ)
+        // 1. PLAY AUDIO & WAKELOCK
         this.ensureAudioPlaying();
-
-        // 2. WEB WAKELOCK
         this.requestWakeLock();
+
+        // 2. LISTENERS
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 this.requestWakeLock();
                 this.ensureAudioPlaying();
+                // Αν γυρίσει ο χρήστης, ξαναδείξε την μπάρα
+                if(typeof Logic !== 'undefined' && !this.isRinging) Logic.updateMediaSession('active');
             }
         });
 
@@ -25,28 +27,35 @@ const Watchdog = {
                 fully.setBooleanSetting("keepScreenOn", true);
                 fully.setBooleanSetting("unlockScreen", true);
                 fully.setBooleanSetting("forceWifi", true);
+                fully.setBooleanSetting("preventSleep", true);     // CPU Always On
+                fully.setBooleanSetting("wifiWakeLock", true);     // WiFi Always On
                 fully.setMusicVolume(100);
             } catch(e){}
         }
 
-        // 4. HEARTBEAT & AUDIO CHECK (Κάθε 5 δευτ)
+        // 4. THE LOOP (Κάθε 5 δευτερόλεπτα)
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
-             // A. Socket
+             // A. Socket Heartbeat
              if (typeof socket !== 'undefined' && socket.connected) {
                  socket.emit('heartbeat'); 
              }
              
-             // B. WakeLock
+             // B. WakeLock Refresh
              this.requestWakeLock();
 
              // C. Audio Keep-Alive
              this.ensureAudioPlaying();
 
+             // D. 🔥 FORCE MEDIA BAR (ΑΥΤΟ ΖΗΤΗΣΕΣ!) 🔥
+             // Αν δεν χτυπάει συναγερμός, ξαναστείλε τα δεδομένα της μπάρας για να μην εξαφανιστεί.
+             if (typeof Logic !== 'undefined' && !this.isRinging) {
+                 Logic.updateMediaSession('active');
+             }
+
         }, 5000);
     },
 
-    // Ελέγχει αν παίζει ο ήχος. Αν όχι, πατάει Play.
     ensureAudioPlaying: function() {
         const silence = document.getElementById('silence');
         if (silence && silence.paused && !this.isRinging) {
@@ -67,7 +76,7 @@ const Watchdog = {
         this.isRinging = true;
 
         const silence = document.getElementById('silence');
-        if(silence) silence.pause(); // Παύση σιωπής
+        if(silence) silence.pause(); 
 
         const audio = document.getElementById('siren');
         if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
@@ -97,8 +106,9 @@ const Watchdog = {
         if (navigator.vibrate) navigator.vibrate(0);
         document.getElementById('alarmScreen').style.display = 'none';
 
-        // Ξεκινάμε πάλι τη σιωπή
+        // Ξεκινάμε πάλι τη σιωπή και ΕΠΑΝΑΦΕΡΟΥΜΕ την μπάρα
         this.ensureAudioPlaying();
+        if(typeof Logic !== 'undefined') Logic.updateMediaSession('active');
     },
 
     stopAll: function() {
