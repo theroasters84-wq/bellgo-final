@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo Final</title>
+    <link rel="manifest" href="manifest.json"> 
     <style>
         /* BASE */
         body { 
@@ -105,8 +106,8 @@
         <source src="silence.mp3" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=24"></script>
-    <script src="logic.js?v=24"></script>
+    <script src="watchdog.js?v=25"></script>
+    <script src="logic.js?v=25"></script>
     
     <script>
         let selectedRole = '';
@@ -116,37 +117,35 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- ΑΚΑΡΙΑΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ PLAYER ---
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
             
-            // 1. ΡΥΘΜΙΖΟΥΜΕ ΤΗΝ ΜΠΑΡΑ ΠΡΙΝ ΚΑΝ ΠΑΙΞΕΙ (ΓΙΑ ΝΑ ΠΡΟΛΑΒΟΥΜΕ ΤΟ ΚΛΙΚ)
+            // 1. Setup Media Session
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = "playing";
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: "BellGo Active",
                     artist: "System Online",
                     album: "Kitchen Alert",
-                    artwork: [
-                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
-                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
-                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
-                    ]
+                    artwork: [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ]
                 });
             }
 
-            // 2. ΠΑΙΖΟΥΜΕ ΤΟΝ ΗΧΟ
+            // 2. Play Audio (Κρίσιμο για Fully Kiosk)
             if(silence) {
                 silence.volume = 1.0;
-                silence.play().catch(e => console.log("Audio Error:", e));
+                silence.play().catch(e => {
+                    console.log("Audio Error:", e);
+                    // Αν υπάρχει Fully Kiosk και αποτύχει το HTML5 audio, δοκιμάζουμε backup
+                    if(typeof fully !== 'undefined') fully.playSound("silence.mp3", true);
+                });
             }
 
-            // 3. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ
+            // 3. Notifications
             if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
                 Notification.requestPermission();
             }
 
-            // 4. ΕΙΣΟΔΟΣ
             doLogin();
         }
 
@@ -155,6 +154,9 @@
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
+
+            // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΧΡΗΣΤΗ ΓΙΑ AUTO-LOGIN
+            localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             const mainApp = document.getElementById('mainApp');
@@ -167,6 +169,42 @@
             if(typeof Logic !== 'undefined') Logic.login(store, name, selectedRole, pass);
             else alert("Error: Refresh page");
         }
+
+        // 🔥 AUTO-LOGIN LOGIC ON RELOAD 🔥
+        window.onload = function() {
+            // Έλεγχος αν χτυπούσε πριν το refresh
+            const wasRinging = localStorage.getItem('bellgo_is_ringing');
+            
+            // Έλεγχος αποθηκευμένου χρήστη
+            const savedUser = localStorage.getItem('bellgo_user');
+            const isLoginPage = document.getElementById('step1') && document.getElementById('step1').classList.contains('active');
+
+            if (savedUser && isLoginPage) {
+                const u = JSON.parse(savedUser);
+                console.log("🔄 Auto-Login:", u.name);
+                
+                // Γεμίζουμε τα πεδία
+                document.getElementById('inpStore').value = u.store;
+                document.getElementById('inpName').value = u.name;
+                document.getElementById('inpPass').value = u.pass;
+                selectedRole = u.role;
+
+                // Μπαίνουμε αυτόματα μετά από λίγο
+                setTimeout(() => {
+                    if(typeof forcePlayAndLogin === 'function') {
+                        forcePlayAndLogin();
+
+                        // Αν χτυπούσε πριν, ΒΑΡΕΣΕ ΞΑΝΑ!
+                        if (wasRinging === 'true') {
+                            console.log("🚨 ALARM RESTORED!");
+                            setTimeout(() => {
+                                if(typeof Watchdog !== 'undefined') Watchdog.triggerPanicMode();
+                            }, 1500);
+                        }
+                    }
+                }, 500);
+            }
+        };
     </script>
 </body>
 </html>
