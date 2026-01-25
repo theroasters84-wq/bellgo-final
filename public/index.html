@@ -1,85 +1,77 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIDEO TRICK MODE</title>
-    <style>
-        body { background-color: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        button { padding: 30px 40px; font-size: 22px; font-weight: bold; background: #D50000; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 20px rgba(255, 0, 0, 0.6); }
-        #status { margin-top: 20px; font-size: 16px; color: yellow; border: 1px solid #333; padding: 10px; width: 90%; }
-        /* Κάνουμε το βίντεο αόρατο αλλά ΥΠΑΡΚΤΟ για το Android */
-        #fakeVideo { width: 1px; height: 1px; opacity: 0.01; position: absolute; top: 0; left: 0; pointer-events: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silent Media Player Trick</title>
+<style>
+body { background:#000; color:#fff; font-family:sans-serif; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; margin:0; }
+button { padding:20px 40px; font-size:22px; font-weight:bold; background:#2962FF; color:#fff; border:none; border-radius:10px; cursor:pointer; margin-top:20px; }
+#status { margin-top:20px; color:yellow; border:1px solid #333; padding:10px; width:90%; font-size:16px; }
+</style>
 </head>
 <body>
 
-    <h1>VIDEO TRICK 🎬</h1>
-    <p>Λέμε στο Android ότι βλέπεις ΤΑΙΝΙΑ.</p>
+<h1>Silent Media Player Trick</h1>
+<p>Κρατάει τη media player μπάρα ανοιχτή χωρίς ήχο</p>
 
-    <video id="fakeVideo" src="alert.mp3" loop playsinline></video>
+<button onclick="startSilent()">▶ START SILENT</button>
+<div id="status">Αναμονή...</div>
 
-    <button onclick="startVideoTrick()">START MOVIE MODE 🎥</button>
+<audio id="silentAudio" loop></audio>
 
-    <div id="status">Αναμονή...</div>
+<script>
+// Base64 silent mp3 (~1 sec)
+const silentBase64 = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAwCwAAD/4xYAA==";
 
-    <script>
-        function log(text) {
-            const el = document.getElementById('status');
-            el.innerHTML = text + "<br>" + el.innerHTML;
+function log(t){
+    document.getElementById("status").innerHTML = t + "<br>" + document.getElementById("status").innerHTML;
+}
+
+let timer = null;
+
+function startSilent(){
+    const audio = document.getElementById("silentAudio");
+    audio.src = silentBase64;
+    audio.volume = 0.01; // πρακτικά ανήκουστος
+    audio.play().then(()=>{
+        log("✅ Silent audio παίζει");
+
+        if(!('mediaSession' in navigator)){
+            log("❌ MediaSession not supported");
+            return;
         }
 
-        function startVideoTrick() {
-            const video = document.getElementById('fakeVideo');
-            log("⏳ Έλεγχος Πρωτοκόλλου...");
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: "Silent Audio Trick",
+            artist: "Background Media",
+            album: "System",
+            artwork: [
+                { src:"https://cdn-icons-png.flaticon.com/512/727/727245.png", sizes:"512x512", type:"image/png" }
+            ]
+        });
 
-            // ΕΛΕΓΧΟΣ HTTPS (ΚΡΙΣΙΜΟ)
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                log("⚠️ ΠΡΟΣΟΧΗ: Είσαι σε HTTP!");
-                log("Η μπάρα ΔΕΝ δουλεύει σε HTTP.");
-                log("Πρέπει να μπεις με HTTPS.");
-            }
+        navigator.mediaSession.setActionHandler("play", ()=>audio.play());
+        navigator.mediaSession.setActionHandler("pause", ()=>audio.pause());
+        navigator.mediaSession.playbackState = "playing";
 
-            log("⏳ Ξεκινάω το Βίντεο...");
-            video.volume = 1.0;
+        // Update position κάθε 500ms για να κρατάει το notification
+        timer = setInterval(()=>{
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: audio.duration || 1,
+                    playbackRate: audio.playbackRate || 1,
+                    position: audio.currentTime || 0
+                });
+            }catch(e){}
+        },500);
 
-            video.play().then(() => {
-                log("🎬 Το 'Βίντεο' παίζει!");
+        log("🎵 Κατέβασε το notification bar. Η μπάρα θα μείνει ανοικτή!");
+    }).catch(err=>{
+        log("❌ Play error: "+err.message);
+    });
+}
+</script>
 
-                if ('mediaSession' in navigator) {
-                    
-                    // 1. ΡΥΘΜΙΣΗ METADATA
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                        artist: "Σύρε για Stop",
-                        album: "Video Alert Mode",
-                        artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }
-                        ]
-                    });
-
-                    // 2. ΕΝΕΡΓΟΠΟΙΗΣΗ ΚΟΥΜΠΙΩΝ
-                    const dummy = () => log("🔘 Κουμπί!");
-                    navigator.mediaSession.setActionHandler('play', () => video.play());
-                    navigator.mediaSession.setActionHandler('pause', () => video.pause());
-                    navigator.mediaSession.setActionHandler('stop', () => video.pause());
-                    navigator.mediaSession.setActionHandler('nexttrack', dummy);
-                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
-
-                    // 3. PLAYBACK STATE (Το κλειδί για το βίντεο)
-                    navigator.mediaSession.playbackState = "playing";
-
-                    log("👉 ΣΥΡΕ ΤΗΝ ΟΘΟΝΗ ΑΠΟ ΠΑΝΩ!");
-                    log("Αν δεν τη δεις τώρα, φταίει το HTTP.");
-
-                } else {
-                    log("❌ MediaSession Not Supported");
-                }
-            })
-            .catch(e => {
-                log("❌ Video Error: " + e.message);
-            });
-        }
-    </script>
 </body>
 </html>
