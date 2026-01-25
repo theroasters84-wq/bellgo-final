@@ -3,88 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Media Bar Test</title>
+<title>Multi MP3 Player Test</title>
 <style>
-body {
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    text-align:center;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
-    margin:0;
-}
-button {
-    padding:20px 40px;
-    font-size:22px;
-    margin-top:20px;
-}
-#status {
-    margin-top:20px;
-    font-size:18px;
-    color:yellow;
-    width:90%;
-}
+body { background:#000; color:#fff; font-family:sans-serif; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; margin:0; }
+button { padding:15px 30px; font-size:18px; margin:5px; }
+#status { margin-top:20px; font-size:16px; color:yellow; width:90%; }
 </style>
 </head>
 <body>
 
-<h1>MEDIA BAR TEST</h1>
+<h1>🎵 Multi MP3 Player</h1>
 <div id="status">Αναμονή...</div>
-<button id="playBtn">PLAY SONG</button>
 
-<!-- Ακουστικό αρχείο -->
-<audio id="audio" src="test.mp3" preload="auto" loop></audio>
+<!-- Κουμπιά -->
+<button id="playBtn">PLAY</button>
+<button id="stopBtn">STOP</button>
+<button id="nextBtn">NEXT</button>
+
+<!-- Audio element -->
+<audio id="audio" preload="auto"></audio>
 
 <script>
 const audio = document.getElementById('audio');
 const status = document.getElementById('status');
 const log = msg => status.innerHTML = msg + "<br>" + status.innerHTML;
 
-document.getElementById('playBtn').addEventListener('click', async () => {
-    audio.volume = 0.5;
-    audio.loop = true; // για να μείνει media bar ορατή
+// Λίστα mp3 από public
+const tracks = [
+    {src:'alert.mp3', title:'Alert Sound', artist:'System'},
+    {src:'silence.mp3', title:'Silent/Bip', artist:'System'},
+    {src:'test.mp3', title:'Test Song', artist:'System'}
+];
+let current = 0;
 
-    try {
-        await audio.play();
-        log("✅ Το τραγούδι παίζει!");
-
-        // MediaSession για notification bar
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'TEST SONG',
-                artist: 'SYSTEM',
-                album: 'Media Bar Test',
-                artwork: [
-                    {src:'https://cdn-icons-png.flaticon.com/512/565/565547.png', sizes:'512x512', type:'image/png'}
-                ]
+// Update MediaSession για media bar
+function updateMediaSession(track){
+    if('mediaSession' in navigator){
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: track.title,
+            artist: track.artist,
+            artwork:[{src:'https://cdn-icons-png.flaticon.com/512/565/565547.png', sizes:'512x512', type:'image/png'}]
+        });
+        try {
+            navigator.mediaSession.setPositionState({
+                duration: 600, position:0, playbackRate:1.0
             });
-
-            // Duration μεγάλης διάρκειας για να ανοίξει bar
-            try {
-                navigator.mediaSession.setPositionState({
-                    duration: 600,  // 10 λεπτά
-                    position: 0,
-                    playbackRate: 1.0
-                });
-                log("✅ PositionState set (10 λεπτά)");
-            } catch(e){
-                log("⚠️ PositionState error: " + e.message);
-            }
-
-            navigator.mediaSession.playbackState = 'playing';
-            log("👉 Σύρε την οθόνη από πάνω για να δεις media bar!");
-        } else {
-            log("❌ MediaSession δεν υποστηρίζεται");
-        }
-
-    } catch(e){
-        log("❌ Play failed: " + e.message);
+        } catch(e){}
+        navigator.mediaSession.playbackState = 'playing';
     }
-});
+}
+
+// Play τρέχον track
+function playTrack(){
+    audio.src = tracks[current].src;
+    audio.loop = true;
+    audio.volume = 0.5;
+    audio.play().then(()=>{
+        log(`▶ Παίζει: ${tracks[current].title}`);
+        updateMediaSession(tracks[current]);
+    }).catch(e=>{
+        log(`❌ Play failed: ${e.message}`);
+    });
+}
+
+// Stop
+function stopTrack(){
+    audio.pause();
+    audio.currentTime = 0;
+    log("⏹ Σταμάτησε");
+    if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+}
+
+// Next track
+function nextTrack(){
+    current = (current + 1) % tracks.length;
+    playTrack();
+}
+
+// Κουμπιά
+document.getElementById('playBtn').addEventListener('click', playTrack);
+document.getElementById('stopBtn').addEventListener('click', stopTrack);
+document.getElementById('nextBtn').addEventListener('click', nextTrack);
 </script>
 
 </body>
