@@ -8,21 +8,22 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. Ρύθμιση Media Session (Αφού ο ήχος παίζει ήδη από το HTML)
+        // 1. ΕΜΦΑΝΙΣΗ PLAYER ΣΤΗΝ ΜΠΑΡΑ (ΓΙΑ ΝΑ ΜΗΝ ΚΟΙΜΗΘΕΙ)
+        // Το καλούμε αμέσως για να δει ο Chrome ότι είμαστε active
         this.updateMediaSession('idle');
         this.setupMediaSession();
 
-        // 2. Start Watchdog
+        // 2. ΕΚΚΙΝΗΣΗ WATCHDOG
         Watchdog.start(isFully);
         
         currentUser = { store, name, role, pass };
 
-        // 3. Firebase (Web Only)
+        // 3. FIREBASE SETUP (Μόνο για Web/Mobile)
         if (!isFully && role !== 'admin') {
             try { this.initFirebase(); } catch(e) { console.log("Firebase init error:", e); }
         }
 
-        // 4. Σύνδεση Socket
+        // 4. ΣΥΝΔΕΣΗ SOCKET
         socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
         document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
         
@@ -31,6 +32,7 @@ const Logic = {
 
     logout: function() {
         if(confirm("Σίγουρα έξοδος;")) {
+            Watchdog.stopAll(); // Σταματάμε τα πάντα
             socket.emit('logout-user'); 
             location.reload(); 
         }
@@ -59,12 +61,14 @@ const Logic = {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             messaging = firebase.messaging();
             
+            // Ζητάμε το Token τώρα που έχει εγγραφεί το SW από το index.html
             messaging.getToken().then((token) => {
                 myToken = token;
                 if (currentUser) {
                     socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                 }
-            }).catch(e => console.log("Token error:", e));
+                console.log("FCM Token OK");
+            }).catch(e => console.log("Token error (Block/Network):", e));
 
             messaging.onMessage(() => { if(currentUser) { Logic.updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
         }
@@ -82,8 +86,7 @@ const Logic = {
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
         
-        // ΣΗΜΑΝΤΙΚΟ: Λέμε στο Android ότι παίζουμε
-        navigator.mediaSession.playbackState = "playing";
+        navigator.mediaSession.playbackState = "playing"; // ΚΛΕΙΔΙ ΓΙΑ ANTI-SLEEP
         
         const artwork = state === 'alarm' 
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
@@ -137,7 +140,6 @@ socket.on('ring-bell', () => {
     Watchdog.triggerPanicMode();
 });
 
-// Reset Audio on Load
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
