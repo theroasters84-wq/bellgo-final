@@ -3,21 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PODCAST MODE</title>
+    <title>VIDEO TRICK MODE</title>
     <style>
         body { background-color: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        button { padding: 30px 40px; font-size: 22px; font-weight: bold; background: #FFD600; color: black; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 20px rgba(255, 214, 0, 0.4); }
-        #status { margin-top: 20px; font-size: 16px; color: #00E676; border: 1px solid #333; padding: 10px; width: 90%; }
+        button { padding: 30px 40px; font-size: 22px; font-weight: bold; background: #D50000; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 20px rgba(255, 0, 0, 0.6); }
+        #status { margin-top: 20px; font-size: 16px; color: yellow; border: 1px solid #333; padding: 10px; width: 90%; }
+        /* Κάνουμε το βίντεο αόρατο αλλά ΥΠΑΡΚΤΟ για το Android */
+        #fakeVideo { width: 1px; height: 1px; opacity: 0.01; position: absolute; top: 0; left: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <h1>PODCAST TRICK 🎧</h1>
-    <p>Θα ξεγελάσουμε το Android ότι ακούς Podcast.</p>
+    <h1>VIDEO TRICK 🎬</h1>
+    <p>Λέμε στο Android ότι βλέπεις ΤΑΙΝΙΑ.</p>
 
-    <audio id="myAudio" src="alert.mp3" loop preload="auto"></audio>
+    <video id="fakeVideo" src="alert.mp3" loop playsinline></video>
 
-    <button onclick="startPodcast()">START FAKE PODCAST ▶</button>
+    <button onclick="startVideoTrick()">START MOVIE MODE 🎥</button>
 
     <div id="status">Αναμονή...</div>
 
@@ -27,59 +29,55 @@
             el.innerHTML = text + "<br>" + el.innerHTML;
         }
 
-        function startPodcast() {
-            const audio = document.getElementById('myAudio');
-            log("⏳ Ξεκινάω...");
+        function startVideoTrick() {
+            const video = document.getElementById('fakeVideo');
+            log("⏳ Έλεγχος Πρωτοκόλλου...");
 
-            // 1. ΔΥΝΑΤΟΣ ΗΧΟΣ
-            audio.volume = 1.0;
+            // ΕΛΕΓΧΟΣ HTTPS (ΚΡΙΣΙΜΟ)
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                log("⚠️ ΠΡΟΣΟΧΗ: Είσαι σε HTTP!");
+                log("Η μπάρα ΔΕΝ δουλεύει σε HTTP.");
+                log("Πρέπει να μπεις με HTTPS.");
+            }
 
-            audio.play().then(() => {
-                log("🔊 Ο ήχος παίζει!");
+            log("⏳ Ξεκινάω το Βίντεο...");
+            video.volume = 1.0;
+
+            video.play().then(() => {
+                log("🎬 Το 'Βίντεο' παίζει!");
 
                 if ('mediaSession' in navigator) {
                     
-                    // 2. METADATA (Σαν να είναι Podcast)
+                    // 1. ΡΥΘΜΙΣΗ METADATA
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                        artist: "Πάτα Pause/Next για Stop",
-                        album: "BellGo System Alert",
+                        artist: "Σύρε για Stop",
+                        album: "Video Alert Mode",
                         artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+                            { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }
                         ]
                     });
 
-                    // 3. HANDLERS (Κουμπιά)
-                    const dummy = () => log("🔘 Κουμπί πατήθηκε!");
-                    navigator.mediaSession.setActionHandler('play', () => { audio.play(); });
-                    navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
-                    navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); });
-                    navigator.mediaSession.setActionHandler('seekbackward', dummy);
-                    navigator.mediaSession.setActionHandler('seekforward', dummy);
-                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
+                    // 2. ΕΝΕΡΓΟΠΟΙΗΣΗ ΚΟΥΜΠΙΩΝ
+                    const dummy = () => log("🔘 Κουμπί!");
+                    navigator.mediaSession.setActionHandler('play', () => video.play());
+                    navigator.mediaSession.setActionHandler('pause', () => video.pause());
+                    navigator.mediaSession.setActionHandler('stop', () => video.pause());
                     navigator.mediaSession.setActionHandler('nexttrack', dummy);
+                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
 
-                    // 4. 🔥 ΤΟ ΚΟΛΠΟ (Fake Duration) 🔥
-                    // Λέμε ότι διαρκεί 3600 δευτερόλεπτα (1 ώρα)
-                    try {
-                        navigator.mediaSession.setPositionState({
-                            duration: 3600, 
-                            playbackRate: 1.0,
-                            position: 0
-                        });
-                        log("✅ Fake Duration Set (1 ώρα)");
-                    } catch(e) { log("⚠️ Error Position: " + e.message); }
-
+                    // 3. PLAYBACK STATE (Το κλειδί για το βίντεο)
                     navigator.mediaSession.playbackState = "playing";
-                    log("👉 ΤΩΡΑ ΣΥΡΕ ΤΗΝ ΜΠΑΡΑ ΑΠΟ ΠΑΝΩ!");
+
+                    log("👉 ΣΥΡΕ ΤΗΝ ΟΘΟΝΗ ΑΠΟ ΠΑΝΩ!");
+                    log("Αν δεν τη δεις τώρα, φταίει το HTTP.");
 
                 } else {
                     log("❌ MediaSession Not Supported");
                 }
             })
             .catch(e => {
-                log("❌ Play Error: " + e.message);
-                log("💡 Κάνε κλικ ξανά στην οθόνη!");
+                log("❌ Video Error: " + e.message);
             });
         }
     </script>
