@@ -8,7 +8,7 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. ΡΥΘΜΙΣΗ SESSION ΣΕ 'PLAYING' (Ποτέ 'idle')
+        // 1. Initialize Media Session
         this.updateMediaSession('active'); 
         this.setupMediaSession();
 
@@ -77,25 +77,34 @@ const Logic = {
             navigator.mediaSession.setActionHandler('play', stopHandler);
             navigator.mediaSession.setActionHandler('pause', stopHandler);
             navigator.mediaSession.setActionHandler('stop', stopHandler);
+            navigator.mediaSession.setActionHandler('nexttrack', stopHandler);
+            navigator.mediaSession.setActionHandler('previoustrack', stopHandler);
         }
     },
 
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
         
-        // ΚΛΕΙΔΙ: Πάντα 'playing' για να μην φεύγει η μπάρα
         navigator.mediaSession.playbackState = "playing";
         
         const isAlarm = state === 'alarm';
         
         const artwork = isAlarm
-            ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
-            : [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }];
+            ? [
+                { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '96x96', type: 'image/png' },
+                { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '128x128', type: 'image/png' },
+                { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }
+              ]
+            : [
+                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
+                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
+                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+              ];
 
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: isAlarm ? "🚨 ΚΛΗΣΗ!" : "🟢 BellGo Active",
-            artist: isAlarm ? "ΠΑΤΑ ΓΙΑ STOP" : "System Online",
-            album: currentUser ? currentUser.store : "System",
+            title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
+            artist: isAlarm ? "ΠΑΤΑ NEXT ΓΙΑ STOP" : "System Online",
+            album: "Kitchen Alert",
             artwork: artwork
         });
     }
