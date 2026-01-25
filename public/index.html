@@ -61,15 +61,12 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     
     <script>
-        // ΕΓΓΡΑΦΗ SERVICE WORKER ΑΜΕΣΩΣ (ΓΙΑ ΝΑ ΠΡΟΛΑΒΕΙ)
+        // 1. ΕΓΓΡΑΦΗ SW ΑΜΕΣΩΣ (ΓΙΑ ΕΙΔΟΠΟΙΗΣΕΙΣ)
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                .then(function(registration) {
-                    console.log('✅ Service Worker Registered with scope:', registration.scope);
-                }, function(err) {
-                    console.log('❌ Service Worker registration failed:', err);
-                });
+                .then(reg => console.log('✅ SW Registered:', reg.scope))
+                .catch(err => console.log('❌ SW Fail:', err));
             });
         }
     </script>
@@ -130,8 +127,8 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=18"></script>
-    <script src="logic.js?v=18"></script>
+    <script src="watchdog.js?v=19"></script>
+    <script src="logic.js?v=19"></script>
     
     <script>
         let selectedRole = '';
@@ -142,23 +139,35 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
+        // --- ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΙΝΕΙ ΖΩΗ ΣΤΟΝ PLAYER ---
         async function forcePlayAndLogin() {
             const btn = document.querySelector('#step4 button');
             const originalText = btn.innerText;
             btn.innerText = "⏳ Ρύθμιση..."; 
             btn.disabled = true;
 
-            // 1. ΞΕΚΙΝΑΜΕ ΤΟΝ ΗΧΟ ΑΜΕΣΩΣ (Δεν περιμένουμε τις ειδοποιήσεις)
+            // 1. ΞΕΚΙΝΑΜΕ ΤΟΝ ΗΧΟ
             const silence = document.getElementById('silence');
             if(silence) {
                 silence.volume = 1.0;
-                silence.play().then(() => {
-                    // Ενημερώνουμε το Android ότι "Παίζουμε"
-                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-                }).catch(e => console.log("Audio warning:", e));
+                try {
+                    await silence.play();
+                    
+                    // 🔥 ΕΔΩ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: ΟΡΙΖΟΥΜΕ ΤΑ VISUALS ΤΩΡΑ! 🔥
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.playbackState = "playing";
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: "🟢 BellGo Active",
+                            artist: "Online & Ready",
+                            artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
+                        });
+                    }
+                } catch(e) {
+                    console.log("Audio warning:", e);
+                }
             }
 
-            // 2. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ ΠΑΡΑΛΛΗΛΑ (Με Timeout 2.5s)
+            // 2. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ (Με Timeout 2.5s)
             const timeout = new Promise(resolve => setTimeout(resolve, 2500, 'timeout'));
             const permissionRequest = new Promise(resolve => {
                 if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
@@ -168,7 +177,6 @@
                 }
             });
 
-            // Τρέχουμε τον αγώνα δρόμου, αλλά ο ήχος παίζει ήδη!
             try { await Promise.race([permissionRequest, timeout]); } catch (e) {}
 
             // 3. ΕΙΣΟΔΟΣ
