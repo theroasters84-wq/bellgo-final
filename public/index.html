@@ -3,88 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HEAVY AUDIO TEST</title>
+    <title>BAR FIX TEST</title>
     <style>
         body { background-color: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        button { padding: 20px 40px; font-size: 25px; font-weight: bold; background: #D32F2F; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }
+        button { padding: 20px 40px; font-size: 25px; font-weight: bold; background: #2962FF; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }
         #status { margin-top: 20px; font-size: 18px; color: yellow; border: 1px solid #333; padding: 10px; width: 90%; word-wrap: break-word; }
+        .instructions { font-size: 14px; color: #ccc; margin-top: 20px; text-align: left; width: 80%; }
     </style>
 </head>
 <body>
 
-    <h1>HEAVY TEST MODE</h1>
-    <p>Θα παίξουμε τη ΣΕΙΡΗΝΑ αντί για σιωπή.</p>
-    <p>Αν βγει η μπάρα, φταίει το αρχείο σιωπής.</p>
+    <h1>BAR FIX MODE</h1>
+    <p>Προσθέσαμε "Διάρκεια" στο τραγούδι.</p>
 
-    <button onclick="startHeavyPlayer()">TEST SIREN 🚨</button>
+    <button onclick="startBarTest()">TEST BAR 🎵</button>
 
     <div id="status">Αναμονή...</div>
 
     <audio id="myAudio" src="alert.mp3" loop preload="auto"></audio>
 
+    <div class="instructions">
+        <h3>⚠️ ΑΝ ΠΑΙΖΕΙ ΑΛΛΑ ΔΕΝ ΒΛΕΠΕΙΣ ΜΠΑΡΑ:</h3>
+        1. Σύρε το δάχτυλο από ΠΑΝΩ προς τα ΚΑΤΩ (Status Bar).<br>
+        2. Αν δεν κατεβαίνει τίποτα, φταίει το Fully Kiosk (έχει κρύψει την μπάρα).
+    </div>
+
     <script>
         function log(text) {
             const el = document.getElementById('status');
-            el.innerHTML += "<br>" + text;
+            el.innerHTML = text + "<br>" + el.innerHTML;
             console.log(text);
         }
 
-        function startHeavyPlayer() {
+        function startBarTest() {
             const audio = document.getElementById('myAudio');
             
-            // ΚΑΘΑΡΙΣΜΟΣ
-            document.getElementById('status').innerHTML = "Ξεκινάω...";
+            log("⏳ Ξεκινάω...");
 
-            // 1. ΔΟΚΙΜΗ PLAY
-            audio.volume = 0.5; // Χαμηλά για να μην κουφαθείς
+            // 1. PLAY
+            audio.volume = 0.5;
             
-            const playPromise = audio.play();
+            audio.play()
+            .then(() => {
+                log("✅ Ήχος παίζει!");
 
-            if (playPromise !== undefined) {
-                playPromise.then(_ => {
-                    log("✅ 1. Ο Ήχος παίζει!");
+                if ('mediaSession' in navigator) {
+                    
+                    // 2. METADATA (Τίτλος/Εικόνα)
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: "ELEGXOS BARAS",
+                        artist: "Pata Pause/Next",
+                        album: "System Test",
+                        artwork: [
+                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
+                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
+                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+                        ]
+                    });
 
-                    // 2. ΕΝΕΡΓΟΠΟΙΗΣΗ MEDIA SESSION
-                    if ('mediaSession' in navigator) {
-                        navigator.mediaSession.playbackState = "playing";
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: "SIREN TEST",
-                            artist: "Does Bar Appear?",
-                            album: "Debug Mode",
-                            artwork: [
-                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
-                            ]
+                    // 3. HANDLERS (Κουμπιά)
+                    const dummy = () => log("🔘 Πατήθηκε Κουμπί!");
+                    navigator.mediaSession.setActionHandler('play', () => { log("▶ Play"); audio.play(); });
+                    navigator.mediaSession.setActionHandler('pause', () => { log("⏸ Pause"); audio.pause(); });
+                    navigator.mediaSession.setActionHandler('nexttrack', dummy);
+                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
+
+                    // 4. 🔥 ΤΟ ΜΥΣΤΙΚΟ ΣΥΣΤΑΤΙΚΟ 🔥
+                    // Λέμε στο Android ότι το τραγούδι έχει μεγάλη διάρκεια.
+                    // Χωρίς αυτό, μερικά Android ΔΕΝ δείχνουν την μπάρα.
+                    try {
+                        navigator.mediaSession.setPositionState({
+                            duration: 600,      // 10 Λεπτά διάρκεια
+                            playbackRate: 1.0,
+                            position: 10        // Είμαστε στο 10ο δευτερόλεπτο
                         });
-
-                        // ΕΝΕΡΓΟΠΟΙΗΣΗ ΚΟΥΜΠΙΩΝ
-                        const actionHandlers = [
-                            ['play',   () => { log("▶️ Play pressed"); audio.play(); }],
-                            ['pause',  () => { log("⏸️ Pause pressed"); audio.pause(); }],
-                            ['previoustrack', () => { log("⏮️ Prev pressed"); }],
-                            ['nexttrack',     () => { log("⏭️ Next pressed"); }],
-                            ['stop',          () => { log("⏹️ Stop pressed"); }]
-                        ];
-
-                        for (const [action, handler] of actionHandlers) {
-                            try {
-                                navigator.mediaSession.setActionHandler(action, handler);
-                            } catch (error) {
-                                log(`⚠️ Fail handler ${action}: ${error.message}`);
-                            }
-                        }
-
-                        log("✅ 2. Media Session εστάλη!");
-                        log("👉 ΚΟΙΤΑ ΤΗΝ ΜΠΑΡΑ ΤΩΡΑ!");
-
-                    } else {
-                        log("❌ Media Session ΔΕΝ υποστηρίζεται σε αυτόν τον Browser.");
+                        log("✅ PositionState Set (Διάρκεια OK)");
+                    } catch(e) {
+                        log("⚠️ PositionState Error: " + e.message);
                     }
-                })
-                .catch(error => {
-                    log("❌ ΣΦΑΛΜΑ Play: " + error.message);
-                    log("Δοκίμασε να πατήσεις το κουμπί ξανά.");
-                });
-            }
+
+                    // 5. Playback State
+                    navigator.mediaSession.playbackState = "playing";
+
+                    log("👉 ΤΩΡΑ ΣΥΡΕ ΤΗΝ ΟΘΟΝΗ ΑΠΟ ΠΑΝΩ!");
+
+                } else {
+                    log("❌ MediaSession Not Supported");
+                }
+            })
+            .catch(e => {
+                log("❌ Play Error: " + e.message);
+            });
         }
     </script>
 </body>
