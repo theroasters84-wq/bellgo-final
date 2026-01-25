@@ -1,100 +1,129 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BAR FIX TEST</title>
-    <style>
-        body { background-color: #000; color: #fff; text-align: center; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        button { padding: 20px 40px; font-size: 25px; font-weight: bold; background: #2962FF; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }
-        #status { margin-top: 20px; font-size: 18px; color: yellow; border: 1px solid #333; padding: 10px; width: 90%; word-wrap: break-word; }
-        .instructions { font-size: 14px; color: #ccc; margin-top: 20px; text-align: left; width: 80%; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANDROID MEDIA PLAYER TEST</title>
+
+<style>
+body {
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+button {
+    padding:20px 40px;
+    font-size:24px;
+    font-weight:bold;
+    background:#2962FF;
+    color:#fff;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+}
+#status {
+    margin-top:20px;
+    padding:10px;
+    width:90%;
+    border:1px solid #333;
+    color:yellow;
+    font-size:16px;
+}
+.instructions {
+    margin-top:20px;
+    font-size:14px;
+    color:#ccc;
+    width:90%;
+    text-align:left;
+}
+</style>
 </head>
+
 <body>
 
-    <h1>BAR FIX MODE</h1>
-    <p>Προσθέσαμε "Διάρκεια" στο τραγούδι.</p>
+<h1>MEDIA PLAYER MODE</h1>
+<p>Εμφάνιση τύπου Spotify στο Android</p>
 
-    <button onclick="startBarTest()">TEST BAR 🎵</button>
+<button onclick="startPlayer()">▶ PLAY</button>
 
-    <div id="status">Αναμονή...</div>
+<div id="status">Αναμονή…</div>
 
-    <audio id="myAudio" src="alert.mp3" loop preload="auto"></audio>
+<audio id="player" src="music.mp3" preload="metadata"></audio>
 
-    <div class="instructions">
-        <h3>⚠️ ΑΝ ΠΑΙΖΕΙ ΑΛΛΑ ΔΕΝ ΒΛΕΠΕΙΣ ΜΠΑΡΑ:</h3>
-        1. Σύρε το δάχτυλο από ΠΑΝΩ προς τα ΚΑΤΩ (Status Bar).<br>
-        2. Αν δεν κατεβαίνει τίποτα, φταίει το Fully Kiosk (έχει κρύψει την μπάρα).
-    </div>
+<div class="instructions">
+<b>Αν δεν βλέπεις μπάρα:</b><br>
+• Σύρε από ΠΑΝΩ προς τα ΚΑΤΩ<br>
+• Έλεγξε Fully Kiosk → status bar<br>
+• ΜΗΝ χρησιμοποιείς alert.mp3
+</div>
 
-    <script>
-        function log(text) {
-            const el = document.getElementById('status');
-            el.innerHTML = text + "<br>" + el.innerHTML;
-            console.log(text);
+<script>
+let timer = null;
+
+function log(t){
+    const s = document.getElementById("status");
+    s.innerHTML = t + "<br>" + s.innerHTML;
+}
+
+function startPlayer(){
+    const audio = document.getElementById("player");
+
+    audio.volume = 0.7;
+
+    audio.play().then(() => {
+        log("✅ Παίζει");
+
+        if(!("mediaSession" in navigator)){
+            log("❌ MediaSession not supported");
+            return;
         }
 
-        function startBarTest() {
-            const audio = document.getElementById('myAudio');
-            
-            log("⏳ Ξεκινάω...");
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: "TEST PLAYER",
+            artist: "Android MediaSession",
+            album: "System Audio",
+            artwork: [{
+                src: "https://cdn-icons-png.flaticon.com/512/727/727245.png",
+                sizes: "512x512",
+                type: "image/png"
+            }]
+        });
 
-            // 1. PLAY
-            audio.volume = 0.5;
-            
-            audio.play()
-            .then(() => {
-                log("✅ Ήχος παίζει!");
+        navigator.mediaSession.setActionHandler("play", () => {
+            audio.play();
+            navigator.mediaSession.playbackState = "playing";
+        });
 
-                if ('mediaSession' in navigator) {
-                    
-                    // 2. METADATA (Τίτλος/Εικόνα)
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: "ELEGXOS BARAS",
-                        artist: "Pata Pause/Next",
-                        album: "System Test",
-                        artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
-                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
-                            { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
-                        ]
-                    });
+        navigator.mediaSession.setActionHandler("pause", () => {
+            audio.pause();
+            navigator.mediaSession.playbackState = "paused";
+        });
 
-                    // 3. HANDLERS (Κουμπιά)
-                    const dummy = () => log("🔘 Πατήθηκε Κουμπί!");
-                    navigator.mediaSession.setActionHandler('play', () => { log("▶ Play"); audio.play(); });
-                    navigator.mediaSession.setActionHandler('pause', () => { log("⏸ Pause"); audio.pause(); });
-                    navigator.mediaSession.setActionHandler('nexttrack', dummy);
-                    navigator.mediaSession.setActionHandler('previoustrack', dummy);
+        navigator.mediaSession.playbackState = "playing";
 
-                    // 4. 🔥 ΤΟ ΜΥΣΤΙΚΟ ΣΥΣΤΑΤΙΚΟ 🔥
-                    // Λέμε στο Android ότι το τραγούδι έχει μεγάλη διάρκεια.
-                    // Χωρίς αυτό, μερικά Android ΔΕΝ δείχνουν την μπάρα.
-                    try {
-                        navigator.mediaSession.setPositionState({
-                            duration: 600,      // 10 Λεπτά διάρκεια
-                            playbackRate: 1.0,
-                            position: 10        // Είμαστε στο 10ο δευτερόλεπτο
-                        });
-                        log("✅ PositionState Set (Διάρκεια OK)");
-                    } catch(e) {
-                        log("⚠️ PositionState Error: " + e.message);
-                    }
+        // 🔑 ΤΟ ΚΛΕΙΔΙ: συνεχή update θέσης
+        timer = setInterval(() => {
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: audio.duration,
+                    playbackRate: audio.playbackRate,
+                    position: audio.currentTime
+                });
+            } catch(e){}
+        }, 500);
 
-                    // 5. Playback State
-                    navigator.mediaSession.playbackState = "playing";
+        log("🎵 Κατέβασε το notification bar");
+    }).catch(err => {
+        log("❌ Play error: " + err.message);
+    });
+}
+</script>
 
-                    log("👉 ΤΩΡΑ ΣΥΡΕ ΤΗΝ ΟΘΟΝΗ ΑΠΟ ΠΑΝΩ!");
-
-                } else {
-                    log("❌ MediaSession Not Supported");
-                }
-            })
-            .catch(e => {
-                log("❌ Play Error: " + e.message);
-            });
-        }
-    </script>
 </body>
 </html>
