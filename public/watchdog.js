@@ -16,7 +16,6 @@ const Watchdog = {
             if (document.visibilityState === 'visible') {
                 this.requestWakeLock();
                 this.ensureAudioPlaying();
-                // Αν γυρίσει ο χρήστης, ξαναδείξε την μπάρα
                 if(typeof Logic !== 'undefined' && !this.isRinging) Logic.updateMediaSession('active');
             }
         });
@@ -27,8 +26,8 @@ const Watchdog = {
                 fully.setBooleanSetting("keepScreenOn", true);
                 fully.setBooleanSetting("unlockScreen", true);
                 fully.setBooleanSetting("forceWifi", true);
-                fully.setBooleanSetting("preventSleep", true);     // CPU Always On
-                fully.setBooleanSetting("wifiWakeLock", true);     // WiFi Always On
+                fully.setBooleanSetting("preventSleep", true);
+                fully.setBooleanSetting("wifiWakeLock", true);
                 fully.setMusicVolume(100);
             } catch(e){}
         }
@@ -36,19 +35,14 @@ const Watchdog = {
         // 4. THE LOOP (Κάθε 5 δευτερόλεπτα)
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
-             // A. Socket Heartbeat
              if (typeof socket !== 'undefined' && socket.connected) {
                  socket.emit('heartbeat'); 
              }
              
-             // B. WakeLock Refresh
              this.requestWakeLock();
-
-             // C. Audio Keep-Alive
              this.ensureAudioPlaying();
 
-             // D. 🔥 FORCE MEDIA BAR (ΑΥΤΟ ΖΗΤΗΣΕΣ!) 🔥
-             // Αν δεν χτυπάει συναγερμός, ξαναστείλε τα δεδομένα της μπάρας για να μην εξαφανιστεί.
+             // Force Media Bar
              if (typeof Logic !== 'undefined' && !this.isRinging) {
                  Logic.updateMediaSession('active');
              }
@@ -59,21 +53,23 @@ const Watchdog = {
     ensureAudioPlaying: function() {
         const silence = document.getElementById('silence');
         if (silence && silence.paused && !this.isRinging) {
-            silence.play().catch(e => {}); 
+            // Προσπάθεια να παίξει ξανά αν σταμάτησε
+            silence.play().catch(e => { console.log("Watchdog: Silence play error", e); }); 
         }
     },
 
     requestWakeLock: async function() {
         if ('wakeLock' in navigator && !this.wakeLock) {
-            try {
-                this.wakeLock = await navigator.wakeLock.request('screen');
-            } catch (err) {}
+            try { this.wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
     },
 
     triggerPanicMode: function() {
         if (this.isRinging) return;
         this.isRinging = true;
+
+        // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΟΤΙ ΧΤΥΠΑΕΙ (Για να αντέξει το refresh)
+        localStorage.setItem('bellgo_is_ringing', 'true');
 
         const silence = document.getElementById('silence');
         if(silence) silence.pause(); 
@@ -98,6 +94,10 @@ const Watchdog = {
 
     stopPanicMode: function() {
         this.isRinging = false;
+        
+        // 🔥 ΚΑΘΑΡΙΣΜΟΣ ΜΝΗΜΗΣ (Σταμάτησε να χτυπάει)
+        localStorage.removeItem('bellgo_is_ringing');
+        
         if (this.panicInterval) clearInterval(this.panicInterval);
         
         const audio = document.getElementById('siren');
@@ -106,7 +106,6 @@ const Watchdog = {
         if (navigator.vibrate) navigator.vibrate(0);
         document.getElementById('alarmScreen').style.display = 'none';
 
-        // Ξεκινάμε πάλι τη σιωπή και ΕΠΑΝΑΦΕΡΟΥΜΕ την μπάρα
         this.ensureAudioPlaying();
         if(typeof Logic !== 'undefined') Logic.updateMediaSession('active');
     },
@@ -114,12 +113,8 @@ const Watchdog = {
     stopAll: function() {
         if (this.interval) clearInterval(this.interval);
         if (this.panicInterval) clearInterval(this.panicInterval);
-        
         const silence = document.getElementById('silence');
         if (silence) { silence.pause(); silence.currentTime = 0; }
-        
-        if (this.wakeLock) {
-            this.wakeLock.release().then(()=> this.wakeLock=null);
-        }
+        if (this.wakeLock) { this.wakeLock.release().then(()=> this.wakeLock=null); }
     }
 };
