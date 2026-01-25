@@ -7,8 +7,7 @@ const Watchdog = {
     start: function(isFully) {
         console.log("🛡️ Watchdog: Active");
         
-        // 1. ΕΚΚΙΝΗΣΗ SILENCE LOOP (ΚΑΙ ΓΙΑ KIOSK KAI ΓΙΑ WEB)
-        // Αυτό κρατάει τη σύνδεση ανοιχτή
+        // 1. ΕΚΚΙΝΗΣΗ SILENCE LOOP (ΑΜΕΣΩΣ)
         this.ensureAudioPlaying();
 
         // 2. WEB WAKELOCK
@@ -30,7 +29,7 @@ const Watchdog = {
             } catch(e){}
         }
 
-        // 4. HEARTBEAT & AUDIO CHECK (Κάθε 5 δευτερόλεπτα)
+        // 4. HEARTBEAT & AUDIO CHECK (Κάθε 5 δευτ)
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
              // A. Socket
@@ -41,7 +40,7 @@ const Watchdog = {
              // B. WakeLock
              this.requestWakeLock();
 
-             // C. Audio Check (Αν σταματήσει, το ξαναβάζουμε μπρος)
+             // C. Audio Keep-Alive
              this.ensureAudioPlaying();
 
         }, 5000);
@@ -51,7 +50,7 @@ const Watchdog = {
     ensureAudioPlaying: function() {
         const silence = document.getElementById('silence');
         if (silence && silence.paused && !this.isRinging) {
-            silence.play().catch(e => {}); // Προσπάθεια επαναφοράς
+            silence.play().catch(e => {}); 
         }
     },
 
@@ -102,7 +101,6 @@ const Watchdog = {
         this.ensureAudioPlaying();
     },
 
-    // ΚΑΘΑΡΙΣΜΟΣ ΣΤΟ LOGOUT
     stopAll: function() {
         if (this.interval) clearInterval(this.interval);
         if (this.panicInterval) clearInterval(this.panicInterval);
