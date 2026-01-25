@@ -8,8 +8,7 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. ΕΜΦΑΝΙΣΗ PLAYER ΣΤΗΝ ΜΠΑΡΑ (ΓΙΑ ΝΑ ΜΗΝ ΚΟΙΜΗΘΕΙ)
-        // Το καλούμε αμέσως για να δει ο Chrome ότι είμαστε active
+        // 1. ΕΝΗΜΕΡΩΣΗ ΜΠΑΡΑΣ ΕΙΔΟΠΟΙΗΣΕΩΝ (ΑΜΕΣΑ)
         this.updateMediaSession('idle');
         this.setupMediaSession();
 
@@ -32,7 +31,7 @@ const Logic = {
 
     logout: function() {
         if(confirm("Σίγουρα έξοδος;")) {
-            Watchdog.stopAll(); // Σταματάμε τα πάντα
+            Watchdog.stopAll(); 
             socket.emit('logout-user'); 
             location.reload(); 
         }
@@ -61,14 +60,14 @@ const Logic = {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             messaging = firebase.messaging();
             
-            // Ζητάμε το Token τώρα που έχει εγγραφεί το SW από το index.html
+            // Ζητάμε το Token και το στέλνουμε στον Server
             messaging.getToken().then((token) => {
                 myToken = token;
+                console.log("🔑 FCM Token Received:", token);
                 if (currentUser) {
                     socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                 }
-                console.log("FCM Token OK");
-            }).catch(e => console.log("Token error (Block/Network):", e));
+            }).catch(e => console.log("⚠️ Token Error:", e));
 
             messaging.onMessage(() => { if(currentUser) { Logic.updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
         }
