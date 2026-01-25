@@ -1,58 +1,65 @@
-// --- watchdog.js v4 (Aggressive) ---
 const Watchdog = {
     interval: null,
     panicInterval: null,
     isRinging: false,
+    wakeLock: null,
 
     start: function(isFully) {
         console.log("🛡️ Watchdog: Active");
+        
+        // 1. WEB WAKELOCK (Για Chrome Android)
+        this.requestWakeLock();
+        // Αν πέσει το WakeLock (π.χ. αλλάξεις tab), ξαναζήτα το
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') this.requestWakeLock();
+        });
+
+        // 2. FULLY KIOSK SETUP
+        if (isFully && typeof fully !== 'undefined') {
+            try {
+                fully.setBooleanSetting("keepScreenOn", true);
+                fully.setBooleanSetting("unlockScreen", true);
+                fully.setBooleanSetting("forceWifi", true);
+                fully.setMusicVolume(100);
+            } catch(e){}
+        }
+
+        // 3. HEARTBEAT (Κρατάει το Socket ζωντανό)
         this.interval = setInterval(() => {
              if (typeof socket !== 'undefined' && socket.connected) socket.emit('heartbeat'); 
+             this.requestWakeLock(); // Ξαναζήτα το WakeLock για σιγουριά
         }, 10000);
     },
 
-    runSetup: function() {
-        if (typeof fully === 'undefined') return;
-        try {
-            fully.setBooleanSetting("keepScreenOn", true);
-            fully.setBooleanSetting("unlockScreen", true);
-            fully.setBooleanSetting("turnScreenOnOnPowerConnect", true);
-            fully.setBooleanSetting("forceWifi", true);
-            fully.setMusicVolume(100);
-            fully.showToast("Setup OK ✅");
-        } catch (e) {}
+    requestWakeLock: async function() {
+        if ('wakeLock' in navigator) {
+            try {
+                this.wakeLock = await navigator.wakeLock.request('screen');
+                console.log("💡 Screen Wake Lock active");
+            } catch (err) {
+                console.log(`${err.name}, ${err.message}`);
+            }
+        }
     },
 
     triggerPanicMode: function() {
         if (this.isRinging) return;
         this.isRinging = true;
 
-        // 1. ΗΧΟΣ (LOOP μέσω JS για σιγουριά)
         const audio = document.getElementById('siren');
-        if (audio) { 
-            audio.currentTime = 0; 
-            audio.loop = true; // ΤΟ ΕΝΕΡΓΟΠΟΙΟΥΜΕ ΕΔΩ
-            audio.play().catch(e=>{}); 
-        }
+        if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
 
-        // 2. ΕΜΦΑΝΙΣΗ (Το CSS κάνει το flashing)
         document.getElementById('alarmScreen').style.display = 'flex';
 
-        // 3. ΕΠΙΘΕΣΗ (Κάθε μισό δευτερόλεπτο)
         this.panicInterval = setInterval(() => {
             if (!this.isRinging) return;
-
-            // ΔΟΝΗΣΗ: Πολύ δυνατή
-            if (navigator.vibrate) navigator.vibrate([1000, 50, 1000, 50, 1000]);
-
-            // FULLY KIOSK: Spamming για να βγει μπροστά
+            if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
+            
             if (typeof fully !== 'undefined') {
                 fully.turnScreenOn();
-                fully.bringToForeground(); // Τραβάει την εφαρμογή μπροστά
-                fully.showToast("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ 🚨"); // Πετάει μήνυμα
+                fully.bringToForeground();
+                fully.showToast("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ 🚨");
             }
-            
-            // Focus Window (Για Desktop/Chrome)
             window.focus();
         }, 500);
     },
@@ -62,11 +69,7 @@ const Watchdog = {
         if (this.panicInterval) clearInterval(this.panicInterval);
         
         const audio = document.getElementById('siren');
-        if (audio) { 
-            audio.pause(); 
-            audio.currentTime = 0; 
-            audio.loop = false;
-        }
+        if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
         
         if (navigator.vibrate) navigator.vibrate(0);
         document.getElementById('alarmScreen').style.display = 'none';
