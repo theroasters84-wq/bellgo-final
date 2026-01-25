@@ -17,17 +17,16 @@ body {
     height:100vh;
     margin:0;
 }
+button {
+    padding:20px 40px;
+    font-size:22px;
+    margin-top:20px;
+}
 #status {
     margin-top:20px;
     font-size:18px;
     color:yellow;
-    border:1px solid #333;
-    padding:10px;
     width:90%;
-}
-button {
-    padding:20px 40px;
-    font-size:20px;
 }
 </style>
 </head>
@@ -35,42 +34,51 @@ button {
 
 <h1>MEDIA BAR TEST</h1>
 <div id="status">Αναμονή...</div>
-<button id="playBtn">PLAY TEST.MP3</button>
+<button id="playBtn">PLAY SONG</button>
 
+<!-- Ακουστικό αρχείο -->
 <audio id="audio" src="test.mp3" preload="auto" loop></audio>
 
 <script>
 const audio = document.getElementById('audio');
 const status = document.getElementById('status');
-const log = t => status.innerHTML = t + "<br>" + status.innerHTML;
+const log = msg => status.innerHTML = msg + "<br>" + status.innerHTML;
 
 document.getElementById('playBtn').addEventListener('click', async () => {
     audio.volume = 0.5;
+    audio.loop = true; // για να μείνει media bar ορατή
+
     try {
         await audio.play();
-        log("✅ test.mp3 παίζει!");
+        log("✅ Το τραγούδι παίζει!");
 
-        if('mediaSession' in navigator){
+        // MediaSession για notification bar
+        if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'TEST ALERT',
+                title: 'TEST SONG',
                 artist: 'SYSTEM',
                 album: 'Media Bar Test',
-                artwork: [{src:'https://cdn-icons-png.flaticon.com/512/565/565547.png',sizes:'512x512',type:'image/png'}]
+                artwork: [
+                    {src:'https://cdn-icons-png.flaticon.com/512/565/565547.png', sizes:'512x512', type:'image/png'}
+                ]
             });
 
+            // Duration μεγάλης διάρκειας για να ανοίξει bar
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: 600,
+                    duration: 600,  // 10 λεπτά
                     position: 0,
                     playbackRate: 1.0
                 });
                 log("✅ PositionState set (10 λεπτά)");
-            } catch(e){ log("⚠️ PositionState error: " + e.message); }
+            } catch(e){
+                log("⚠️ PositionState error: " + e.message);
+            }
 
             navigator.mediaSession.playbackState = 'playing';
             log("👉 Σύρε την οθόνη από πάνω για να δεις media bar!");
         } else {
-            log("❌ MediaSession not supported");
+            log("❌ MediaSession δεν υποστηρίζεται");
         }
 
     } catch(e){
