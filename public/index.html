@@ -27,7 +27,6 @@
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
         
         .header { height: 50px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; }
-        
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
         
         /* LISTS */
@@ -117,14 +116,17 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=13"></script>
-    <script src="logic.js?v=13"></script>
+    <script src="watchdog.js?v=17"></script>
+    <script src="logic.js?v=17"></script>
     
     <script>
         let selectedRole = '';
         
+        // --- 1. ΕΓΓΡΑΦΗ SERVICE WORKER ΓΙΑ ΕΙΔΟΠΟΙΗΣΕΙΣ (WEB) ---
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
-            navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then(reg => console.log('✅ SW Registered', reg.scope))
+            .catch(err => console.log('❌ SW Fail', err));
         }
 
         function nextStep(n, role) {
@@ -133,53 +135,66 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // 🔥 ΤΟ ΔΙΟΡΘΩΜΕΝΟ ΚΟΥΜΠΙ 🔥
-        // Δεν χρησιμοποιούμε async/await για να μην κολλήσει
-        function forcePlayAndLogin() {
-            console.log("Button Pressed");
+        // --- 2. ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΔΕΝ ΚΟΛΛΑΕΙ ΠΟΤΕ ---
+        async function forcePlayAndLogin() {
+            const btn = document.querySelector('#step4 button');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Ρύθμιση..."; 
+            btn.disabled = true;
 
-            // 1. Δοκιμή Ήχου (Fire & Forget)
+            // RACE: Αν περάσουν 2.5 δευτερόλεπτα και δεν απαντήσεις, προχωράμε!
+            const timeout = new Promise(resolve => setTimeout(resolve, 2500, 'timeout'));
+            const permissionRequest = new Promise(resolve => {
+                if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
+                    Notification.requestPermission().then(resolve).catch(resolve);
+                } else {
+                    resolve('skipped');
+                }
+            });
+
+            try { await Promise.race([permissionRequest, timeout]); } catch (e) {}
+
+            // ΠΑΙΖΟΥΜΕ ΗΧΟ
             const silence = document.getElementById('silence');
             if(silence) {
                 silence.volume = 1.0;
-                silence.play().catch(e => console.log("Audio warning:", e));
+                try {
+                    await silence.play();
+                    // ΕΔΩ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ: Ενημερώνουμε ότι παίζουμε ΤΩΡΑ
+                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+                } catch(e) {
+                    console.log("Audio warning:", e);
+                }
             }
 
-            // 2. Δοκιμή Notification (Fire & Forget)
-            if (window.Notification && Notification.permission !== "granted") {
-                Notification.requestPermission();
-            }
-
-            // 3. ΕΚΤΕΛΕΣΗ ΕΙΣΟΔΟΥ ΑΜΕΣΩΣ
+            // ΕΙΣΟΔΟΣ
             doLogin();
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
 
         function doLogin() {
-            console.log("Executing doLogin...");
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
 
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            // UI SWITCH
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             const mainApp = document.getElementById('mainApp');
             mainApp.classList.add('active');
             mainApp.style.display = 'flex'; 
 
-            // HIDE LIST IF NOT ADMIN
             if (selectedRole !== 'admin') {
                 document.getElementById('listsPanel').style.display = 'none';
             } else {
                 document.getElementById('listsPanel').style.display = 'block';
             }
 
-            // CALL LOGIC
             if(typeof Logic !== 'undefined') {
                 Logic.login(store, name, selectedRole, pass);
             } else {
-                alert("Σφάλμα: Το Logic.js δεν φόρτωσε!");
+                alert("Σφάλμα: Refresh!");
             }
         }
     </script>
