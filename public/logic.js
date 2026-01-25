@@ -8,21 +8,21 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. ΕΝΗΜΕΡΩΣΗ ΜΠΑΡΑΣ ΕΙΔΟΠΟΙΗΣΕΩΝ (ΑΜΕΣΑ)
+        // 1. Set Media Session Immediately
         this.updateMediaSession('idle');
         this.setupMediaSession();
 
-        // 2. ΕΚΚΙΝΗΣΗ WATCHDOG
-        Watchdog.start(isFully);
+        // 2. Start Watchdog
+        if(typeof Watchdog !== 'undefined') Watchdog.start(isFully);
         
         currentUser = { store, name, role, pass };
 
-        // 3. FIREBASE SETUP (Μόνο για Web/Mobile)
+        // 3. Firebase (Web Only)
         if (!isFully && role !== 'admin') {
-            try { this.initFirebase(); } catch(e) { console.log("Firebase init error:", e); }
+            try { this.initFirebase(); } catch(e) { console.log("Firebase Error:", e); }
         }
 
-        // 4. ΣΥΝΔΕΣΗ SOCKET
+        // 4. Socket Join
         socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
         document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
         
@@ -31,7 +31,7 @@ const Logic = {
 
     logout: function() {
         if(confirm("Σίγουρα έξοδος;")) {
-            Watchdog.stopAll(); 
+            if(typeof Watchdog !== 'undefined') Watchdog.stopAll();
             socket.emit('logout-user'); 
             location.reload(); 
         }
@@ -60,14 +60,13 @@ const Logic = {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             messaging = firebase.messaging();
             
-            // Ζητάμε το Token και το στέλνουμε στον Server
             messaging.getToken().then((token) => {
                 myToken = token;
-                console.log("🔑 FCM Token Received:", token);
+                console.log("Token:", token);
                 if (currentUser) {
                     socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                 }
-            }).catch(e => console.log("⚠️ Token Error:", e));
+            }).catch(e => console.log("Token Fail:", e));
 
             messaging.onMessage(() => { if(currentUser) { Logic.updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
         }
@@ -75,7 +74,7 @@ const Logic = {
 
     setupMediaSession: function() {
         if ('mediaSession' in navigator) {
-            const stopHandler = () => { Watchdog.stopPanicMode(); this.updateMediaSession('idle'); };
+            const stopHandler = () => { if(typeof Watchdog !== 'undefined') Watchdog.stopPanicMode(); this.updateMediaSession('idle'); };
             navigator.mediaSession.setActionHandler('play', stopHandler);
             navigator.mediaSession.setActionHandler('pause', stopHandler);
             navigator.mediaSession.setActionHandler('stop', stopHandler);
@@ -84,23 +83,20 @@ const Logic = {
 
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
-        
-        navigator.mediaSession.playbackState = "playing"; // ΚΛΕΙΔΙ ΓΙΑ ANTI-SLEEP
-        
+        navigator.mediaSession.playbackState = "playing";
         const artwork = state === 'alarm' 
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
             : [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }];
 
         navigator.mediaSession.metadata = new MediaMetadata({
             title: state === 'alarm' ? "🚨 ΚΛΗΣΗ!" : "🟢 BellGo Active",
-            artist: state === 'alarm' ? "ΠΑΤΑ ΓΙΑ STOP" : "Online & Ready",
+            artist: state === 'alarm' ? "ΠΑΤΑ ΓΙΑ STOP" : "Online",
             album: currentUser ? currentUser.store : "System",
             artwork: artwork
         });
     }
 };
 
-// LISTENERS
 socket.on('update-staff-list', (staffList) => {
     const container = document.getElementById('staffListContainer');
     if(container) {
@@ -136,7 +132,7 @@ socket.on('new-chat', (data) => {
 
 socket.on('ring-bell', () => {
     Logic.updateMediaSession('alarm');
-    Watchdog.triggerPanicMode();
+    if(typeof Watchdog !== 'undefined') Watchdog.triggerPanicMode();
 });
 
 window.onload = function() {
