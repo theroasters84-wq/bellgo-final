@@ -1,353 +1,71 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; media-src * data: blob:;">
-    <title>Bellgo Unified</title>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; overflow: hidden; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
-        .hidden { display: none !important; }
-        .screen { width: 100%; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; box-sizing: border-box; }
-        
-        input, select { width: 90%; padding: 15px; margin: 8px 0; background: #111; border: 1px solid #444; color: white; text-align: center; border-radius: 8px; font-size: 16px; }
-        .btn { width: 95%; padding: 18px; margin: 10px 0; background: #ffc107; color: black; border: none; font-weight: bold; font-size: 18px; border-radius: 8px; cursor: pointer; }
-        .btn-outline { background: transparent; border: 1px solid #ffc107; color: #ffc107; }
-        .setting-row { display: flex; justify-content: space-between; width: 90%; margin: 10px 0; align-items: center; background: #222; padding: 10px; border-radius: 8px; }
-
-        #drivers-container { width: 100%; height: 50vh; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; padding: 10px; border-radius: 10px; background: #111; }
-        .driver-card { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; }
-        .btn-call { background: #ff4444; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 5px; font-size: 1.1em; transition: 0.3s; }
-        .btn-accepted { background: #00cc00 !important; color: white !important; transform: scale(1.1); }
-
-        #chat-ui { width: 100%; height: 45vh; display: flex; flex-direction: column; border: 1px solid #333; background: #0a0a0a; border-radius: 8px; margin-top: 10px; margin-bottom: 10px; }
-        #chat-msgs { flex: 1; overflow-y: auto; text-align: left; padding: 10px; font-size: 14px; }
-        .msg { margin-bottom: 8px; padding: 5px; }
-        .mine { color: #ffc107; text-align: right; }
-        .theirs { color: #00ccff; text-align: left; }
-        #admin-chat-ui { width: 100%; height: 30vh; border:1px solid #333; background:#111; display:flex; flex-direction:column; border-radius: 8px;}
-
-        #alert-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: flash 0.5s infinite; cursor: pointer; }
-        @keyframes flash { 50% { background: #900; } }
-        
-        #fake-lock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 10000; display: none; }
-        
-        /* AUDIO ELEMENTS */
-        audio { display: none; }
-        
-        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #ffc107; }
-        input:checked + .slider:before { transform: translateX(26px); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEDIA BAR MINIMAL</title>
+<style>
+body {
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+button {
+    font-size:24px;
+    padding:20px 40px;
+}
+</style>
 </head>
 <body>
 
-    <div id="login-screen" class="screen">
-        <h1 style="color:#ffc107; letter-spacing: 2px; font-size: 3em;">BELLGO v23</h1>
-        <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
-        <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ">
-        <input type="text" id="name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
-        <select id="role-select" style="padding:15px; font-size:1.1em;">
-            <option value="driver">🛵 ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</option>
-            <option value="admin">💻 KATAΣΤΗΜΑ (ADMIN)</option>
-        </select>
-        <button class="btn" onclick="attemptLogin()">ΕΙΣΟΔΟΣ</button>
-        <div id="logs" style="width:90%; height:150px; background:#222; color:#0f0; font-family:monospace; font-size:10px; overflow-y:scroll; text-align:left; padding:5px; margin-top:20px;">
-            Αναμονή...
-        </div>
-    </div>
+<h1>MEDIA BAR TEST</h1>
+<button id="start">PLAY ALERT</button>
 
-    <div id="driver-ui" class="screen hidden">
-        <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
-            <h2 id="d-label" style="color:#ffc107; margin:0;">DRIVER</h2>
-            <span style="color:#0f0">● ONLINE</span>
-        </div>
-        <div class="setting-row">
-            <span>🔊 Ήχος (Loop)</span>
-            <label class="switch"><input type="checkbox" id="sound-toggle" checked><span class="slider"></span></label>
-        </div>
-        <div class="setting-row">
-            <span>📳 Δόνηση (Loop)</span>
-            <label class="switch"><input type="checkbox" id="vib-toggle" checked><span class="slider"></span></label>
-        </div>
-        <div id="chat-ui">
-            <div id="chat-msgs"></div>
-            <div style="display:flex; border-top:1px solid #333; padding: 5px;">
-                <input type="text" id="c-in" placeholder="Μήνυμα..." style="border:none; margin:0; width:80%;">
-                <button onclick="sendChat()" style="width:20%; background:#ffc107; border:none; font-weight:bold; border-radius: 5px;">➤</button>
-            </div>
-        </div>
-        <div style="width:100%; display:flex; gap:10px;">
-            <button class="btn btn-outline" style="flex:1; margin:0;" onclick="toggleLock()">🔒 LOCK</button>
-            <button onclick="logout()" style="flex:1; background:#333; color:white; border:none; border-radius:8px; margin:0;">EXIT</button>
-        </div>
-    </div>
+<audio id="audio" src="alert.mp3" preload="auto"></audio>
 
-    <div id="admin-ui" class="screen hidden">
-        <h2 style="color:#ffc107; margin-bottom:5px;">ADMIN PANEL</h2>
-        <p style="color:#888; margin-top:0;" id="shop-label">SHOP</p>
-        <div id="drivers-container"><p style="color:#666; text-align:center; padding-top:20px;">Αναμονή...</p></div>
-        <div id="admin-chat-ui">
-            <div id="admin-chat-msgs" style="flex:1; overflow-y:auto; padding:5px; text-align:left;"></div>
-            <div style="display:flex;">
-                <input type="text" id="a-in" placeholder="Chat..." style="flex:1; margin:0; border:none;">
-                <button onclick="sendAdminChat()" style="background:#444; color:white; border:none; padding:10px; width:60px;">➤</button>
-            </div>
-        </div>
-        <button onclick="logout()" style="background:none; border:none; color:#666; margin-top:10px;">Logout</button>
-    </div>
+<script>
+const btn = document.getElementById('start');
+const audio = document.getElementById('audio');
 
-    <div id="alert-layer" onclick="acceptOrder()">
-        <h1 style="font-size:3em; color:white">ΚΛΗΣΗ!</h1>
-        <p style="font-size:1.5em; color:white">ΠΑΤΑ ΟΘΟΝΗ</p>
-    </div>
-    <div id="fake-lock" onclick="toggleLock()"><div style="color:#222; margin-top:50px;">Touch to Unlock</div></div>
+btn.addEventListener('click', async () => {
+    audio.volume = 0.7;
 
-    <audio id="snd-alert" src="alert.mp3" loop preload="auto"></audio>
-    <audio id="snd-silent" loop autoplay preload="auto"></audio>
+    try {
+        await audio.play();
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script>
-        const SERVER = 'https://bellgo-final.onrender.com';
-        let socket, auth;
-        const sndAlert = document.getElementById('snd-alert');
-        const sndSilent = document.getElementById('snd-silent');
-        
-        // 1. ΔΟΚΙΜΑΣΜΕΝΟ SILENT MP3 (10 δευτερόλεπτα απόλυτης ησυχίας)
-        // Αυτό το string είναι πιο αξιόπιστο από το προηγούμενο
-        const SILENT_MP3 = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhYAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAG1wNDJpc29tAFRTU0UAAAAPAAADTGF2ZjU3LjU2LjEwMAAAAAAAAAAAAAAA//tQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIQAABQoODxQUGRkdHSImJioqNDQ4OD4+QkJISExMTFVWVlhZWV1dYmJmampta2tvcHB0dHZ2enp+foCAhISEiIiNjY6OkpKTk5WYmJqanJygoKSkpKurrKyxsXOzs7u7vLyAwMDFxcjIyMzM0NDU1Njc3N7e4ODi4uPk5OXl6enubnKv7wAAADlMYXZjNTcuNjQuMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQZAAABAAAAAAAAAAAAEAAABIQA78AIgAAAAAAJAAAAAAAAAAAB//tQZAAAAAAAIAAAABAAABIQA78AIgAAAAAAJAAAAAAAAAAAB//tQZAAAAAAAIAAAABAAABIQA78AIgAAAAAAJAAAAAAAAAAAB";
-        sndSilent.src = SILENT_MP3;
-
-        let vibrationInterval = null, heartbeatInterval = null, wakeLock = null, keepAliveInterval = null;
-
-        function log(msg) {
-            const el = document.getElementById('logs');
-            el.innerHTML = `> ${msg}<br>` + el.innerHTML;
-            console.log(msg);
-        }
-
-        // 2. ΕΝΕΡΓΟΠΟΙΗΣΗ BACKGROUND MODE (ΒΕΛΤΙΩΜΕΝΗ)
-        // Καλείται ΜΕΤΑ το deviceready αλλά ΠΡΙΝ το Login για σιγουριά
-        document.addEventListener('deviceready', function () {
-            if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
-                // Ρυθμίσεις για να φαίνεται η μπάρα
-                cordova.plugins.backgroundMode.setDefaults({ 
-                    title: "Bellgo Active", 
-                    text: "Η εφαρμογή τρέχει στο παρασκήνιο",
-                    ticker: "Bellgo Ready",
-                    silent: false, // Πρέπει να είναι false για να δείξει την μπάρα σε νεότερα Android
-                    resume: true, 
-                    hidden: false 
-                });
-                
-                // Ενεργοποίηση
-                cordova.plugins.backgroundMode.enable();
-                
-                // Extra ρυθμίσεις
-                cordova.plugins.backgroundMode.on('activate', function() {
-                    cordova.plugins.backgroundMode.disableWebViewOptimizations(); 
-                    requestWakeLock();
-                    // Επανεκκίνηση ήχου αν κοπεί
-                    if(sndSilent.paused) sndSilent.play().catch(e=>console.log(e));
-                });
-                
-                log("📱 Background Mode: ENABLED (Check Bar)");
-            } else {
-                log("⚠️ Background Mode Plugin NOT FOUND");
-            }
-        }, false);
-
-        function attemptLogin() {
-            const s = document.getElementById('shop').value.trim();
-            const p = document.getElementById('pass').value;
-            const n = document.getElementById('name').value.trim();
-            const r = document.getElementById('role-select').value;
-
-            if(p !== "1234") return alert("Λάθος Κωδικός");
-            if(!s || !n) return alert("Συμπλήρωσε τα πεδία");
-
-            // 3. EKKINHΣΗ ΗΧΩΝ ΜΕ USER INTERACTION
-            // Εδώ "ξεκλειδώνουμε" τον browser
-            log("🔊 Unlocking Audio...");
-            
-            // Παίζουμε το silent και το alert στιγμιαία
-            sndSilent.play().then(() => log("✅ Silent Playing")).catch(e => log("❌ Silent Error: " + e.message));
-            
-            sndAlert.volume = 1.0;
-            sndAlert.load();
-            sndAlert.play().then(() => { 
-                sndAlert.pause(); 
-                sndAlert.currentTime = 0; 
-                log("✅ Alert Unlocked");
-            }).catch(e => log("⚠️ Alert Warning: " + e.message));
-
-            requestWakeLock();
-            
-            // Watcher (Keep Alive Loop)
-            if (keepAliveInterval) clearInterval(keepAliveInterval);
-            keepAliveInterval = setInterval(() => {
-                if(sndSilent.paused) {
-                    sndSilent.play().catch(e=>{});
-                }
-                requestWakeLock();
-            }, 5000); 
-
-            auth = { shop: s, name: n, role: r };
-            localStorage.setItem('unified_auth_v23', JSON.stringify(auth));
-            
-            initUI();
-            connect();
-        }
-
-        async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
-
-        function initUI() {
-            document.getElementById('login-screen').classList.add('hidden');
-            if(auth.role === 'driver') {
-                document.getElementById('driver-ui').classList.remove('hidden');
-                document.getElementById('d-label').innerText = auth.name.toUpperCase();
-            } else {
-                document.getElementById('admin-ui').classList.remove('hidden');
-                document.getElementById('shop-label').innerText = auth.shop.toUpperCase();
-            }
-        }
-
-        function connect() {
-            log("🌍 Connecting...");
-            socket = io(SERVER, { transports: ['websocket'] });
-
-            socket.on('connect', () => {
-                log("✅ Connected to Server!");
-                socket.emit('login', auth);
-                if(auth.role === 'driver') {
-                    if(heartbeatInterval) clearInterval(heartbeatInterval);
-                    heartbeatInterval = setInterval(() => { if(socket.connected) socket.emit('heartbeat', { name: auth.name }); }, 5000);
-                    setTimeout(setupPush, 1000); 
-                }
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'ALERT TEST',
+                artist: 'SYSTEM',
+                album: 'MEDIA BAR',
+                artwork: [{
+                    src: 'https://cdn-icons-png.flaticon.com/512/565/565547.png',
+                    sizes: '512x512',
+                    type: 'image/png'
+                }]
             });
 
-            socket.on('update-drivers-list', (drivers) => {
-                if(auth.role !== 'admin') return;
-                const list = document.getElementById('drivers-container');
-                list.innerHTML = ""; 
-                drivers.forEach(d => {
-                    list.innerHTML += `<div class="driver-card"><span style="font-size:1.2em; color:white; font-weight:bold;">🛵 ${d.name}</span><button id="btn-${d.name}" class="btn-call" onclick="callDriver('${d.name}')">ΚΛΗΣΗ 🔔</button></div>`;
-                });
+            navigator.mediaSession.setPositionState({
+                duration: 300,
+                playbackRate: 1,
+                position: 0
             });
 
-            socket.on('order-accepted', (driverName) => {
-                if(auth.role !== 'admin') return;
-                const btn = document.getElementById(`btn-${driverName}`);
-                if(btn) {
-                    btn.classList.add('btn-accepted'); btn.innerText = "ΑΠΟΔΟΧΗ! ✅"; btn.disabled = false;
-                    setTimeout(() => { btn.classList.remove('btn-accepted'); btn.innerText = "ΚΛΗΣΗ 🔔"; }, 4000);
-                }
-            });
-
-            socket.on('order-notification', () => { if(auth.role === 'driver') triggerAlert(); });
-            socket.on('chat-message', (data) => {
-                const box = auth.role === 'driver' ? document.getElementById('chat-msgs') : document.getElementById('admin-chat-msgs');
-                box.innerHTML += `<div class="msg ${data.user === auth.name ? 'mine' : 'theirs'}"><b>${data.user}:</b> ${data.text}</div>`;
-                box.scrollTop = box.scrollHeight;
-            });
+            navigator.mediaSession.playbackState = 'playing';
         }
 
-        function callDriver(targetName) {
-            socket.emit('call-driver', targetName);
-            const btn = document.getElementById(`btn-${targetName}`);
-            if(btn) { btn.classList.add('btn-calling'); btn.innerText = "ΚΛΗΣΗ..."; btn.disabled = true; }
-        }
+        console.log('✅ Playing');
+    } catch (e) {
+        console.error('❌ Play failed', e);
+    }
+});
+</script>
 
-        function sendAdminChat() {
-            const txt = document.getElementById('a-in').value;
-            if(txt) { socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt }); document.getElementById('a-in').value = ''; }
-        }
-        function sendChat() {
-            const txt = document.getElementById('c-in').value;
-            if(txt) { socket.emit('chat-message', { shop: auth.shop, user: auth.name, text: txt }); document.getElementById('c-in').value = ''; }
-        }
-
-        function triggerAlert() {
-            if(document.getElementById('alert-layer').style.display === 'flex') return;
-            
-            // FORCE PLAY
-            sndAlert.currentTime = 0; 
-            sndAlert.play().catch(e => log("Alert Play Error: " + e));
-
-            document.getElementById('alert-layer').style.display = 'flex';
-            if(document.getElementById('fake-lock').style.display === 'block') document.getElementById('fake-lock').style.display = 'none';
-            
-            if(document.getElementById('vib-toggle').checked && navigator.vibrate) {
-                navigator.vibrate([1000, 500, 1000, 500]); 
-                if (vibrationInterval) clearInterval(vibrationInterval);
-                vibrationInterval = setInterval(() => { navigator.vibrate([1000, 500, 1000, 500]); }, 3000);
-            }
-        }
-
-        function acceptOrder() {
-            document.getElementById('alert-layer').style.display = 'none';
-            sndAlert.pause(); sndAlert.currentTime = 0;
-            if(sndSilent.paused) sndSilent.play().catch(e=>{});
-            if(vibrationInterval) clearInterval(vibrationInterval);
-            if(navigator.vibrate) navigator.vibrate(0);
-            socket.emit('accept-order', { shop: auth.shop, driverName: auth.name });
-            requestWakeLock();
-        }
-
-        function logout() { if(socket) socket.emit('force-logout', auth); localStorage.clear(); location.reload(); }
-
-        // --- PUSH NOTIFICATIONS ---
-        async function setupPush() {
-            log("3. Έλεγχος Push Plugin...");
-            if (!window.Capacitor || !window.Capacitor.Plugins || !window.Capacitor.Plugins.PushNotifications) {
-                log("❌ ERROR: Plugin not found");
-                return;
-            }
-
-            const PushNotifications = window.Capacitor.Plugins.PushNotifications;
-            
-            try {
-                const perm = await PushNotifications.requestPermissions();
-                if (perm.receive === 'granted') {
-                    await PushNotifications.register();
-                } else {
-                    log("❌ Άδεια Push απορρίφθηκε!");
-                }
-
-                PushNotifications.addListener('registration', (token) => {
-                    auth.fcmToken = token.value;
-                    socket.emit('update-token', { name: auth.name, token: token.value });
-                    // ΑΦΑΙΡΕΣΑΜΕ ΤΟ ALERT ΕΔΩ! ΤΩΡΑ ΜΟΝΟ LOG
-                    log("✅ TOKEN OK: " + token.value.substring(0, 5) + "..."); 
-                });
-
-                PushNotifications.addListener('registrationError', (err) => {
-                    log("❌ Reg Error: " + JSON.stringify(err));
-                });
-
-                PushNotifications.addListener('pushNotificationReceived', () => triggerAlert());
-                PushNotifications.addListener('pushNotificationActionPerformed', () => triggerAlert());
-            } catch(e) {
-                log("⚠️ Push Exception: " + JSON.stringify(e));
-            }
-        }
-
-        function toggleLock() {
-            const l = document.getElementById('fake-lock');
-            l.style.display = l.style.display === 'block' ? 'none' : 'block';
-        }
-
-        const saved = localStorage.getItem('unified_auth_v23');
-        if(saved) {
-            auth = JSON.parse(saved);
-            initUI();
-            connect();
-        }
-    </script>
 </body>
 </html>
