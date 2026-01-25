@@ -104,8 +104,8 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=23"></script>
-    <script src="logic.js?v=23"></script>
+    <script src="watchdog.js?v=24"></script>
+    <script src="logic.js?v=24"></script>
     
     <script>
         let selectedRole = '';
@@ -115,42 +115,37 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΕΜΦΑΝΙΖΕΙ ΤΟ PLAYER ---
+        // --- ΑΚΑΡΙΑΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ PLAYER ---
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
             
-            // 1. PLAY AUDIO
-            if(silence) {
-                silence.volume = 1.0;
-                silence.play().then(() => {
-                    console.log("🔊 Audio Started!");
-                    
-                    // 2. SET METADATA (ΑΥΤΟ ΦΤΙΑΧΝΕΙ ΤΗΝ ΜΠΑΡΑ)
-                    if ('mediaSession' in navigator) {
-                        navigator.mediaSession.playbackState = "playing";
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: "BellGo Active",   // <--- ΤΙΤΛΟΣ ΤΡΑΓΟΥΔΙΟΥ
-                            artist: "System Online",  // <--- ΚΑΛΛΙΤΕΧΝΗΣ
-                            album: "Kitchen Alert",   // <--- ΑΛΜΠΟΥΜ (ΣΗΜΑΝΤΙΚΟ)
-                            artwork: [
-                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
-                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
-                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
-                            ]
-                        });
-                    }
-                }).catch(e => {
-                    console.log("Audio Error:", e);
-                    alert("ΠΡΟΒΛΗΜΑ ΗΧΟΥ! Πάτα OK και ξαναπάτα ΕΙΣΟΔΟΣ");
+            // 1. ΡΥΘΜΙΖΟΥΜΕ ΤΗΝ ΜΠΑΡΑ ΠΡΙΝ ΚΑΝ ΠΑΙΞΕΙ (ΓΙΑ ΝΑ ΠΡΟΛΑΒΟΥΜΕ ΤΟ ΚΛΙΚ)
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = "playing";
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: "BellGo Active",
+                    artist: "System Online",
+                    album: "Kitchen Alert",
+                    artwork: [
+                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
+                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
+                        { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+                    ]
                 });
             }
 
-            // 3. ASK NOTIFICATIONS
+            // 2. ΠΑΙΖΟΥΜΕ ΤΟΝ ΗΧΟ
+            if(silence) {
+                silence.volume = 1.0;
+                silence.play().catch(e => console.log("Audio Error:", e));
+            }
+
+            // 3. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ
             if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
                 Notification.requestPermission();
             }
 
-            // 4. LOGIN
+            // 4. ΕΙΣΟΔΟΣ
             doLogin();
         }
 
