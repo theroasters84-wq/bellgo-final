@@ -3,48 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Unified</title>
+    <title>BellGo Final</title>
     <style>
-        /* BASE & MOBILE FIXES */
+        /* BASE */
         body { 
             background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; 
-            height: 100dvh; /* Dynamic Height για κινητά */
-            width: 100vw;
-            overflow: hidden; 
-            display: flex; flex-direction: column; 
+            height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; 
         }
         
-        /* SCREENS */
+        /* SCREENS: Το παν είναι να είναι κρυμμένα στην αρχή */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
-        .active { display: flex; } /* Μόνο ό,τι έχει active φαίνεται */
+        .active { display: flex !important; } /* Το !important διορθώνει το Bug που έβλεπες */
         
-        /* INPUTS */
+        /* INPUTS & BUTTONS */
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
-        
-        /* BUTTONS */
         button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; }
         button:active { transform: scale(0.95); }
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; }
         .btn-orange { background: #FF6D00; color: black; }
-        .btn-red { background: #D32F2F; color: white; width: 40px; height: 40px; padding: 0; }
+        .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 20px; }
 
         /* MAIN APP LAYOUT */
-        #mainApp { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } /* DEFAULT HIDDEN */
         
         .header { height: 50px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; }
         
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
         
-        /* LISTS (Left Side) */
-        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; }
+        /* LISTS (Left Side) - Θα κρύβεται στους υπαλλήλους */
+        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; background: #121212; }
         .btn-staff { width: 98%; height: 60px; font-size: 20px; margin-bottom: 10px; display: block; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
 
         /* CHAT (Right Side) */
-        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; height: 100%; }
+        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; height: 100%; width: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; }
+        
+        /* INPUT AREA */
         .chat-input-area { height: 70px; display: flex; padding: 5px; background: #222; flex-shrink: 0; border-top: 1px solid #444; padding-bottom: env(safe-area-inset-bottom); }
         #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 10px; height: 50px; }
         #sendBtn { width: 25%; margin: 0 0 0 5px; background: #00E676; color: black; height: 50px; }
@@ -80,7 +77,7 @@
     </div>
     <div id="step3" class="screen">
         <h2>👔 Ο Ρόλος σου</h2>
-        <button class="btn-green" onclick="nextStep(4, 'admin')">ADMIN</button>
+        <button class="btn-green" onclick="nextStep(4, 'admin')">ADMIN (Κουζίνα)</button>
         <button class="btn-blue" onclick="nextStep(4, 'waiter')">ΣΕΡΒΙΤΟΡΟΣ</button>
         <button class="btn-orange" onclick="nextStep(4, 'driver')">ΔΙΑΝΟΜΕΑΣ</button>
     </div>
@@ -88,11 +85,13 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="****">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Πάτα "Allow" στις ειδοποιήσεις αν ζητηθεί</p>
     </div>
 
-    <div id="mainApp" class="screen"> <div class="header">
+    <div id="mainApp">
+        <div class="header">
             <div id="userInfo" style="font-size: 14px;">User | Store</div>
-            <button class="btn-red" onclick="Logic.logout()">❌</button>
+            <button class="btn-red" onclick="Logic.logout()">Exit</button>
         </div>
 
         <div class="content-area">
@@ -120,17 +119,15 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=10"></script>
-    <script src="logic.js?v=10"></script>
+    <script src="watchdog.js?v=11"></script>
+    <script src="logic.js?v=11"></script>
     
     <script>
         let selectedRole = '';
         
-        // --- SERVICE WORKER (Μόνο για Κινητά Web, όχι Fully Kiosk) ---
+        // Service Worker Init
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
-            navigator.serviceWorker.register('/firebase-messaging-sw.js')
-            .then(reg => console.log('✅ SW Registered'))
-            .catch(err => console.log('❌ SW Fail', err));
+            navigator.serviceWorker.register('/firebase-messaging-sw.js');
         }
 
         function nextStep(n, role) {
@@ -139,16 +136,29 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // 🔥 ΤΟ ΜΕΓΑΛΟ ΚΟΛΠΟ ΓΙΑ ΤΟΝ ΗΧΟ 🔥
-        function forcePlayAndLogin() {
-            // 1. Παίζουμε τον ήχο ΑΜΕΣΩΣ, πριν από κάθε έλεγχο ή λογική
+        async function forcePlayAndLogin() {
+            // 1. ΖΗΤΑΜΕ ΑΔΕΙΑ ΕΙΔΟΠΟΙΗΣΕΩΝ ΤΩΡΑ (ΓΙΑ FIREBASE)
+            if (Notification.permission !== "granted") {
+                await Notification.requestPermission();
+            }
+
+            // 2. ΠΑΙΖΟΥΜΕ ΤΟΝ ΗΧΟ
             const silence = document.getElementById('silence');
             if(silence) {
                 silence.volume = 1.0;
-                silence.play().catch(e => console.log("Audio Force Fail:", e));
+                try {
+                    await silence.play();
+                    // ΑΝ ΠΑΙΞΕΙ, ΣΤΗΝΟΥΜΕ ΤΟ MEDIA SESSION
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.playbackState = "playing";
+                    }
+                } catch(e) {
+                    console.log("Audio Force Fail:", e);
+                    alert("Πάτα ΟΚ και μετά πάτα ξανά στην οθόνη!");
+                }
             }
 
-            // 2. Μετά τρέχουμε τη λογική
+            // 3. ΕΚΤΕΛΕΣΗ LOGIN
             doLogin();
         }
 
@@ -159,16 +169,18 @@
 
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            // 3. Εμφανίζουμε το Main App ΜΟΝΟ ΤΩΡΑ
+            // ΑΛΛΑΓΗ ΟΘΟΝΗΣ (ΜΕ ΤΟ SWAP CLASS)
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('mainApp').classList.add('active');
+            const mainApp = document.getElementById('mainApp');
+            mainApp.classList.add('active'); // Τώρα εμφανίζεται!
 
-            // Προσαρμογή UI για κινητά (αν είναι μικρή οθόνη και όχι Admin, κρύψε τη λίστα)
-            if (window.innerWidth < 600 && selectedRole !== 'admin') {
-                // document.getElementById('listsPanel').style.display = 'none'; // <-- Ξε-σχολίασέ το αν θες Fullscreen Chat
+            // 🔥 UI FIX: ΑΝ ΔΕΝ ΕΙΣΑΙ ADMIN, ΚΡΥΨΕ ΤΗ ΛΙΣΤΑ 🔥
+            if (selectedRole !== 'admin') {
+                document.getElementById('listsPanel').style.display = 'none';
+            } else {
+                document.getElementById('listsPanel').style.display = 'block';
             }
 
-            // 4. Κλήση Logic
             Logic.login(store, name, selectedRole, pass);
         }
     </script>
