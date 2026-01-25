@@ -5,22 +5,24 @@ let myToken = null;
 let currentUser = null;
 
 const Logic = {
-    login: async function(store, name, role, pass) {
-        // Ενημέρωση Metadata για να φανεί ο Player
+    login: function(store, name, role, pass) {
+        console.log("Logic.login started...");
+        
+        // 1. Ρύθμιση Media Session (Αφού ο ήχος παίζει ήδη από το HTML)
         this.updateMediaSession('idle');
         this.setupMediaSession();
 
-        // Watchdog & WakeLock
+        // 2. Start Watchdog
         Watchdog.start(isFully);
         
         currentUser = { store, name, role, pass };
 
-        // Firebase (Web Only)
+        // 3. Firebase (Web Only)
         if (!isFully && role !== 'admin') {
-            try { this.initFirebase(); } catch(e){}
+            try { this.initFirebase(); } catch(e) { console.log("Firebase init error:", e); }
         }
 
-        // Σύνδεση
+        // 4. Σύνδεση Socket
         socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: myToken });
         document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
         
@@ -53,13 +55,16 @@ const Logic = {
                 appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
                 measurementId: "G-379ETZJP8H"
             };
-            firebase.initializeApp(firebaseConfig);
+            
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             messaging = firebase.messaging();
             
             messaging.getToken().then((token) => {
                 myToken = token;
-                console.log("FCM Token:", token); // ΓΙΑ DEBUG
-            });
+                if (currentUser) {
+                    socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
+                }
+            }).catch(e => console.log("Token error:", e));
 
             messaging.onMessage(() => { if(currentUser) { Logic.updateMediaSession('alarm'); Watchdog.triggerPanicMode(); }});
         }
@@ -76,7 +81,9 @@ const Logic = {
 
     updateMediaSession: function(state) {
         if (!('mediaSession' in navigator)) return;
-        navigator.mediaSession.playbackState = "playing"; // ΚΡΑΤΑ ΤΟ "PLAYING"
+        
+        // ΣΗΜΑΝΤΙΚΟ: Λέμε στο Android ότι παίζουμε
+        navigator.mediaSession.playbackState = "playing";
         
         const artwork = state === 'alarm' 
             ? [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
@@ -94,31 +101,35 @@ const Logic = {
 // LISTENERS
 socket.on('update-staff-list', (staffList) => {
     const container = document.getElementById('staffListContainer');
-    container.innerHTML = ''; 
-    staffList.forEach(user => {
-        if (user.role === 'admin') return; 
-        const btn = document.createElement('button');
-        const role = user.role.toLowerCase();
-        btn.className = role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
-        
-        if (currentUser && currentUser.role === 'admin') {
-            btn.innerText = `🔔 ${user.username}`;
-            btn.onclick = () => socket.emit('trigger-alarm', user.username);
-        } else {
-            btn.innerText = `👤 ${user.username}`;
-            btn.style.opacity = "0.7"; 
-        }
-        container.appendChild(btn);
-    });
+    if(container) {
+        container.innerHTML = ''; 
+        staffList.forEach(user => {
+            if (user.role === 'admin') return; 
+            const btn = document.createElement('button');
+            const role = user.role.toLowerCase();
+            btn.className = role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
+            
+            if (currentUser && currentUser.role === 'admin') {
+                btn.innerText = `🔔 ${user.username}`;
+                btn.onclick = () => socket.emit('trigger-alarm', user.username);
+            } else {
+                btn.innerText = `👤 ${user.username}`;
+                btn.style.opacity = "0.7"; 
+            }
+            container.appendChild(btn);
+        });
+    }
 });
 
 socket.on('new-chat', (data) => {
     const chatBox = document.getElementById('chat-messages');
-    const div = document.createElement('div');
-    div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.user === currentUser?.name ? 'self' : ''}`;
-    div.innerHTML = `<span class="name">${data.user}</span>${data.text}`;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    if(chatBox) {
+        const div = document.createElement('div');
+        div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.user === currentUser?.name ? 'self' : ''}`;
+        div.innerHTML = `<span class="name">${data.user}</span>${data.text}`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 });
 
 socket.on('ring-bell', () => {
@@ -126,6 +137,7 @@ socket.on('ring-bell', () => {
     Watchdog.triggerPanicMode();
 });
 
+// Reset Audio on Load
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
