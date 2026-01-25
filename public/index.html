@@ -1,104 +1,193 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Media Bar Test Full</title>
-<style>
-body { background:#000; color:#fff; font-family:sans-serif; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; }
-#status { margin-top:20px; font-size:18px; color:yellow; border:1px solid #333; padding:10px; width:90%; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Roasters Unified - Bellgo1</title>
+    <link rel="manifest" href="/manifest-shop.json">
+    <style>
+        body { background: #000; color: white; font-family: sans-serif; margin: 0; text-align: center; overflow: hidden; touch-action: manipulation; }
+        .hidden { display: none !important; }
+        .screen { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        
+        /* UI Elements */
+        .btn { background: #ffc107; color: black; padding: 22px; border-radius: 18px; font-weight: 900; font-size: 1.3em; border: none; width: 85%; cursor: pointer; margin: 10px 0; box-shadow: 0 4px 15px rgba(255,193,7,0.3); }
+        input { width: 85%; padding: 18px; margin: 10px 0; border-radius: 12px; border: 1px solid #333; background: #111; color: white; text-align: center; font-size: 1.2em; }
+        
+        #status-bar { position: fixed; top: 0; width: 100%; background: #1a1a1a; padding: 12px; font-size: 0.9em; border-bottom: 1px solid #333; z-index: 1000; font-weight: bold; }
+        .dot { color: #0f0; animation: pulse 1.5s infinite; margin-right: 5px; }
+        @keyframes pulse { 50% { opacity: 0.2; } }
+
+        /* Full Screen Alert Layer */
+        #order-layer { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #f00; display: none; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 9999; 
+            animation: flash 0.4s infinite; 
+        }
+        @keyframes flash { 50% { background: #700; } }
+        
+        .alert-title { font-size: 4em; font-weight: 900; margin: 0; }
+        .alert-sub { font-size: 1.5em; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 10px; margin-top: 20px; }
+    </style>
 </head>
 <body>
 
-<h1>Media Bar Auto Test</h1>
-<div id="status">Αναμονή...</div>
+    <div id="status-bar" class="hidden">
+        <span class="dot">●</span> <span id="role-text"></span> | <span id="shop-text"></span>
+    </div>
 
-<!-- Ο ήχος για media bar -->
-<audio id="silence" src="alert.mp3" loop preload="auto"></audio>
+    <div id="unlock-screen" class="screen">
+        <h1 style="color:#ffc107; font-size: 2.5em;">BELLGO 1</h1>
+        <p>Ενεργοποίηση Θυρωρού & Προστασίας</p>
+        <button class="btn" onclick="initApp()">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+    </div>
 
-<script>
-// =====================
-// Helpers
-// =====================
-const status = document.getElementById('status');
-const log = t => status.innerHTML = t + "<br>" + status.innerHTML;
+    <div id="login-screen" class="screen hidden">
+        <h2 style="color:#ffc107">LOGIN</h2>
+        <input type="text" id="shop" placeholder="ΟΝΟΜΑ ΜΑΓΑΖΙΟΥ">
+        <input type="password" id="pass" placeholder="ΚΩΔΙΚΟΣ (1234)">
+        <input type="text" id="user-name" placeholder="ΤΟ ΟΝΟΜΑ ΣΟΥ">
+        <button class="btn" onclick="setRole('driver')">ΔΙΑΝΟΜΕΑΣ / ΣΕΡΒΙΤΟΡΟΣ</button>
+        <button class="btn" style="background:#333; color:white;" onclick="setRole('admin')">ADMIN / ΤΑΜΕΙΟ</button>
+    </div>
 
-async function startAudio() {
-    const audio = document.getElementById('silence');
-    audio.volume = 0.5;
+    <div id="driver-ui" class="screen hidden">
+        <h1 id="driver-display-name" style="font-size: 3em; margin-bottom: 5px;"></h1>
+        <p style="color: #0f0; font-weight: bold;"><span class="dot">●</span> ONLINE & ΠΡΟΣΤΑΤΕΥΜΕΝΟ</p>
+        <div style="margin-top: 20px; color: #666; font-size: 0.9em;">
+            <p>Το Heartbeat είναι ενεργό (5s)</p>
+            <p>Το Bot παρασκηνίου λειτουργεί</p>
+        </div>
+        <button class="btn" style="background:#222; color:#777; margin-top:50px; width: 60%; font-size: 1em;" onclick="logout()">LOGOUT</button>
+    </div>
 
-    try {
-        await audio.play();
-        log("✅ Ήχος παίζει!");
-        setupMediaSession();
-    } catch(e){
-        log("⚠️ Play Error: "+e.message);
-        log("Χρειάζεται user gesture ή Fully Kiosk hack.");
-    }
-}
+    <div id="order-layer" onclick="acceptOrder()">
+        <h1 class="alert-title">ΚΛΗΣΗ!</h1>
+        <div class="alert-sub">ΑΚΟΥΜΠΗΣΕ ΟΠΟΥΔΗΠΟΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
+    </div>
 
-// =====================
-// MediaSession setup
-// =====================
-function setupMediaSession(){
-    if('mediaSession' in navigator){
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title:"Auto Alert Test",
-            artist:"Kitchen System",
-            album:"MediaBar",
-            artwork:[{src:"https://cdn-icons-png.flaticon.com/512/727/727245.png",sizes:"512x512",type:"image/png"}]
+    <audio id="bgBot" loop>
+        <source src="https://raw.githubusercontent.com/anars/blank-audio/master/10-seconds-of-silence.mp3" type="audio/mp3">
+    </audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io({ reconnection: true, reconnectionDelay: 1000 });
+        const alarm = new Audio('/sounds/alert.mp3');
+        const bgBot = document.getElementById('bgBot');
+        let currentAuth = null;
+
+        async function initApp() {
+            try {
+                // Προετοιμασία ήχων για Android
+                await alarm.play(); alarm.pause();
+                await bgBot.play();
+                
+                document.getElementById('unlock-screen').classList.add('hidden');
+                
+                // Wake Lock για να μην σβήνει η οθόνη
+                if ('wakeLock' in navigator) {
+                    navigator.wakeLock.request('screen').catch(()=>{});
+                }
+                
+                checkSavedAuth();
+            } catch (e) {
+                alert("Πάτα το κουμπί ξανά για να επιτρέψεις τον Θυρωρό!");
+            }
+        }
+
+        function setRole(role) {
+            const data = {
+                shop: document.getElementById('shop').value.trim().toLowerCase(),
+                password: document.getElementById('pass').value.trim(),
+                name: document.getElementById('user-name').value.trim(),
+                isDriver: (role === 'driver')
+            };
+            if(data.password !== "1234") return alert("Λάθος κωδικός!");
+            if(!data.shop || !data.name) return alert("Συμπλήρωσε τα στοιχεία!");
+            
+            localStorage.setItem('roasters_auth', JSON.stringify(data));
+            location.reload();
+        }
+
+        function checkSavedAuth() {
+            const saved = localStorage.getItem('roasters_auth');
+            if(saved) {
+                currentAuth = JSON.parse(saved);
+                socket.emit('login', currentAuth);
+                showUI();
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+            }
+        }
+
+        function showUI() {
+            document.getElementById('status-bar').classList.remove('hidden');
+            document.getElementById('shop-text').innerText = currentAuth.shop.toUpperCase();
+            if(currentAuth.isDriver) {
+                document.getElementById('driver-ui').classList.remove('hidden');
+                document.getElementById('driver-display-name').innerText = currentAuth.name.toUpperCase();
+                document.getElementById('role-text').innerText = "DRIVER";
+            } else {
+                window.location.href = "/shop.html";
+            }
+        }
+
+        // --- ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΣΥΝΔΕΣΗ ---
+        socket.on('connect', () => {
+            if(currentAuth) {
+                console.log("Reconnected! Logging in...");
+                socket.emit('login', currentAuth);
+            }
         });
 
-        try{
-            navigator.mediaSession.setPositionState({
-                duration:600, // 10 λεπτά
-                position:0,
-                playbackRate:1.0
-            });
-            log("✅ PositionState set (10 λεπτά)");
-        }catch(e){ log("⚠️ PositionState Error: "+e.message); }
+        window.addEventListener('online', () => {
+            if(!socket.connected) socket.connect();
+        });
 
-        navigator.mediaSession.playbackState = "playing";
-        log("👉 Τώρα σύρε την οθόνη από πάνω! Η media bar πρέπει να εμφανιστεί.");
-    }else{
-        log("❌ MediaSession Not Supported");
-    }
-}
+        // --- Ο ΘΥΡΩΡΟΣ (BOT) ΕΝ ΔΡΑΣΕΙ ---
+        socket.on('new-order', () => {
+            if(currentAuth && currentAuth.isDriver) {
+                // 1. Δόνηση (Native Call Feel)
+                if ("vibrate" in navigator) { 
+                    navigator.vibrate([1000, 500, 1000, 500, 1000]); 
+                }
+                
+                // 2. Φωνητική Ειδοποίηση
+                const msg = new SpeechSynthesisUtterance("Νέα κλήση! Τρέξε!");
+                msg.lang = 'el-GR';
+                window.speechSynthesis.speak(msg);
 
-// =====================
-// Watchdog για να κρατάει την bar ζωντανή
-// =====================
-const Watchdog = {
-    interval:null,
-    ensureAudioPlaying:function(){
-        const audio = document.getElementById('silence');
-        if(audio && audio.paused) audio.play().catch(()=>{});
-    },
-    start:function(){
-        if(this.interval) clearInterval(this.interval);
-        this.interval = setInterval(()=>this.ensureAudioPlaying(),5000);
-    }
-};
+                // 3. Συναγερμός & Εμφάνιση
+                alarm.loop = true;
+                alarm.play().catch(()=>{});
+                document.getElementById('order-layer').style.display = 'flex';
+            }
+        });
 
-// =====================
-// Fully Kiosk hack / dummy gesture
-// =====================
-window.addEventListener('load', ()=>{
-    if(typeof fully !== 'undefined'){
-        // Fully Kiosk: κάνουμε dummy tap για autoplay
-        fully.injectJavascript('document.getElementById("silence").play();');
-        log("✅ Fully Kiosk dummy play injected");
-        setTimeout(startAudio, 1000);
-    } else {
-        // Browser: πρέπει να πατήσει user gesture, αλλιώς εμφανίζει error
-        startAudio();
-    }
+        function acceptOrder() {
+            alarm.pause();
+            alarm.currentTime = 0;
+            document.getElementById('order-layer').style.display = 'none';
+            if(currentAuth) {
+                socket.emit('order-accepted', { driverName: currentAuth.name, shopName: currentAuth.shop });
+            }
+        }
 
-    // Start watchdog
-    Watchdog.start();
-});
-</script>
+        // Heartbeat (Τοποθέτηση 1)
+        setInterval(() => { 
+            if(socket.connected) {
+                socket.emit('heartbeat');
+            }
+        }, 5000);
 
+        function logout() {
+            if(confirm("Έξοδο από τη βάρδια;")) { 
+                localStorage.clear();
+                location.reload();
+            } 
+        }
+    </script>
 </body>
 </html>
