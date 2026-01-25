@@ -46,7 +46,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     
     <script>
-        // Φόρτωση Service Worker ΑΜΕΣΩΣ (Web Only)
+        // Web Service Worker
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
@@ -105,8 +105,8 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=20"></script>
-    <script src="logic.js?v=20"></script>
+    <script src="watchdog.js?v=22"></script>
+    <script src="logic.js?v=22"></script>
     
     <script>
         let selectedRole = '';
@@ -116,29 +116,33 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // 🔥 FIRE & FORGET LOGIN (ΔΕΝ ΚΟΛΛΑΕΙ ΠΟΤΕ) 🔥
+        // --- ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΦΤΙΑΧΝΕΙ ΤΟ PLAYER ---
         function forcePlayAndLogin() {
-            // 1. Fire Audio (Χωρίς await)
             const silence = document.getElementById('silence');
+            
+            // 1. ΠΑΙΖΟΥΜΕ ΤΟΝ ΗΧΟ
             if(silence) {
                 silence.volume = 1.0;
                 silence.play().then(() => {
+                    // 2. ΜΟΛΙΣ ΠΑΙΞΕΙ, ΚΑΡΦΩΝΟΥΜΕ ΤΟ MEDIA SESSION
+                    // Αυτό είναι που εμφανίζει την μπάρα
                     if ('mediaSession' in navigator) {
                         navigator.mediaSession.playbackState = "playing";
                         navigator.mediaSession.metadata = new MediaMetadata({
-                            title: "🟢 BellGo Active", artist: "Online",
+                            title: "🟢 BellGo Active",
+                            artist: "System Online",
                             artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
                         });
                     }
-                }).catch(e => console.log("Audio skipped"));
+                }).catch(e => console.log("Audio Error:", e));
             }
 
-            // 2. Fire Notification Request (Χωρίς await)
+            // 3. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ (ΑΝΕΞΑΡΤΗΤΑ)
             if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
                 Notification.requestPermission();
             }
 
-            // 3. ΜΠΑΙΝΟΥΜΕ ΑΜΕΣΩΣ!
+            // 4. ΕΙΣΟΔΟΣ
             doLogin();
         }
 
