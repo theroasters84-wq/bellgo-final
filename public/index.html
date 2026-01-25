@@ -46,7 +46,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     
     <script>
-        // Web Service Worker
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
@@ -105,8 +104,8 @@
         <source src="data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeBkAAAAAAABIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//oeBkAAACQAABIAAAAAAAAEgAAAAAAAAAAAAAAqr///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AAA=" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=22"></script>
-    <script src="logic.js?v=22"></script>
+    <script src="watchdog.js?v=23"></script>
+    <script src="logic.js?v=23"></script>
     
     <script>
         let selectedRole = '';
@@ -116,33 +115,42 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΦΤΙΑΧΝΕΙ ΤΟ PLAYER ---
+        // --- ΤΟ ΚΟΥΜΠΙ ΠΟΥ ΕΜΦΑΝΙΖΕΙ ΤΟ PLAYER ---
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
             
-            // 1. ΠΑΙΖΟΥΜΕ ΤΟΝ ΗΧΟ
+            // 1. PLAY AUDIO
             if(silence) {
                 silence.volume = 1.0;
                 silence.play().then(() => {
-                    // 2. ΜΟΛΙΣ ΠΑΙΞΕΙ, ΚΑΡΦΩΝΟΥΜΕ ΤΟ MEDIA SESSION
-                    // Αυτό είναι που εμφανίζει την μπάρα
+                    console.log("🔊 Audio Started!");
+                    
+                    // 2. SET METADATA (ΑΥΤΟ ΦΤΙΑΧΝΕΙ ΤΗΝ ΜΠΑΡΑ)
                     if ('mediaSession' in navigator) {
                         navigator.mediaSession.playbackState = "playing";
                         navigator.mediaSession.metadata = new MediaMetadata({
-                            title: "🟢 BellGo Active",
-                            artist: "System Online",
-                            artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
+                            title: "BellGo Active",   // <--- ΤΙΤΛΟΣ ΤΡΑΓΟΥΔΙΟΥ
+                            artist: "System Online",  // <--- ΚΑΛΛΙΤΕΧΝΗΣ
+                            album: "Kitchen Alert",   // <--- ΑΛΜΠΟΥΜ (ΣΗΜΑΝΤΙΚΟ)
+                            artwork: [
+                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '96x96', type: 'image/png' },
+                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '128x128', type: 'image/png' },
+                                { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }
+                            ]
                         });
                     }
-                }).catch(e => console.log("Audio Error:", e));
+                }).catch(e => {
+                    console.log("Audio Error:", e);
+                    alert("ΠΡΟΒΛΗΜΑ ΗΧΟΥ! Πάτα OK και ξαναπάτα ΕΙΣΟΔΟΣ");
+                });
             }
 
-            // 3. ΖΗΤΑΜΕ ΕΙΔΟΠΟΙΗΣΕΙΣ (ΑΝΕΞΑΡΤΗΤΑ)
+            // 3. ASK NOTIFICATIONS
             if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
                 Notification.requestPermission();
             }
 
-            // 4. ΕΙΣΟΔΟΣ
+            // 4. LOGIN
             doLogin();
         }
 
