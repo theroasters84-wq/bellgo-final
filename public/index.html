@@ -183,7 +183,7 @@
         // --- 🔥 SETUP BOT LOGIC (AUTO-CHECK) 🔥 ---
         const SetupBot = {
             checkConfig: function() {
-                // Αν δεν είμαστε σε Fully, απλά δείχνουμε το κουμπί σε Android
+                // Περίπτωση 1: Δεν είμαστε στο Fully -> Έλεγχος για Android Chrome
                 if (typeof fully === 'undefined') {
                     const ua = navigator.userAgent.toLowerCase();
                     if (ua.indexOf("android") > -1) {
@@ -192,63 +192,59 @@
                     return;
                 }
 
-                // ΕΙΜΑΣΤΕ ΣΕ FULLY KIOSK - ΕΛΕΓΧΟΣ ΡΥΘΜΙΣΕΩΝ
+                // Περίπτωση 2: Είμαστε στο Fully -> Έλεγχος Ρυθμίσεων
                 console.log("🤖 SetupBot: Checking Fully Kiosk Config...");
                 
-                // Ελέγχουμε αν οι κρίσιμες ρυθμίσεις είναι ON
-                // (Σημείωση: Το getBooleanSetting επιστρέφει "true"/"false" strings ή booleans)
+                // Παίρνουμε τις ρυθμίσεις (επιστρέφουν ως "true"/"false" strings)
                 const isScreenOn = fully.getBooleanSetting("keepScreenOn") == true || fully.getBooleanSetting("keepScreenOn") == "true";
                 const isWifiLock = fully.getBooleanSetting("wifiWakeLock") == true || fully.getBooleanSetting("wifiWakeLock") == "true";
-                const isPreventSleep = fully.getBooleanSetting("preventSleep") == true || fully.getBooleanSetting("preventSleep") == "true";
-
-                // Αν ΟΛΑ είναι κομπλέ -> Κρύψε το ρομπότ
-                if (isScreenOn && isWifiLock && isPreventSleep) {
+                
+                // ΑΝ ΟΛΑ ΚΟΜΠΛΕ -> ΚΡΥΨΕ ΤΟ ΡΟΜΠΟΤ
+                if (isScreenOn && isWifiLock) {
                     console.log("✅ Fully Configured. Hiding Bot.");
                     document.getElementById('setupBotBtn').style.display = 'none';
                 } else {
-                    // Αν κάτι λείπει -> Δείξε το ρομπότ και κάντο ΚΟΚΚΙΝΟ
+                    // ΑΝ ΛΕΙΠΟΥΝ -> ΕΜΦΑΝΙΣΕ ΤΟ ΡΟΜΠΟΤ ΝΑ ΑΝΑΒΟΣΒΗΝΕΙ
                     console.log("❌ Config missing. Showing Bot.");
                     const btn = document.getElementById('setupBotBtn');
                     btn.style.display = 'flex';
-                    btn.classList.add('needs-setup'); // Κοκκινίζει και αναβοσβήνει
+                    btn.classList.add('needs-setup'); 
                     fully.showToast("⚠️ Ρυθμίσεις Ελλιπείς! Πάτα το Ρομπότ 🤖");
                 }
             },
 
             run: function() {
-                // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK
+                // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK (ΕΦΑΡΜΟΓΗ ΡΥΘΜΙΣΕΩΝ)
                 if (typeof fully !== 'undefined') {
                     fully.showToast("🤖 Setup Bot: Εφαρμογή Ρυθμίσεων...");
                     try {
+                        // ΒΑΣΙΚΕΣ
                         fully.setBooleanSetting("keepScreenOn", true);
                         fully.setBooleanSetting("unlockScreen", true);
-                        fully.setBooleanSetting("foregroundOnActivity", true);
-                        fully.setBooleanSetting("listenVolumeButtons", true);
                         fully.setBooleanSetting("preventSleep", true);
                         fully.setBooleanSetting("wifiWakeLock", true);
                         fully.setBooleanSetting("forceWifi", true);
+                        
+                        // ΚΟΥΜΠΙΑ & MEDIA
+                        fully.setBooleanSetting("listenVolumeButtons", true);
                         fully.setBooleanSetting("autoplayMedia", true);
                         fully.setBooleanSetting("fakeUserInteraction", true);
                         fully.setBooleanSetting("mapVolumeKeysToMedia", true);
-                        
+
                         fully.showToast("✅ Ρυθμίσεις Περάστηκαν!");
                         
-                        // Ξανακάνουμε έλεγχο για να κρύψουμε το κουμπί αν πέτυχε
+                        // Επανέλεγχος για να κρυφτεί το κουμπί
                         setTimeout(() => { this.checkConfig(); }, 2000);
 
                     } catch (e) {
-                        alert("Σφάλμα Fully: " + e);
+                        alert("⚠️ Σφάλμα: Πρέπει να ενεργοποιήσεις το 'Enable JavaScript Interface' στα Settings του Fully!");
                     }
                     
-                    // Permissions (Χρειάζονται επιβεβαίωση χρήστη)
-                    setTimeout(() => {
-                        fully.requestOverlayPermission();
-                    }, 1000);
-                    setTimeout(() => {
-                        fully.requestIgnoreBatteryOptimizations();
-                    }, 5000);
+                    // PERMISSIONS
+                    setTimeout(() => { fully.requestOverlayPermission(); }, 1000);
+                    setTimeout(() => { fully.requestIgnoreBatteryOptimizations(); }, 5000);
                 } 
-                // ΠΕΡΙΠΤΩΣΗ B: CHROME (WIZARD)
+                // ΠΕΡΙΠΤΩΣΗ B: CHROME (ΕΜΦΑΝΙΣΗ WIZARD)
                 else {
                     document.getElementById('androidSetup').style.display = 'flex';
                     const currentUrl = window.location.href;
@@ -261,9 +257,12 @@
             }
         };
 
-        // ΕΚΚΙΝΗΣΗ ΕΛΕΓΧΟΥ
+        // 🔥 ΕΚΚΙΝΗΣΗ ΕΛΕΓΧΟΥ ΜΟΛΙΣ ΦΟΡΤΩΣΕΙ Η ΣΕΛΙΔΑ 🔥
         window.addEventListener('load', () => {
-            SetupBot.checkConfig();
+            // Μικρή καθυστέρηση για να προλάβει να φορτώσει το Fully Interface
+            setTimeout(() => {
+                SetupBot.checkConfig();
+            }, 500);
         });
 
 
@@ -293,6 +292,13 @@
                         if (now - this.alarmStartTime > 3000) {
                             this.buttonAck();
                         }
+                    }
+                });
+                
+                // STOP ME KOYMPIA ENTASHS
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
+                        this.buttonAck();
                     }
                 });
 
