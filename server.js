@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
 const TIMEOUT_LIMIT = 180000; 
+const ESCALATION_DELAY = 60000; // 🔥 1 ΛΕΠΤΟ ΚΑΘΥΣΤΕΡΗΣΗ ΓΙΑ FIREBASE
 
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
@@ -42,6 +43,11 @@ io.on('connection', (socket) => {
         const userKey = `${cleanStore}_${cleanUser}`;
         socket.join(cleanStore);
 
+        // Καθαρισμός παλιού χρονομέτρου αν υπάρχει
+        if (activeUsers[userKey] && activeUsers[userKey].alarmTimeout) {
+            clearTimeout(activeUsers[userKey].alarmTimeout);
+        }
+
         const existingToken = activeUsers[userKey] ? activeUsers[userKey].fcmToken : null;
 
         activeUsers[userKey] = {
@@ -50,7 +56,8 @@ io.on('connection', (socket) => {
             role: data.role,
             store: cleanStore,
             fcmToken: data.fcmToken || existingToken, 
-            lastSeen: Date.now()
+            lastSeen: Date.now(),
+            alarmTimeout: null // 🔥 Εδώ αποθηκεύουμε το χρονόμετρο
         };
 
         console.log(`👤 ${cleanUser} joined ${cleanStore}`);
@@ -73,6 +80,9 @@ io.on('connection', (socket) => {
     socket.on('logout-user', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) {
+            // Καθαρισμός χρονομέτρου πριν τη διαγραφή
+            if (activeUsers[userKey].alarmTimeout) clearTimeout(activeUsers[userKey].alarmTimeout);
+            
             const user = activeUsers[userKey];
             delete activeUsers[userKey];
             updateStore(user.store);
@@ -93,12 +103,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 6. ALARM
+    // 6. ALARM (Γενικό)
     socket.on('kitchen-alarm', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) io.to(activeUsers[senderKey].store).emit('kitchen-alarm');
     });
 
+    // 🔥 7. TRIGGER ALARM (ME ΤΟ ΚΟΛΠΟ) 🔥
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -107,30 +118,50 @@ io.on('connection', (socket) => {
         const target = activeUsers[targetKey];
 
         if (target) {
-            console.log(`🔔 Ringing ${target.username}...`);
+            console.log(`🔔 Ringing ${target.username} (Socket only)...`);
+            
+            // Α. Στέλνουμε ΑΜΕΣΩΣ το Socket (Τζάμπα & Γρήγορο)
             io.to(target.socketId).emit('kitchen-alarm'); 
-            if (target.fcmToken) sendPushNotification(target.fcmToken);
+
+            // Β. Ακυρώνουμε τυχόν προηγούμενο χρονόμετρο
+            if (target.alarmTimeout) clearTimeout(target.alarmTimeout);
+
+            // Γ. Ξεκινάμε αντίστροφη μέτρηση 1 λεπτού
+            target.alarmTimeout = setTimeout(() => {
+                console.log(`⚠️ Escalating to Firebase for ${target.username}...`);
+                if (target.fcmToken) sendPushNotification(target.fcmToken);
+                target.alarmTimeout = null; 
+            }, ESCALATION_DELAY); // 60 δευτερόλεπτα
         }
     });
 
-    // 🔥 7. ΕΠΙΒΕΒΑΙΩΣΗ ΛΗΨΗΣ (ALARM ACKNOWLEDGE) 🔥
-    // Αυτό είναι το νέο κομμάτι!
+    // 🔥 8. ALARM ACK (STOP & CANCEL TIMER) 🔥
     socket.on('alarm-ack', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) {
             const user = activeUsers[senderKey];
-            console.log(`✅ ${user.username} acknowledged the alarm!`);
-            // Ενημερώνουμε ΟΛΟΥΣ στο μαγαζί (άρα και τον Admin) ότι το έλαβε
+            console.log(`✅ ${user.username} acknowledged! Canceling Firebase.`);
+            
+            // ΑΚΥΡΩΣΗ ΤΟΥ ΧΡΟΝΟΜΕΤΡΟΥ
+            if (user.alarmTimeout) {
+                clearTimeout(user.alarmTimeout);
+                user.alarmTimeout = null;
+            }
+
             io.to(user.store).emit('alarm-receipt', { name: user.username });
         }
     });
 });
 
+// CLEANUP LOOP
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
     Object.keys(activeUsers).forEach(key => {
         if (now - activeUsers[key].lastSeen > TIMEOUT_LIMIT) {
+            // Καθαρισμός χρονομέτρου αν υπάρχει
+            if (activeUsers[key].alarmTimeout) clearTimeout(activeUsers[key].alarmTimeout);
+            
             storesToUpdate.add(activeUsers[key].store);
             delete activeUsers[key];
         }
@@ -148,7 +179,7 @@ function sendPushNotification(token) {
     if(!token || token === 'WEB') return; 
     const message = {
         token: token,
-        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Πάτα ΕΔΩ τώρα!" },
+        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Δεν απάντησες! Τρέξε!" },
         android: { priority: "high", notification: { sound: "default", clickAction: "FLUTTER_NOTIFICATION_CLICK" } },
         data: { url: "/", action: "alarm" }
     };
