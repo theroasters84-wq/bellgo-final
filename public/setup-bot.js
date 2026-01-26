@@ -1,89 +1,100 @@
 const SetupBot = {
-    run: function() {
-        console.log("🤖 SetupBot: Scanning environment...");
-
-        // ==========================================
-        // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK (ΕΧΟΥΜΕ ΤΟΝ ΕΛΕΓΧΟ)
-        // ==========================================
-        if (typeof fully !== 'undefined') {
-            fully.showToast("🤖 Setup Bot: Εντοπίστηκε Fully Kiosk! Ξεκινάω...");
-
-            try {
-                // 1. Βασικά
-                fully.setBooleanSetting("keepScreenOn", true);
-                fully.setBooleanSetting("unlockScreen", true);
-                fully.setBooleanSetting("foregroundOnActivity", true);
-                fully.setBooleanSetting("listenVolumeButtons", true);
-                
-                // 2. WiFi & CPU (Ασφάλεια)
-                fully.setBooleanSetting("preventSleep", true);
-                fully.setBooleanSetting("wifiWakeLock", true);
-                fully.setBooleanSetting("forceWifi", true);
-
-                // 3. Ήχος & Media
-                fully.setBooleanSetting("autoplayMedia", true);
-                fully.setBooleanSetting("fakeUserInteraction", true);
-                fully.setBooleanSetting("mapVolumeKeysToMedia", true);
-
-                fully.showToast("✅ Ρυθμίσεις Fully περάστηκαν!");
-            } catch (e) {
-                console.error(e);
-                alert("Σφάλμα Fully: Βεβαιώσου ότι έχεις την PLUS έκδοση.");
+    // 1. ΕΛΕΓΧΟΣ: Κοιτάει αν όλα είναι σωστά
+    checkConfig: function() {
+        // Αν δεν είμαστε σε Fully (π.χ. κινητό), εμφανίζουμε το κουμπί αν είναι Android
+        if (typeof fully === 'undefined') {
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf("android") > -1) {
+                const btn = document.getElementById('setupBotBtn');
+                if(btn) btn.style.display = 'flex';
             }
+            return;
+        }
 
-            // Permissions (Overlay & Battery) - Αυτόματα ανοίγματα
-            setTimeout(() => {
-                alert("🤖 ΒΗΜΑ 1: Θα ανοίξει το 'Display over other apps'.\n\n👉 Βρες το Fully Kiosk και βάλτο ON.");
-                fully.requestOverlayPermission();
-            }, 1000);
-
-            setTimeout(() => {
-                if(confirm("🤖 ΒΗΜΑ 2: Θα ανοίξει το μενού Μπαταρίας.\n\n👉 Πάτα 'Allow/Επιτρέπεται' για να μην κοιμάται ποτέ.")) {
-                    fully.requestIgnoreBatteryOptimizations();
-                }
-            }, 8000);
-
-        } 
+        console.log("🤖 SetupBot: Checking settings...");
         
-        // ==========================================
-        // ΠΕΡΙΠΤΩΣΗ B: CHROME / ΑΠΛΑ ΚΙΝΗΤΑ
-        // ==========================================
-        else {
-            console.log("🤖 SetupBot: Εντοπίστηκε απλός Browser.");
-            
-            // 1. Ζητάμε Ειδοποιήσεις (Απαραίτητο)
-            if (window.Notification && Notification.permission !== "granted") {
-                Notification.requestPermission().then(permission => {
-                    if(permission === "granted") alert("✅ Ειδοποιήσεις: ΕΝΕΡΓΟΠΟΙΗΘΗΚΑΝ!");
-                    else alert("❌ Ειδοποιήσεις: ΑΠΟΡΡΙΦΘΗΚΑΝ.\nΠρέπει να τις ανοίξεις από τις ρυθμίσεις του Chrome.");
-                });
+        // Ελέγχουμε τις 3 βασικές ρυθμίσεις
+        // Προσοχή: Το fully επιστρέφει "true" (string) ή true (boolean)
+        const s1 = fully.getBooleanSetting("keepScreenOn") == true || fully.getBooleanSetting("keepScreenOn") == "true";
+        const s2 = fully.getBooleanSetting("wifiWakeLock") == true || fully.getBooleanSetting("wifiWakeLock") == "true";
+        const s3 = fully.getBooleanSetting("listenVolumeButtons") == true || fully.getBooleanSetting("listenVolumeButtons") == "true";
+
+        const btn = document.getElementById('setupBotBtn');
+        
+        if (s1 && s2 && s3) {
+            // Όλα σωστά -> Κρύψε το κουμπί
+            console.log("✅ Fully Configured.");
+            if(btn) btn.style.display = 'none';
+        } else {
+            // Κάτι λείπει -> Εμφάνισε το κουμπί να αναβοσβήνει
+            console.log("❌ Settings missing.");
+            if(btn) {
+                btn.style.display = 'flex';
+                btn.classList.add('needs-setup');
             }
-
-            // 2. Screen Wake Lock (Προσπάθεια να κρατήσουμε οθόνη ανοιχτή)
-            this.enableWakeLock();
-
-            // 3. 🔥 ΟΔΗΓΙΕΣ ΓΙΑ ΜΠΑΤΑΡΙΑ & ΡΥΘΜΙΣΕΙΣ 🔥
-            // Επειδή δεν μπορούμε να τις ανοίξουμε αυτόματα, δίνουμε λίστα οδηγιών.
-            setTimeout(() => {
-                const msg = 
-                    "⚠️ ΣΗΜΑΝΤΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (ΓΙΑ ΝΑ ΜΗΝ ΚΛΕΙΝΕΙ):\n\n" +
-                    "1️⃣ ΜΠΑΤΑΡΙΑ: Πήγαινε Ρυθμίσεις Κινητού -> Εφαρμογές -> Chrome -> Μπαταρία -> Επέλεξε 'Χωρίς Περιορισμούς' (Unrestricted).\n\n" +
-                    "2️⃣ ΗΧΟΣ: Βεβαιώσου ότι το κινητό δεν είναι στο αθόρυβο.\n\n" +
-                    "3️⃣ ΚΑΡΤΕΛΑ: Μην κλείνεις αυτή την καρτέλα, άφησέ την ανοιχτή.";
-                
-                alert(msg);
-            }, 1500);
+            fully.showToast("⚠️ Το Tablet θέλει ρύθμιση! Πάτα το 🤖");
         }
     },
 
-    // Βοηθητική συνάρτηση για Wake Lock σε Chrome
-    enableWakeLock: async function() {
-        if ('wakeLock' in navigator) {
+    // 2. ΕΚΤΕΛΕΣΗ: Εφαρμόζει τις ρυθμίσεις
+    run: function() {
+        // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK
+        if (typeof fully !== 'undefined') {
+            fully.showToast("🤖 Ρομπότ: Ξεκινάω ρυθμίσεις...");
+            
             try {
-                const wakeLock = await navigator.wakeLock.request('screen');
-                console.log("✅ Screen Wake Lock active");
-            } catch (err) {
-                console.log("Wake Lock Error: " + err.message);
+                // --- ΡΥΘΜΙΣΕΙΣ (Δεν κάνουν pop-up, γίνονται στο παρασκήνιο) ---
+                fully.setBooleanSetting("keepScreenOn", true);       // Οθόνη πάντα ON
+                fully.setBooleanSetting("unlockScreen", true);       // Ξεκλείδωμα
+                fully.setBooleanSetting("preventSleep", true);       // Όχι ύπνος CPU
+                fully.setBooleanSetting("wifiWakeLock", true);       // Όχι ύπνος WiFi
+                fully.setBooleanSetting("forceWifi", true);          // Δύναμη στο WiFi
+                fully.setBooleanSetting("listenVolumeButtons", true);// Κουμπιά έντασης
+                fully.setBooleanSetting("autoplayMedia", true);      // Ήχος αυτόματα
+                fully.setBooleanSetting("fakeUserInteraction", true);// Να φαίνεται ενεργό
+                
+                fully.showToast("✅ Ρυθμίσεις OK! Ζητάω άδειες...");
+
+            } catch (e) {
+                alert("ΣΦΑΛΜΑ: Δεν έχεις ενεργοποιήσει το 'Enable JavaScript Interface' στα Settings του Fully!");
+                return;
+            }
+
+            // --- POP-UPS (Ζητάνε άδεια από τον χρήστη) ---
+            
+            // 1. Overlay (Εμφάνιση πάνω από άλλα) - Σε 1 δευτερόλεπτο
+            setTimeout(() => {
+                fully.requestOverlayPermission(); 
+            }, 1000);
+
+            // 2. Μπαταρία (Να μην κλείνει) - Σε 3 δευτερόλεπτα
+            setTimeout(() => {
+                fully.requestIgnoreBatteryOptimizations();
+            }, 3000);
+
+            // Επανέλεγχος σε 5 δευτερόλεπτα για να φύγει το κουμπί αν όλα πήγαν καλά
+            setTimeout(() => {
+                this.checkConfig();
+            }, 5000);
+        } 
+        
+        // ΠΕΡΙΠΤΩΣΗ B: CHROME ANDROID (WIZARD)
+        else {
+            const setupDiv = document.getElementById('androidSetup');
+            if(setupDiv) {
+                setupDiv.style.display = 'flex';
+                
+                // Ετοιμάζουμε το Link για αυτόματο άνοιγμα
+                const currentUrl = window.location.href;
+                const cleanUrl = currentUrl.replace('https://', '').replace('http://', '');
+                const intentLink = `intent://${cleanUrl}#Intent;scheme=https;package=de.ozerov.fully;end`;
+                
+                const autoBtn = document.getElementById('btnAutoOpen');
+                if(autoBtn) {
+                    autoBtn.onclick = function() {
+                        window.location.href = intentLink;
+                    };
+                }
             }
         }
     }
