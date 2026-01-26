@@ -7,10 +7,7 @@
     <link rel="manifest" href="manifest.json"> 
     <style>
         /* BASE */
-        body { 
-            background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; 
-            height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; 
-        }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex !important; }
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
@@ -46,7 +43,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
-    
     <script>
         if ('serviceWorker' in navigator && typeof fully === 'undefined') {
             window.addEventListener('load', function() {
@@ -101,7 +97,7 @@
 
     <div id="alarmScreen">
         <h1 style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
-        <button class="stop-btn" onclick="Watchdog.stopPanicMode()">STOP</button>
+        <button class="stop-btn" onclick="Watchdog.buttonAck()">STOP</button>
     </div>
 
     <audio id="siren" src="alert.mp3" preload="auto"></audio>
@@ -117,19 +113,16 @@
             isRinging: false,
 
             start: function() {
-                console.log("🛡️ Watchdog: Active (Native Mode)");
-                
+                console.log("🛡️ Watchdog: Active");
                 if (typeof fully !== 'undefined') {
-                    // Native Binding για τα κουμπιά
-                    fully.bind('onVolumeUp', 'Watchdog.handleButtonPress();');
-                    fully.bind('onVolumeDown', 'Watchdog.handleButtonPress();');
-                    
-                    // Ρυθμίσεις για WiFi
+                    // ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ
+                    fully.bind('onVolumeUp', 'Watchdog.buttonAck();');
+                    fully.bind('onVolumeDown', 'Watchdog.buttonAck();');
+                    // ΕΠΙΒΙΩΣΗ WIFI
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
                     fully.setBooleanSetting("keepScreenOn", true); 
                 }
-
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (typeof socket !== 'undefined' && socket.connected) {
@@ -142,8 +135,11 @@
                 }, 10000);
             },
 
-            handleButtonPress: function() {
+            // ΑΥΤΗ Η ΣΥΝΑΡΤΗΣΗ ΚΑΛΕΙΤΑΙ ΑΠΟ ΤΟ ΚΟΥΜΠΙ
+            buttonAck: function() {
                 if (this.isRinging) {
+                    console.log("🔘 Button Pressed! Sending ACK to server...");
+                    if(typeof socket !== 'undefined') socket.emit('alarm-ack');
                     this.stopPanicMode();
                 }
             },
@@ -157,18 +153,20 @@
                 if (this.isRinging) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
-
+                
                 const audio = document.getElementById('siren');
                 if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
-
+                
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
+                // 🔥 ΑΝΑΒΟΥΜΕ ΤΕΡΜΑ ΤΗ ΦΩΤΕΙΝΟΤΗΤΑ ΓΙΑ ΝΑ ΤΟ ΔΕΙ 🔥
                 if (typeof fully !== 'undefined') {
                     fully.turnScreenOn();
                     fully.bringToForeground();
                     fully.setScreenBrightness(255);
                 }
-
+                
+                // Ξεκινάει η δόνηση σε λούπα
                 this.panicInterval = setInterval(() => {
                     if (!this.isRinging) return;
                     if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
@@ -179,13 +177,25 @@
                 this.isRinging = false;
                 localStorage.removeItem('bellgo_is_ringing');
                 
-                if (this.panicInterval) clearInterval(this.panicInterval);
+                // 🔥 FIX ΔΟΝΗΣΗΣ: Καθαρίζουμε αμέσως τη λούπα
+                if (this.panicInterval) {
+                    clearInterval(this.panicInterval);
+                    this.panicInterval = null;
+                }
                 
+                // Σταματάμε και τον browser (αν έχει μείνει κάτι)
+                if (navigator.vibrate) navigator.vibrate(0);
+
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
                 
-                if (navigator.vibrate) navigator.vibrate(0);
                 document.getElementById('alarmScreen').style.display = 'none';
+
+                // 🔥 FIX ΦΩΤΕΙΝΟΤΗΤΑΣ: Επαναφορά στο 70% (περίπου 180) 🔥
+                // Για να μην μένει τυφλωτικό μετά το Stop
+                if (typeof fully !== 'undefined') {
+                    fully.setScreenBrightness(180); 
+                }
             }
         };
 
@@ -205,10 +215,28 @@
                     document.getElementById('connStatus').style.background = 'red';
                 });
                 
-                // 🔥 ΔΙΟΡΘΩΣΗ 1: Ακούμε ΟΛΑ τα ονόματα συναγερμού 🔥
                 socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
                 socket.on('ring-bell', () => { Watchdog.triggerPanicMode(); });
                 
+                // ΕΠΙΒΕΒΑΙΩΣΗ ΓΙΑ TON ADMIN
+                socket.on('alarm-receipt', (data) => {
+                    console.log("Receipt received from:", data.name);
+                    if (selectedRole === 'admin') {
+                        const btns = document.querySelectorAll('.btn-staff');
+                        btns.forEach(btn => {
+                            if(btn.innerText.includes(data.name)) {
+                                const originalText = btn.innerHTML;
+                                btn.style.background = '#00E676'; 
+                                btn.innerHTML = `✅ <b>${data.name}</b> (ΤΟ ΕΛΑΒΕ)`;
+                                setTimeout(() => {
+                                    btn.style.background = ''; 
+                                    btn.innerHTML = originalText;
+                                }, 5000);
+                            }
+                        });
+                    }
+                });
+
                 socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
                 socket.on('force-refresh', () => { location.reload(); });
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
@@ -217,7 +245,6 @@
                 socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
-                
                 Watchdog.start();
             },
             logout: function() { if(this.socket) this.socket.disconnect(); location.reload(); },
@@ -240,34 +267,26 @@
                 const div = document.getElementById('staffListContainer');
                 div.innerHTML = '';
                 let visibleCount = 0;
-
                 list.forEach(u => {
-                    // 🔥 ΔΙΟΡΘΩΣΗ 2: ΚΡΥΒΟΥΜΕ ΤΟΥΣ ADMIN 🔥
                     if (u.role === 'admin') return; 
-
                     visibleCount++;
                     const btn = document.createElement('button');
                     btn.className = `btn-staff ${u.role}`;
                     
-                    // Αν εγώ είμαι Admin, φτιάχνω κουμπί ΚΛΗΣΗΣ
-                    // Χρησιμοποιούμε 'selectedRole' ή ελέγχουμε το URL/Localstorage, 
-                    // αλλά εδώ ξέρουμε τον ρόλο μας από το Login.
-                    // Απλοποίηση: Αν βλέπεις τη λίστα, είσαι Admin (βάσει σχεδιασμού).
-                    
-                    btn.innerHTML = `🔔 <b>${u.name}</b>`;
-                    btn.onclick = () => {
-                        console.log("Calling:", u.name);
-                        btn.style.transform = "scale(0.95)";
-                        setTimeout(() => btn.style.transform = "scale(1)", 100);
-                        socket.emit('trigger-alarm', u.name);
-                    };
-                    
+                    if(selectedRole === 'admin') {
+                        btn.innerHTML = `🔔 <b>${u.name}</b>`;
+                        btn.onclick = () => {
+                            btn.style.transform = "scale(0.95)";
+                            setTimeout(() => btn.style.transform = "scale(1)", 100);
+                            socket.emit('trigger-alarm', u.name);
+                        };
+                    } else {
+                        btn.innerText = `👤 ${u.name}`;
+                        btn.style.opacity = "0.7"; 
+                    }
                     div.appendChild(btn);
                 });
-
-                if (visibleCount === 0) {
-                    div.innerHTML = '<p style="color:#666; font-style:italic; margin-top:20px;">Κανένας σερβιτόρος...</p>';
-                }
+                if (visibleCount === 0) div.innerHTML = '<p style="color:#666; font-style:italic; margin-top:20px;">Κανένας σερβιτόρος...</p>';
             }
         };
 
