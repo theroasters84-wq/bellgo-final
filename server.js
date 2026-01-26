@@ -20,10 +20,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {}; 
 const TIMEOUT_LIMIT = 180000; // 3 Λεπτά Timeout
 
+// 🔥 ΟΙ ΚΩΔΙΚΟΙ ΤΩΝ ΚΑΤΑΣΤΗΜΑΤΩΝ 🔥
+const SHOP_PASSWORDS = {
+    'CoffeeRoom1': '1234',
+    'TestShop': '0000'
+};
+
 io.on('connection', (socket) => {
     
-    // 1. LOGIN
+    // 1. LOGIN (ΜΕ ΕΛΕΓΧΟ ΚΩΔΙΚΟΥ)
     socket.on('join-store', (data) => {
+        // Α. Έλεγχος Κωδικού
+        const correctPass = SHOP_PASSWORDS[data.storeName];
+        if (correctPass && data.pass !== correctPass) {
+            console.log(`❌ Λάθος Κωδικός από ${data.username}`);
+            return; // Τον πετάμε έξω (δεν τον αποθηκεύουμε)
+        }
+
         const cleanStore = data.storeName.trim();
         const cleanUser = data.username.trim();
         const userKey = `${cleanStore}_${cleanUser}`;
@@ -38,16 +51,15 @@ io.on('connection', (socket) => {
             username: cleanUser,
             role: data.role,
             store: cleanStore,
-            fcmToken: data.fcmToken || existingToken, // Κράτα το νέο ή το παλιό
+            fcmToken: data.fcmToken || existingToken, 
             lastSeen: Date.now()
         };
 
-        console.log(`👤 ${cleanUser} joined ${cleanStore}`);
+        console.log(`👤 ${cleanUser} joined ${cleanStore} (Pass OK)`);
         updateStore(cleanStore);
     });
 
-    // 2. 🔥 UPDATE TOKEN (ΑΥΤΟ ΕΛΕΙΠΕ!) 🔥
-    // Όταν το Firebase αργεί, το Token έρχεται εδώ λίγο μετά το Login
+    // 2. UPDATE TOKEN
     socket.on('update-token', (data) => {
         const userKey = `${data.store}_${data.user}`;
         if (activeUsers[userKey]) {
@@ -74,8 +86,34 @@ io.on('connection', (socket) => {
 
     // 5. CHAT
     socket.on('send-chat', (msgData) => io.to(msgData.store).emit('new-chat', msgData));
+    
+    // Ειδικό event για το 'chat-message' που στέλνει το index.html
+    socket.on('chat-message', (data) => {
+        const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
+        if (userKey) {
+            const user = activeUsers[userKey];
+            io.to(user.store).emit('chat-message', {
+                sender: user.username,
+                role: user.role,
+                text: data.text,
+                isSelf: false 
+            });
+        }
+    });
 
-    // 6. ALARM (ΕΔΩ ΣΤΕΛΝΟΥΜΕ ΤΗΝ ΕΙΔΟΠΟΙΗΣΗ)
+    // 6. ALARM (ΕΙΔΟΠΟΙΗΣΗ + SOCKET)
+    // Αν ο Admin στείλει "kitchen-alarm" (για όλους) ή "trigger-alarm" (για έναν)
+    socket.on('kitchen-alarm', () => {
+        // Βρες ποιος το πάτησε για να βρεις το μαγαζί
+        const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
+        if(senderKey) {
+            const store = activeUsers[senderKey].store;
+            // Στείλε σε ΟΛΟΥΣ στο μαγαζί
+            io.to(store).emit('kitchen-alarm');
+            console.log(`🔥 ALARM TRIGGERED in ${store}`);
+        }
+    });
+
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -85,22 +123,17 @@ io.on('connection', (socket) => {
 
         if (target) {
             console.log(`🔔 Ringing ${target.username}...`);
-            
-            // Α. Στέλνουμε Socket (Για να ανοίξει η οθόνη αν είναι ανοιχτό το app)
-            io.to(target.socketId).emit('ring-bell', { from: 'Admin' });
+            io.to(target.socketId).emit('kitchen-alarm'); // Χρησιμοποιούμε το κοινό event
 
-            // Β. Στέλνουμε Firebase Notification (Για όταν είναι κλειστό)
             if (target.fcmToken) {
                 console.log(`📨 Sending Push to ${target.username}`);
                 sendPushNotification(target.fcmToken);
-            } else {
-                console.log(`⚠️ No Token for ${target.username}`);
             }
         }
     });
 });
 
-// CLEANER (Διαγράφει ανενεργούς χρήστες)
+// CLEANER
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
@@ -115,10 +148,14 @@ setInterval(() => {
 
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    io.to(storeName).emit('update-staff-list', staff);
+    // Στέλνουμε τη λίστα με format που καταλαβαίνει το index.html
+    const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
+    io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
 function sendPushNotification(token) {
+    if(!token || token === 'WEB') return; // Μην στέλνεις σε Web Users χωρίς token
+
     const message = {
         token: token,
         notification: { 
@@ -129,7 +166,7 @@ function sendPushNotification(token) {
             priority: "high", 
             notification: { 
                 sound: "default",
-                clickAction: "FLUTTER_NOTIFICATION_CLICK", // Βοηθάει μερικές φορές στο άνοιγμα
+                clickAction: "FLUTTER_NOTIFICATION_CLICK",
             } 
         },
         data: { url: "/", action: "alarm" }
