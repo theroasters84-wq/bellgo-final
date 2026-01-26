@@ -30,7 +30,6 @@ const Watchdog = {
         }
 
         // Ακρόαση Κουμπιών Έντασης (Safe Way - Χωρίς fully.bind)
-        // Αυτό δεν "τσακώνεται" με το Android
         document.addEventListener('keydown', (e) => {
             if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
                 console.log("🔊 Volume Key -> Stopping Alarm");
@@ -75,7 +74,6 @@ const Watchdog = {
         // 4. Ξύπνημα Οθόνης (SAFE: Μόνο TurnOn, ΟΧΙ Foreground για να μην κολλάει το Xiaomi)
         if (isFully) {
             fully.turnScreenOn();
-            // fully.bringToForeground(); <--- ΑΥΤΟ ΤΟ ΑΦΑΙΡΕΣΑΜΕ
         }
         
         // 5. Δόνηση
@@ -131,7 +129,7 @@ const Logic = {
     login: function(store, name, role, pass) {
         console.log("Logic.login started...");
         
-        // 1. Initialize Media Session (iOS/Android Hack)
+        // 1. Initialize Media Session
         this.updateMediaSession('active'); 
         this.setupMediaSession();
 
@@ -146,7 +144,6 @@ const Logic = {
         }
 
         // 4. Socket Join
-        // Αν δεν έχουμε Firebase Token, στέλνουμε 'WEB' ή 'FULLY'
         const tokenToSend = myToken || (isFully ? 'FULLY' : 'WEB');
         socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: tokenToSend });
         
@@ -154,7 +151,7 @@ const Logic = {
         if(userInfo) userInfo.innerText = `${name} (${role}) | ${store}`;
         
         // Ζητάμε λίστα (αν είμαστε admin)
-        if (role === 'admin') socket.emit('get-staff-list');
+        if (role === 'admin') socket.emit('get-staff-list'); // Εδώ στέλνουμε αίτημα για τη λίστα
     },
 
     logout: function() {
@@ -175,7 +172,7 @@ const Logic = {
 
     initFirebase: function() {
         if (!isFully && typeof firebase !== 'undefined') {
-            // Placeholder: Εδώ μπαίνει η λογική Firebase αν τη χρειαστείς μελλοντικά
+            // Placeholder logic
         }
     },
 
@@ -225,7 +222,8 @@ socket.on('disconnect', () => {
     if(statusDot) statusDot.style.background = 'red';
 });
 
-socket.on('update-staff-list', (staffList) => {
+// ✅ ΕΔΩ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: ΑΚΟΥΜΕ ΤΟ 'staff-list-update'
+socket.on('staff-list-update', (staffList) => {
     const container = document.getElementById('staffListContainer');
     if(container) {
         container.innerHTML = ''; 
@@ -248,7 +246,7 @@ socket.on('update-staff-list', (staffList) => {
             }
             container.appendChild(btn);
         });
-        if (staffList.length <= 1) container.innerHTML = '<p style="color:#666; margin-top:20px;">Κανένας online...</p>';
+        if (staffList.length === 0) container.innerHTML = '<p style="color:#666; margin-top:20px;">Κανένας online...</p>';
     }
 });
 
@@ -296,7 +294,7 @@ socket.on('stop-alarm', () => {
     Watchdog.stopPanicMode();
 });
 
-// Αρχικοποίηση Σιωπής (για σιγουριά)
+// Αρχικοποίηση Σιωπής
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
