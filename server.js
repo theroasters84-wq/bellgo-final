@@ -6,7 +6,6 @@ const admin = require('firebase-admin');
 
 // FIREBASE INIT
 try {
-    // Βεβαιώσου ότι το αρχείο υπάρχει στον φάκελο!
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     console.log("✅ Firebase Connected");
@@ -19,37 +18,30 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
-const TIMEOUT_LIMIT = 180000; // 3 Λεπτά Timeout (Αν δεν στείλει heartbeat)
+const TIMEOUT_LIMIT = 180000; 
 
-// 🔥 ΟΙ ΚΩΔΙΚΟΙ ΤΩΝ ΚΑΤΑΣΤΗΜΑΤΩΝ 🔥
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
     'TestShop': '0000',
-    'The Roasters': '1234', // Πρόσεχε τα κεφαλαία/μικρά να ταιριάζουν με το Tablet
-    'the roasters': '1234'  // Καλό είναι να βάζεις και τις δύο εκδοχές
+    'the roasters': '1234'
 };
 
 io.on('connection', (socket) => {
     
     // 1. LOGIN
     socket.on('join-store', (data) => {
-        // 🔥 ΔΙΟΡΘΩΣΗ: Πρώτα καθαρίζουμε τα ονόματα (Trim)
         const cleanStore = data.storeName ? data.storeName.trim() : "";
         const cleanUser = data.username ? data.username.trim() : "";
-
-        // 🔥 ΔΙΟΡΘΩΣΗ: Μετά ελέγχουμε τον κωδικό στο ΚΑΘΑΡΟ όνομα
         const correctPass = SHOP_PASSWORDS[cleanStore];
         
-        // Αν υπάρχει κωδικός για το μαγαζί ΚΑΙ ο χρήστης έστειλε λάθος
         if (correctPass && data.pass !== correctPass) {
-            console.log(`❌ Λάθος Κωδικός από ${cleanUser} για το ${cleanStore}`);
-            return; // Stop here
+            console.log(`❌ Λάθος Κωδικός από ${cleanUser}`);
+            return; 
         }
 
         const userKey = `${cleanStore}_${cleanUser}`;
         socket.join(cleanStore);
 
-        // Αν υπάρχει παλιό token, κράτα το
         const existingToken = activeUsers[userKey] ? activeUsers[userKey].fcmToken : null;
 
         activeUsers[userKey] = {
@@ -61,20 +53,17 @@ io.on('connection', (socket) => {
             lastSeen: Date.now()
         };
 
-        console.log(`👤 ${cleanUser} joined ${cleanStore} (Pass OK)`);
+        console.log(`👤 ${cleanUser} joined ${cleanStore}`);
         updateStore(cleanStore);
     });
 
-    // 2. UPDATE TOKEN (Firebase)
+    // 2. UPDATE TOKEN
     socket.on('update-token', (data) => {
         const userKey = `${data.store}_${data.user}`;
-        if (activeUsers[userKey]) {
-            activeUsers[userKey].fcmToken = data.token;
-            console.log(`🔑 Token saved for ${data.user}`);
-        }
+        if (activeUsers[userKey]) activeUsers[userKey].fcmToken = data.token;
     });
 
-    // 3. HEARTBEAT (Κρατάει τη σύνδεση ζωντανή)
+    // 3. HEARTBEAT
     socket.on('heartbeat', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) activeUsers[userKey].lastSeen = Date.now();
@@ -90,7 +79,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. CHAT (Διορθωμένο για να ταιριάζει με το logic.js)
+    // 5. CHAT
     socket.on('chat-message', (data) => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) {
@@ -104,19 +93,12 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 6. ALARM (ΕΙΔΟΠΟΙΗΣΗ + SOCKET)
-    
-    // Περίπτωση Α: Κουμπί "ΚΟΥΔΟΥΝΙ" (Για όλους)
+    // 6. ALARM
     socket.on('kitchen-alarm', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        if(senderKey) {
-            const store = activeUsers[senderKey].store;
-            io.to(store).emit('kitchen-alarm'); // Στέλνουμε την εντολή που ξέρει το Tablet
-            console.log(`🔥 ALARM TRIGGERED in ${store}`);
-        }
+        if(senderKey) io.to(activeUsers[senderKey].store).emit('kitchen-alarm');
     });
 
-    // Περίπτωση Β: Κλήση συγκεκριμένου σερβιτόρου
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -126,17 +108,24 @@ io.on('connection', (socket) => {
 
         if (target) {
             console.log(`🔔 Ringing ${target.username}...`);
-            io.to(target.socketId).emit('kitchen-alarm'); // Στέλνουμε την ίδια εντολή
+            io.to(target.socketId).emit('kitchen-alarm'); 
+            if (target.fcmToken) sendPushNotification(target.fcmToken);
+        }
+    });
 
-            if (target.fcmToken) {
-                console.log(`📨 Sending Push to ${target.username}`);
-                sendPushNotification(target.fcmToken);
-            }
+    // 🔥 7. ΕΠΙΒΕΒΑΙΩΣΗ ΛΗΨΗΣ (ALARM ACKNOWLEDGE) 🔥
+    // Αυτό είναι το νέο κομμάτι!
+    socket.on('alarm-ack', () => {
+        const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
+        if(senderKey) {
+            const user = activeUsers[senderKey];
+            console.log(`✅ ${user.username} acknowledged the alarm!`);
+            // Ενημερώνουμε ΟΛΟΥΣ στο μαγαζί (άρα και τον Admin) ότι το έλαβε
+            io.to(user.store).emit('alarm-receipt', { name: user.username });
         }
     });
 });
 
-// CLEANER (Διαγράφει ανενεργούς χρήστες μετά από 3 λεπτά)
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
@@ -151,35 +140,20 @@ setInterval(() => {
 
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    // Format για το index.html
     const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
 function sendPushNotification(token) {
     if(!token || token === 'WEB') return; 
-
     const message = {
         token: token,
-        notification: { 
-            title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", 
-            body: "Πάτα ΕΔΩ τώρα!" 
-        },
-        android: { 
-            priority: "high", 
-            notification: { 
-                sound: "default",
-                clickAction: "FLUTTER_NOTIFICATION_CLICK",
-            } 
-        },
+        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Πάτα ΕΔΩ τώρα!" },
+        android: { priority: "high", notification: { sound: "default", clickAction: "FLUTTER_NOTIFICATION_CLICK" } },
         data: { url: "/", action: "alarm" }
     };
-    
-    admin.messaging().send(message)
-        .then(() => console.log("✅ Push Sent!"))
-        .catch(e => console.error("❌ Push Failed:", e.message));
+    admin.messaging().send(message).catch(e => console.error(e));
 }
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
