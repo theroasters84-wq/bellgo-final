@@ -1,7 +1,7 @@
 const SetupBot = {
-    // 1. ΕΛΕΓΧΟΣ: Κοιτάει αν όλα είναι σωστά
+    // 1. ΕΛΕΓΧΟΣ (Τσεκάρει αν είμαστε έτοιμοι)
     checkConfig: function() {
-        // Αν δεν είμαστε σε Fully (π.χ. κινητό), εμφανίζουμε το κουμπί αν είναι Android
+        // Αν δεν είμαστε σε Fully, εμφάνισε το κουμπί μόνο σε Android
         if (typeof fully === 'undefined') {
             const ua = navigator.userAgent.toLowerCase();
             if (ua.indexOf("android") > -1) {
@@ -13,50 +13,49 @@ const SetupBot = {
 
         console.log("🤖 SetupBot: Checking settings...");
         
-        // Ελέγχουμε τις 3 βασικές ρυθμίσεις
-        // Προσοχή: Το fully επιστρέφει "true" (string) ή true (boolean)
+        // Ελέγχουμε ΜΟΝΟ τα βασικά (Οθόνη & WiFi) για να μην κολλάει ο έλεγχος
         const s1 = fully.getBooleanSetting("keepScreenOn") == true || fully.getBooleanSetting("keepScreenOn") == "true";
         const s2 = fully.getBooleanSetting("wifiWakeLock") == true || fully.getBooleanSetting("wifiWakeLock") == "true";
-        const s3 = fully.getBooleanSetting("listenVolumeButtons") == true || fully.getBooleanSetting("listenVolumeButtons") == "true";
 
         const btn = document.getElementById('setupBotBtn');
         
-        if (s1 && s2 && s3) {
-            // Όλα σωστά -> Κρύψε το κουμπί
-            console.log("✅ Fully Configured.");
+        if (s1 && s2) {
+            // Όλα καλά -> Κρύψε το κουμπί
             if(btn) btn.style.display = 'none';
         } else {
-            // Κάτι λείπει -> Εμφάνισε το κουμπί να αναβοσβήνει
-            console.log("❌ Settings missing.");
+            // Κάτι λείπει -> Εμφάνισε το κουμπί
             if(btn) {
                 btn.style.display = 'flex';
                 btn.classList.add('needs-setup');
             }
-            fully.showToast("⚠️ Το Tablet θέλει ρύθμιση! Πάτα το 🤖");
+            fully.showToast("⚠️ Ρύθμισέ με! Πάτα το 🤖");
         }
     },
 
-    // 2. ΕΚΤΕΛΕΣΗ: Εφαρμόζει τις ρυθμίσεις
+    // 2. ΕΚΤΕΛΕΣΗ (SAFE MODE - Χωρίς το Kiosk Crash)
     run: function() {
         // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK
         if (typeof fully !== 'undefined') {
-            fully.showToast("🤖 Ρομπότ: Ξεκινάω ρυθμίσεις...");
+            fully.showToast("🤖 Ρομπότ: Ξεκινάω ρυθμίσεις (Safe Mode)...");
             
             try {
-                // --- ΡΥΘΜΙΣΕΙΣ (Δεν κάνουν pop-up, γίνονται στο παρασκήνιο) ---
-                fully.setBooleanSetting("keepScreenOn", true);       // Οθόνη πάντα ON
+                // --- ΡΥΘΜΙΣΕΙΣ (Γίνονται αθόρυβα) ---
+                fully.setBooleanSetting("keepScreenOn", true);       // Οθόνη πάντα ανοιχτή
                 fully.setBooleanSetting("unlockScreen", true);       // Ξεκλείδωμα
-                fully.setBooleanSetting("preventSleep", true);       // Όχι ύπνος CPU
-                fully.setBooleanSetting("wifiWakeLock", true);       // Όχι ύπνος WiFi
-                fully.setBooleanSetting("forceWifi", true);          // Δύναμη στο WiFi
+                fully.setBooleanSetting("preventSleep", true);       // Να μην κοιμάται η CPU
+                fully.setBooleanSetting("wifiWakeLock", true);       // Να μην κλείνει το WiFi
+                fully.setBooleanSetting("forceWifi", true);          // Επανασύνδεση WiFi
                 fully.setBooleanSetting("listenVolumeButtons", true);// Κουμπιά έντασης
                 fully.setBooleanSetting("autoplayMedia", true);      // Ήχος αυτόματα
-                fully.setBooleanSetting("fakeUserInteraction", true);// Να φαίνεται ενεργό
-                
-                fully.showToast("✅ Ρυθμίσεις OK! Ζητάω άδειες...");
+                fully.setBooleanSetting("mapVolumeKeysToMedia", true);
+
+                // ❌ ΑΦΑΙΡΕΣΑΜΕ ΤΟ 'foregroundOnActivity' (Αυτό κράσαρε το Xiaomi)
+                // ❌ ΑΦΑΙΡΕΣΑΜΕ ΤΟ 'fakeUserInteraction' (Για ασφάλεια)
+
+                fully.showToast("✅ Ρυθμίσεις OK! Έρχονται τα Pop-ups...");
 
             } catch (e) {
-                alert("ΣΦΑΛΜΑ: Δεν έχεις ενεργοποιήσει το 'Enable JavaScript Interface' στα Settings του Fully!");
+                alert("ΣΦΑΛΜΑ: Πρέπει να ενεργοποιήσεις το 'Enable JavaScript Interface' στα Settings του Fully!");
                 return;
             }
 
@@ -67,12 +66,12 @@ const SetupBot = {
                 fully.requestOverlayPermission(); 
             }, 1000);
 
-            // 2. Μπαταρία (Να μην κλείνει) - Σε 3 δευτερόλεπτα
+            // 2. Μπαταρία (Να μην κλείνει ποτέ) - Σε 3 δευτερόλεπτα
             setTimeout(() => {
                 fully.requestIgnoreBatteryOptimizations();
             }, 3000);
 
-            // Επανέλεγχος σε 5 δευτερόλεπτα για να φύγει το κουμπί αν όλα πήγαν καλά
+            // Επανέλεγχος σε 5 δευτερόλεπτα για να εξαφανιστεί το κουμπί αν όλα πήγαν καλά
             setTimeout(() => {
                 this.checkConfig();
             }, 5000);
@@ -84,7 +83,7 @@ const SetupBot = {
             if(setupDiv) {
                 setupDiv.style.display = 'flex';
                 
-                // Ετοιμάζουμε το Link για αυτόματο άνοιγμα
+                // Link για αυτόματο άνοιγμα
                 const currentUrl = window.location.href;
                 const cleanUrl = currentUrl.replace('https://', '').replace('http://', '');
                 const intentLink = `intent://${cleanUrl}#Intent;scheme=https;package=de.ozerov.fully;end`;
