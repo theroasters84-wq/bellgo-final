@@ -121,19 +121,22 @@
                 console.log("🛡️ Watchdog: Active (Native Mode)");
                 
                 if (typeof fully !== 'undefined') {
-                    // 1. ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ
+                    // 1. ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ (Απαραίτητο αφού δεν έχουμε μπάρα)
+                    // Αυτό θα "πιάσει" το Volume Up και θα τρέξει τη συνάρτηση
                     fully.bind('onVolumeUp', 'Watchdog.handleButtonPress();');
                     fully.bind('onVolumeDown', 'Watchdog.handleButtonPress();');
                     
-                    // 2. ΕΝΤΟΛΕΣ ΕΠΙΒΙΩΣΗΣ
+                    // 2. ΕΝΤΟΛΕΣ ΕΠΙΒΙΩΣΗΣ (Για να μην κλείνει το WiFi στα 5 λεπτά)
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
+                    // Κρατάμε την οθόνη ανοιχτή ΠΑΝΤΑ (για να μη χάνεται το WiFi)
+                    // Χρησιμοποίησε το Screensaver του Fully για να την κάνεις μαύρη
                     fully.setBooleanSetting("keepScreenOn", true); 
                 }
 
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                     // 3. FORCE HEARTBEAT
+                     // 3. FORCE HEARTBEAT (Στέλνουμε σήμα στον Server)
                      if (typeof socket !== 'undefined' && socket.connected) {
                          socket.emit('heartbeat'); 
                          document.getElementById('connStatus').style.background = '#00E676'; // Πράσινο
@@ -146,6 +149,7 @@
                 }, 10000);
             },
 
+            // Αυτή καλείται όταν πατάς το κουμπί από την τσέπη
             handleButtonPress: function() {
                 if (this.isRinging) {
                     this.stopPanicMode();
@@ -167,7 +171,7 @@
 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
-                // 🔥 ΕΔΩ ΑΝΑΒΟΥΜΕ ΤΗΝ ΟΘΟΝΗ (ΜΟΝΟ ΣΤΟΝ ΣΥΝΑΓΕΡΜΟ) 🔥
+                // 🔥 ΑΝΑΒΟΥΜΕ ΟΘΟΝΗ ΣΤΟΝ ΣΥΝΑΓΕΡΜΟ 🔥
                 if (typeof fully !== 'undefined') {
                     fully.turnScreenOn();
                     fully.bringToForeground();
@@ -201,7 +205,6 @@
                 socket = io();
                 this.socket = socket;
                 
-                // Διόρθωση: Ενημέρωση του STATUS LAMPAKI αμέσως!
                 socket.on('connect', () => { 
                     console.log("✅ Connected"); 
                     document.getElementById('connStatus').style.background = '#00E676';
@@ -217,8 +220,7 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
-                // 🔥 Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ: ΠΡΟΣΘΕΣΑ ΤΟ PASS! 🔥
-                // Πριν έλειπε το 'pass: pass', γι' αυτό σε απέρριπτε ο Server
+                // 🔥 ΣΤΕΛΝΟΥΜΕ ΤΟ PASSWORD (για να μας δεχτεί ο Server)
                 socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
