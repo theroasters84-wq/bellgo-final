@@ -6,6 +6,7 @@ const admin = require('firebase-admin');
 
 // FIREBASE INIT
 try {
+    // Βεβαιώσου ότι το αρχείο υπάρχει στον φάκελο!
     const serviceAccount = require('./serviceAccountKey.json');
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     console.log("✅ Firebase Connected");
@@ -18,32 +19,37 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
-const TIMEOUT_LIMIT = 180000; // 3 Λεπτά Timeout
+const TIMEOUT_LIMIT = 180000; // 3 Λεπτά Timeout (Αν δεν στείλει heartbeat)
 
 // 🔥 ΟΙ ΚΩΔΙΚΟΙ ΤΩΝ ΚΑΤΑΣΤΗΜΑΤΩΝ 🔥
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
-    'TestShop': '0000'
+    'TestShop': '0000',
+    'The Roasters': '1234', // Πρόσεχε τα κεφαλαία/μικρά να ταιριάζουν με το Tablet
+    'the roasters': '1234'  // Καλό είναι να βάζεις και τις δύο εκδοχές
 };
 
 io.on('connection', (socket) => {
     
-    // 1. LOGIN (ΜΕ ΕΛΕΓΧΟ ΚΩΔΙΚΟΥ)
+    // 1. LOGIN
     socket.on('join-store', (data) => {
-        // Α. Έλεγχος Κωδικού
-        const correctPass = SHOP_PASSWORDS[data.storeName];
+        // 🔥 ΔΙΟΡΘΩΣΗ: Πρώτα καθαρίζουμε τα ονόματα (Trim)
+        const cleanStore = data.storeName ? data.storeName.trim() : "";
+        const cleanUser = data.username ? data.username.trim() : "";
+
+        // 🔥 ΔΙΟΡΘΩΣΗ: Μετά ελέγχουμε τον κωδικό στο ΚΑΘΑΡΟ όνομα
+        const correctPass = SHOP_PASSWORDS[cleanStore];
+        
+        // Αν υπάρχει κωδικός για το μαγαζί ΚΑΙ ο χρήστης έστειλε λάθος
         if (correctPass && data.pass !== correctPass) {
-            console.log(`❌ Λάθος Κωδικός από ${data.username}`);
-            return; // Τον πετάμε έξω (δεν τον αποθηκεύουμε)
+            console.log(`❌ Λάθος Κωδικός από ${cleanUser} για το ${cleanStore}`);
+            return; // Stop here
         }
 
-        const cleanStore = data.storeName.trim();
-        const cleanUser = data.username.trim();
         const userKey = `${cleanStore}_${cleanUser}`;
-
         socket.join(cleanStore);
 
-        // Αν έχουμε ήδη token από πριν, κράτα το
+        // Αν υπάρχει παλιό token, κράτα το
         const existingToken = activeUsers[userKey] ? activeUsers[userKey].fcmToken : null;
 
         activeUsers[userKey] = {
@@ -59,7 +65,7 @@ io.on('connection', (socket) => {
         updateStore(cleanStore);
     });
 
-    // 2. UPDATE TOKEN
+    // 2. UPDATE TOKEN (Firebase)
     socket.on('update-token', (data) => {
         const userKey = `${data.store}_${data.user}`;
         if (activeUsers[userKey]) {
@@ -68,7 +74,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. HEARTBEAT
+    // 3. HEARTBEAT (Κρατάει τη σύνδεση ζωντανή)
     socket.on('heartbeat', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) activeUsers[userKey].lastSeen = Date.now();
@@ -84,10 +90,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. CHAT
-    socket.on('send-chat', (msgData) => io.to(msgData.store).emit('new-chat', msgData));
-    
-    // Ειδικό event για το 'chat-message' που στέλνει το index.html
+    // 5. CHAT (Διορθωμένο για να ταιριάζει με το logic.js)
     socket.on('chat-message', (data) => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) {
@@ -102,18 +105,18 @@ io.on('connection', (socket) => {
     });
 
     // 6. ALARM (ΕΙΔΟΠΟΙΗΣΗ + SOCKET)
-    // Αν ο Admin στείλει "kitchen-alarm" (για όλους) ή "trigger-alarm" (για έναν)
+    
+    // Περίπτωση Α: Κουμπί "ΚΟΥΔΟΥΝΙ" (Για όλους)
     socket.on('kitchen-alarm', () => {
-        // Βρες ποιος το πάτησε για να βρεις το μαγαζί
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) {
             const store = activeUsers[senderKey].store;
-            // Στείλε σε ΟΛΟΥΣ στο μαγαζί
-            io.to(store).emit('kitchen-alarm');
+            io.to(store).emit('kitchen-alarm'); // Στέλνουμε την εντολή που ξέρει το Tablet
             console.log(`🔥 ALARM TRIGGERED in ${store}`);
         }
     });
 
+    // Περίπτωση Β: Κλήση συγκεκριμένου σερβιτόρου
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -123,7 +126,7 @@ io.on('connection', (socket) => {
 
         if (target) {
             console.log(`🔔 Ringing ${target.username}...`);
-            io.to(target.socketId).emit('kitchen-alarm'); // Χρησιμοποιούμε το κοινό event
+            io.to(target.socketId).emit('kitchen-alarm'); // Στέλνουμε την ίδια εντολή
 
             if (target.fcmToken) {
                 console.log(`📨 Sending Push to ${target.username}`);
@@ -133,7 +136,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// CLEANER
+// CLEANER (Διαγράφει ανενεργούς χρήστες μετά από 3 λεπτά)
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
@@ -148,13 +151,13 @@ setInterval(() => {
 
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    // Στέλνουμε τη λίστα με format που καταλαβαίνει το index.html
+    // Format για το index.html
     const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
 function sendPushNotification(token) {
-    if(!token || token === 'WEB') return; // Μην στέλνεις σε Web Users χωρίς token
+    if(!token || token === 'WEB') return; 
 
     const message = {
         token: token,
