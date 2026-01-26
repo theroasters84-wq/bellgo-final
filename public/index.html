@@ -40,6 +40,7 @@
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -80,7 +81,10 @@
 
     <div id="mainApp">
         <div class="header">
-            <div id="userInfo" style="font-size: 14px;">User | Store</div>
+            <div style="display:flex; align-items:center;">
+                <div id="connStatus"></div>
+                <div id="userInfo" style="font-size: 14px;">User | Store</div>
+            </div>
             <button class="btn-red" onclick="fullExit()">Exit</button>
         </div>
         <div class="content-area">
@@ -101,15 +105,172 @@
     </div>
 
     <audio id="siren" src="alert.mp3" preload="auto"></audio>
-    
     <audio id="silence" loop>
         <source src="silence.mp3" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=25"></script>
-    <script src="logic.js?v=25"></script>
-    
     <script>
+        // --- WATCHDOG (HARDCORE MODE) ---
+        const Watchdog = {
+            interval: null,
+            panicInterval: null,
+            isRinging: false,
+
+            start: function() {
+                console.log("🛡️ Watchdog: Active (Native Mode)");
+                
+                if (typeof fully !== 'undefined') {
+                    // Native Binding για τα κουμπιά
+                    fully.bind('onVolumeUp', 'Watchdog.handleButtonPress();');
+                    fully.bind('onVolumeDown', 'Watchdog.handleButtonPress();');
+                    
+                    // Ρυθμίσεις για WiFi
+                    fully.setBooleanSetting("preventSleep", true);
+                    fully.setBooleanSetting("wifiWakeLock", true);
+                    fully.setBooleanSetting("keepScreenOn", true); 
+                }
+
+                if (this.interval) clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                     if (typeof socket !== 'undefined' && socket.connected) {
+                         socket.emit('heartbeat'); 
+                         document.getElementById('connStatus').style.background = '#00E676';
+                     } else {
+                         document.getElementById('connStatus').style.background = 'red';
+                     }
+                     this.ensureAudioPlaying();
+                }, 10000);
+            },
+
+            handleButtonPress: function() {
+                if (this.isRinging) {
+                    this.stopPanicMode();
+                }
+            },
+
+            ensureAudioPlaying: function() {
+                const silence = document.getElementById('silence');
+                if (silence && silence.paused) { silence.play().catch(e => {}); }
+            },
+
+            triggerPanicMode: function() {
+                if (this.isRinging) return;
+                this.isRinging = true;
+                localStorage.setItem('bellgo_is_ringing', 'true');
+
+                const audio = document.getElementById('siren');
+                if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
+
+                document.getElementById('alarmScreen').style.display = 'flex';
+                
+                if (typeof fully !== 'undefined') {
+                    fully.turnScreenOn();
+                    fully.bringToForeground();
+                    fully.setScreenBrightness(255);
+                }
+
+                this.panicInterval = setInterval(() => {
+                    if (!this.isRinging) return;
+                    if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
+                }, 500);
+            },
+
+            stopPanicMode: function() {
+                this.isRinging = false;
+                localStorage.removeItem('bellgo_is_ringing');
+                
+                if (this.panicInterval) clearInterval(this.panicInterval);
+                
+                const audio = document.getElementById('siren');
+                if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
+                
+                if (navigator.vibrate) navigator.vibrate(0);
+                document.getElementById('alarmScreen').style.display = 'none';
+            }
+        };
+
+        const Logic = {
+            socket: null,
+            login: function(store, name, role, pass) {
+                if(typeof io === 'undefined') return alert("Socket.io error");
+                socket = io();
+                this.socket = socket;
+                
+                socket.on('connect', () => { 
+                    console.log("✅ Connected"); 
+                    document.getElementById('connStatus').style.background = '#00E676';
+                });
+                socket.on('disconnect', () => { 
+                    console.log("❌ Disconnected"); 
+                    document.getElementById('connStatus').style.background = 'red';
+                });
+                
+                // 🔥 ΔΙΟΡΘΩΣΗ 1: Ακούμε ΟΛΑ τα ονόματα συναγερμού 🔥
+                socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
+                socket.on('ring-bell', () => { Watchdog.triggerPanicMode(); });
+                
+                socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
+                socket.on('force-refresh', () => { location.reload(); });
+                socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
+                socket.on('chat-message', (data) => { this.renderChat(data); });
+
+                socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                
+                document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
+                
+                Watchdog.start();
+            },
+            logout: function() { if(this.socket) this.socket.disconnect(); location.reload(); },
+            sendChat: function() {
+                const inp = document.getElementById('chatInput');
+                const txt = inp.value.trim();
+                if(!txt) return;
+                this.socket.emit('chat-message', { text: txt });
+                inp.value = '';
+            },
+            renderChat: function(data) {
+                const div = document.getElementById('chat-messages');
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'msg ' + (data.role === 'admin' ? 'admin' : '') + (data.isSelf ? ' self' : '');
+                msgDiv.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
+                div.appendChild(msgDiv);
+                div.scrollTop = div.scrollHeight;
+            },
+            renderStaffList: function(list) {
+                const div = document.getElementById('staffListContainer');
+                div.innerHTML = '';
+                let visibleCount = 0;
+
+                list.forEach(u => {
+                    // 🔥 ΔΙΟΡΘΩΣΗ 2: ΚΡΥΒΟΥΜΕ ΤΟΥΣ ADMIN 🔥
+                    if (u.role === 'admin') return; 
+
+                    visibleCount++;
+                    const btn = document.createElement('button');
+                    btn.className = `btn-staff ${u.role}`;
+                    
+                    // Αν εγώ είμαι Admin, φτιάχνω κουμπί ΚΛΗΣΗΣ
+                    // Χρησιμοποιούμε 'selectedRole' ή ελέγχουμε το URL/Localstorage, 
+                    // αλλά εδώ ξέρουμε τον ρόλο μας από το Login.
+                    // Απλοποίηση: Αν βλέπεις τη λίστα, είσαι Admin (βάσει σχεδιασμού).
+                    
+                    btn.innerHTML = `🔔 <b>${u.name}</b>`;
+                    btn.onclick = () => {
+                        console.log("Calling:", u.name);
+                        btn.style.transform = "scale(0.95)";
+                        setTimeout(() => btn.style.transform = "scale(1)", 100);
+                        socket.emit('trigger-alarm', u.name);
+                    };
+                    
+                    div.appendChild(btn);
+                });
+
+                if (visibleCount === 0) {
+                    div.innerHTML = '<p style="color:#666; font-style:italic; margin-top:20px;">Κανένας σερβιτόρος...</p>';
+                }
+            }
+        };
+
         let selectedRole = '';
         function nextStep(n, role) {
             if(role) selectedRole = role;
@@ -117,46 +278,21 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΚΑΘΑΡΟ EXIT ---
         function fullExit() {
-            // 1. Σβήνουμε τον αποθηκευμένο χρήστη
             localStorage.removeItem('bellgo_user');
-            // 2. Σβήνουμε τον συναγερμό αν υπάρχει
             localStorage.removeItem('bellgo_is_ringing');
-            
-            // 3. Καλούμε το Logout
             if(typeof Logic !== 'undefined') Logic.logout();
             else location.reload();
         }
 
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
-            
-            // 1. Setup Media Session
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = "playing";
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: "BellGo Active",
-                    artist: "System Online",
-                    album: "Kitchen Alert",
-                    artwork: [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ]
-                });
-            }
-
-            // 2. Play Audio
             if(silence) {
                 silence.volume = 1.0;
                 silence.play().catch(e => {
-                    console.log("Audio Error:", e);
                     if(typeof fully !== 'undefined') fully.playSound("silence.mp3", true);
                 });
             }
-
-            // 3. Notifications
-            if (window.Notification && Notification.permission !== "granted" && typeof fully === 'undefined') {
-                Notification.requestPermission();
-            }
-
             doLogin();
         }
 
@@ -166,7 +302,6 @@
             const pass = document.getElementById('inpPass').value.trim();
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΧΡΗΣΤΗ
             localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -178,10 +313,8 @@
             else document.getElementById('listsPanel').style.display = 'block';
 
             if(typeof Logic !== 'undefined') Logic.login(store, name, selectedRole, pass);
-            else alert("Error: Refresh page");
         }
 
-        // 🔥 AUTO-LOGIN LOGIC ON RELOAD 🔥
         window.onload = function() {
             const wasRinging = localStorage.getItem('bellgo_is_ringing');
             const savedUser = localStorage.getItem('bellgo_user');
@@ -189,22 +322,15 @@
 
             if (savedUser && isLoginPage) {
                 const u = JSON.parse(savedUser);
-                console.log("🔄 Auto-Login:", u.name);
-                
                 document.getElementById('inpStore').value = u.store;
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
                 selectedRole = u.role;
-
                 setTimeout(() => {
                     if(typeof forcePlayAndLogin === 'function') {
                         forcePlayAndLogin();
-
                         if (wasRinging === 'true') {
-                            console.log("🚨 ALARM RESTORED!");
-                            setTimeout(() => {
-                                if(typeof Watchdog !== 'undefined') Watchdog.triggerPanicMode();
-                            }, 1500);
+                            setTimeout(() => { Watchdog.triggerPanicMode(); }, 1500);
                         }
                     }
                 }, 500);
