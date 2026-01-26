@@ -33,7 +33,7 @@
         .msg.admin { background: #D50000; color: #FFFF00; font-size: 24px; font-weight: 900; text-transform: uppercase; text-align: center; border: 2px solid yellow; text-shadow: 2px 2px 0px #000; }
         .msg.self { background: #2962FF; text-align: right; }
         .msg span.name { font-size: 10px; color: #ccc; display: block; margin-bottom: 2px; }
-        /* Alarm Screen Clickable */
+        
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; cursor: pointer; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
@@ -107,12 +107,28 @@
     </audio>
 
     <script>
-        // --- WATCHDOG (LOCK TO STOP) ---
+        // --- 🔥 ΕΔΩ ΜΠΗΚΑΝ ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ 🔥 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
+            authDomain: "bellgo-5dbe5.firebaseapp.com",
+            projectId: "bellgo-5dbe5",
+            storageBucket: "bellgo-5dbe5.firebasestorage.app",
+            messagingSenderId: "799314495253",
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+            measurementId: "G-379ETZJP8H"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const messaging = firebase.messaging();
+
+
+        // --- WATCHDOG (ΧΩΡΙΣ ΦΩΤΕΙΝΟΤΗΤΑ - AUTO BRIGHTNESS) ---
         const Watchdog = {
             interval: null,
             panicInterval: null,
             isRinging: false,
-            savedBrightness: -1,
             alarmStartTime: 0, 
 
             start: function() {
@@ -126,19 +142,18 @@
                     this.setupWebMediaSession();
                 }
 
-                // 🔥 ΤΟ ΚΛΕΙΔΙ: ΑΚΟΥΜΕ ΤΗΝ ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ 🔥
+                // VISIBILITY LISTENER (Lock to Stop)
                 document.addEventListener('visibilitychange', () => {
-                    // ΠΕΡΙΠΤΩΣΗ 1: ΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ (Το έβαλε στην τσέπη)
+                    // ΠΕΡΙΠΤΩΣΗ 1: ΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         console.log("🌑 PHONE LOCKED! Sending ACK...");
                         this.buttonAck();
                     }
 
-                    // ΠΕΡΙΠΤΩΣΗ 2: ΞΕΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ (Το άνοιξε να δει)
+                    // ΠΕΡΙΠΤΩΣΗ 2: ΞΕΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ
                     if (document.visibilityState === 'visible' && this.isRinging) {
                         const now = Date.now();
-                        // Αν πέρασαν 3 δευτερόλεπτα από τότε που χτύπησε, σημαίνει ότι
-                        // ο χρήστης το ξεκλείδωσε τώρα. Άρα το είδε.
+                        // Αν πέρασαν 3 δευτερόλεπτα
                         if (now - this.alarmStartTime > 3000) {
                             console.log("👁️ USER UNLOCKED! Stopping Alarm...");
                             this.buttonAck();
@@ -203,11 +218,11 @@
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
+                // ΔΕΝ ΠΕΙΡΑΖΟΥΜΕ ΤΗ ΦΩΤΕΙΝΟΤΗΤΑ
+                // Απλά ξυπνάμε το tablet
                 if (typeof fully !== 'undefined') {
-                    this.savedBrightness = fully.getScreenBrightness();
                     fully.turnScreenOn();
                     fully.bringToForeground();
-                    fully.setScreenBrightness(255);
                 }
                 
                 this.panicInterval = setInterval(() => {
@@ -237,10 +252,6 @@
                         album: "Kitchen Alert", artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
-
-                if (typeof fully !== 'undefined') {
-                    fully.setScreenBrightness(this.savedBrightness > 0 ? this.savedBrightness : 180); 
-                }
             }
         };
 
@@ -260,13 +271,24 @@
                     document.getElementById('connStatus').style.background = '#00E676';
                     
                     if (currentUserParams) {
-                        socket.emit('join-store', { 
-                            storeName: currentUserParams.store, 
-                            username: currentUserParams.name, 
-                            role: currentUserParams.role, 
-                            pass: currentUserParams.pass, 
-                            fcmToken: 'WEB' 
-                        });
+                         // Reconnect Logic
+                         messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                            socket.emit('join-store', { 
+                                storeName: currentUserParams.store, 
+                                username: currentUserParams.name, 
+                                role: currentUserParams.role, 
+                                pass: currentUserParams.pass, 
+                                fcmToken: currentToken || 'WEB' 
+                            });
+                         }).catch(() => {
+                             socket.emit('join-store', { 
+                                storeName: currentUserParams.store, 
+                                username: currentUserParams.name, 
+                                role: currentUserParams.role, 
+                                pass: currentUserParams.pass, 
+                                fcmToken: 'WEB' 
+                            });
+                         });
                     }
                 });
 
@@ -300,8 +322,20 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
-                socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
-                
+                // 🔥 ΖΗΤΑΜΕ ΤΟ TOKEN ΚΑΙ ΤΟ ΣΤΕΛΝΟΥΜΕ 🔥
+                messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                    if (currentToken) {
+                        console.log("📲 FCM Token found!");
+                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: currentToken });
+                    } else {
+                        console.log("⚠️ No FCM Token.");
+                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                    }
+                }).catch((err) => {
+                    console.log('FCM Error:', err);
+                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                });
+
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 Watchdog.start();
             },
