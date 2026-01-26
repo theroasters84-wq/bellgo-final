@@ -18,39 +18,48 @@ const Watchdog = {
     start: function() {
         console.log("🛡️ Watchdog: Active (Safe Mode)");
 
-        // Καθαρισμός τυχόν παλιών συναγερμών "φαντασμάτων"
+        // Καθαρισμός "φαντασμάτων"
         const oldAlarm = localStorage.getItem('bellgo_is_ringing');
         if (oldAlarm === 'true') this.stopPanicMode();
 
-        // Ρυθμίσεις Επιβίωσης (Αν είμαστε σε Fully)
+        // Ρυθμίσεις Επιβίωσης (Fully)
         if (isFully) {
             fully.setBooleanSetting("preventSleep", true);
             fully.setBooleanSetting("wifiWakeLock", true);
             fully.setBooleanSetting("keepScreenOn", true);
         }
 
-        // Ακρόαση Κουμπιών Έντασης (Safe Way - Χωρίς fully.bind)
-        document.addEventListener('keydown', (e) => {
-            if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
-                console.log("🔊 Volume Key -> Stopping Alarm");
-                this.buttonAck(); // Σταμάτα το
+        // --- 1. ΑΚΡΟΑΣΗ ΚΛΕΙΔΩΜΑΤΟΣ ΟΘΟΝΗΣ (ΝΕΟ) ---
+        // Αν ο σερβιτόρος πατήσει Power και κλείσει την οθόνη -> ΑΠΟΔΟΧΗ
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && this.isRinging) {
+                console.log("🌑 Screen Locked -> Stopping Alarm (Ack)");
+                this.buttonAck(); 
             }
         });
 
-        // Heartbeat Loop (Κάθε 10 δευτερόλεπτα)
+        // --- 2. ΑΚΡΟΑΣΗ ΚΟΥΜΠΙΩΝ ΕΝΤΑΣΗΣ ---
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
+                console.log("🔊 Volume Key -> Stopping Alarm");
+                this.buttonAck(); 
+            }
+        });
+
+        // --- 3. HEARTBEAT LOOP ---
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
-             // 1. Στέλνουμε παλμό στον Server
+             // Heartbeat
              if (socket.connected) {
                  socket.emit('heartbeat'); 
                  const statusDot = document.getElementById('connStatus');
-                 if(statusDot) statusDot.style.background = '#00E676'; // Πράσινο
+                 if(statusDot) statusDot.style.background = '#00E676';
              } else {
                  const statusDot = document.getElementById('connStatus');
-                 if(statusDot) statusDot.style.background = 'red'; // Κόκκινο
+                 if(statusDot) statusDot.style.background = 'red';
              }
 
-             // 2. Audio Keep-Alive (Για να μην κοιμηθεί το WebView)
+             // Audio Keep-Alive
              this.ensureAudioPlaying();
         }, 10000);
     },
@@ -60,21 +69,19 @@ const Watchdog = {
         this.isRinging = true;
         localStorage.setItem('bellgo_is_ringing', 'true');
 
-        // 1. Ενημέρωση Media Session (Για Lock Screen)
+        // 1. Media Session (Lock Screen UI)
         Logic.updateMediaSession('alarm');
 
-        // 2. Ήχος Σειρήνας
+        // 2. Ήχος
         const audio = document.getElementById('siren');
         if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
         
-        // 3. Εμφάνιση Κόκκινης Οθόνης
+        // 3. Κόκκινη Οθόνη
         const alarmScreen = document.getElementById('alarmScreen');
         if(alarmScreen) alarmScreen.style.display = 'flex';
         
-        // 4. Ξύπνημα Οθόνης (SAFE: Μόνο TurnOn, ΟΧΙ Foreground για να μην κολλάει το Xiaomi)
-        if (isFully) {
-            fully.turnScreenOn();
-        }
+        // 4. Ξύπνημα Οθόνης (Safe Mode)
+        if (isFully) fully.turnScreenOn();
         
         // 5. Δόνηση
         this.panicInterval = setInterval(() => {
@@ -87,29 +94,24 @@ const Watchdog = {
         this.isRinging = false;
         localStorage.removeItem('bellgo_is_ringing');
         
-        // Σταματάμε δόνηση και Timer
         if (this.panicInterval) { clearInterval(this.panicInterval); this.panicInterval = null; }
         if (navigator.vibrate) navigator.vibrate(0);
 
-        // Σταματάμε Σειρήνα
         const audio = document.getElementById('siren');
         if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
         
-        // Κρύβουμε Οθόνη
         const alarmScreen = document.getElementById('alarmScreen');
         if(alarmScreen) alarmScreen.style.display = 'none';
 
-        // Επαναφορά Media Session (Normal)
+        // Επαναφορά Media Session
         Logic.updateMediaSession('active');
-        
-        // Παίζουμε Σιωπή (συνέχεια λειτουργίας στο παρασκήνιο)
         this.ensureAudioPlaying();
     },
     
     buttonAck: function() {
         if (this.isRinging) {
             console.log("🔘 STOP ACTION DETECTED");
-            socket.emit('alarm-ack'); // Λέμε στον Server "Το έλαβα"
+            socket.emit('alarm-ack'); 
             this.stopPanicMode();
         }
     },
@@ -138,7 +140,7 @@ const Logic = {
         
         currentUser = { store, name, role, pass };
 
-        // 3. Firebase (Web Only - Αν υπάρχει)
+        // 3. Firebase (Web Only)
         if (!isFully && role !== 'admin') {
             try { this.initFirebase(); } catch(e) {}
         }
@@ -150,8 +152,7 @@ const Logic = {
         const userInfo = document.getElementById('userInfo');
         if(userInfo) userInfo.innerText = `${name} (${role}) | ${store}`;
         
-        // Ζητάμε λίστα (αν είμαστε admin)
-        if (role === 'admin') socket.emit('get-staff-list'); // Εδώ στέλνουμε αίτημα για τη λίστα
+        if (role === 'admin') socket.emit('get-staff-list'); 
     },
 
     logout: function() {
@@ -172,18 +173,25 @@ const Logic = {
 
     initFirebase: function() {
         if (!isFully && typeof firebase !== 'undefined') {
-            // Placeholder logic
+            // Placeholder
         }
     },
 
     setupMediaSession: function() {
         if ('mediaSession' in navigator) {
-            const stopHandler = () => { Watchdog.buttonAck(); };
-            navigator.mediaSession.setActionHandler('play', stopHandler);
-            navigator.mediaSession.setActionHandler('pause', stopHandler);
-            navigator.mediaSession.setActionHandler('stop', stopHandler);
-            navigator.mediaSession.setActionHandler('nexttrack', stopHandler);
-            navigator.mediaSession.setActionHandler('previoustrack', stopHandler);
+            const universalHandler = () => { 
+                if (Watchdog.isRinging) {
+                    Watchdog.buttonAck(); // Play/Pause/Next = ΑΠΟΔΟΧΗ
+                }
+                Watchdog.ensureAudioPlaying();
+                Logic.updateMediaSession('active');
+            };
+
+            navigator.mediaSession.setActionHandler('play', universalHandler);
+            navigator.mediaSession.setActionHandler('pause', universalHandler);
+            navigator.mediaSession.setActionHandler('stop', universalHandler);
+            navigator.mediaSession.setActionHandler('nexttrack', universalHandler);
+            navigator.mediaSession.setActionHandler('previoustrack', universalHandler);
         }
     },
 
@@ -199,7 +207,7 @@ const Logic = {
 
         navigator.mediaSession.metadata = new MediaMetadata({
             title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
-            artist: isAlarm ? "ΠΑΤΑ NEXT ΓΙΑ STOP" : "System Online",
+            artist: isAlarm ? "ΠΑΤΑ PLAY ΓΙΑ STOP" : "System Online",
             album: "Kitchen Alert",
             artwork: artwork
         });
@@ -211,18 +219,17 @@ const Logic = {
 // ==========================================
 
 socket.on('connect', () => {
-    console.log("✅ Connected to Server");
+    console.log("✅ Connected");
     const statusDot = document.getElementById('connStatus');
     if(statusDot) statusDot.style.background = '#00E676';
 });
 
 socket.on('disconnect', () => {
-    console.log("❌ Disconnected from Server");
+    console.log("❌ Disconnected");
     const statusDot = document.getElementById('connStatus');
     if(statusDot) statusDot.style.background = 'red';
 });
 
-// ✅ ΕΔΩ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: ΑΚΟΥΜΕ ΤΟ 'staff-list-update'
 socket.on('staff-list-update', (staffList) => {
     const container = document.getElementById('staffListContainer');
     if(container) {
@@ -256,7 +263,7 @@ socket.on('alarm-receipt', (data) => {
         btns.forEach(btn => {
             if(btn.innerText.includes(data.name)) {
                 const originalText = btn.innerHTML;
-                btn.style.background = '#00E676'; // Πράσινο
+                btn.style.background = '#00E676'; 
                 btn.innerHTML = `✅ <b>${data.name}</b> (ΤΟ ΕΛΑΒΕ)`;
                 setTimeout(() => { 
                     btn.style.background = ''; 
@@ -278,23 +285,19 @@ socket.on('new-chat', (data) => {
     }
 });
 
-// Λήψη Συναγερμού
 socket.on('kitchen-alarm', () => {
     console.log("🔥 ALARM RECEIVED!");
     Watchdog.triggerPanicMode();
 });
 
-// Συμβατότητα
 socket.on('ring-bell', () => {
     Watchdog.triggerPanicMode();
 });
 
-// Stop από Admin
 socket.on('stop-alarm', () => {
     Watchdog.stopPanicMode();
 });
 
-// Αρχικοποίηση Σιωπής
 window.onload = function() {
     const siren = document.getElementById('siren');
     if(siren) { siren.pause(); siren.currentTime = 0; }
