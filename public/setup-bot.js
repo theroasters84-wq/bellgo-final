@@ -1,48 +1,90 @@
-// SETUP BOT: Αυτοματοποίηση Εγκρίσεων & Ρυθμίσεων Fully Kiosk
 const SetupBot = {
     run: function() {
-        if (typeof fully === 'undefined') {
-            alert("⚠️ ΠΡΟΣΟΧΗ: Αυτό λειτουργεί μόνο μέσα στο Fully Kiosk Browser!");
-            return;
-        }
+        console.log("🤖 SetupBot: Scanning environment...");
 
-        fully.showToast("🤖 Setup Bot: Ξεκινάω ρυθμίσεις...");
+        // ==========================================
+        // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK (ΕΧΟΥΜΕ ΤΟΝ ΕΛΕΓΧΟ)
+        // ==========================================
+        if (typeof fully !== 'undefined') {
+            fully.showToast("🤖 Setup Bot: Εντοπίστηκε Fully Kiosk! Ξεκινάω...");
 
-        // 1. ΒΑΣΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (Οθόνη, Ξεκλείδωμα)
-        try {
-            fully.setBooleanSetting("keepScreenOn", true);          // Να μην σβήνει η οθόνη
-            fully.setBooleanSetting("unlockScreen", true);          // Να ξεκλειδώνει αυτόματα
-            fully.setBooleanSetting("foregroundOnActivity", true);  // Να έρχεται μπροστά
-            fully.setBooleanSetting("listenVolumeButtons", true);   // Να ακούει τα κουμπιά έντασης
-            
-            // --- CPU & WiFi (Για να μην χάνει σύνδεση) ---
-            fully.setBooleanSetting("preventSleep", true);          // Κρατάει την CPU ξύπνια
-            fully.setBooleanSetting("wifiWakeLock", true);          // Κρατάει το WiFi ξύπνιο
-            fully.setBooleanSetting("forceWifi", true);             // Πιέζει το WiFi να μείνει ανοιχτό
+            try {
+                // 1. Βασικά
+                fully.setBooleanSetting("keepScreenOn", true);
+                fully.setBooleanSetting("unlockScreen", true);
+                fully.setBooleanSetting("foregroundOnActivity", true);
+                fully.setBooleanSetting("listenVolumeButtons", true);
+                
+                // 2. WiFi & CPU (Ασφάλεια)
+                fully.setBooleanSetting("preventSleep", true);
+                fully.setBooleanSetting("wifiWakeLock", true);
+                fully.setBooleanSetting("forceWifi", true);
 
-            // --- 🔥 ΟΙ ΝΕΕΣ ΡΥΘΜΙΣΕΙΣ (ΓΙΑ ΤΟΝ ΗΧΟ) 🔥 ---
-            // Αυτά ζήτησες τώρα:
-            fully.setBooleanSetting("autoplayMedia", true);         // Web Content -> Autoplay Media: ON
-            fully.setBooleanSetting("fakeUserInteraction", true);   // Advanced -> Fake User Interaction: ON
-            
-            fully.showToast("✅ Ρυθμίσεις Ήχου & WiFi περάστηκαν!");
-        } catch (e) {
-            console.error(e);
-            alert("Κάποια ρύθμιση απέτυχε. Βεβαιώσου ότι έχεις την PLUS έκδοση.");
-        }
+                // 3. Ήχος & Media
+                fully.setBooleanSetting("autoplayMedia", true);
+                fully.setBooleanSetting("fakeUserInteraction", true);
+                fully.setBooleanSetting("mapVolumeKeysToMedia", true);
 
-        // 2. ΑΝΟΙΓΜΑ ΠΑΡΑΘΥΡΩΝ ANDROID (Permissions)
-        // Ζητάμε άδεια για Overlay (Να βγαίνει πάνω από άλλα)
-        setTimeout(() => {
-            alert("🤖 ΒΗΜΑ 1: Θα ανοίξει το μενού 'Display over other apps'.\n\n👉 Βρες το Fully Kiosk και βάλτο ON.");
-            fully.requestOverlayPermission();
-        }, 1000);
-
-        // Ζητάμε άδεια για Μπαταρία (Να μην το σκοτώνει το Android)
-        setTimeout(() => {
-            if(confirm("🤖 ΒΗΜΑ 2: Θα ανοίξει το μενού Μπαταρίας.\n\n👉 Πάτα 'Allow/Επιτρέπεται' για να μην κοιμάται ποτέ.")) {
-                fully.requestIgnoreBatteryOptimizations();
+                fully.showToast("✅ Ρυθμίσεις Fully περάστηκαν!");
+            } catch (e) {
+                console.error(e);
+                alert("Σφάλμα Fully: Βεβαιώσου ότι έχεις την PLUS έκδοση.");
             }
-        }, 8000); // Δίνουμε χρόνο στον χρήστη
+
+            // Permissions (Overlay & Battery) - Αυτόματα ανοίγματα
+            setTimeout(() => {
+                alert("🤖 ΒΗΜΑ 1: Θα ανοίξει το 'Display over other apps'.\n\n👉 Βρες το Fully Kiosk και βάλτο ON.");
+                fully.requestOverlayPermission();
+            }, 1000);
+
+            setTimeout(() => {
+                if(confirm("🤖 ΒΗΜΑ 2: Θα ανοίξει το μενού Μπαταρίας.\n\n👉 Πάτα 'Allow/Επιτρέπεται' για να μην κοιμάται ποτέ.")) {
+                    fully.requestIgnoreBatteryOptimizations();
+                }
+            }, 8000);
+
+        } 
+        
+        // ==========================================
+        // ΠΕΡΙΠΤΩΣΗ B: CHROME / ΑΠΛΑ ΚΙΝΗΤΑ
+        // ==========================================
+        else {
+            console.log("🤖 SetupBot: Εντοπίστηκε απλός Browser.");
+            
+            // 1. Ζητάμε Ειδοποιήσεις (Απαραίτητο)
+            if (window.Notification && Notification.permission !== "granted") {
+                Notification.requestPermission().then(permission => {
+                    if(permission === "granted") alert("✅ Ειδοποιήσεις: ΕΝΕΡΓΟΠΟΙΗΘΗΚΑΝ!");
+                    else alert("❌ Ειδοποιήσεις: ΑΠΟΡΡΙΦΘΗΚΑΝ.\nΠρέπει να τις ανοίξεις από τις ρυθμίσεις του Chrome.");
+                });
+            }
+
+            // 2. Screen Wake Lock (Προσπάθεια να κρατήσουμε οθόνη ανοιχτή)
+            this.enableWakeLock();
+
+            // 3. 🔥 ΟΔΗΓΙΕΣ ΓΙΑ ΜΠΑΤΑΡΙΑ & ΡΥΘΜΙΣΕΙΣ 🔥
+            // Επειδή δεν μπορούμε να τις ανοίξουμε αυτόματα, δίνουμε λίστα οδηγιών.
+            setTimeout(() => {
+                const msg = 
+                    "⚠️ ΣΗΜΑΝΤΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (ΓΙΑ ΝΑ ΜΗΝ ΚΛΕΙΝΕΙ):\n\n" +
+                    "1️⃣ ΜΠΑΤΑΡΙΑ: Πήγαινε Ρυθμίσεις Κινητού -> Εφαρμογές -> Chrome -> Μπαταρία -> Επέλεξε 'Χωρίς Περιορισμούς' (Unrestricted).\n\n" +
+                    "2️⃣ ΗΧΟΣ: Βεβαιώσου ότι το κινητό δεν είναι στο αθόρυβο.\n\n" +
+                    "3️⃣ ΚΑΡΤΕΛΑ: Μην κλείνεις αυτή την καρτέλα, άφησέ την ανοιχτή.";
+                
+                alert(msg);
+            }, 1500);
+        }
+    },
+
+    // Βοηθητική συνάρτηση για Wake Lock σε Chrome
+    enableWakeLock: async function() {
+        if ('wakeLock' in navigator) {
+            try {
+                const wakeLock = await navigator.wakeLock.request('screen');
+                console.log("✅ Screen Wake Lock active");
+            } catch (err) {
+                console.log("Wake Lock Error: " + err.message);
+            }
+        }
     }
 };
