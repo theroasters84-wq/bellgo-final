@@ -106,7 +106,7 @@
     </audio>
 
     <script>
-        // --- WATCHDOG (HARDCORE FIX) ---
+        // --- WATCHDOG (HARDCORE MODE) ---
         const Watchdog = {
             interval: null,
             panicInterval: null,
@@ -115,21 +115,13 @@
 
             start: function() {
                 console.log("🛡️ Watchdog: Active");
-                
-                // ΠΕΡΙΠΤΩΣΗ 1: FULLY KIOSK
                 if (typeof fully !== 'undefined') {
-                    // ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ (Αυτά πιάνουν πάντα, ακόμα και με μαύρη οθόνη)
                     fully.bind('onVolumeUp', 'Watchdog.buttonAck();');
                     fully.bind('onVolumeDown', 'Watchdog.buttonAck();');
-                    
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
                     fully.setBooleanSetting("keepScreenOn", true); 
-                } 
-                // ΠΕΡΙΠΤΩΣΗ 2: WEB BROWSER (Chrome)
-                else {
-                    // Χρησιμοποιούμε Media Session μόνο αν ΔΕΝ είμαστε στο Fully
-                    // για να μην μπερδεύονται μεταξύ τους
+                } else {
                     this.setupWebMediaSession();
                 }
 
@@ -145,18 +137,13 @@
                 }, 10000);
             },
 
-            // Setup για απλούς Browsers
             setupWebMediaSession: function() {
                 if ('mediaSession' in navigator) {
-                    const stopHandler = () => { 
-                        console.log("Media Key Pressed");
-                        this.buttonAck(); 
-                    };
+                    const stopHandler = () => { this.buttonAck(); };
                     navigator.mediaSession.setActionHandler('nexttrack', stopHandler);
                     navigator.mediaSession.setActionHandler('previoustrack', stopHandler);
                     navigator.mediaSession.setActionHandler('pause', stopHandler);
                     navigator.mediaSession.setActionHandler('play', () => { 
-                        // Αν πατήσει play, απλά βεβαιωνόμαστε ότι παίζει το silence
                         const silence = document.getElementById('silence');
                         if(silence) silence.play();
                     });
@@ -165,7 +152,7 @@
 
             buttonAck: function() {
                 if (this.isRinging) {
-                    console.log("🔘 STOP: Sending ACK...");
+                    console.log("🔘 Button ACK");
                     if(typeof socket !== 'undefined') socket.emit('alarm-ack');
                     this.stopPanicMode();
                 }
@@ -181,13 +168,10 @@
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
                 
-                // Ενημέρωση Media Session για Web Browser (εμφανίζει "ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ")
                 if (typeof fully === 'undefined' && 'mediaSession' in navigator) {
                      navigator.mediaSession.metadata = new MediaMetadata({
-                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!",
-                        artist: "ΠΑΤΑ NEXT ΓΙΑ STOP",
-                        album: "Emergency",
-                        artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
+                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", artist: "ΠΑΤΑ NEXT ΓΙΑ STOP",
+                        album: "Emergency", artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
 
@@ -221,20 +205,13 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
 
-                // 🔥 ΤΟ ΣΗΜΑΝΤΙΚΟ FIX ΓΙΑ ΤΟ WEB 🔥
-                // Επιβάλουμε στο silence να ξαναπαίξει αμέσως, γιατί ο Browser μπορεί να το σταμάτησε
                 const silence = document.getElementById('silence');
-                if (silence) { 
-                    silence.play().catch(e => console.log("Silence restart error:", e)); 
-                }
+                if (silence) { silence.play().catch(e => {}); }
 
-                // Επαναφορά Media Session στο "Ήρεμο" (για Web)
                 if (typeof fully === 'undefined' && 'mediaSession' in navigator) {
                      navigator.mediaSession.metadata = new MediaMetadata({
-                        title: "BellGo Active",
-                        artist: "System Online",
-                        album: "Kitchen Alert",
-                        artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
+                        title: "BellGo Active", artist: "System Online",
+                        album: "Kitchen Alert", artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
 
@@ -244,6 +221,9 @@
             }
         };
 
+        // --- GLOBAL USER STATE (Για το Auto-Rejoin) ---
+        let currentUserParams = null;
+
         const Logic = {
             socket: null,
             login: function(store, name, role, pass) {
@@ -251,10 +231,27 @@
                 socket = io();
                 this.socket = socket;
                 
+                // Αποθηκεύουμε τα στοιχεία για να τα έχουμε στο reconnect
+                currentUserParams = { store, name, role, pass };
+                
                 socket.on('connect', () => { 
                     console.log("✅ Connected"); 
                     document.getElementById('connStatus').style.background = '#00E676';
+                    
+                    // 🔥 AUTO RE-JOIN ON RECONNECT 🔥
+                    // Αν είχαμε συνδεθεί, ξαναστέλνουμε τα στοιχεία αυτόματα!
+                    if (currentUserParams) {
+                        console.log("🔄 Re-joining store...");
+                        socket.emit('join-store', { 
+                            storeName: currentUserParams.store, 
+                            username: currentUserParams.name, 
+                            role: currentUserParams.role, 
+                            pass: currentUserParams.pass, 
+                            fcmToken: 'WEB' 
+                        });
+                    }
                 });
+
                 socket.on('disconnect', () => { 
                     console.log("❌ Disconnected"); 
                     document.getElementById('connStatus').style.background = 'red';
@@ -264,7 +261,6 @@
                 socket.on('ring-bell', () => { Watchdog.triggerPanicMode(); });
                 
                 socket.on('alarm-receipt', (data) => {
-                    console.log("Receipt received from:", data.name);
                     if (selectedRole === 'admin') {
                         const btns = document.querySelectorAll('.btn-staff');
                         btns.forEach(btn => {
@@ -286,6 +282,7 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
+                // Η πρώτη σύνδεση γίνεται εδώ
                 socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
