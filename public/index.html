@@ -106,8 +106,8 @@
         <source src="silence.mp3" type="audio/mpeg">
     </audio>
 
-    <script src="watchdog.js?v=25"></script>
-    <script src="logic.js?v=25"></script>
+    <script src="watchdog.js?v=26"></script>
+    <script src="logic.js?v=26"></script>
     
     <script>
         let selectedRole = '';
@@ -117,14 +117,15 @@
             document.getElementById('step'+n).classList.add('active');
         }
 
-        // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ ΓΙΑ ΚΑΘΑΡΟ EXIT ---
+        // 🔥 ΑΛΛΑΓΗ 2: Νέα συνάρτηση για ΚΑΘΑΡΟ EXIT
         function fullExit() {
-            // 1. Σβήνουμε τον αποθηκευμένο χρήστη
+            console.log("🚪 Performing Full Exit...");
+            // Σβήνουμε τα δεδομένα Auto-Login για να μην ξαναμπεί μόνο του
             localStorage.removeItem('bellgo_user');
-            // 2. Σβήνουμε τον συναγερμό αν υπάρχει
+            // Σβήνουμε και την κατάσταση συναγερμού
             localStorage.removeItem('bellgo_is_ringing');
             
-            // 3. Καλούμε το Logout
+            // Κάνουμε Logout
             if(typeof Logic !== 'undefined') Logic.logout();
             else location.reload();
         }
@@ -132,7 +133,7 @@
         function forcePlayAndLogin() {
             const silence = document.getElementById('silence');
             
-            // 1. Setup Media Session
+            // 1. Setup Media Session & ΚΟΥΜΠΙΑ ΕΝΤΑΣΗΣ
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = "playing";
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -141,6 +142,18 @@
                     album: "Kitchen Alert",
                     artwork: [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ]
                 });
+
+                // 🔥 ΑΛΛΑΓΗ 3: "Καλωδιώνουμε" τα κουμπιά (Volume Up = Stop Alarm)
+                const stopAlarmAction = () => {
+                    if (typeof Watchdog !== 'undefined' && Watchdog.isRinging) {
+                        console.log("🛑 Button Pressed: Stopping Alarm...");
+                        Watchdog.stopPanicMode();
+                    }
+                };
+                navigator.mediaSession.setActionHandler('nexttrack', stopAlarmAction);     // Volume Up
+                navigator.mediaSession.setActionHandler('previoustrack', stopAlarmAction); // Volume Down
+                navigator.mediaSession.setActionHandler('pause', stopAlarmAction);         
+                navigator.mediaSession.setActionHandler('play', () => { if(silence) silence.play(); });
             }
 
             // 2. Play Audio
@@ -166,7 +179,7 @@
             const pass = document.getElementById('inpPass').value.trim();
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            // 🔥 ΑΠΟΘΗΚΕΥΣΗ ΧΡΗΣΤΗ
+            // Αποθήκευση χρήστη (για Auto-Login αν γίνει refresh, ΟΧΙ αν πατήσεις Exit)
             localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -181,7 +194,7 @@
             else alert("Error: Refresh page");
         }
 
-        // 🔥 AUTO-LOGIN LOGIC ON RELOAD 🔥
+        // 🔥 AUTO-LOGIN (Μόνο αν δεν πατήθηκε Exit)
         window.onload = function() {
             const wasRinging = localStorage.getItem('bellgo_is_ringing');
             const savedUser = localStorage.getItem('bellgo_user');
