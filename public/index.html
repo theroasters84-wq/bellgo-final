@@ -108,7 +108,7 @@
 
     <script>
         // --- 1. FIREBASE CONFIG ---
-        // (Βάλε τα δικά σου κλειδιά εδώ, τα έχω βάλει από το προηγούμενο μήνυμα)
+        // (Βάλε τα δικά σου κλειδιά εδώ)
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -119,14 +119,11 @@
             measurementId: "G-379ETZJP8H"
         };
 
-        // Αρχικοποιούμε το App ΠΑΝΤΑ (χρειάζεται)
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
 
-        // 🔥 ΤΟ ΜΕΓΑΛΟ ΚΟΛΠΟ ΔΙΑΧΩΡΙΣΜΟΥ 🔥
-        // Αν είμαστε Fully -> messaging = null (ΟΧΙ Firebase Messaging)
-        // Αν είμαστε Browser -> messaging = firebase.messaging()
+        // 🔥 SAFETY: Φορτώνουμε το Messaging ΜΟΝΟ αν ΔΕΝ είναι Fully 🔥
         let messaging = null;
         const isFully = typeof fully !== 'undefined';
 
@@ -135,7 +132,7 @@
                 messaging = firebase.messaging();
                 console.log("🌍 Browser Mode: Firebase Messaging Active");
             } catch (e) {
-                console.log("⚠️ Firebase Messaging failed to load (Not supported here).");
+                console.log("⚠️ Firebase Messaging failed to load.");
             }
         } else {
             console.log("🤖 Fully Kiosk Mode: Firebase Messaging Disabled (Socket Only)");
@@ -283,11 +280,9 @@
                     
                     if (currentUserParams) {
                         // AUTO-RECONNECT
-                        // Αν είναι Fully ή αν δεν υπάρχει messaging, στέλνουμε fake token
                         if (isFully || !messaging) {
                              socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: isFully ? 'FULLY' : 'WEB' });
                         } else {
-                             // Αν είναι Browser, ζητάμε κανονικό token
                              messaging.getToken({ vapidKey: "" }).then((currentToken) => {
                                 socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: currentToken || 'WEB' });
                              }).catch(() => {
@@ -329,12 +324,10 @@
 
                 // 🔥 MAIN LOGIN LOGIC: ΔΙΑΧΩΡΙΣΜΟΣ 🔥
                 if (isFully) {
-                    // ΕΙΝΑΙ FULLY -> ΟΧΙ FIREBASE
                     console.log("🤖 Login as Fully Kiosk. No Firebase Token needed.");
                     socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'FULLY' });
                 } 
                 else if (messaging) {
-                    // ΕΙΝΑΙ BROWSER ME FIREBASE
                     console.log("🌍 Login as Browser. Requesting Token...");
                     messaging.getToken({ vapidKey: "" }).then((currentToken) => {
                         if (currentToken) {
@@ -346,12 +339,10 @@
                         }
                     }).catch((err) => {
                         console.log('FCM Error:', err);
-                        // Fallback αν αποτύχει
                         socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                     });
                 } 
                 else {
-                    // ΕΙΝΑΙ BROWSER ΧΩΡΙΣ FIREBASE (π.χ. παλιό κινητό)
                     console.log("⚠️ Messaging not supported. Login without token.");
                     socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 }
@@ -359,7 +350,16 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 Watchdog.start();
             },
-            logout: function() { if(this.socket) this.socket.disconnect(); location.reload(); },
+            
+            // 🔥 LOGOUT: Στέλνει εντολή για ΑΜΕΣΗ διαγραφή 🔥
+            logout: function() { 
+                if(this.socket) {
+                    this.socket.emit('logout-user'); // Λέμε στον Server: "Διέγραψέ με τώρα!"
+                    this.socket.disconnect();
+                }
+                location.reload(); 
+            },
+            
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
                 const txt = inp.value.trim();
