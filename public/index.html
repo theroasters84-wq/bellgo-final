@@ -107,7 +107,7 @@
     </audio>
 
     <script>
-        // --- 🔥 ΕΔΩ ΜΠΗΚΑΝ ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ 🔥 ---
+        // --- 🔥 ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ 🔥 ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -124,7 +124,7 @@
         const messaging = firebase.messaging();
 
 
-        // --- WATCHDOG (ΧΩΡΙΣ ΦΩΤΕΙΝΟΤΗΤΑ - AUTO BRIGHTNESS) ---
+        // --- WATCHDOG (ΧΩΡΙΣ ΦΩΤΕΙΝΟΤΗΤΑ) ---
         const Watchdog = {
             interval: null,
             panicInterval: null,
@@ -270,25 +270,37 @@
                     console.log("✅ Connected"); 
                     document.getElementById('connStatus').style.background = '#00E676';
                     
+                    // RECONNECT LOGIC (CHECK FOR FULLY)
                     if (currentUserParams) {
-                         // Reconnect Logic
-                         messaging.getToken({ vapidKey: "" }).then((currentToken) => {
-                            socket.emit('join-store', { 
-                                storeName: currentUserParams.store, 
-                                username: currentUserParams.name, 
-                                role: currentUserParams.role, 
-                                pass: currentUserParams.pass, 
-                                fcmToken: currentToken || 'WEB' 
-                            });
-                         }).catch(() => {
+                        const isFully = typeof fully !== 'undefined';
+                        
+                        if (isFully) {
                              socket.emit('join-store', { 
                                 storeName: currentUserParams.store, 
                                 username: currentUserParams.name, 
                                 role: currentUserParams.role, 
                                 pass: currentUserParams.pass, 
-                                fcmToken: 'WEB' 
+                                fcmToken: 'FULLY' // <--- SKIP FIREBASE
                             });
-                         });
+                        } else {
+                             messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                                socket.emit('join-store', { 
+                                    storeName: currentUserParams.store, 
+                                    username: currentUserParams.name, 
+                                    role: currentUserParams.role, 
+                                    pass: currentUserParams.pass, 
+                                    fcmToken: currentToken || 'WEB' 
+                                });
+                             }).catch(() => {
+                                 socket.emit('join-store', { 
+                                    storeName: currentUserParams.store, 
+                                    username: currentUserParams.name, 
+                                    role: currentUserParams.role, 
+                                    pass: currentUserParams.pass, 
+                                    fcmToken: 'WEB' 
+                                });
+                             });
+                        }
                     }
                 });
 
@@ -322,19 +334,26 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
-                // 🔥 ΖΗΤΑΜΕ ΤΟ TOKEN ΚΑΙ ΤΟ ΣΤΕΛΝΟΥΜΕ 🔥
-                messaging.getToken({ vapidKey: "" }).then((currentToken) => {
-                    if (currentToken) {
-                        console.log("📲 FCM Token found!");
-                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: currentToken });
-                    } else {
-                        console.log("⚠️ No FCM Token.");
+                // 🔥 MAIN LOGIN: ΕΛΕΓΧΟΣ ΓΙΑ FULLY 🔥
+                if (typeof fully !== 'undefined') {
+                    // ΕΙΝΑΙ FULLY KIOSK -> ΟΧΙ FIREBASE
+                    console.log("🤖 Detected Fully Kiosk. Skipping Firebase.");
+                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'FULLY' });
+                } else {
+                    // ΔΕΝ ΕΙΝΑΙ FULLY -> ΖΗΤΑ TOKEN
+                    messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                        if (currentToken) {
+                            console.log("📲 FCM Token found!");
+                            socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: currentToken });
+                        } else {
+                            console.log("⚠️ No FCM Token.");
+                            socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                        }
+                    }).catch((err) => {
+                        console.log('FCM Error:', err);
                         socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
-                    }
-                }).catch((err) => {
-                    console.log('FCM Error:', err);
-                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
-                });
+                    });
+                }
 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 Watchdog.start();
