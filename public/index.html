@@ -33,7 +33,7 @@
         .msg.admin { background: #D50000; color: #FFFF00; font-size: 24px; font-weight: 900; text-transform: uppercase; text-align: center; border: 2px solid yellow; text-shadow: 2px 2px 0px #000; }
         .msg.self { background: #2962FF; text-align: right; }
         .msg span.name { font-size: 10px; color: #ccc; display: block; margin-bottom: 2px; }
-        /* Κάναμε την Alarm Screen να πιάνει τα κλικ παντού */
+        /* Alarm Screen Clickable */
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; cursor: pointer; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
@@ -107,17 +107,17 @@
     </audio>
 
     <script>
-        // --- WATCHDOG (FOCUS FIX) ---
+        // --- WATCHDOG (SAFE ZONE FIX) ---
         const Watchdog = {
             interval: null,
             panicInterval: null,
             isRinging: false,
             savedBrightness: -1,
+            alarmStartTime: 0, // 🔥 ΕΔΩ ΚΡΑΤΑΜΕ ΤΗΝ ΩΡΑ ΠΟΥ ΞΕΚΙΝΗΣΕ 🔥
 
             start: function() {
                 console.log("🛡️ Watchdog: Active");
                 
-                // 1. ΡΥΘΜΙΣΕΙΣ FULLY
                 if (typeof fully !== 'undefined') {
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
@@ -126,25 +126,32 @@
                     this.setupWebMediaSession();
                 }
 
-                // 🔥 2. ΤΟ ΜΕΓΑΛΟ ΚΟΛΠΟ: FOCUS LISTENER 🔥
-                // Όταν η εφαρμογή έρχεται μπροστά (επειδή πάτησες διπλό κλικ Power)
-                // Ελέγχει αν χτυπάει, και αν ναι, το σταματάει!
+                // 🔥 FOCUS LISTENER ΜΕ ΠΡΟΣΤΑΣΙΑ 3 ΔΕΥΤΕΡΟΛΕΠΤΩΝ 🔥
                 window.addEventListener('focus', () => {
                     if (this.isRinging) {
-                        console.log("👁️ APP FOCUSED! Stopping Alarm...");
+                        const now = Date.now();
+                        // Αν πέρασαν λιγότερα από 3000ms (3 δευτ) από την έναρξη,
+                        // σημαίνει ότι είναι το αυτόματο ξύπνημα. ΤΟ ΑΓΝΟΟΥΜΕ.
+                        if (now - this.alarmStartTime < 3000) {
+                            console.log("🛡️ Ignoring Auto-Wake Focus...");
+                            return; 
+                        }
+                        
+                        console.log("👁️ USER Focus Detected! Stopping Alarm...");
                         this.buttonAck();
                     }
                 });
                 
-                // Επίσης, αν αλλάξει η ορατότητα (π.χ. ανάψει η οθόνη)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible' && this.isRinging) {
-                        console.log("👁️ VISIBILITY ON! Stopping Alarm...");
+                        const now = Date.now();
+                        if (now - this.alarmStartTime < 3000) return; // Αγνοούμε το αυτόματο άνοιγμα
+
+                        console.log("👁️ USER Visibility Detected! Stopping Alarm...");
                         this.buttonAck();
                     }
                 });
 
-                // Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (typeof socket !== 'undefined' && socket.connected) {
@@ -188,7 +195,9 @@
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
                 
-                // Metadata για Web
+                // 🔥 ΚΑΤΑΓΡΑΦΗ ΩΡΑΣ ΕΝΑΡΞΗΣ 🔥
+                this.alarmStartTime = Date.now();
+
                 if (typeof fully === 'undefined' && 'mediaSession' in navigator) {
                      navigator.mediaSession.metadata = new MediaMetadata({
                         title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", artist: "ΠΑΤΑ NEXT ΓΙΑ STOP",
