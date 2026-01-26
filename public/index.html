@@ -107,13 +107,13 @@
     </audio>
 
     <script>
-        // --- WATCHDOG (SAFE ZONE FIX) ---
+        // --- WATCHDOG (LOCK TO STOP) ---
         const Watchdog = {
             interval: null,
             panicInterval: null,
             isRinging: false,
             savedBrightness: -1,
-            alarmStartTime: 0, // 🔥 ΕΔΩ ΚΡΑΤΑΜΕ ΤΗΝ ΩΡΑ ΠΟΥ ΞΕΚΙΝΗΣΕ 🔥
+            alarmStartTime: 0, 
 
             start: function() {
                 console.log("🛡️ Watchdog: Active");
@@ -126,29 +126,23 @@
                     this.setupWebMediaSession();
                 }
 
-                // 🔥 FOCUS LISTENER ΜΕ ΠΡΟΣΤΑΣΙΑ 3 ΔΕΥΤΕΡΟΛΕΠΤΩΝ 🔥
-                window.addEventListener('focus', () => {
-                    if (this.isRinging) {
-                        const now = Date.now();
-                        // Αν πέρασαν λιγότερα από 3000ms (3 δευτ) από την έναρξη,
-                        // σημαίνει ότι είναι το αυτόματο ξύπνημα. ΤΟ ΑΓΝΟΟΥΜΕ.
-                        if (now - this.alarmStartTime < 3000) {
-                            console.log("🛡️ Ignoring Auto-Wake Focus...");
-                            return; 
-                        }
-                        
-                        console.log("👁️ USER Focus Detected! Stopping Alarm...");
+                // 🔥 ΤΟ ΚΛΕΙΔΙ: ΑΚΟΥΜΕ ΤΗΝ ΚΑΤΑΣΤΑΣΗ ΤΗΣ ΟΘΟΝΗΣ 🔥
+                document.addEventListener('visibilitychange', () => {
+                    // ΠΕΡΙΠΤΩΣΗ 1: ΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ (Το έβαλε στην τσέπη)
+                    if (document.visibilityState === 'hidden' && this.isRinging) {
+                        console.log("🌑 PHONE LOCKED! Sending ACK...");
                         this.buttonAck();
                     }
-                });
-                
-                document.addEventListener('visibilitychange', () => {
+
+                    // ΠΕΡΙΠΤΩΣΗ 2: ΞΕΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ (Το άνοιξε να δει)
                     if (document.visibilityState === 'visible' && this.isRinging) {
                         const now = Date.now();
-                        if (now - this.alarmStartTime < 3000) return; // Αγνοούμε το αυτόματο άνοιγμα
-
-                        console.log("👁️ USER Visibility Detected! Stopping Alarm...");
-                        this.buttonAck();
+                        // Αν πέρασαν 3 δευτερόλεπτα από τότε που χτύπησε, σημαίνει ότι
+                        // ο χρήστης το ξεκλείδωσε τώρα. Άρα το είδε.
+                        if (now - this.alarmStartTime > 3000) {
+                            console.log("👁️ USER UNLOCKED! Stopping Alarm...");
+                            this.buttonAck();
+                        }
                     }
                 });
 
@@ -195,7 +189,6 @@
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
                 
-                // 🔥 ΚΑΤΑΓΡΑΦΗ ΩΡΑΣ ΕΝΑΡΞΗΣ 🔥
                 this.alarmStartTime = Date.now();
 
                 if (typeof fully === 'undefined' && 'mediaSession' in navigator) {
