@@ -107,7 +107,8 @@
     </audio>
 
     <script>
-        // --- 🔥 ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ 🔥 ---
+        // --- 1. FIREBASE CONFIG ---
+        // (Βάλε τα δικά σου κλειδιά εδώ, τα έχω βάλει από το προηγούμενο μήνυμα)
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -118,10 +119,27 @@
             measurementId: "G-379ETZJP8H"
         };
 
+        // Αρχικοποιούμε το App ΠΑΝΤΑ (χρειάζεται)
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-        const messaging = firebase.messaging();
+
+        // 🔥 ΤΟ ΜΕΓΑΛΟ ΚΟΛΠΟ ΔΙΑΧΩΡΙΣΜΟΥ 🔥
+        // Αν είμαστε Fully -> messaging = null (ΟΧΙ Firebase Messaging)
+        // Αν είμαστε Browser -> messaging = firebase.messaging()
+        let messaging = null;
+        const isFully = typeof fully !== 'undefined';
+
+        if (!isFully) {
+            try {
+                messaging = firebase.messaging();
+                console.log("🌍 Browser Mode: Firebase Messaging Active");
+            } catch (e) {
+                console.log("⚠️ Firebase Messaging failed to load (Not supported here).");
+            }
+        } else {
+            console.log("🤖 Fully Kiosk Mode: Firebase Messaging Disabled (Socket Only)");
+        }
 
 
         // --- WATCHDOG (ΧΩΡΙΣ ΦΩΤΕΙΝΟΤΗΤΑ) ---
@@ -142,18 +160,13 @@
                     this.setupWebMediaSession();
                 }
 
-                // VISIBILITY LISTENER (Lock to Stop)
                 document.addEventListener('visibilitychange', () => {
-                    // ΠΕΡΙΠΤΩΣΗ 1: ΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         console.log("🌑 PHONE LOCKED! Sending ACK...");
                         this.buttonAck();
                     }
-
-                    // ΠΕΡΙΠΤΩΣΗ 2: ΞΕΚΛΕΙΔΩΣΕ Η ΟΘΟΝΗ
                     if (document.visibilityState === 'visible' && this.isRinging) {
                         const now = Date.now();
-                        // Αν πέρασαν 3 δευτερόλεπτα
                         if (now - this.alarmStartTime > 3000) {
                             console.log("👁️ USER UNLOCKED! Stopping Alarm...");
                             this.buttonAck();
@@ -218,8 +231,6 @@
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
-                // ΔΕΝ ΠΕΙΡΑΖΟΥΜΕ ΤΗ ΦΩΤΕΙΝΟΤΗΤΑ
-                // Απλά ξυπνάμε το tablet
                 if (typeof fully !== 'undefined') {
                     fully.turnScreenOn();
                     fully.bringToForeground();
@@ -270,35 +281,17 @@
                     console.log("✅ Connected"); 
                     document.getElementById('connStatus').style.background = '#00E676';
                     
-                    // RECONNECT LOGIC (CHECK FOR FULLY)
                     if (currentUserParams) {
-                        const isFully = typeof fully !== 'undefined';
-                        
-                        if (isFully) {
-                             socket.emit('join-store', { 
-                                storeName: currentUserParams.store, 
-                                username: currentUserParams.name, 
-                                role: currentUserParams.role, 
-                                pass: currentUserParams.pass, 
-                                fcmToken: 'FULLY' // <--- SKIP FIREBASE
-                            });
+                        // AUTO-RECONNECT
+                        // Αν είναι Fully ή αν δεν υπάρχει messaging, στέλνουμε fake token
+                        if (isFully || !messaging) {
+                             socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: isFully ? 'FULLY' : 'WEB' });
                         } else {
+                             // Αν είναι Browser, ζητάμε κανονικό token
                              messaging.getToken({ vapidKey: "" }).then((currentToken) => {
-                                socket.emit('join-store', { 
-                                    storeName: currentUserParams.store, 
-                                    username: currentUserParams.name, 
-                                    role: currentUserParams.role, 
-                                    pass: currentUserParams.pass, 
-                                    fcmToken: currentToken || 'WEB' 
-                                });
+                                socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: currentToken || 'WEB' });
                              }).catch(() => {
-                                 socket.emit('join-store', { 
-                                    storeName: currentUserParams.store, 
-                                    username: currentUserParams.name, 
-                                    role: currentUserParams.role, 
-                                    pass: currentUserParams.pass, 
-                                    fcmToken: 'WEB' 
-                                });
+                                 socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: 'WEB' });
                              });
                         }
                     }
@@ -334,13 +327,15 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
-                // 🔥 MAIN LOGIN: ΕΛΕΓΧΟΣ ΓΙΑ FULLY 🔥
-                if (typeof fully !== 'undefined') {
-                    // ΕΙΝΑΙ FULLY KIOSK -> ΟΧΙ FIREBASE
-                    console.log("🤖 Detected Fully Kiosk. Skipping Firebase.");
+                // 🔥 MAIN LOGIN LOGIC: ΔΙΑΧΩΡΙΣΜΟΣ 🔥
+                if (isFully) {
+                    // ΕΙΝΑΙ FULLY -> ΟΧΙ FIREBASE
+                    console.log("🤖 Login as Fully Kiosk. No Firebase Token needed.");
                     socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'FULLY' });
-                } else {
-                    // ΔΕΝ ΕΙΝΑΙ FULLY -> ΖΗΤΑ TOKEN
+                } 
+                else if (messaging) {
+                    // ΕΙΝΑΙ BROWSER ME FIREBASE
+                    console.log("🌍 Login as Browser. Requesting Token...");
                     messaging.getToken({ vapidKey: "" }).then((currentToken) => {
                         if (currentToken) {
                             console.log("📲 FCM Token found!");
@@ -351,8 +346,14 @@
                         }
                     }).catch((err) => {
                         console.log('FCM Error:', err);
+                        // Fallback αν αποτύχει
                         socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                     });
+                } 
+                else {
+                    // ΕΙΝΑΙ BROWSER ΧΩΡΙΣ FIREBASE (π.χ. παλιό κινητό)
+                    console.log("⚠️ Messaging not supported. Login without token.");
+                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 }
 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
