@@ -11,7 +11,6 @@
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex !important; }
         
-        /* INPUTS - Καθαρά και μεγάλα */
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 8px; margin: 10px 0; text-align: center; }
         input:focus { border-color: #00E676; outline: none; }
 
@@ -44,12 +43,11 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
 
-        /* --- 🔥 SETUP WIZARD CSS 🔥 --- */
-        #androidSetup { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; 
-            align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
-        }
+        /* 🔥 SETUP BOT BUTTON 🔥 */
+        #setupBotBtn { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #333; border: 2px solid #00E676; font-size: 30px; cursor: pointer; z-index: 5000; display: none; align-items: center; justify-content: center; box-shadow: 0 0 10px #00E676; }
+        
+        /* 🔥 SETUP WIZARD OVERLAY 🔥 */
+        #androidSetup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
         .setup-box { background: #222; border: 2px solid #00E676; border-radius: 15px; padding: 20px; width: 90%; max-width: 400px; text-align: center; }
         .setup-step { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
         .setup-step h3 { color: #00E676; margin: 0 0 10px 0; font-size: 18px; }
@@ -69,33 +67,30 @@
 </head>
 <body>
     
+    <div id="setupBotBtn" onclick="SetupBot.run()">🤖</div>
+
     <div id="androidSetup">
         <div class="setup-box">
             <h1>🤖 Ρύθμιση Tablet</h1>
             <p style="color:yellow; font-weight:bold;">Ακολούθησε τα βήματα ΜΙΑ φορά:</p>
-            
             <div class="setup-step">
                 <h3>ΒΗΜΑ 1: Κατέβασμα</h3>
                 <p>Κατέβασε την εφαρμογή Fully Kiosk</p>
                 <button class="btn-blue" onclick="window.open('https://play.google.com/store/apps/details?id=de.ozerov.fully', '_blank')">📥 Download App</button>
             </div>
-
             <div class="setup-step">
                 <h3>ΒΗΜΑ 2: Αυτόματο Άνοιγμα</h3>
                 <p>Αφού την κατεβάσεις, πάτα εδώ για να ανοίξει αυτόματα η εφαρμογή με το URL έτοιμο!</p>
                 <button class="btn-green" id="btnAutoOpen">🚀 ΑΝΟΙΓΜΑ ΣΤΟ FULLY</button>
             </div>
-
             <div class="setup-step">
                 <h3>ΒΗΜΑ 3: Ρυθμίσεις</h3>
                 <p style="text-align:left; font-size:12px; line-height: 1.6;">
                     1. Δώσε <b>ΟΛΑ</b> τα Permissions που ζητάει.<br>
-                    2. Πήγαινε <b>Settings</b> -> <b>Device Management</b> -> <b>Keep Screen On</b> -> <b>ON</b>.<br>
-                    3. Πήγαινε <b>Web Auto Reload</b> -> <b>Auto Reload on Net Fail</b> -> <b>ON</b>.
+                    2. Πάτα ξανά το κουμπί 🤖 μέσα από το Fully για να περαστούν οι ρυθμίσεις αυτόματα!
                 </p>
             </div>
-
-            <button class="btn-red" onclick="document.getElementById('androidSetup').style.display='none'">ΚΛΕΙΣΙΜΟ (Είμαι έτοιμος)</button>
+            <button class="btn-red" onclick="document.getElementById('androidSetup').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
@@ -178,25 +173,60 @@
             console.log("🤖 Fully Mode: Socket Only");
         }
 
-        // --- 🔥 AUTO SETUP LOGIC (WIZARD) 🔥 ---
+        // --- 🔥 SETUP BOT LOGIC 🔥 ---
+        const SetupBot = {
+            run: function() {
+                console.log("🤖 SetupBot: Triggered!");
+
+                // ΠΕΡΙΠΤΩΣΗ A: FULLY KIOSK (ΕΧΟΥΜΕ ΤΟΝ ΕΛΕΓΧΟ)
+                if (typeof fully !== 'undefined') {
+                    fully.showToast("🤖 Setup Bot: Εντοπίστηκε Fully Kiosk! Ξεκινάω...");
+                    try {
+                        fully.setBooleanSetting("keepScreenOn", true);
+                        fully.setBooleanSetting("unlockScreen", true);
+                        fully.setBooleanSetting("foregroundOnActivity", true);
+                        fully.setBooleanSetting("listenVolumeButtons", true);
+                        fully.setBooleanSetting("preventSleep", true);
+                        fully.setBooleanSetting("wifiWakeLock", true);
+                        fully.setBooleanSetting("forceWifi", true);
+                        fully.setBooleanSetting("autoplayMedia", true);
+                        fully.setBooleanSetting("fakeUserInteraction", true);
+                        fully.setBooleanSetting("mapVolumeKeysToMedia", true);
+                        fully.showToast("✅ Ρυθμίσεις Fully περάστηκαν!");
+                    } catch (e) {
+                        alert("Σφάλμα Fully: " + e);
+                    }
+                    // Permissions
+                    setTimeout(() => {
+                        if(confirm("🤖 ΒΗΜΑ 1: Θα ανοίξει το 'Display over other apps'.\n\n👉 Βρες το Fully Kiosk και βάλτο ON.")) {
+                            fully.requestOverlayPermission();
+                        }
+                    }, 1000);
+                    setTimeout(() => {
+                        if(confirm("🤖 ΒΗΜΑ 2: Θα ανοίξει το μενού Μπαταρίας.\n\n👉 Πάτα 'Allow/Επιτρέπεται'.")) {
+                            fully.requestIgnoreBatteryOptimizations();
+                        }
+                    }, 8000);
+                } 
+                // ΠΕΡΙΠΤΩΣΗ B: CHROME (ΕΜΦΑΝΙΣΗ WIZARD)
+                else {
+                    document.getElementById('androidSetup').style.display = 'flex';
+                    // Setup Intent Link
+                    const currentUrl = window.location.href;
+                    const cleanUrl = currentUrl.replace('https://', '').replace('http://', '');
+                    const intentLink = `intent://${cleanUrl}#Intent;scheme=https;package=de.ozerov.fully;end`;
+                    document.getElementById('btnAutoOpen').onclick = function() {
+                        window.location.href = intentLink;
+                    };
+                }
+            }
+        };
+
+        // Εμφάνιση του κουμπιού μόνο σε Android (Browser ή Fully)
         window.addEventListener('load', () => {
             const ua = navigator.userAgent.toLowerCase();
-            const isAndroid = ua.indexOf("android") > -1;
-            
-            // Αν είναι Android ΑΛΛΑ ΟΧΙ Fully Kiosk -> Εμφάνισε το Setup Wizard
-            if (isAndroid && !isFully) {
-                document.getElementById('androidSetup').style.display = 'flex';
-                
-                // Δημιουργία του "One-Click" συνδέσμου
-                const currentUrl = window.location.href;
-                // Καθαρίζουμε το πρωτόκολλο (https://)
-                const cleanUrl = currentUrl.replace('https://', '').replace('http://', '');
-                // Φτιάχνουμε το Intent URL για το Fully Kiosk
-                const intentLink = `intent://${cleanUrl}#Intent;scheme=https;package=de.ozerov.fully;end`;
-                
-                document.getElementById('btnAutoOpen').onclick = function() {
-                    window.location.href = intentLink;
-                };
+            if (ua.indexOf("android") > -1) {
+                document.getElementById('setupBotBtn').style.display = 'flex';
             }
         });
 
