@@ -40,8 +40,8 @@
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        /* Ένδειξη σύνδεσης */
-        #connStatus { width: 10px; height: 10px; border-radius: 50%; background: red; display: inline-block; margin-right: 5px; }
+        /* Ένδειξη σύνδεσης (Κόκκινο/Πράσινο) */
+        #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -120,54 +120,41 @@
             start: function() {
                 console.log("🛡️ Watchdog: Active (Native Mode)");
                 
-                // 1. ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ (Χωρίς ανάγκη για Media Bar)
                 if (typeof fully !== 'undefined') {
-                    // Λέμε στο Fully: "Όταν πατηθεί το Volume Up, τρέξε αυτόν τον κώδικα JS"
+                    // 1. ΔΕΣΜΕΥΣΗ ΚΟΥΜΠΙΩΝ
                     fully.bind('onVolumeUp', 'Watchdog.handleButtonPress();');
                     fully.bind('onVolumeDown', 'Watchdog.handleButtonPress();');
                     
-                    // Εντολές για να μην κοιμηθεί ποτέ
+                    // 2. ΕΝΤΟΛΕΣ ΕΠΙΒΙΩΣΗΣ
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
-                    fully.setBooleanSetting("keepScreenOn", true);
+                    fully.setBooleanSetting("keepScreenOn", true); 
                 }
 
-                // 2. THE LOOP (Κάθε 10 δευτερόλεπτα)
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                     // Force Heartbeat
+                     // 3. FORCE HEARTBEAT
                      if (typeof socket !== 'undefined' && socket.connected) {
                          socket.emit('heartbeat'); 
-                         document.getElementById('connStatus').style.background = '#00E676'; // Green
+                         document.getElementById('connStatus').style.background = '#00E676'; // Πράσινο
                      } else {
-                         document.getElementById('connStatus').style.background = 'red';
+                         document.getElementById('connStatus').style.background = 'red'; // Κόκκινο
                      }
                      
-                     // Play Silence (Για να μην κλείσει το Webview)
+                     // 4. AUDIO KEEP-ALIVE
                      this.ensureAudioPlaying();
-
-                     // Αν είμαστε στο Fully, του λέμε "ΞΥΠΝΑ"
-                     if (typeof fully !== 'undefined') {
-                         fully.turnScreenOn();
-                     }
                 }, 10000);
             },
 
-            // Αυτή η συνάρτηση καλείται ΑΠΕΥΘΕΙΑΣ από το Fully Kiosk (Hardware Buttons)
             handleButtonPress: function() {
                 if (this.isRinging) {
-                    console.log("🔘 Hardware Button: Stopping Alarm!");
                     this.stopPanicMode();
-                } else {
-                    console.log("🔘 Hardware Button Pressed (No Alarm)");
                 }
             },
 
             ensureAudioPlaying: function() {
                 const silence = document.getElementById('silence');
-                if (silence && silence.paused) { 
-                    silence.play().catch(e => {}); 
-                }
+                if (silence && silence.paused) { silence.play().catch(e => {}); }
             },
 
             triggerPanicMode: function() {
@@ -175,18 +162,16 @@
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
 
-                // 1. Ήχος
                 const audio = document.getElementById('siren');
                 if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
 
-                // 2. Οθόνη
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
-                // 3. Fully Wake Up
+                // 🔥 ΕΔΩ ΑΝΑΒΟΥΜΕ ΤΗΝ ΟΘΟΝΗ (ΜΟΝΟ ΣΤΟΝ ΣΥΝΑΓΕΡΜΟ) 🔥
                 if (typeof fully !== 'undefined') {
                     fully.turnScreenOn();
                     fully.bringToForeground();
-                    fully.setScreenBrightness(255); // Τέρμα φωτεινότητα
+                    fully.setScreenBrightness(255);
                 }
 
                 this.panicInterval = setInterval(() => {
@@ -209,16 +194,18 @@
             }
         };
 
-        // --- LOGIC ---
         const Logic = {
             socket: null,
-            
             login: function(store, name, role, pass) {
                 if(typeof io === 'undefined') return alert("Socket.io error");
                 socket = io();
                 this.socket = socket;
-
-                socket.on('connect', () => { console.log("✅ Connected"); });
+                
+                // Διόρθωση: Ενημέρωση του STATUS LAMPAKI αμέσως!
+                socket.on('connect', () => { 
+                    console.log("✅ Connected"); 
+                    document.getElementById('connStatus').style.background = '#00E676';
+                });
                 socket.on('disconnect', () => { 
                     console.log("❌ Disconnected"); 
                     document.getElementById('connStatus').style.background = 'red';
@@ -230,18 +217,15 @@
                 socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
                 socket.on('chat-message', (data) => { this.renderChat(data); });
 
-                socket.emit('join-store', { storeName: store, username: name, role: role, fcmToken: 'WEB' });
+                // 🔥 Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ: ΠΡΟΣΘΕΣΑ ΤΟ PASS! 🔥
+                // Πριν έλειπε το 'pass: pass', γι' αυτό σε απέρριπτε ο Server
+                socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 
                 Watchdog.start();
             },
-
-            logout: function() {
-                if(this.socket) this.socket.disconnect();
-                location.reload();
-            },
-
+            logout: function() { if(this.socket) this.socket.disconnect(); location.reload(); },
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
                 const txt = inp.value.trim();
@@ -249,7 +233,6 @@
                 this.socket.emit('chat-message', { text: txt });
                 inp.value = '';
             },
-
             renderChat: function(data) {
                 const div = document.getElementById('chat-messages');
                 const msgDiv = document.createElement('div');
@@ -258,7 +241,6 @@
                 div.appendChild(msgDiv);
                 div.scrollTop = div.scrollHeight;
             },
-
             renderStaffList: function(list) {
                 const div = document.getElementById('staffListContainer');
                 div.innerHTML = '';
@@ -270,9 +252,7 @@
                 });
             }
         };
-    </script>
-    
-    <script>
+
         let selectedRole = '';
         function nextStep(n, role) {
             if(role) selectedRole = role;
