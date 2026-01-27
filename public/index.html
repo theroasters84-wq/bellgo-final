@@ -276,12 +276,12 @@
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
+                    localStorage.removeItem('bellgo_user'); // <--- ΕΔΩ Η ΔΙΟΡΘΩΣΗ ΓΙΑ ΤΟ EXIT
                     socket.emit('logout-user'); 
                     location.reload(); 
                 }
             },
 
-            // 🔥 CHAT FIX: Χρήση 'chat-message' αντί για 'send-chat'
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
                 const text = inp.value.trim();
@@ -362,7 +362,6 @@
             }
         });
 
-        // 🔥 CHAT FIX: Ακούμε 'chat-message' αντί για 'new-chat'
         socket.on('chat-message', (data) => {
             const chatBox = document.getElementById('chat-messages');
             if(chatBox) {
