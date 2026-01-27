@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BellGo">
@@ -73,8 +74,8 @@
         <button class="stop-btn">STOP</button>
     </div>
 
-    <audio id="siren" src="../alert.mp3" preload="auto" playsinline></audio>
-    <audio id="silence" loop playsinline><source src="../silence.mp3" type="audio/mpeg"></audio>
+    <audio id="siren" src="/alert.mp3" preload="auto" playsinline></audio>
+    <audio id="silence" loop playsinline><source src="/silence.mp3" type="audio/mpeg"></audio>
 
     <script>
         // --- 1. FIREBASE SETUP ---
@@ -110,7 +111,7 @@
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
-                    const registration = await navigator.serviceWorker.register('../firebase-messaging-sw.js');
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
                     
                     if (token) {
@@ -126,10 +127,8 @@
             }
         }
 
-        // FOREGROUND MESSAGE (ΤΟ ΠΡΟΒΛΗΜΑ ΛΥΝΕΤΑΙ ΕΔΩ)
         messaging.onMessage((payload) => {
             console.log('🔥 Foreground Message:', payload);
-            // Καλεί τον Συναγερμό ΑΜΕΣΩΣ
             Watchdog.triggerPanicMode();
         });
 
@@ -183,28 +182,31 @@
 
                 Logic.updateMediaSession('alarm');
 
-                // Εμφάνιση Κόκκινης Οθόνης
+                // Ανοιγμα Κόκκινης Οθόνης
                 document.getElementById('alarmScreen').style.display = 'flex';
 
-                // FORCE AUDIO PLAY (Με Promise handling για iOS)
+                // ΉΧΟΣ: Προσπάθεια αναπαραγωγής
                 const audio = document.getElementById('siren');
                 if (audio) { 
                     audio.currentTime = 0; 
                     audio.loop = true; 
-                    var playPromise = audio.play();
                     
+                    var playPromise = audio.play();
                     if (playPromise !== undefined) {
                         playPromise.then(_ => {
                             console.log("🔊 Siren playing successfully");
                         })
                         .catch(error => {
                             console.log("❌ Siren Auto-play blocked:", error);
-                            // Αν μπλοκαριστεί, δοκιμάζουμε να παίξουμε έστω το silence μήπως ξεκολλήσει
+                            // Fallback: Παίξε το silence αν μπλοκαριστεί το δυνατό
                             const silence = document.getElementById('silence');
                             if(silence) silence.play();
                         });
                     }
                 }
+                
+                // ΔΟΝΗΣΗ: (Δεν δουλεύει σε Safari, αλλά το αφήνουμε για Chrome on iOS)
+                if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
             },
 
             stopPanicMode: function() {
