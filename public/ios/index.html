@@ -16,47 +16,14 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <style>
-        /* ΒΑΣΙΚΟ ΣΤΗΣΙΜΟ */
-        body { 
-            background-color: #000; 
-            color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            text-align: center; 
-            margin: 0; 
-            height: 100dvh; 
-            width: 100vw; 
-            overflow: hidden; 
-            display: flex; 
-            flex-direction: column; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-
-        /* ΚΡΥΒΟΥΜΕ ΤΙΣ ΟΘΟΝΕΣ - ΤΟ ΠΙΟ ΣΗΜΑΝΤΙΚΟ */
-        .screen { 
-            display: none; 
-            width: 100%; 
-            height: 100%; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-        }
-        .active { 
-            display: flex !important; 
-        }
-
-        /* FORM STYLES */
-        input { 
-            background: #1c1c1e; border: 1px solid #333; color: white; 
-            padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; 
-            margin: 10px 0; text-align: center; -webkit-appearance: none; 
-        }
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .active { display: flex !important; }
+        
+        input { background: #1c1c1e; border: 1px solid #333; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; margin: 10px 0; text-align: center; -webkit-appearance: none; }
         input:focus { border-color: #34C759; outline: none; }
 
-        button { 
-            padding: 15px; font-size: 18px; margin: 5px; border-radius: 12px; 
-            border: none; font-weight: bold; cursor: pointer; color: white; 
-            width: 85%; transition: 0.1s; -webkit-appearance: none; 
-        }
+        button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; -webkit-appearance: none; }
         button:active { transform: scale(0.96); opacity: 0.8; }
 
         .btn-green { background: #34C759; color: white; }
@@ -64,7 +31,6 @@
         .btn-orange { background: #FF9500; color: white; }
         .btn-red { background: #FF3B30; color: white; width: 50px; height: 100%; padding: 0; font-size: 20px; }
 
-        /* APP LAYOUT */
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
         #mainApp.active { display: flex !important; }
 
@@ -75,7 +41,6 @@
         .driver { background: #FF9500; border-left: 5px solid #FFD60A; }
         .waiter { background: #007AFF; border-left: 5px solid #64D2FF; }
 
-        /* CHAT */
         .chat-panel { flex: 1; display: flex; flex-direction: column; background: #121212; height: 100%; width: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; -webkit-overflow-scrolling: touch; }
         .chat-input-area { height: 70px; display: flex; padding: 5px; background: #1c1c1e; flex-shrink: 0; border-top: 1px solid #333; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
@@ -86,15 +51,12 @@
         .msg.self { background: #007AFF; text-align: right; }
         .msg span.name { font-size: 10px; color: #8e8e93; display: block; margin-bottom: 2px; }
 
-        /* ALARM */
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FF3B30; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; cursor: pointer; }
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: #FF3B30; font-size: 40px; font-weight: 900; border: none; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); animation: pulse 0.8s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
 
-        /* iOS INSTALL POPUP */
         #iosInstallPopup { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1c1c1e; border-top: 1px solid #333; padding: 20px; z-index: 6000; text-align: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
         #iosInstallPopup h3 { margin: 0 0 10px 0; color: #34C759; }
         #iosInstallPopup p { font-size: 14px; color: #ccc; margin: 0; }
@@ -130,7 +92,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
     </div>
 
     <div id="mainApp">
@@ -162,7 +124,26 @@
     <audio id="silence" loop><source src="../silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. IOS CHECKER ---
+        // --- 1. FIREBASE SETUP (ΜΕ ΤΑ ΔΙΚΑ ΣΟΥ ΚΛΕΙΔΙΑ) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
+            authDomain: "bellgo-5dbe5.firebaseapp.com",
+            projectId: "bellgo-5dbe5",
+            storageBucket: "bellgo-5dbe5.firebasestorage.app",
+            messagingSenderId: "799314495253",
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+            measurementId: "G-379ETZJP8H"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+
+        // --- 2. GLOBAL VARS ---
+        const socket = io();
+        let currentUser = null;
+        let myToken = null; 
+
+        // --- 3. IOS CHECKER ---
         const IOSBot = {
             check: function() {
                 const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
@@ -170,12 +151,44 @@
             }
         };
 
-        // --- 2. GLOBAL VARS ---
-        const socket = io();
-        let currentUser = null;
-        let myToken = null; 
+        // --- 4. FIREBASE INIT (GET TOKEN) ---
+        async function initFirebase() {
+            try {
+                // Ζητάμε άδεια
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                    
+                    // Εγγραφή Service Worker (ΠΡΕΠΕΙ να είναι στο root public folder)
+                    const registration = await navigator.serviceWorker.register('../firebase-messaging-sw.js');
+                    
+                    // Παίρνουμε το Token (ΠΡΟΣΟΧΗ: Θέλει το VAPID Key σου εδώ, αν το έχεις ορίσει στο Console)
+                    // Αν δεν έχεις ορίσει VAPID, δοκίμασε χωρίς παραμέτρους
+                    const token = await messaging.getToken({ serviceWorkerRegistration: registration });
+                    
+                    if (token) {
+                        console.log('FCM Token:', token);
+                        myToken = token;
+                        // Αν είμαστε ήδη μέσα, ενημερώνουμε τον server
+                        if(currentUser) {
+                            socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
+                        }
+                    } else {
+                        console.log('No registration token available.');
+                    }
+                }
+            } catch (err) {
+                console.log('Firebase Error:', err);
+            }
+        }
 
-        // --- 3. WATCHDOG (IOS EDITION) ---
+        // FOREGROUND MESSAGE HANDLER (Όταν είναι ανοιχτό)
+        messaging.onMessage((payload) => {
+            console.log('Foreground Message:', payload);
+            Watchdog.triggerPanicMode();
+        });
+
+        // --- 5. WATCHDOG (IOS EDITION) ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -186,7 +199,6 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // A. Lock Screen (Power Button) -> STOP
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         this.buttonAck(); 
@@ -197,7 +209,6 @@
                     }
                 });
 
-                // B. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -209,13 +220,12 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // C. Anti-Sleep Audio Refresh
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     const silence = document.getElementById('silence');
                     if(silence) {
                         silence.pause(); silence.currentTime = 0;
-                        silence.play().catch(e => console.log("Audio Wake Fail"));
+                        silence.play().catch(e => {});
                     }
                 }, 300000); 
             },
@@ -224,12 +234,9 @@
                 if (this.isRinging) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
-
                 Logic.updateMediaSession('alarm');
-
                 const audio = document.getElementById('siren');
                 if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
-                
                 document.getElementById('alarmScreen').style.display = 'flex';
             },
 
@@ -256,7 +263,7 @@
             }
         };
 
-        // --- 4. LOGIC CONTROLLER ---
+        // --- 6. LOGIC CONTROLLER ---
         const Logic = {
             login: function(store, name, role, pass) {
                 this.updateMediaSession('active'); 
@@ -264,9 +271,7 @@
                 Watchdog.start();
                 currentUser = { store, name, role, pass };
                 
-                // 🔥 Στέλνουμε 'IOS-WEB' και 'deviceType: iOS'
-                // Αν βάλεις Firebase script, εδώ θα μπει το token
-                const tokenToSend = myToken || 'IOS-WEB'; 
+                const tokenToSend = myToken || 'IOS-NO-TOKEN'; 
 
                 socket.emit('join-store', { 
                     storeName: store, 
@@ -274,7 +279,7 @@
                     role: role, 
                     pass: pass, 
                     fcmToken: tokenToSend,
-                    deviceType: 'iOS' // <-- ΚΛΕΙΔΙ ΓΙΑ ΤΟ WAKE UP
+                    deviceType: 'iOS' // <-- ΚΛΕΙΔΙ ΓΙΑ WAKE UP
                 });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
@@ -283,7 +288,7 @@
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
-                    localStorage.removeItem('bellgo_user'); // ✅ CLEAN EXIT
+                    localStorage.removeItem('bellgo_user'); 
                     socket.emit('logout-user'); 
                     location.reload(); 
                 }
@@ -293,7 +298,7 @@
                 const inp = document.getElementById('chatInput');
                 const text = inp.value.trim();
                 if (!text || !currentUser) return;
-                socket.emit('chat-message', { text: text }); // ✅ CHAT FIX
+                socket.emit('chat-message', { text: text });
                 inp.value = '';
             },
 
@@ -328,7 +333,7 @@
             }
         };
 
-        // --- 5. SOCKET LISTENERS ---
+        // --- 7. SOCKET LISTENERS ---
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -382,8 +387,15 @@
 
         socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
+        
+        // Ακούμε τον παλμό από τον Server (Keep Alive)
+        socket.on('keep-alive-pulse', () => {
+            console.log("💓 Keep Alive Pulse");
+            Watchdog.ensureAudioPlaying();
+            if (!socket.connected) socket.connect();
+        });
 
-        // --- 6. UI HELPERS ---
+        // --- 8. UI HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -407,9 +419,8 @@
             if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
             else document.getElementById('listsPanel').style.display = 'block';
             
-            if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-                Notification.requestPermission();
-            }
+            // Ξεκινάμε το Firebase για να πάρουμε Token
+            initFirebase();
 
             Logic.login(store, name, role, pass);
         }
