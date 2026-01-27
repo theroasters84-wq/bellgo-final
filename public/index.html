@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Test Unified</title>
+    <title>BellGo Unified (Anti-Sleep)</title>
     
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -125,8 +125,7 @@
             },
             run: function() {
                 if (typeof fully !== 'undefined') {
-                    fully.showToast("🤖 Ρυθμίσεις Ασφαλείας (Xiaomi Safe)...");
-                    // Βασικές ρυθμίσεις ΜΟΝΟ - Χωρίς επικίνδυνα Overlays
+                    fully.showToast("🤖 Ρυθμίσεις Ασφαλείας...");
                     fully.setBooleanSetting("keepScreenOn", true);
                     fully.setBooleanSetting("unlockScreen", true);
                     fully.setBooleanSetting("preventSleep", true);
@@ -144,14 +143,15 @@
         let isFully = typeof fully !== 'undefined';
         let currentUser = null;
 
-        // --- 3. WATCHDOG (SAFE MODE - NO FOREGROUND) ---
+        // --- 3. WATCHDOG + ANTI-SLEEP ---
         const Watchdog = {
             interval: null,
+            antiSleepInterval: null,
             panicInterval: null,
             isRinging: false,
 
             start: function() {
-                console.log("🛡️ Watchdog: Active (Safe Mode)");
+                console.log("🛡️ Watchdog: Active (With Anti-Sleep)");
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
@@ -161,7 +161,7 @@
                     fully.setBooleanSetting("keepScreenOn", true);
                 }
 
-                // A. Lock Screen = ACCEPT (Αν σβήσει η οθόνη -> Stop)
+                // A. Lock Screen = ACCEPT
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         console.log("🌑 Screen Locked -> Stopping Alarm");
@@ -177,7 +177,7 @@
                     }
                 });
 
-                // C. Heartbeat Loop
+                // C. Heartbeat Loop (10 δευτερόλεπτα)
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -188,6 +188,25 @@
                      }
                      this.ensureAudioPlaying();
                 }, 10000);
+
+                // 🔥 D. ANTI-SLEEP PULSE (Κάθε 15 Λεπτά) 🔥
+                // Αυτό είναι το "Bim" που ζήτησες - ένα ψεύτικο ξύπνημα
+                if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
+                this.antiSleepInterval = setInterval(() => {
+                    console.log("⏰ ANTI-SLEEP: Waking up System...");
+                    
+                    // 1. Refresh Audio (Σταματάει και ξαναξεκινάει τη σιωπή)
+                    const silence = document.getElementById('silence');
+                    if(silence) {
+                        silence.pause();
+                        silence.currentTime = 0;
+                        silence.play().catch(e => console.log("Audio Wake Fail"));
+                    }
+
+                    // 2. Reconnect Socket αν έχει κοιμηθεί
+                    if (!socket.connected) socket.connect();
+
+                }, 900000); // 900000 ms = 15 Λεπτά
             },
 
             triggerPanicMode: function() {
@@ -202,7 +221,6 @@
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
-                // SAFE: Μόνο TurnOn, ΟΧΙ Foreground για Xiaomi
                 if (isFully) fully.turnScreenOn();
                 
                 this.panicInterval = setInterval(() => {
