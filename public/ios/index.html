@@ -14,59 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
-    <style>
-        /* iOS SPECIFIC TWEAKS */
-        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
-        
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
-        .active { display: flex !important; }
-        
-        input { background: #1c1c1e; border: 1px solid #333; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; margin: 10px 0; text-align: center; -webkit-appearance: none; }
-        input:focus { border-color: #00E676; outline: none; }
-
-        button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; -webkit-appearance: none; }
-        button:active { transform: scale(0.96); opacity: 0.8; }
-
-        .btn-green { background: #34C759; color: white; }
-        .btn-blue { background: #007AFF; }
-        .btn-orange { background: #FF9500; color: white; }
-        .btn-red { background: #FF3B30; color: white; width: 50px; height: 100%; padding: 0; font-size: 20px; }
-
-        #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
-        #mainApp.active { display: flex !important; }
-
-        .header { height: 50px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; padding-top: env(safe-area-inset-top); }
-        .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
-        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #333; padding: 5px; background: #000; -webkit-overflow-scrolling: touch; }
-        .btn-staff { width: 98%; height: 60px; font-size: 20px; margin-bottom: 10px; display: block; }
-        .driver { background: #FF9500; border-left: 5px solid #FFD60A; }
-        .waiter { background: #007AFF; border-left: 5px solid #64D2FF; }
-
-        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #121212; height: 100%; width: 100%; }
-        #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; -webkit-overflow-scrolling: touch; }
-        .chat-input-area { height: 70px; display: flex; padding: 5px; background: #1c1c1e; flex-shrink: 0; border-top: 1px solid #333; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-        #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 10px; height: 50px; }
-        #sendBtn { width: 25%; margin: 0 0 0 5px; background: #34C759; color: white; height: 50px; }
-        
-        .msg { padding: 8px; margin-bottom: 5px; border-radius: 12px; background: #2c2c2e; font-size: 16px; word-wrap: break-word; }
-        .msg.admin { background: #FF3B30; color: #FFFF00; font-size: 24px; font-weight: 900; text-transform: uppercase; text-align: center; border: 2px solid yellow; }
-        .msg.self { background: #007AFF; text-align: right; }
-        .msg span.name { font-size: 10px; color: #8e8e93; display: block; margin-bottom: 2px; }
-
-        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FF3B30; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; cursor: pointer; }
-        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
-        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: #FF3B30; font-size: 40px; font-weight: 900; border: none; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); animation: pulse 0.8s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        
-        #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
-
-        /* iOS INSTALL GUIDE */
-        #iosInstallPopup { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1c1c1e; border-top: 1px solid #333; padding: 20px; z-index: 6000; text-align: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
-        #iosInstallPopup h3 { margin: 0 0 10px 0; color: #34C759; }
-        #iosInstallPopup p { font-size: 14px; color: #ccc; margin: 0; }
-        .ios-icon { font-size: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
-
-    </style>
+    <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
 
@@ -132,11 +80,8 @@
         // --- 1. IOS CHECKER ---
         const IOSBot = {
             check: function() {
-                // Ελέγχει αν το App τρέχει σε "Standalone" mode (σαν εφαρμογή)
                 const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
-                
                 if (!isStandalone) {
-                    // Αν είναι στον Safari, δείξε οδηγίες εγκατάστασης
                     document.getElementById('iosInstallPopup').style.display = 'block';
                 }
             }
@@ -147,7 +92,6 @@
         let currentUser = null;
 
         // --- 3. WATCHDOG (IOS EDITION) ---
-        // Στο iOS δεν έχουμε Fully Kiosk. Έχουμε μόνο AUDIO και MEDIA SESSION.
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -158,7 +102,20 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // C. Heartbeat Loop (10 δευτερόλεπτα)
+                // A. Lock Screen (Power Button) -> STOP
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'hidden' && this.isRinging) {
+                        console.log("🌑 Screen Locked -> Stopping Alarm (Ack)");
+                        this.buttonAck(); 
+                    }
+                    // Κάθε φορά που ανοίγει η οθόνη, ξανα-ενεργοποίησε τον ήχο
+                    if (document.visibilityState === 'visible') {
+                        this.ensureAudioPlaying();
+                        if (!socket.connected) socket.connect();
+                    }
+                });
+
+                // B. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -167,11 +124,10 @@
                      } else {
                          document.getElementById('connStatus').style.background = 'red';
                      }
-                     // Στο iOS, αυτό είναι το ΜΟΝΟ που μας κρατάει ζωντανούς
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // 🔥 D. ANTI-SLEEP PULSE (Κάθε 15 Λεπτά) 🔥
+                // C. Anti-Sleep Audio Refresh (Κάθε 5 λεπτά για iOS)
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     console.log("⏰ ANTI-SLEEP: iOS Audio Refresh");
@@ -181,8 +137,7 @@
                         silence.currentTime = 0;
                         silence.play().catch(e => console.log("Audio Wake Fail"));
                     }
-                    if (!socket.connected) socket.connect();
-                }, 900000); 
+                }, 300000); // 5 λεπτά
             },
 
             triggerPanicMode: function() {
@@ -196,9 +151,6 @@
                 if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
-                
-                // Στο iOS δεν μπορούμε να ανοίξουμε οθόνη ή να δονήσουμε.
-                // Βασιζόμαστε στον ήχο και στο Notification (Firebase) που θα έρθει σε 1 λεπτό.
             },
 
             stopPanicMode: function() {
@@ -234,7 +186,7 @@
                 Watchdog.start();
                 currentUser = { store, name, role, pass };
                 
-                // Δηλώνουμε ότι είμαστε IOS
+                // Στέλνουμε 'IOS-WEB' για να ξέρει ο server να στείλει Push αμέσως
                 socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'IOS-WEB' });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
@@ -243,6 +195,7 @@
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
+                    localStorage.removeItem('bellgo_user'); // ✅ FIXED: Logout καθαρίζει τη μνήμη
                     socket.emit('logout-user'); 
                     location.reload(); 
                 }
@@ -252,11 +205,10 @@
                 const inp = document.getElementById('chatInput');
                 const text = inp.value.trim();
                 if (!text || !currentUser) return;
-                socket.emit('send-chat', { store: currentUser.store, user: currentUser.name, role: currentUser.role, text: text });
+                socket.emit('chat-message', { text: text });
                 inp.value = '';
             },
 
-            // ΤΟ ΠΙΟ ΣΗΜΑΝΤΙΚΟ ΓΙΑ IOS: LOCK SCREEN CONTROLS
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
@@ -329,12 +281,12 @@
             }
         });
 
-        socket.on('new-chat', (data) => {
+        socket.on('chat-message', (data) => {
             const chatBox = document.getElementById('chat-messages');
             if(chatBox) {
                 const div = document.createElement('div');
-                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.user === currentUser?.name ? 'self' : ''}`;
-                div.innerHTML = `<span class="name">${data.user}</span>${data.text}`;
+                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.sender === currentUser?.name ? 'self' : ''}`;
+                div.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
                 chatBox.appendChild(div);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
@@ -373,7 +325,7 @@
         function fullExit() { Logic.logout(); }
 
         window.onload = function() {
-            IOSBot.check(); // Έλεγχος αν έχει εγκατασταθεί
+            IOSBot.check();
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
