@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
         updateStore(cleanStore);
     });
 
-    // 2. UPDATE TOKEN (ΣΗΜΑΝΤΙΚΟ ΓΙΑ ΝΑ ΠΑΡΟΥΜΕ ΤΟ SW TOKEN)
+    // 2. UPDATE TOKEN
     socket.on('update-token', (data) => {
         const userKey = `${data.store}_${data.user}`;
         if (activeUsers[userKey]) {
@@ -113,7 +113,6 @@ io.on('connection', (socket) => {
             console.log(`🔔 Κλήση προς ${target.username}...`);
             io.to(target.socketId).emit('kitchen-alarm'); 
 
-            // Αν είναι iOS ή έχει Token, στέλνουμε Notification ΑΜΕΣΩΣ
             if (target.fcmToken && target.fcmToken.length > 20) {
                 console.log(`📲 Sending IMMEDIATE Notification to ${target.username}`);
                 sendPushNotification(target.fcmToken);
@@ -141,7 +140,18 @@ io.on('connection', (socket) => {
             io.to(user.store).emit('alarm-receipt', { name: user.username });
         }
     });
-});
+
+    // 🔥 8. IOS INITIAL WAKE UP (ΝΕΟ - FORCE UNLOCK) 🔥
+    socket.on('ios-login', () => {
+        console.log(`🍏 iOS Device Logged In: Sending Test Alarm to unlock Audio...`);
+        // Στέλνουμε πίσω εντολή για Test Alarm σε 1.5 δευτερόλεπτο
+        // (Δίνουμε λίγο χρόνο να φορτώσει το UI)
+        setTimeout(() => {
+            socket.emit('test-alarm');
+        }, 1500);
+    });
+
+}); // Τέλος connection
 
 // CLEANUP LOOP (Κάθε 30 δευτ.)
 setInterval(() => {
@@ -157,12 +167,11 @@ setInterval(() => {
     storesToUpdate.forEach(store => updateStore(store));
 }, 30000);
 
-// 🔥 KEEP ALIVE PULSE (Κάθε 10 Λεπτά) 🔥
-// Στέλνει ένα αθόρυβο σήμα σε ΟΛΟΥΣ για να κρατάει ανοιχτή τη σύνδεση
+// KEEP ALIVE PULSE (Κάθε 10 Λεπτά)
 setInterval(() => {
     console.log("💓 Sending Keep-Alive Pulse to all clients...");
     io.emit('keep-alive-pulse'); 
-}, 600000); // 600000 ms = 10 λεπτά
+}, 600000); 
 
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
