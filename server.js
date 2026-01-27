@@ -55,7 +55,7 @@ io.on('connection', (socket) => {
             role: data.role,
             store: cleanStore,
             fcmToken: data.fcmToken || existingToken, 
-            deviceType: data.deviceType || 'Unknown', // 🔥 ΚΡΑΤΑΜΕ ΤΟΝ ΤΥΠΟ ΣΥΣΚΕΥΗΣ
+            deviceType: data.deviceType || 'Unknown', // 🔥 Κρατάμε τι συσκευή είναι
             lastSeen: Date.now(),
             alarmTimeout: null 
         };
@@ -64,19 +64,13 @@ io.on('connection', (socket) => {
         updateStore(cleanStore);
     });
 
-    // 2. UPDATE TOKEN
-    socket.on('update-token', (data) => {
-        const userKey = `${data.store}_${data.user}`;
-        if (activeUsers[userKey]) activeUsers[userKey].fcmToken = data.token;
-    });
-
-    // 3. HEARTBEAT
+    // 2. HEARTBEAT
     socket.on('heartbeat', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) activeUsers[userKey].lastSeen = Date.now();
     });
 
-    // 4. LOGOUT
+    // 3. LOGOUT
     socket.on('logout-user', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) {
@@ -87,7 +81,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. CHAT
+    // 4. CHAT
     socket.on('chat-message', (data) => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) {
@@ -101,13 +95,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 6. ALARM
+    // 5. ALARM (Γενικό)
     socket.on('kitchen-alarm', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) io.to(activeUsers[senderKey].store).emit('kitchen-alarm');
     });
 
-    // 🔥 7. TRIGGER ALARM (ΜΕ ΕΛΕΓΧΟ ΓΙΑ IOS) 🔥
+    // 🔥 6. TRIGGER ALARM (ΜΕ ΕΛΕΓΧΟ IOS) 🔥
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -116,34 +110,37 @@ io.on('connection', (socket) => {
         const target = activeUsers[targetKey];
 
         if (target) {
-            console.log(`🔔 Ringing ${target.username} (Socket)...`);
+            console.log(`🔔 Κλήση προς ${target.username}...`);
             
-            // Α. Στέλνουμε Socket (Ήχος)
+            // A. Στέλνουμε Socket (Ήχος άμεσος αν είναι ανοιχτό)
             io.to(target.socketId).emit('kitchen-alarm'); 
 
-            // 🔥 Β. ΜΟΝΟ ΑΝ ΕΙΝΑΙ IOS -> Στέλνουμε Notification ΑΜΕΣΩΣ 🔥
+            // B. 🔥 ΕΛΕΓΧΟΣ IOS: Στέλνουμε Notification ΑΜΕΣΩΣ 🔥
+            // Αν είναι iOS και έχει Token, στείλε ΤΩΡΑ για να ξυπνήσει
             if (target.deviceType === 'iOS' && target.fcmToken && target.fcmToken.length > 20) {
-                console.log(`🍏 iOS Detected: Sending IMMEDIATE Wake-Up Notification to ${target.username}`);
+                console.log(`🍏 iOS Detected: Sending WAKE-UP Notification NOW.`);
                 sendPushNotification(target.fcmToken);
             }
 
-            // Γ. Καθαρισμός & Έναρξη Χρονομέτρου (Backup Reminder 1 Λεπτού)
+            // Γ. Καθαρίζουμε παλιό χρονόμετρο
             if (target.alarmTimeout) clearTimeout(target.alarmTimeout);
 
+            // Δ. Ξεκινάμε χρονόμετρο 1 λεπτού (Για υπενθύμιση ή για Android)
             target.alarmTimeout = setTimeout(() => {
-                console.log(`⚠️ 1 Minute Passed. Backup Notification to ${target.username}...`);
+                console.log(`⚠️ Πέρασε 1 λεπτό. Στέλνω (Backup) Notification...`);
+                // Αν δεν είναι iOS (ή αν είναι iOS και δεν το είδε), ξαναστείλε
                 if (target.fcmToken) sendPushNotification(target.fcmToken);
                 target.alarmTimeout = null; 
             }, ESCALATION_DELAY); 
         }
     });
 
-    // 8. ALARM ACK
+    // 7. ALARM ACK
     socket.on('alarm-ack', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) {
             const user = activeUsers[senderKey];
-            console.log(`✅ ${user.username} acknowledged! Canceling Timer.`);
+            console.log(`✅ ${user.username} το είδε! Ακυρώνω το χρονόμετρο.`);
             
             if (user.alarmTimeout) {
                 clearTimeout(user.alarmTimeout);
@@ -155,6 +152,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// CLEANUP
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
@@ -176,10 +174,9 @@ function updateStore(storeName) {
 
 function sendPushNotification(token) {
     if(!token || token.length < 20) return; 
-    
     const message = {
         token: token,
-        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Άνοιξε την εφαρμογή ΤΩΡΑ!" },
+        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Τρέξε!" },
         android: { priority: "high", notification: { sound: "default", clickAction: "FLUTTER_NOTIFICATION_CLICK" } },
         apns: { payload: { aps: { sound: "default", "content-available": 1 } } },
         data: { url: "/", action: "alarm" }
