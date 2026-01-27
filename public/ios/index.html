@@ -71,7 +71,7 @@
 
     <div id="alarmScreen" onclick="Watchdog.buttonAck()">
         <h1 id="alarmTitle" style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
-        <p id="alarmSub" style="color:yellow; font-size: 20px; font-weight:bold; display:none;">ΠΑΤΑ STOP ΓΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ</p>
+        <p id="alarmSub" style="color:yellow; font-size: 20px; font-weight:bold; display:none; margin-top:10px;">ΠΑΤΑ STOP ΓΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ</p>
         <button class="stop-btn">STOP</button>
     </div>
 
@@ -97,7 +97,7 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
-        let hasTestRun = false; // Μετρητής για την πρώτη δοκιμαστική κλήση
+        let hasTestRun = false; // Μετρητής για την πρώτη φορά
 
         // --- 3. IOS CHECKER ---
         const IOSBot = {
@@ -141,7 +141,6 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // A. Lock Screen -> STOP (Αποδοχή)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         this.buttonAck(); 
@@ -152,7 +151,6 @@
                     }
                 });
 
-                // B. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -164,7 +162,6 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // C. Anti-Sleep Audio (5 min)
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     const silence = document.getElementById('silence');
@@ -176,14 +173,15 @@
             },
 
             triggerPanicMode: function(isTest = false) {
-                console.log("🚨 TRIGGER PANIC MODE");
+                console.log("🚨 TRIGGER PANIC MODE (Test: " + isTest + ")");
+                
                 if (this.isRinging) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
 
                 Logic.updateMediaSession('alarm');
 
-                // Αν είναι Test (η πρώτη κλήση), αλλάζουμε το κείμενο
+                // Ρύθμιση Κειμένου (Αν είναι Test)
                 if (isTest) {
                     document.getElementById('alarmTitle').innerText = "🔊 TEST";
                     document.getElementById('alarmSub').style.display = "block";
@@ -192,11 +190,10 @@
                     document.getElementById('alarmSub').style.display = "none";
                 }
 
-                // Προσπάθεια να παίξει ήχο (αν αποτύχει, δεν πειράζει, θα το φτιάξει το STOP)
                 const audio = document.getElementById('siren');
                 if (audio) { 
                     audio.currentTime = 0; audio.loop = true; 
-                    audio.play().catch(e => console.log("Sound Blocked (Expected on Autologin). Press STOP to fix."));
+                    audio.play().catch(e => console.log("Sound Blocked (Normal for Auto-Login). Press STOP."));
                 }
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
@@ -212,7 +209,7 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                // 🔥 FIX ΓΙΑ ΤΗΝ ΜΠΑΡΑ: Παίζουμε αμέσως Silence 🔥
+                // Fix για Μπάρα Ειδοποιήσεων
                 const silence = document.getElementById('silence');
                 if(silence) {
                     silence.currentTime = 0;
@@ -222,11 +219,9 @@
             },
             
             buttonAck: function() {
-                // 🔥 ΤΟ ΜΥΣΤΙΚΟ: Πατώντας STOP ξεκλειδώνουμε τον ήχο για πάντα 🔥
+                // UNLOCK AUDIO ON CLICK
                 const siren = document.getElementById('siren');
                 const silence = document.getElementById('silence');
-                
-                // Παίζουμε και τα δύο στιγμιαία με User Interaction
                 if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
                 if(silence) { silence.play().catch(e=>{}); }
 
@@ -264,15 +259,14 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
 
-                // 🔥 FORCE TEST ALARM ΣΤΗΝ ΕΙΣΟΔΟ 🔥
-                // Αν είναι η πρώτη φορά που μπαίνει (π.χ. reload), ρίχνουμε ψεύτικη κλήση
-                // για να αναγκάσουμε τον χρήστη να πατήσει STOP και να ανοίξει τον ήχο.
+                // 🔥 ΕΔΩ ΕΙΝΑΙ Η ΜΑΓΕΙΑ: Αν είναι η πρώτη φορά, πέτα το TEST ALARM σε 1.5 δευτερόλεπτο 🔥
                 if (!hasTestRun) {
+                    console.log("🕒 Scheduling Test Alarm...");
                     hasTestRun = true;
                     setTimeout(() => {
-                        console.log("🚀 Initial Audio Unlock Sequence");
+                        console.log("🚀 Executing Initial Test Alarm!");
                         Watchdog.triggerPanicMode(true); // true = Test Mode
-                    }, 1000);
+                    }, 1500);
                 }
             },
 
@@ -295,7 +289,6 @@
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
-                        // Ό,τι και να πατήσει στην μπάρα, κάνει STOP/ACK ή κρατάει το Pulse
                         if (Watchdog.isRinging) Watchdog.buttonAck(); 
                         else {
                             Watchdog.ensureAudioPlaying();
@@ -312,8 +305,7 @@
 
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
-                
-                navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING
+                navigator.mediaSession.playbackState = "playing";
                 
                 const isAlarm = state === 'alarm';
                 const artwork = isAlarm
@@ -388,7 +380,6 @@
         
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
         
-        // Listener για το 10-λεπτο pulse από τον Server (το "Bim" που ζήτησες)
         socket.on('keep-alive-pulse', () => {
             console.log("💓 Keep Alive Pulse");
             Watchdog.ensureAudioPlaying();
