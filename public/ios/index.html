@@ -46,7 +46,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Πάτα "Allow" αν ζητηθεί</p>
     </div>
 
     <div id="mainApp">
@@ -70,7 +70,8 @@
     </div>
 
     <div id="alarmScreen" onclick="Watchdog.buttonAck()">
-        <h1 style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <h1 id="alarmTitle" style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <p id="alarmSub" style="color:yellow; font-size: 20px; font-weight:bold; display:none;">ΠΑΤΑ STOP ΓΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ</p>
         <button class="stop-btn">STOP</button>
     </div>
 
@@ -96,6 +97,7 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
+        let hasTestRun = false; // Μετρητής για την πρώτη δοκιμαστική κλήση
 
         // --- 3. IOS CHECKER ---
         const IOSBot = {
@@ -110,7 +112,6 @@
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    console.log('Notification permission granted.');
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
                     if (token) {
@@ -146,7 +147,7 @@
                         this.buttonAck(); 
                     }
                     if (document.visibilityState === 'visible') {
-                        this.ensureAudioPlaying(); // Ξαναπαίζει σιωπή μόλις ανοίξει
+                        this.ensureAudioPlaying();
                         if (!socket.connected) socket.connect();
                     }
                 });
@@ -163,36 +164,42 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // C. Anti-Sleep Audio (Κάθε 5 λεπτά)
+                // C. Anti-Sleep Audio (5 min)
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     const silence = document.getElementById('silence');
                     if(silence) {
                         silence.pause(); silence.currentTime = 0;
-                        silence.play().catch(e => console.log("Audio Wake Fail"));
+                        silence.play().catch(e => {});
                     }
                 }, 300000); 
             },
 
-            triggerPanicMode: function() {
+            triggerPanicMode: function(isTest = false) {
                 console.log("🚨 TRIGGER PANIC MODE");
                 if (this.isRinging) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
 
-                Logic.updateMediaSession('alarm'); // Δείχνει "ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ"
+                Logic.updateMediaSession('alarm');
 
+                // Αν είναι Test (η πρώτη κλήση), αλλάζουμε το κείμενο
+                if (isTest) {
+                    document.getElementById('alarmTitle').innerText = "🔊 TEST";
+                    document.getElementById('alarmSub').style.display = "block";
+                } else {
+                    document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
+                    document.getElementById('alarmSub').style.display = "none";
+                }
+
+                // Προσπάθεια να παίξει ήχο (αν αποτύχει, δεν πειράζει, θα το φτιάξει το STOP)
                 const audio = document.getElementById('siren');
                 if (audio) { 
                     audio.currentTime = 0; audio.loop = true; 
-                    audio.play().catch(e => {
-                        console.log("Siren Blocked, playing silence backup");
-                        document.getElementById('silence').play();
-                    }); 
+                    audio.play().catch(e => console.log("Sound Blocked (Expected on Autologin). Press STOP to fix."));
                 }
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
-                // Δόνηση (αν υποστηρίζεται)
                 if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
             },
 
@@ -205,18 +212,24 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                // 🔥 ΕΔΩ ΕΙΝΑΙ ΤΟ FIX ΓΙΑ ΤΗΝ ΜΠΑΡΑ 🔥
-                // Αντί να το αφήσουμε νεκρό, παίζουμε ΑΜΕΣΩΣ το Silence
-                // και ενημερώνουμε την μπάρα ότι είμαστε Active
+                // 🔥 FIX ΓΙΑ ΤΗΝ ΜΠΑΡΑ: Παίζουμε αμέσως Silence 🔥
                 const silence = document.getElementById('silence');
                 if(silence) {
                     silence.currentTime = 0;
-                    silence.play().catch(e => console.log("Silence restart fail"));
+                    silence.play().catch(e => {});
                 }
-                Logic.updateMediaSession('active'); // Αλλάζει τίτλο σε "BellGo Active"
+                Logic.updateMediaSession('active'); 
             },
             
             buttonAck: function() {
+                // 🔥 ΤΟ ΜΥΣΤΙΚΟ: Πατώντας STOP ξεκλειδώνουμε τον ήχο για πάντα 🔥
+                const siren = document.getElementById('siren');
+                const silence = document.getElementById('silence');
+                
+                // Παίζουμε και τα δύο στιγμιαία με User Interaction
+                if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
+                if(silence) { silence.play().catch(e=>{}); }
+
                 if (this.isRinging) {
                     socket.emit('alarm-ack'); 
                     this.stopPanicMode();
@@ -239,7 +252,6 @@
                 
                 const tokenToSend = myToken || 'IOS-NO-TOKEN'; 
 
-                // Στέλνουμε deviceType: 'iOS' για το άμεσο Notification
                 socket.emit('join-store', { 
                     storeName: store, 
                     username: name, 
@@ -251,6 +263,17 @@
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
+
+                // 🔥 FORCE TEST ALARM ΣΤΗΝ ΕΙΣΟΔΟ 🔥
+                // Αν είναι η πρώτη φορά που μπαίνει (π.χ. reload), ρίχνουμε ψεύτικη κλήση
+                // για να αναγκάσουμε τον χρήστη να πατήσει STOP και να ανοίξει τον ήχο.
+                if (!hasTestRun) {
+                    hasTestRun = true;
+                    setTimeout(() => {
+                        console.log("🚀 Initial Audio Unlock Sequence");
+                        Watchdog.triggerPanicMode(true); // true = Test Mode
+                    }, 1000);
+                }
             },
 
             logout: function() {
@@ -271,13 +294,10 @@
 
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
-                    // Όλα τα κουμπιά κάνουν ΑΠΟΔΟΧΗ (ή κρατάνε το σύστημα ζωντανό)
                     const universalHandler = () => { 
-                        if (Watchdog.isRinging) {
-                            console.log("Media Button -> Stopping Alarm");
-                            Watchdog.buttonAck(); 
-                        } else {
-                            // Αν πατήσει play/pause ενώ είναι σε ηρεμία, απλά παίζουμε σιωπή
+                        // Ό,τι και να πατήσει στην μπάρα, κάνει STOP/ACK ή κρατάει το Pulse
+                        if (Watchdog.isRinging) Watchdog.buttonAck(); 
+                        else {
                             Watchdog.ensureAudioPlaying();
                             Logic.updateMediaSession('active');
                         }
@@ -293,8 +313,7 @@
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
                 
-                // Πάντα 'playing' για να μένει η μπάρα
-                navigator.mediaSession.playbackState = "playing";
+                navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING
                 
                 const isAlarm = state === 'alarm';
                 const artwork = isAlarm
@@ -363,13 +382,13 @@
         });
 
         socket.on('kitchen-alarm', () => { 
-            console.log("⚡ SOCKET ALARM RECEIVED");
+            console.log("⚡ SOCKET ALARM");
             Watchdog.triggerPanicMode(); 
         });
         
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
         
-        // Listener για το 10-λεπτο pulse από τον Server
+        // Listener για το 10-λεπτο pulse από τον Server (το "Bim" που ζήτησες)
         socket.on('keep-alive-pulse', () => {
             console.log("💓 Keep Alive Pulse");
             Watchdog.ensureAudioPlaying();
@@ -384,12 +403,11 @@
         }
 
         function forcePlayAndLogin() {
-            // 🔥 IOS AUDIO UNLOCK 🔥
+            // Προσπάθεια ξεκλειδώματος (αν γίνει με κλικ)
             const siren = document.getElementById('siren');
             const silence = document.getElementById('silence');
-            
-            siren.play().then(() => siren.pause()).catch(e => console.log("Siren unlock fail"));
-            silence.play().catch(e => console.log("Silence unlock fail"));
+            siren.play().then(() => siren.pause()).catch(e=>{});
+            silence.play().catch(e=>{});
 
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
