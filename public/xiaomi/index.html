@@ -115,7 +115,28 @@
     <audio id="silence" loop><source src="silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. SETUP BOT (SAFE FOR XIAOMI) ---
+        // --- 1. FIREBASE SETUP (ΜΕ ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
+            authDomain: "bellgo-5dbe5.firebaseapp.com",
+            projectId: "bellgo-5dbe5",
+            storageBucket: "bellgo-5dbe5.firebasestorage.app",
+            messagingSenderId: "799314495253",
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+            measurementId: "G-379ETZJP8H"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+
+        // --- 2. GLOBAL VARS ---
+        const socket = io();
+        let isFully = typeof fully !== 'undefined';
+        let currentUser = null;
+        let isLoggedIn = false;
+        let myToken = null; 
+
+        // --- 3. SETUP BOT (SAFE FOR XIAOMI) ---
         const SetupBot = {
             checkConfig: function() {
                 if (typeof fully === 'undefined') return;
@@ -129,28 +150,54 @@
             run: function() {
                 if (typeof fully !== 'undefined') {
                     fully.showToast("🤖 Ρυθμίσεις Safe Mode (Xiaomi)...");
-                    
-                    // ΜΟΝΟ ΑΣΦΑΛΕΙΣ ΡΥΘΜΙΣΕΙΣ (ΧΩΡΙΣ Overlay)
                     fully.setBooleanSetting("keepScreenOn", true);
                     fully.setBooleanSetting("unlockScreen", true);
                     fully.setBooleanSetting("preventSleep", true);
                     fully.setBooleanSetting("wifiWakeLock", true);
                     fully.setBooleanSetting("forceWifi", true);
                     fully.setBooleanSetting("listenVolumeButtons", true);
-                    
+                    // ΔΕΝ ΚΑΛΟΥΜΕ requestOverlayPermission γιατί κολλάει τα Xiaomi
                     fully.showToast("✅ Έτοιμο!");
                     setTimeout(() => { document.getElementById('setupBotBtn').style.display='none'; }, 1000);
                 }
             }
         };
 
-        // --- 2. GLOBAL VARS ---
-        const socket = io();
-        let isFully = typeof fully !== 'undefined';
-        let currentUser = null;
-        let isLoggedIn = false; // 🔥 Ελέγχουμε αν είναι μέσα
+        // --- 4. FIREBASE INIT (GET TOKEN) ---
+        async function initFirebase() {
+            try {
+                // Ζητάμε άδεια για ειδοποιήσεις
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                    
+                    // Εγγραφή Service Worker
+                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                    
+                    const token = await messaging.getToken({ serviceWorkerRegistration: registration });
+                    
+                    if (token) {
+                        console.log('FCM Token:', token);
+                        myToken = token;
+                        if(currentUser) {
+                            socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
+                        }
+                    } else {
+                        console.log('No registration token available.');
+                    }
+                }
+            } catch (err) {
+                console.log('Firebase Error:', err);
+            }
+        }
 
-        // --- 3. WATCHDOG (SAFE MODE) ---
+        // Αν το έχουμε ανοιχτό και έρθει μήνυμα
+        messaging.onMessage((payload) => {
+            console.log('Foreground Message:', payload);
+            Watchdog.triggerPanicMode();
+        });
+
+        // --- 5. WATCHDOG (SAFE MODE) ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -168,42 +215,34 @@
                     fully.setBooleanSetting("keepScreenOn", true);
                 }
 
-                // A. Lock Screen = ACCEPT (Safe)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
-                        console.log("🌑 Screen Locked -> Stopping Alarm");
                         this.buttonAck();
                     }
                 });
 
-                // B. Volume Buttons = ACCEPT
                 document.addEventListener('keydown', (e) => {
                     if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
-                        console.log("🔊 Volume Key -> Stopping Alarm");
                         this.buttonAck();
                     }
                 });
 
-                // C. Heartbeat Loop (10 sec)
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                     if (!isLoggedIn) return; // ⛔ STOP αν δεν είμαστε μέσα
+                     if (!isLoggedIn) return; // ⛔ STOP
 
                      if (socket.connected) {
                          socket.emit('heartbeat'); 
-                         const dot = document.getElementById('connStatus');
-                         if(dot) dot.style.background = '#00E676';
+                         document.getElementById('connStatus').style.background = '#00E676';
                      } else {
-                         const dot = document.getElementById('connStatus');
-                         if(dot) dot.style.background = 'red';
+                         document.getElementById('connStatus').style.background = 'red';
                      }
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // 🔥 D. ANTI-SLEEP PULSE (15 Min) 🔥
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
-                    if (!isLoggedIn) return; // ⛔ STOP αν δεν είμαστε μέσα
+                    if (!isLoggedIn) return; // ⛔ STOP
 
                     console.log("⏰ ANTI-SLEEP: Pulse...");
                     const silence = document.getElementById('silence');
@@ -217,14 +256,11 @@
             },
 
             stopAll: function() {
-                console.log("🛑 Watchdog: STOPPED");
                 if (this.interval) clearInterval(this.interval);
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 if (this.panicInterval) clearInterval(this.panicInterval);
-                
                 const silence = document.getElementById('silence');
                 if(silence) { silence.pause(); silence.currentTime = 0; }
-                
                 const siren = document.getElementById('siren');
                 if(siren) { siren.pause(); siren.currentTime = 0; }
             },
@@ -270,24 +306,27 @@
             },
 
             ensureAudioPlaying: function() {
-                if(!isLoggedIn) return; // ⛔ Μην παίζεις ήχο αν έχουμε βγει
+                if(!isLoggedIn) return; 
                 const silence = document.getElementById('silence');
                 if (silence && silence.paused) silence.play().catch(e => {}); 
             }
         };
 
-        // --- 4. LOGIC CONTROLLER ---
+        // --- 6. LOGIC CONTROLLER ---
         const Logic = {
             login: function(store, name, role, pass) {
-                isLoggedIn = true; // 🔥 Είμαστε μέσα!
+                isLoggedIn = true; 
                 
                 this.updateMediaSession('active'); 
                 this.setupMediaSession();
                 Watchdog.start();
                 currentUser = { store, name, role, pass };
                 
-                // Στέλνουμε FULLY-XIAOMI αν χρειαστεί να το ξέρει ο server, αλλιώς απλό FULLY
-                const tokenToSend = isFully ? 'FULLY' : 'WEB';
+                // Αν υπάρχει myToken (από το Firebase), το στέλνουμε.
+                // Αν όχι, και είμαστε σε fully, στέλνουμε FULLY.
+                let tokenToSend = myToken || 'WEB';
+                if (!myToken && isFully) tokenToSend = 'FULLY';
+
                 socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: tokenToSend });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
@@ -296,21 +335,12 @@
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
-                    isLoggedIn = false; // 🔥 Βγήκαμε!
-                    
-                    // 1. Σβήνουμε μνήμη για να μην ξαναμπεί μόνο του
-                    localStorage.removeItem('bellgo_user');
+                    isLoggedIn = false; 
+                    localStorage.removeItem('bellgo_user'); 
                     localStorage.clear(); 
-                    
-                    // 2. Σταματάμε τον Φύλακα
                     Watchdog.stopAll();
-                    
-                    // 3. Αποσύνδεση
-                    socket.emit('logout-user');
-                    socket.disconnect();
-                    
-                    // 4. Reload
-                    setTimeout(() => location.reload(), 200);
+                    socket.emit('logout-user'); 
+                    location.reload(); 
                 }
             },
 
@@ -353,7 +383,7 @@
             }
         };
 
-        // --- 5. SOCKET LISTENERS ---
+        // --- 7. SOCKET LISTENERS ---
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -407,8 +437,14 @@
 
         socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
+        
+        socket.on('keep-alive-pulse', () => {
+            console.log("💓 Keep Alive Pulse");
+            Watchdog.ensureAudioPlaying();
+            if (!socket.connected) socket.connect();
+        });
 
-        // --- 6. UI HELPERS ---
+        // --- 8. UI HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -432,6 +468,9 @@
             if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
             else document.getElementById('listsPanel').style.display = 'block';
             
+            // Ξεκινάμε το Firebase για να πάρουμε Token
+            initFirebase();
+
             Logic.login(store, name, role, pass);
         }
 
