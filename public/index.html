@@ -3,11 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Unified (Anti-Sleep)</title>
+    <title>BellGo Android</title>
     
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+
+    <script>
+        (function() {
+            var ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf("iphone") > -1 || ua.indexOf("ipad") > -1) {
+                if (!window.location.href.includes("/ios/")) {
+                    window.location.href = "/ios/";
+                }
+            }
+        })();
+    </script>
 
     <style>
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
@@ -112,7 +123,7 @@
     <audio id="silence" loop><source src="silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. SETUP BOT (SAFE FOR XIAOMI) ---
+        // --- 1. SETUP BOT ---
         const SetupBot = {
             checkConfig: function() {
                 if (typeof fully === 'undefined') return;
@@ -125,7 +136,7 @@
             },
             run: function() {
                 if (typeof fully !== 'undefined') {
-                    fully.showToast("🤖 Ρυθμίσεις Ασφαλείας...");
+                    fully.showToast("🤖 Ρυθμίσεις Android...");
                     fully.setBooleanSetting("keepScreenOn", true);
                     fully.setBooleanSetting("unlockScreen", true);
                     fully.setBooleanSetting("preventSleep", true);
@@ -143,7 +154,7 @@
         let isFully = typeof fully !== 'undefined';
         let currentUser = null;
 
-        // --- 3. WATCHDOG + ANTI-SLEEP ---
+        // --- 3. WATCHDOG (SAFE MODE FOR ALL) ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -151,7 +162,7 @@
             isRinging: false,
 
             start: function() {
-                console.log("🛡️ Watchdog: Active (With Anti-Sleep)");
+                console.log("🛡️ Watchdog: Active (Universal Safe Mode)");
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
@@ -177,7 +188,7 @@
                     }
                 });
 
-                // C. Heartbeat Loop (10 δευτερόλεπτα)
+                // C. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -189,24 +200,18 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // 🔥 D. ANTI-SLEEP PULSE (Κάθε 15 Λεπτά) 🔥
-                // Αυτό είναι το "Bim" που ζήτησες - ένα ψεύτικο ξύπνημα
+                // D. ANTI-SLEEP PULSE (15 Min)
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
-                    console.log("⏰ ANTI-SLEEP: Waking up System...");
-                    
-                    // 1. Refresh Audio (Σταματάει και ξαναξεκινάει τη σιωπή)
+                    console.log("⏰ ANTI-SLEEP: Pulse...");
                     const silence = document.getElementById('silence');
                     if(silence) {
                         silence.pause();
                         silence.currentTime = 0;
-                        silence.play().catch(e => console.log("Audio Wake Fail"));
+                        silence.play().catch(e => {});
                     }
-
-                    // 2. Reconnect Socket αν έχει κοιμηθεί
                     if (!socket.connected) socket.connect();
-
-                }, 900000); // 900000 ms = 15 Λεπτά
+                }, 900000); 
             },
 
             triggerPanicMode: function() {
@@ -276,11 +281,12 @@
                 }
             },
 
+            // 🔥 CHAT FIX: Χρήση 'chat-message' αντί για 'send-chat'
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
                 const text = inp.value.trim();
                 if (!text || !currentUser) return;
-                socket.emit('send-chat', { store: currentUser.store, user: currentUser.name, role: currentUser.role, text: text });
+                socket.emit('chat-message', { text: text }); 
                 inp.value = '';
             },
 
@@ -309,7 +315,7 @@
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
                     artist: isAlarm ? "ΠΑΤΑ PLAY ΓΙΑ STOP" : "System Online",
-                    album: "Kitchen Alert",
+                    album: "BellGo Android",
                     artwork: artwork
                 });
             }
@@ -356,12 +362,13 @@
             }
         });
 
-        socket.on('new-chat', (data) => {
+        // 🔥 CHAT FIX: Ακούμε 'chat-message' αντί για 'new-chat'
+        socket.on('chat-message', (data) => {
             const chatBox = document.getElementById('chat-messages');
             if(chatBox) {
                 const div = document.createElement('div');
-                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.user === currentUser?.name ? 'self' : ''}`;
-                div.innerHTML = `<span class="name">${data.user}</span>${data.text}`;
+                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.sender === currentUser?.name ? 'self' : ''}`;
+                div.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
                 chatBox.appendChild(div);
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
