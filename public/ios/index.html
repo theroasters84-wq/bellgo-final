@@ -14,7 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
-    <link rel="stylesheet" href="style.css"> 
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -45,7 +45,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
     </div>
 
     <div id="mainApp">
@@ -81,15 +81,14 @@
         const IOSBot = {
             check: function() {
                 const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
-                if (!isStandalone) {
-                    document.getElementById('iosInstallPopup').style.display = 'block';
-                }
+                if (!isStandalone) document.getElementById('iosInstallPopup').style.display = 'block';
             }
         };
 
         // --- 2. GLOBAL VARS ---
         const socket = io();
         let currentUser = null;
+        let myToken = null; // Θα χρειαστεί αν βάλεις Firebase Client script
 
         // --- 3. WATCHDOG (IOS EDITION) ---
         const Watchdog = {
@@ -102,13 +101,13 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // A. Lock Screen (Power Button) -> STOP
+                // A. Lock Screen (Power Button) -> STOP (ΑΠΟΔΟΧΗ)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         console.log("🌑 Screen Locked -> Stopping Alarm (Ack)");
                         this.buttonAck(); 
                     }
-                    // Κάθε φορά που ανοίγει η οθόνη, ξανα-ενεργοποίησε τον ήχο
+                    // Κάθε φορά που ανοίγει, ανανέωσε τον ήχο
                     if (document.visibilityState === 'visible') {
                         this.ensureAudioPlaying();
                         if (!socket.connected) socket.connect();
@@ -127,17 +126,16 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // C. Anti-Sleep Audio Refresh (Κάθε 5 λεπτά για iOS)
+                // C. Anti-Sleep Audio Refresh (5 λεπτά)
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     console.log("⏰ ANTI-SLEEP: iOS Audio Refresh");
                     const silence = document.getElementById('silence');
                     if(silence) {
-                        silence.pause();
-                        silence.currentTime = 0;
+                        silence.pause(); silence.currentTime = 0;
                         silence.play().catch(e => console.log("Audio Wake Fail"));
                     }
-                }, 300000); // 5 λεπτά
+                }, 300000); 
             },
 
             triggerPanicMode: function() {
@@ -186,8 +184,20 @@
                 Watchdog.start();
                 currentUser = { store, name, role, pass };
                 
-                // Στέλνουμε 'IOS-WEB' για να ξέρει ο server να στείλει Push αμέσως
-                socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'IOS-WEB' });
+                // 🔥 Στέλνουμε 'deviceType: iOS' για να ξέρει ο Server να στείλει Push αμέσως
+                // Το myToken πρέπει να έρθει από το Firebase setup (αν το έχεις βάλει)
+                // Αν δεν έχεις firebase script εδώ, βάλε hardcoded 'IOS-WAITING' για δοκιμή, αλλά δεν θα στείλει push χωρίς Token.
+                // Υποθέτω ότι θα ενσωματώσεις το Firebase script όπως στο main.
+                const tokenToSend = myToken || 'IOS-NO-TOKEN'; 
+
+                socket.emit('join-store', { 
+                    storeName: store, 
+                    username: name, 
+                    role: role, 
+                    pass: pass, 
+                    fcmToken: tokenToSend,
+                    deviceType: 'iOS' // <--- ΣΗΜΑΝΤΙΚΟ
+                });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
@@ -195,7 +205,7 @@
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
-                    localStorage.removeItem('bellgo_user'); // ✅ FIXED: Logout καθαρίζει τη μνήμη
+                    localStorage.removeItem('bellgo_user'); // ✅ Logout Fix
                     socket.emit('logout-user'); 
                     location.reload(); 
                 }
@@ -205,7 +215,7 @@
                 const inp = document.getElementById('chatInput');
                 const text = inp.value.trim();
                 if (!text || !currentUser) return;
-                socket.emit('chat-message', { text: text });
+                socket.emit('chat-message', { text: text }); // ✅ Chat Fix
                 inp.value = '';
             },
 
@@ -319,6 +329,13 @@
             if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
             else document.getElementById('listsPanel').style.display = 'block';
             
+            // Ζητάμε άδεια για Notifications στο iOS
+            if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                Notification.requestPermission().then(permission => {
+                    console.log("Notification permission:", permission);
+                });
+            }
+
             Logic.login(store, name, role, pass);
         }
 
