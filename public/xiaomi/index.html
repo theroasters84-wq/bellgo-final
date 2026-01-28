@@ -3,17 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Xiaomi Safe</title>
+    <title>BellGo Universal</title>
     
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
+    <script>
+        (function() {
+            var ua = navigator.userAgent.toLowerCase();
+            if (ua.indexOf("iphone") > -1 || ua.indexOf("ipad") > -1) {
+                if (!window.location.href.includes("/ios/")) {
+                    window.location.href = "/ios/";
+                }
+            }
+        })();
+    </script>
+
     <style>
-        /* --- STYLES (ΕΝΣΩΜΑΤΩΜΕΝΑ ΓΙΑ ΣΙΓΟΥΡΙΑ) --- */
+        /* BASIC STYLES */
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        
-        /* ΚΡΥΒΟΥΜΕ ΤΙΣ ΟΘΟΝΕΣ */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex !important; }
         
@@ -64,7 +73,7 @@
     <div id="setupBotBtn" onclick="SetupBot.run()">🤖</div>
 
     <div id="step1" class="screen active">
-        <h2>🏬 Όνομα Μαγαζιού (Xiaomi)</h2>
+        <h2>🏬 Όνομα Μαγαζιού</h2>
         <input type="text" id="inpStore" placeholder="">
         <button class="btn-green" onclick="nextStep(2)">Επόμενο</button>
     </div>
@@ -92,7 +101,7 @@
                 <div id="connStatus"></div>
                 <div id="userInfo" style="font-size: 14px;">User | Store</div>
             </div>
-            <button class="btn-red" onclick="fullExit()">Exit</button>
+            <button class="btn-red" onclick="Logic.logout()">Exit</button>
         </div>
         <div class="content-area">
             <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
@@ -115,7 +124,7 @@
     <audio id="silence" loop><source src="silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. FIREBASE SETUP (ΜΕ ΤΑ ΚΛΕΙΔΙΑ ΣΟΥ) ---
+        // --- 1. FIREBASE SETUP ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -131,73 +140,68 @@
 
         // --- 2. GLOBAL VARS ---
         const socket = io();
-        let isFully = typeof fully !== 'undefined';
         let currentUser = null;
-        let isLoggedIn = false;
         let myToken = null; 
+        
+        function isFullyKiosk() { return typeof fully !== 'undefined'; }
 
-        // --- 3. SETUP BOT (SAFE FOR XIAOMI) ---
+        // --- 3. SETUP BOT (XIAOMI SAFE MODE) ---
         const SetupBot = {
-            checkConfig: function() {
-                if (typeof fully === 'undefined') return;
-                const s1 = fully.getBooleanSetting("keepScreenOn") == true || fully.getBooleanSetting("keepScreenOn") == "true";
-                const btn = document.getElementById('setupBotBtn');
-                if (!s1 && btn) {
-                    btn.style.display = 'flex';
-                    btn.classList.add('needs-setup');
+            ranOnce: false, // Τρέχει ΜΟΝΟ μια φορά
+
+            init: function() {
+                if (this.ranOnce) return; // Αν έτρεξε, τέλος.
+                this.ranOnce = true;
+
+                if (isFullyKiosk()) {
+                    console.log("🤖 Auto-Applying Fully Settings (One-Shot)...");
+                    // Προσπαθούμε να βάλουμε τα βασικά αθόρυβα
+                    try {
+                        fully.setBooleanSetting("keepScreenOn", true);
+                        fully.setBooleanSetting("wifiWakeLock", true);
+                        fully.setBooleanSetting("preventSleep", true);
+                        fully.setBooleanSetting("unlockScreen", true);
+                        fully.setBooleanSetting("forceWifi", true);
+                    } catch(e) { console.log("Fully Error (Ignored):", e); }
+                    
+                    // ΔΕΝ ελέγχουμε αν πέτυχαν. Δεν ξαναρωτάμε.
                 }
             },
+
+            // Αυτό καλείται ΜΟΝΟ αν ο χρήστης πατήσει το ρομπότ χειροκίνητα
             run: function() {
-                if (typeof fully !== 'undefined') {
-                    fully.showToast("🤖 Ρυθμίσεις Safe Mode (Xiaomi)...");
-                    fully.setBooleanSetting("keepScreenOn", true);
-                    fully.setBooleanSetting("unlockScreen", true);
-                    fully.setBooleanSetting("preventSleep", true);
-                    fully.setBooleanSetting("wifiWakeLock", true);
-                    fully.setBooleanSetting("forceWifi", true);
-                    fully.setBooleanSetting("listenVolumeButtons", true);
-                    // ΔΕΝ ΚΑΛΟΥΜΕ requestOverlayPermission γιατί κολλάει τα Xiaomi
-                    fully.showToast("✅ Έτοιμο!");
+                if (isFullyKiosk()) {
+                    fully.showToast("🤖 Manual Setup...");
+                    try { fully.requestOverlayPermission(); } catch(e){}
                     setTimeout(() => { document.getElementById('setupBotBtn').style.display='none'; }, 1000);
                 }
             }
         };
 
-        // --- 4. FIREBASE INIT (GET TOKEN) ---
+        // --- 4. FIREBASE INIT (ONLY IF NOT FULLY) ---
         async function initFirebase() {
+            if (isFullyKiosk()) return; 
+
             try {
-                // Ζητάμε άδεια για ειδοποιήσεις
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-                    
-                    // Εγγραφή Service Worker
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                    
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
-                    
                     if (token) {
-                        console.log('FCM Token:', token);
                         myToken = token;
                         if(currentUser) {
                             socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                         }
-                    } else {
-                        console.log('No registration token available.');
                     }
                 }
-            } catch (err) {
-                console.log('Firebase Error:', err);
-            }
+            } catch (err) { console.log('Firebase Error:', err); }
         }
 
-        // Αν το έχουμε ανοιχτό και έρθει μήνυμα
         messaging.onMessage((payload) => {
-            console.log('Foreground Message:', payload);
             Watchdog.triggerPanicMode();
         });
 
-        // --- 5. WATCHDOG (SAFE MODE) ---
+        // --- 5. WATCHDOG ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -205,15 +209,12 @@
             isRinging: false,
 
             start: function() {
-                console.log("🛡️ Watchdog: Xiaomi Safe Mode Active");
+                console.log("🛡️ Watchdog Active");
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                if (isFully) {
-                    fully.setBooleanSetting("preventSleep", true);
-                    fully.setBooleanSetting("wifiWakeLock", true);
-                    fully.setBooleanSetting("keepScreenOn", true);
-                }
+                // Τρέχουμε το Setup Bot μία φορά στην αρχή
+                SetupBot.init();
 
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
@@ -221,16 +222,8 @@
                     }
                 });
 
-                document.addEventListener('keydown', (e) => {
-                    if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
-                        this.buttonAck();
-                    }
-                });
-
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                     if (!isLoggedIn) return; // ⛔ STOP
-
                      if (socket.connected) {
                          socket.emit('heartbeat'); 
                          document.getElementById('connStatus').style.background = '#00E676';
@@ -242,27 +235,8 @@
 
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
-                    if (!isLoggedIn) return; // ⛔ STOP
-
-                    console.log("⏰ ANTI-SLEEP: Pulse...");
-                    const silence = document.getElementById('silence');
-                    if(silence) {
-                        silence.pause();
-                        silence.currentTime = 0;
-                        silence.play().catch(e => {});
-                    }
                     if (!socket.connected) socket.connect();
                 }, 900000); 
-            },
-
-            stopAll: function() {
-                if (this.interval) clearInterval(this.interval);
-                if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
-                if (this.panicInterval) clearInterval(this.panicInterval);
-                const silence = document.getElementById('silence');
-                if(silence) { silence.pause(); silence.currentTime = 0; }
-                const siren = document.getElementById('siren');
-                if(siren) { siren.pause(); siren.currentTime = 0; }
             },
 
             triggerPanicMode: function() {
@@ -277,8 +251,9 @@
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 
-                // SAFE: Μόνο TurnOn. ΑΦΑΙΡΕΣΑΜΕ ΤΟ bringToForeground
-                if (isFully) fully.turnScreenOn();
+                if (isFullyKiosk()) {
+                    try { fully.turnScreenOn(); } catch(e){}
+                }
                 
                 this.panicInterval = setInterval(() => {
                     if (!this.isRinging) return;
@@ -294,8 +269,9 @@
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
                 document.getElementById('alarmScreen').style.display = 'none';
-                Logic.updateMediaSession('active');
+                
                 this.ensureAudioPlaying();
+                Logic.updateMediaSession('active');
             },
             
             buttonAck: function() {
@@ -306,7 +282,6 @@
             },
 
             ensureAudioPlaying: function() {
-                if(!isLoggedIn) return; 
                 const silence = document.getElementById('silence');
                 if (silence && silence.paused) silence.play().catch(e => {}); 
             }
@@ -315,33 +290,34 @@
         // --- 6. LOGIC CONTROLLER ---
         const Logic = {
             login: function(store, name, role, pass) {
-                isLoggedIn = true; 
-                
                 this.updateMediaSession('active'); 
                 this.setupMediaSession();
                 Watchdog.start();
                 currentUser = { store, name, role, pass };
                 
-                // Αν υπάρχει myToken (από το Firebase), το στέλνουμε.
-                // Αν όχι, και είμαστε σε fully, στέλνουμε FULLY.
-                let tokenToSend = myToken || 'WEB';
-                if (!myToken && isFully) tokenToSend = 'FULLY';
+                let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
+                let tokenToSend = isFullyKiosk() ? 'FULLY' : (myToken || 'WEB');
 
-                socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: tokenToSend });
+                socket.emit('join-store', { 
+                    storeName: store, 
+                    username: name, 
+                    role: role, 
+                    pass: pass, 
+                    fcmToken: tokenToSend,
+                    deviceType: devType 
+                });
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
             },
 
             logout: function() {
-                if(confirm("Σίγουρα έξοδος;")) {
-                    isLoggedIn = false; 
-                    localStorage.removeItem('bellgo_user'); 
-                    localStorage.clear(); 
-                    Watchdog.stopAll();
-                    socket.emit('logout-user'); 
-                    location.reload(); 
+                if (!isFullyKiosk()) {
+                    if(!confirm("Σίγουρα έξοδος;")) return;
                 }
+                localStorage.removeItem('bellgo_user'); 
+                socket.emit('logout-user'); 
+                location.reload(); 
             },
 
             sendChat: function() {
@@ -356,8 +332,10 @@
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
                         if (Watchdog.isRinging) Watchdog.buttonAck(); 
-                        Watchdog.ensureAudioPlaying();
-                        Logic.updateMediaSession('active');
+                        else {
+                            Watchdog.ensureAudioPlaying();
+                            Logic.updateMediaSession('active');
+                        }
                     };
                     navigator.mediaSession.setActionHandler('play', universalHandler);
                     navigator.mediaSession.setActionHandler('pause', universalHandler);
@@ -377,13 +355,33 @@
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
                     artist: isAlarm ? "ΠΑΤΑ PLAY ΓΙΑ STOP" : "System Online",
-                    album: "Xiaomi Safe",
+                    album: "BellGo Main",
                     artwork: artwork
                 });
             }
         };
 
         // --- 7. SOCKET LISTENERS ---
+        socket.on('connect', () => {
+            console.log("✅ Connected");
+            document.getElementById('connStatus').style.background = '#00E676';
+            if(currentUser) { // Re-login on reconnect
+                 let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
+                 socket.emit('join-store', { 
+                    storeName: currentUser.store, 
+                    username: currentUser.name, 
+                    role: currentUser.role, 
+                    pass: currentUser.pass, 
+                    fcmToken: myToken || 'WEB',
+                    deviceType: devType 
+                });
+            }
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connStatus').style.background = 'red';
+        });
+
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -439,7 +437,6 @@
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
         
         socket.on('keep-alive-pulse', () => {
-            console.log("💓 Keep Alive Pulse");
             Watchdog.ensureAudioPlaying();
             if (!socket.connected) socket.connect();
         });
@@ -468,16 +465,12 @@
             if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
             else document.getElementById('listsPanel').style.display = 'block';
             
-            // Ξεκινάμε το Firebase για να πάρουμε Token
-            initFirebase();
+            if (!isFullyKiosk()) initFirebase();
 
             Logic.login(store, name, role, pass);
         }
 
-        function fullExit() { Logic.logout(); }
-
         window.onload = function() {
-            SetupBot.checkConfig();
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
