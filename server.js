@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
 const TIMEOUT_LIMIT = 180000; 
-const ESCALATION_DELAY = 60000; 
+const ESCALATION_DELAY = 60000; // 1 Λεπτό
 
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
@@ -40,6 +40,7 @@ io.on('connection', (socket) => {
         const userKey = `${cleanStore}_${cleanUser}`;
         socket.join(cleanStore);
 
+        // Καθαρισμός παλιού timeout αν υπάρχει
         if (activeUsers[userKey] && activeUsers[userKey].alarmTimeout) {
             clearTimeout(activeUsers[userKey].alarmTimeout);
         }
@@ -52,12 +53,12 @@ io.on('connection', (socket) => {
             role: data.role,
             store: cleanStore,
             fcmToken: data.fcmToken || existingToken, 
-            deviceType: data.deviceType || 'Unknown', 
+            deviceType: data.deviceType || 'Unknown', // iOS ή Android
             lastSeen: Date.now(),
             alarmTimeout: null 
         };
 
-        console.log(`👤 ${cleanUser} (${data.deviceType}) joined ${cleanStore}`);
+        console.log(`👤 ${cleanUser} (${activeUsers[userKey].deviceType}) joined ${cleanStore}`);
         updateStore(cleanStore);
     });
 
@@ -66,11 +67,10 @@ io.on('connection', (socket) => {
         const userKey = `${data.store}_${data.user}`;
         if (activeUsers[userKey]) {
             activeUsers[userKey].fcmToken = data.token;
-            console.log(`🔑 Token updated for ${data.user}`);
         }
     });
 
-    // 3. HEARTBEAT
+    // 3. HEARTBEAT (Client -> Server)
     socket.on('heartbeat', () => {
         const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if (userKey) activeUsers[userKey].lastSeen = Date.now();
@@ -95,13 +95,12 @@ io.on('connection', (socket) => {
             io.to(user.store).emit('chat-message', {
                 sender: user.username,
                 role: user.role,
-                text: data.text,
-                isSelf: false 
+                text: data.text
             });
         }
     });
 
-    // 6. TRIGGER ALARM
+    // 🔥 6. TRIGGER ALARM (Η ΛΟΓΙΚΗ ΠΟΥ ΖΗΤΗΣΕΣ) 🔥
     socket.on('trigger-alarm', (targetUsername) => {
         const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
         if (!sender) return;
@@ -110,29 +109,42 @@ io.on('connection', (socket) => {
         const target = activeUsers[targetKey];
 
         if (target) {
-            console.log(`🔔 Κλήση προς ${target.username}...`);
+            console.log(`🔔 Κλήση προς ${target.username} (${target.deviceType})...`);
+            
+            // Α. Στέλνουμε ΠΑΝΤΑ το Socket (Ήχος άμεσος για όποιον είναι ξύπνιος)
             io.to(target.socketId).emit('kitchen-alarm'); 
 
-            if (target.fcmToken && target.fcmToken.length > 20) {
-                console.log(`📲 Sending IMMEDIATE Notification to ${target.username}`);
-                sendPushNotification(target.fcmToken);
-            }
+            // Β. ΛΟΓΙΚΗ NOTIFICATION
+            if (target.deviceType === 'iOS') {
+                // 👉 iOS: Στέλνουμε ΑΜΕΣΩΣ για να ξυπνήσει
+                if (target.fcmToken && target.fcmToken.length > 20) {
+                    console.log(`📲 iOS: Immediate Notification sent.`);
+                    sendPushNotification(target.fcmToken);
+                }
+            } 
+            // 👉 Android/Xiaomi: ΔΕΝ στέλνουμε ακόμα. Περιμένουμε το Timeout.
 
+            // Γ. ΧΡΟΝΟΜΕΤΡΟ (BACKUP / ANDROID DELAY)
             if (target.alarmTimeout) clearTimeout(target.alarmTimeout);
 
             target.alarmTimeout = setTimeout(() => {
-                console.log(`⚠️ Backup Notification to ${target.username}...`);
-                if (target.fcmToken) sendPushNotification(target.fcmToken);
+                console.log(`⚠️ 1 Minute Passed. Checking acknowledgement for ${target.username}...`);
+                // Στέλνουμε τώρα notification αν δεν το έχει δει (Για Android είναι το πρώτο, για iOS είναι backup)
+                if (target.fcmToken && target.fcmToken.length > 20) {
+                     console.log(`📲 Sending Delayed Notification.`);
+                     sendPushNotification(target.fcmToken);
+                }
                 target.alarmTimeout = null; 
-            }, ESCALATION_DELAY); 
+            }, ESCALATION_DELAY); // 60000ms = 1 Λεπτό
         }
     });
 
-    // 7. ALARM ACK
+    // 7. ALARM ACK (STOP)
     socket.on('alarm-ack', () => {
         const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
         if(senderKey) {
             const user = activeUsers[senderKey];
+            // Ακυρώνουμε το χρονόμετρο (άρα το Android δεν θα λάβει ποτέ Notification αν το δει γρήγορα)
             if (user.alarmTimeout) {
                 clearTimeout(user.alarmTimeout);
                 user.alarmTimeout = null;
@@ -141,19 +153,24 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 🔥 8. IOS INITIAL WAKE UP (ΝΕΟ - FORCE UNLOCK) 🔥
+    // 🔥 8. IOS INITIAL FORCE WAKE UP 🔥
     socket.on('ios-login', () => {
-        console.log(`🍏 iOS Device Logged In: Sending Test Alarm to unlock Audio...`);
-        // Στέλνουμε πίσω εντολή για Test Alarm σε 1.5 δευτερόλεπτο
-        // (Δίνουμε λίγο χρόνο να φορτώσει το UI)
+        console.log(`🍏 iOS Login Detected. Sending Force-Unlock Alarm in 2s...`);
         setTimeout(() => {
-            socket.emit('test-alarm');
-        }, 1500);
+            socket.emit('test-alarm'); // Ειδικό event για το αρχικό τεστ
+        }, 2000);
     });
 
-}); // Τέλος connection
+}); // End IO Connection
 
-// CLEANUP LOOP (Κάθε 30 δευτ.)
+// 🔥 9. KEEP ALIVE PULSE (Κάθε 10 Λεπτά) 🔥
+// Στέλνει "bim" σε όλους, χωρίς να ζητάει αποδοχή, για να μην κοιμηθεί ο Browser
+setInterval(() => {
+    console.log("💓 Sending 10-min Keep-Alive Pulse to all...");
+    io.emit('keep-alive-pulse'); 
+}, 600000); // 10 λεπτά
+
+// CLEANUP LOOP
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
@@ -167,12 +184,6 @@ setInterval(() => {
     storesToUpdate.forEach(store => updateStore(store));
 }, 30000);
 
-// KEEP ALIVE PULSE (Κάθε 10 Λεπτά)
-setInterval(() => {
-    console.log("💓 Sending Keep-Alive Pulse to all clients...");
-    io.emit('keep-alive-pulse'); 
-}, 600000); 
-
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
     const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
@@ -183,7 +194,7 @@ function sendPushNotification(token) {
     if(!token || token.length < 20) return; 
     const message = {
         token: token,
-        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Τρέξε!" },
+        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Άνοιξε την εφαρμογή ΤΩΡΑ!" },
         android: { priority: "high", notification: { sound: "default", clickAction: "FLUTTER_NOTIFICATION_CLICK" } },
         apns: { payload: { aps: { sound: "default", "content-available": 1 } } },
         data: { url: "/", action: "alarm" }
