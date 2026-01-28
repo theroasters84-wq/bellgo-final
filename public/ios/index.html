@@ -46,7 +46,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Πάτα "Allow" αν ζητηθεί</p>
     </div>
 
     <div id="mainApp">
@@ -97,6 +97,8 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
+        let hasTestRun = false; 
+        let isLoggedIn = false; // Flag για το Anti-Close Bot
 
         // --- 3. IOS CHECKER ---
         const IOSBot = {
@@ -106,7 +108,29 @@
             }
         };
 
-        // --- 4. FIREBASE INIT ---
+        // --- 4. ANTI-CLOSE BOT (NEW) ---
+        const AntiCloseBot = {
+            init: function() {
+                // Παγίδευση Back Button
+                history.pushState(null, null, location.href);
+                window.onpopstate = function () {
+                    if (isLoggedIn) {
+                        history.go(1); // Σπρώχνει μπροστά αν πατήσει πίσω
+                    }
+                };
+
+                // Παγίδευση Refresh/Close (Δουλεύει κυρίως σε Desktop/Android, λιγότερο σε iOS)
+                window.addEventListener('beforeunload', function (e) {
+                    if (isLoggedIn) {
+                        e.preventDefault();
+                        e.returnValue = 'Προσοχή! Θα αποσυνδεθείτε!';
+                        return e.returnValue;
+                    }
+                });
+            }
+        };
+
+        // --- 5. FIREBASE INIT ---
         async function initFirebase() {
             try {
                 const permission = await Notification.requestPermission();
@@ -114,7 +138,6 @@
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
                     if (token) {
-                        console.log('FCM Token:', token);
                         myToken = token;
                         if(currentUser) {
                             socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
@@ -129,7 +152,7 @@
             Watchdog.triggerPanicMode();
         });
 
-        // --- 5. WATCHDOG (IOS EDITION) ---
+        // --- 6. WATCHDOG (IOS EDITION) ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
@@ -173,8 +196,6 @@
 
             triggerPanicMode: function(isTest = false) {
                 console.log("🚨 TRIGGER PANIC MODE (Test: " + isTest + ")");
-                
-                // Αν χτυπάει ήδη, δεν κάνουμε τίποτα (εκτός αν είναι το Test που θέλουμε να βγει οπωσδήποτε)
                 if (this.isRinging && !isTest) return;
                 
                 this.isRinging = true;
@@ -182,10 +203,8 @@
 
                 Logic.updateMediaSession('alarm');
 
-                // Ρυθμίσεις Εμφάνισης
                 if (isTest) {
-                    document.getElementById('alarmTitle').innerText = "🔊 SOUND CHECK";
-                    document.getElementById('alarmSub').innerText = "ΠΑΤΑ STOP ΓΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ";
+                    document.getElementById('alarmTitle').innerText = "🔊 TEST";
                     document.getElementById('alarmSub').style.display = "block";
                 } else {
                     document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
@@ -195,12 +214,13 @@
                 const audio = document.getElementById('siren');
                 if (audio) { 
                     audio.currentTime = 0; audio.loop = true; 
-                    audio.play().catch(e => console.log("Sound Blocked (Expected on Auto). Press STOP to fix."));
+                    audio.play().catch(e => console.log("Sound Blocked. Press STOP to fix."));
                 }
                 
-                // FORCE SHOW SCREEN
+                // Force Show Screen
                 const screen = document.getElementById('alarmScreen');
                 screen.style.display = 'flex';
+                screen.style.zIndex = '999999999';
                 
                 if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
             },
@@ -214,7 +234,6 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                // Παίζουμε σιωπή για να κρατήσουμε το audio context ενεργό
                 const silence = document.getElementById('silence');
                 if(silence) {
                     silence.currentTime = 0;
@@ -224,7 +243,6 @@
             },
             
             buttonAck: function() {
-                // ΞΕΚΛΕΙΔΩΜΑ ΗΧΟΥ ΜΕ ΤΟ ΠΑΤΗΜΑ (STOP)
                 const siren = document.getElementById('siren');
                 const silence = document.getElementById('silence');
                 if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
@@ -242,9 +260,10 @@
             }
         };
 
-        // --- 6. LOGIC CONTROLLER ---
+        // --- 7. LOGIC CONTROLLER ---
         const Logic = {
             login: function(store, name, role, pass) {
+                isLoggedIn = true; // Bot Active
                 this.updateMediaSession('active'); 
                 this.setupMediaSession();
                 Watchdog.start();
@@ -264,16 +283,19 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
 
-                // 🔥 FORCE FAKE ALARM ON LOGIN 🔥
-                // Αυτό στέλνει την ψεύτικη κλήση 1 δευτερόλεπτο μετά την είσοδο
-                console.log("⏰ Scheduling Mandatory Sound Check...");
-                setTimeout(() => {
-                    Watchdog.triggerPanicMode(true); // true = Test Mode
-                }, 1000);
+                if (!hasTestRun) {
+                    console.log("🕒 Scheduling Test Alarm...");
+                    hasTestRun = true;
+                    setTimeout(() => {
+                        console.log("🚀 Executing Initial Test Alarm!");
+                        Watchdog.triggerPanicMode(true); 
+                    }, 1500);
+                }
             },
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
+                    isLoggedIn = false; // Bot Inactive
                     localStorage.removeItem('bellgo_user'); 
                     socket.emit('logout-user'); 
                     location.reload(); 
@@ -323,7 +345,7 @@
             }
         };
 
-        // --- 7. SOCKET LISTENERS ---
+        // --- 8. SOCKET LISTENERS ---
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -388,12 +410,12 @@
             if (!socket.connected) socket.connect();
         });
 
-        // Αν ο server στείλει Test Alarm
         socket.on('test-alarm', () => {
-            Watchdog.triggerPanicMode(true);
+            console.log("⚡ SERVER SENT TEST ALARM");
+            Watchdog.triggerPanicMode(true); 
         });
 
-        // --- 8. UI HELPERS ---
+        // --- 9. UI HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -401,7 +423,6 @@
         }
 
         function forcePlayAndLogin() {
-            // Unmute Logic
             const siren = document.getElementById('siren');
             const silence = document.getElementById('silence');
             siren.play().then(() => siren.pause()).catch(e=>{});
@@ -431,6 +452,7 @@
 
         window.onload = function() {
             IOSBot.check();
+            AntiCloseBot.init(); // Ξεκινάμε το Anti-Close
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
