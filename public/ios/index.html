@@ -46,7 +46,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Πάτα "Allow" αν ζητηθεί</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
     </div>
 
     <div id="mainApp">
@@ -97,7 +97,6 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
-        // Αφαιρέσαμε το local hasTestRun, τώρα το ελέγχει ο Server (περίπου)
 
         // --- 3. IOS CHECKER ---
         const IOSBot = {
@@ -175,15 +174,18 @@
             triggerPanicMode: function(isTest = false) {
                 console.log("🚨 TRIGGER PANIC MODE (Test: " + isTest + ")");
                 
-                if (this.isRinging && !isTest) return; // Αν χτυπάει ήδη, άστο (εκτός αν είναι Test)
+                // Αν χτυπάει ήδη, δεν κάνουμε τίποτα (εκτός αν είναι το Test που θέλουμε να βγει οπωσδήποτε)
+                if (this.isRinging && !isTest) return;
                 
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
 
                 Logic.updateMediaSession('alarm');
 
+                // Ρυθμίσεις Εμφάνισης
                 if (isTest) {
-                    document.getElementById('alarmTitle').innerText = "🔊 TEST";
+                    document.getElementById('alarmTitle').innerText = "🔊 SOUND CHECK";
+                    document.getElementById('alarmSub').innerText = "ΠΑΤΑ STOP ΓΙΑ ΕΝΕΡΓΟΠΟΙΗΣΗ";
                     document.getElementById('alarmSub').style.display = "block";
                 } else {
                     document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
@@ -193,13 +195,12 @@
                 const audio = document.getElementById('siren');
                 if (audio) { 
                     audio.currentTime = 0; audio.loop = true; 
-                    audio.play().catch(e => console.log("Sound Blocked (Expected). Press STOP."));
+                    audio.play().catch(e => console.log("Sound Blocked (Expected on Auto). Press STOP to fix."));
                 }
                 
                 // FORCE SHOW SCREEN
                 const screen = document.getElementById('alarmScreen');
                 screen.style.display = 'flex';
-                screen.style.zIndex = '999999999';
                 
                 if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
             },
@@ -213,6 +214,7 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
+                // Παίζουμε σιωπή για να κρατήσουμε το audio context ενεργό
                 const silence = document.getElementById('silence');
                 if(silence) {
                     silence.currentTime = 0;
@@ -222,6 +224,7 @@
             },
             
             buttonAck: function() {
+                // ΞΕΚΛΕΙΔΩΜΑ ΗΧΟΥ ΜΕ ΤΟ ΠΑΤΗΜΑ (STOP)
                 const siren = document.getElementById('siren');
                 const silence = document.getElementById('silence');
                 if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
@@ -261,9 +264,12 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
 
-                // 🔥 ΖΗΤΑΜΕ ΤΕΣΤ ΑΠΟ ΤΟΝ SERVER (ΓΙΑ ΣΙΓΟΥΡΙΑ) 🔥
-                console.log("🍏 Requesting Server Test Alarm...");
-                socket.emit('ios-login'); // Αυτό θα πυροδοτήσει το test-alarm από τον server
+                // 🔥 FORCE FAKE ALARM ON LOGIN 🔥
+                // Αυτό στέλνει την ψεύτικη κλήση 1 δευτερόλεπτο μετά την είσοδο
+                console.log("⏰ Scheduling Mandatory Sound Check...");
+                setTimeout(() => {
+                    Watchdog.triggerPanicMode(true); // true = Test Mode
+                }, 1000);
             },
 
             logout: function() {
@@ -382,10 +388,9 @@
             if (!socket.connected) socket.connect();
         });
 
-        // 🔥 LISTEN FOR TEST ALARM FROM SERVER 🔥
+        // Αν ο server στείλει Test Alarm
         socket.on('test-alarm', () => {
-            console.log("⚡ SERVER SENT TEST ALARM");
-            Watchdog.triggerPanicMode(true); // true = Test Mode
+            Watchdog.triggerPanicMode(true);
         });
 
         // --- 8. UI HELPERS ---
@@ -396,6 +401,7 @@
         }
 
         function forcePlayAndLogin() {
+            // Unmute Logic
             const siren = document.getElementById('siren');
             const silence = document.getElementById('silence');
             siren.play().then(() => siren.pause()).catch(e=>{});
