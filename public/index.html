@@ -3,25 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Universal</title>
-    
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
-
-    <script>
-        (function() {
-            var ua = navigator.userAgent.toLowerCase();
-            if (ua.indexOf("iphone") > -1 || ua.indexOf("ipad") > -1) {
-                if (!window.location.href.includes("/ios/")) {
-                    window.location.href = "/ios/";
-                }
-            }
-        })();
-    </script>
-
+    <title>BellGo Final</title>
+    <link rel="manifest" href="manifest.json"> 
     <style>
-        /* BASIC STYLES */
+        /* BASE */
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex !important; }
@@ -31,22 +16,17 @@
 
         button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; }
         button:active { transform: scale(0.95); }
-
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; }
         .btn-orange { background: #FF6D00; color: black; }
         .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 20px; }
-
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
-        #mainApp.active { display: flex !important; }
-
         .header { height: 50px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; }
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
         .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; background: #121212; }
         .btn-staff { width: 98%; height: 60px; font-size: 20px; margin-bottom: 10px; display: block; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
-
         .chat-panel { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; height: 100%; width: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; }
         .chat-input-area { height: 70px; display: flex; padding: 5px; background: #222; flex-shrink: 0; border-top: 1px solid #444; padding-bottom: env(safe-area-inset-bottom); }
@@ -56,21 +36,71 @@
         .msg.admin { background: #D50000; color: #FFFF00; font-size: 24px; font-weight: 900; text-transform: uppercase; text-align: center; border: 2px solid yellow; text-shadow: 2px 2px 0px #000; }
         .msg.self { background: #2962FF; text-align: right; }
         .msg span.name { font-size: 10px; color: #ccc; display: block; margin-bottom: 2px; }
-
+        
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; cursor: pointer; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; box-shadow: 0 0 100px rgba(255, 255, 255, 0.8); animation: pulse 0.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
 
-        #setupBotBtn { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #333; border: 2px solid #00E676; font-size: 30px; cursor: pointer; z-index: 5000; display: none; align-items: center; justify-content: center; box-shadow: 0 0 10px #00E676; }
+        /* 🔥 SETUP BOT STYLES 🔥 */
+        #setupBotBtn { 
+            position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; 
+            background: #333; border: 2px solid #00E676; font-size: 30px; cursor: pointer; z-index: 5000; 
+            display: none; align-items: center; justify-content: center; box-shadow: 0 0 10px #00E676; 
+        }
         .needs-setup { animation: pulseRed 1s infinite; border-color: red !important; box-shadow: 0 0 20px red !important; }
         @keyframes pulseRed { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        #androidSetup { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+        .setup-box { background: #222; border: 2px solid #00E676; border-radius: 15px; padding: 20px; width: 90%; max-width: 400px; text-align: center; }
+        .setup-step { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
+        .setup-step h3 { color: #00E676; margin: 0 0 10px 0; font-size: 18px; }
+        .setup-step p { color: #ccc; font-size: 14px; margin-bottom: 10px; }
     </style>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+    
+    <script src="setup-bot.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator && typeof fully === 'undefined') {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
+            });
+        }
+    </script>
 </head>
 <body>
-
+    
     <div id="setupBotBtn" onclick="SetupBot.run()">🤖</div>
+
+    <div id="androidSetup">
+        <div class="setup-box">
+            <h1>🤖 Ρύθμιση Tablet</h1>
+            <p style="color:yellow; font-weight:bold;">Ακολούθησε τα βήματα ΜΙΑ φορά:</p>
+            <div class="setup-step">
+                <h3>ΒΗΜΑ 1: Κατέβασμα</h3>
+                <p>Κατέβασε την εφαρμογή Fully Kiosk</p>
+                <button class="btn-blue" onclick="window.open('https://play.google.com/store/apps/details?id=de.ozerov.fully', '_blank')">📥 Download App</button>
+            </div>
+            <div class="setup-step">
+                <h3>ΒΗΜΑ 2: Αυτόματο Άνοιγμα</h3>
+                <p>Αφού την κατεβάσεις, πάτα εδώ για να ανοίξει αυτόματα η εφαρμογή με το URL έτοιμο!</p>
+                <button class="btn-green" id="btnAutoOpen">🚀 ΑΝΟΙΓΜΑ ΣΤΟ FULLY</button>
+            </div>
+            <div class="setup-step">
+                <h3>ΒΗΜΑ 3: Ρυθμίσεις</h3>
+                <p style="text-align:left; font-size:12px; line-height: 1.6;">
+                    1. Δώσε <b>ΟΛΑ</b> τα Permissions που ζητάει.<br>
+                    2. Πάτα ξανά το κουμπί 🤖 μέσα από το Fully για να περαστούν οι ρυθμίσεις αυτόματα!
+                </p>
+            </div>
+            <button class="btn-red" onclick="document.getElementById('androidSetup').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
 
     <div id="step1" class="screen active">
         <h2>🏬 Όνομα Μαγαζιού</h2>
@@ -101,7 +131,7 @@
                 <div id="connStatus"></div>
                 <div id="userInfo" style="font-size: 14px;">User | Store</div>
             </div>
-            <button class="btn-red" onclick="Logic.logout()">Exit</button>
+            <button class="btn-red" onclick="fullExit()">Exit</button>
         </div>
         <div class="content-area">
             <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
@@ -116,15 +146,16 @@
     </div>
 
     <div id="alarmScreen" onclick="Watchdog.buttonAck()">
-        <h1 id="alarmTitle" style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <h1 style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
         <button class="stop-btn">STOP</button>
     </div>
 
     <audio id="siren" src="alert.mp3" preload="auto"></audio>
-    <audio id="silence" loop><source src="silence.mp3" type="audio/mpeg"></audio>
+    <audio id="silence" loop>
+        <source src="silence.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
-        // --- 1. FIREBASE SETUP ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -135,361 +166,316 @@
             measurementId: "G-379ETZJP8H"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const messaging = firebase.messaging();
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 
-        // --- 2. GLOBAL VARS ---
-        const socket = io();
-        let currentUser = null;
-        let myToken = null; 
-        
-        function isFullyKiosk() { return typeof fully !== 'undefined'; }
+        let messaging = null;
+        const isFully = typeof fully !== 'undefined';
 
-        // --- 3. SETUP BOT (XIAOMI SAFE) ---
-        const SetupBot = {
-            ranOnce: false,
-            init: function() {
-                if (this.ranOnce) return;
-                this.ranOnce = true;
-                if (isFullyKiosk()) {
-                    try {
-                        fully.setBooleanSetting("keepScreenOn", true);
-                        fully.setBooleanSetting("wifiWakeLock", true);
-                        fully.setBooleanSetting("preventSleep", true);
-                    } catch(e) {}
-                }
-            },
-            run: function() {
-                if (isFullyKiosk()) {
-                    fully.showToast("🤖 Manual Setup...");
-                    try { fully.requestOverlayPermission(); } catch(e){}
-                    setTimeout(() => { document.getElementById('setupBotBtn').style.display='none'; }, 1000);
-                }
-            }
-        };
-
-        // --- 4. FIREBASE INIT ---
-        async function initFirebase() {
-            if (isFullyKiosk()) return; 
-
+        if (!isFully) {
             try {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                    const token = await messaging.getToken({ serviceWorkerRegistration: registration });
-                    if (token) {
-                        myToken = token;
-                        if(currentUser) {
-                            socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
-                        }
-                    }
-                }
-            } catch (err) { console.log('Firebase Error:', err); }
+                messaging = firebase.messaging();
+                console.log("🌍 Browser Mode: Firebase Messaging Active");
+            } catch (e) { console.log("⚠️ Firebase Skipped"); }
+        } else {
+            console.log("🤖 Fully Mode: Socket Only");
         }
 
-        messaging.onMessage((payload) => {
-            Watchdog.triggerPanicMode();
-        });
-
-        // --- 5. WATCHDOG (ANDROID FRIENDLY) ---
+        // --- Watchdog Code ---
         const Watchdog = {
             interval: null,
-            antiSleepInterval: null,
             panicInterval: null,
             isRinging: false,
-            wakeLock: null,
+            alarmStartTime: 0, 
 
             start: function() {
-                console.log("🛡️ Watchdog: Android Mode Active");
-                const oldAlarm = localStorage.getItem('bellgo_is_ringing');
-                if (oldAlarm === 'true') this.stopPanicMode();
-
-                SetupBot.init();
-                this.requestWakeLock();
+                console.log("🛡️ Watchdog: Active");
+                if (typeof fully !== 'undefined') {
+                    fully.setBooleanSetting("preventSleep", true);
+                    fully.setBooleanSetting("wifiWakeLock", true);
+                    fully.setBooleanSetting("keepScreenOn", true);
+                } else {
+                    this.setupWebMediaSession();
+                }
 
                 document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') {
-                        this.requestWakeLock(); 
-                        if (!socket.connected) socket.connect();
+                    if (document.visibilityState === 'hidden' && this.isRinging) {
+                        this.buttonAck();
+                    }
+                    if (document.visibilityState === 'visible' && this.isRinging) {
+                        const now = Date.now();
+                        if (now - this.alarmStartTime > 3000) {
+                            this.buttonAck();
+                        }
+                    }
+                });
+                
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
+                        this.buttonAck();
                     }
                 });
 
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                     if (socket.connected) {
+                     if (typeof socket !== 'undefined' && socket.connected) {
                          socket.emit('heartbeat'); 
                          document.getElementById('connStatus').style.background = '#00E676';
                      } else {
                          document.getElementById('connStatus').style.background = 'red';
                      }
+                     this.ensureAudioPlaying();
                 }, 10000);
-
-                if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
-                this.antiSleepInterval = setInterval(() => {
-                    if (!socket.connected) socket.connect();
-                }, 300000); 
             },
 
-            requestWakeLock: async function() {
-                if ('wakeLock' in navigator) {
-                    try {
-                        this.wakeLock = await navigator.wakeLock.request('screen');
-                    } catch (err) { console.log('Wake Lock Error:', err); }
+            setupWebMediaSession: function() {
+                if ('mediaSession' in navigator) {
+                    const stopHandler = () => { this.buttonAck(); };
+                    navigator.mediaSession.setActionHandler('nexttrack', stopHandler);
+                    navigator.mediaSession.setActionHandler('previoustrack', stopHandler);
+                    navigator.mediaSession.setActionHandler('pause', stopHandler);
+                    navigator.mediaSession.setActionHandler('play', () => { 
+                        const silence = document.getElementById('silence');
+                        if(silence) silence.play();
+                    });
                 }
             },
 
-            triggerPanicMode: function(isTest = false) {
-                if (this.isRinging && !isTest) return;
+            buttonAck: function() {
+                if (this.isRinging) {
+                    if(typeof socket !== 'undefined') socket.emit('alarm-ack');
+                    this.stopPanicMode();
+                }
+            },
+
+            ensureAudioPlaying: function() {
+                const silence = document.getElementById('silence');
+                if (silence && silence.paused) { silence.play().catch(e => {}); }
+            },
+
+            triggerPanicMode: function() {
+                if (this.isRinging) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
+                this.alarmStartTime = Date.now();
 
-                Logic.updateMediaSession('alarm');
-
-                // 🔥 ΔΙΑΧΕΙΡΙΣΗ TEST ALARM vs REAL ALARM 🔥
-                if (isTest) {
-                    document.getElementById('alarmTitle').innerText = "🔊 TEST";
-                    const audio = document.getElementById('siren');
-                    if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
-                    
-                    document.getElementById('alarmScreen').style.display = 'flex';
-                    
-                    // Αυτόματο κλείσιμο μετά από 3 δευτερόλεπτα αν είναι τεστ
-                    setTimeout(() => {
-                        this.stopPanicMode();
-                    }, 3000);
-
-                } else {
-                    document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
-                    const audio = document.getElementById('siren');
-                    if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
-                    
-                    document.getElementById('alarmScreen').style.display = 'flex';
-                    
-                    if (isFullyKiosk()) {
-                        try { fully.turnScreenOn(); } catch(e){}
-                    }
-                    
-                    this.panicInterval = setInterval(() => {
-                        if (!this.isRinging) return;
-                        if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
-                    }, 500);
+                const audio = document.getElementById('siren');
+                if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
+                
+                document.getElementById('alarmScreen').style.display = 'flex';
+                
+                if (typeof fully !== 'undefined') {
+                    fully.turnScreenOn();
+                    fully.bringToForeground();
                 }
+                
+                this.panicInterval = setInterval(() => {
+                    if (!this.isRinging) return;
+                    if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
+                }, 500);
             },
 
             stopPanicMode: function() {
                 this.isRinging = false;
                 localStorage.removeItem('bellgo_is_ringing');
-                if (this.panicInterval) clearInterval(this.panicInterval);
+                if (this.panicInterval) { clearInterval(this.panicInterval); this.panicInterval = null; }
                 if (navigator.vibrate) navigator.vibrate(0);
-                
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
-                
                 document.getElementById('alarmScreen').style.display = 'none';
+                const silence = document.getElementById('silence');
+                if (silence) { silence.play().catch(e => {}); }
+            }
+        };
+
+        // --- Logic Code ---
+        let currentUserParams = null;
+
+        const Logic = {
+            socket: null,
+            login: function(store, name, role, pass) {
+                if(typeof io === 'undefined') return alert("Socket.io error");
+                socket = io();
+                this.socket = socket;
+                currentUserParams = { store, name, role, pass };
                 
-                this.requestWakeLock();
-                Logic.updateMediaSession('active');
+                socket.on('connect', () => { 
+                    console.log("✅ Connected"); 
+                    document.getElementById('connStatus').style.background = '#00E676';
+                    
+                    if (currentUserParams) {
+                        if (isFully || !messaging) {
+                             socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: isFully ? 'FULLY' : 'WEB' });
+                        } else {
+                             messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                                socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: currentToken || 'WEB' });
+                             }).catch(() => {
+                                 socket.emit('join-store', { storeName: currentUserParams.store, username: currentUserParams.name, role: currentUserParams.role, pass: currentUserParams.pass, fcmToken: 'WEB' });
+                             });
+                        }
+                    }
+                });
+
+                socket.on('disconnect', () => { 
+                    console.log("❌ Disconnected"); 
+                    document.getElementById('connStatus').style.background = 'red';
+                });
+                
+                socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
+                socket.on('ring-bell', () => { Watchdog.triggerPanicMode(); });
+                socket.on('alarm-receipt', (data) => {
+                    if (selectedRole === 'admin') {
+                        const btns = document.querySelectorAll('.btn-staff');
+                        btns.forEach(btn => {
+                            if(btn.innerText.includes(data.name)) {
+                                const originalText = btn.innerHTML;
+                                btn.style.background = '#00E676'; 
+                                btn.innerHTML = `✅ <b>${data.name}</b> (ΤΟ ΕΛΑΒΕ)`;
+                                setTimeout(() => { btn.style.background = ''; btn.innerHTML = originalText; }, 5000);
+                            }
+                        });
+                    }
+                });
+                socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
+                socket.on('force-refresh', () => { location.reload(); });
+                socket.on('staff-list-update', (list) => { this.renderStaffList(list); });
+                socket.on('chat-message', (data) => { this.renderChat(data); });
+
+                // LOGIN
+                if (isFully) {
+                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'FULLY' });
+                } else if (messaging) {
+                    messaging.getToken({ vapidKey: "" }).then((currentToken) => {
+                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: currentToken || 'WEB' });
+                    }).catch(() => {
+                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                    });
+                } else {
+                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB' });
+                }
+
+                document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
+                Watchdog.start();
             },
             
-            buttonAck: function() {
-                if (this.isRinging) {
-                    socket.emit('alarm-ack'); 
-                    this.stopPanicMode();
+            logout: function() { 
+                if(this.socket) {
+                    this.socket.emit('logout-user'); 
+                    this.socket.disconnect();
                 }
-            }
-        };
-
-        // --- 6. LOGIC ---
-        const Logic = {
-            login: function(store, name, role, pass) {
-                this.updateMediaSession('active'); 
-                this.setupMediaSession();
-                Watchdog.start();
-                currentUser = { store, name, role, pass };
-                
-                let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
-                let tokenToSend = isFullyKiosk() ? 'FULLY' : (myToken || 'WEB');
-
-                socket.emit('join-store', { 
-                    storeName: store, 
-                    username: name, 
-                    role: role, 
-                    pass: pass, 
-                    fcmToken: tokenToSend,
-                    deviceType: devType 
-                });
-                
-                document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
-                if (role === 'admin') socket.emit('get-staff-list'); 
-
-                // 🔥 ΖΗΤΑΜΕ TEST ALARM ΚΑΙ ΣΤΟ ANDROID 🔥
-                console.log("🤖 Asking Server for Initial Test...");
-                // Χρησιμοποιούμε το 'ios-login' γιατί ο server ακούει σε αυτό για test alarm
-                setTimeout(() => { socket.emit('ios-login'); }, 1500);
-            },
-
-            logout: function() {
-                if (!isFullyKiosk()) {
-                    if(!confirm("Σίγουρα έξοδος;")) return;
-                }
-                localStorage.removeItem('bellgo_user'); 
-                socket.emit('logout-user'); 
                 location.reload(); 
             },
-
+            
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
-                const text = inp.value.trim();
-                if (!text || !currentUser) return;
-                socket.emit('chat-message', { text: text }); 
+                const txt = inp.value.trim();
+                if(!txt) return;
+                this.socket.emit('chat-message', { text: txt });
                 inp.value = '';
             },
-
-            setupMediaSession: function() {
-                if ('mediaSession' in navigator) {
-                    const dummy = () => {};
-                    navigator.mediaSession.setActionHandler('play', dummy);
-                    navigator.mediaSession.setActionHandler('pause', dummy);
-                    navigator.mediaSession.setActionHandler('stop', dummy);
-                }
+            renderChat: function(data) {
+                const div = document.getElementById('chat-messages');
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'msg ' + (data.role === 'admin' ? 'admin' : '') + (data.isSelf ? ' self' : '');
+                msgDiv.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
+                div.appendChild(msgDiv);
+                div.scrollTop = div.scrollHeight;
             },
-
-            updateMediaSession: function(state) {
-                if (!('mediaSession' in navigator)) return;
-                if (state === 'alarm') {
-                    navigator.mediaSession.playbackState = "playing";
-                } else {
-                    navigator.mediaSession.playbackState = "none";
-                }
-            }
-        };
-
-        // --- 7. SOCKET LISTENERS ---
-        socket.on('connect', () => {
-            console.log("✅ Connected");
-            document.getElementById('connStatus').style.background = '#00E676';
-            if(currentUser) { 
-                 let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
-                 let tokenToSend = isFullyKiosk() ? 'FULLY' : (myToken || 'WEB');
-                 socket.emit('join-store', { 
-                    storeName: currentUser.store, 
-                    username: currentUser.name, 
-                    role: currentUser.role, 
-                    pass: currentUser.pass, 
-                    fcmToken: tokenToSend,
-                    deviceType: devType 
-                });
-            }
-        });
-
-        socket.on('disconnect', () => {
-             document.getElementById('connStatus').style.background = 'red';
-        });
-
-        socket.on('staff-list-update', (staffList) => {
-            const container = document.getElementById('staffListContainer');
-            if(container) {
-                container.innerHTML = ''; 
-                staffList.forEach(user => {
-                    if (user.role === 'admin') return; 
+            renderStaffList: function(list) {
+                const div = document.getElementById('staffListContainer');
+                div.innerHTML = '';
+                let visibleCount = 0;
+                list.forEach(u => {
+                    if (u.role === 'admin') return; 
+                    visibleCount++;
                     const btn = document.createElement('button');
-                    const role = user.role.toLowerCase();
-                    btn.className = role === 'driver' ? 'btn-staff driver' : 'btn-staff waiter';
-                    if (currentUser && currentUser.role === 'admin') {
-                        btn.innerHTML = `🔔 <b>${user.name}</b>`;
+                    btn.className = `btn-staff ${u.role}`;
+                    
+                    if(selectedRole === 'admin') {
+                        btn.innerHTML = `🔔 <b>${u.name}</b>`;
                         btn.onclick = () => {
                             btn.style.transform = "scale(0.95)";
                             setTimeout(() => btn.style.transform = "scale(1)", 100);
-                            socket.emit('trigger-alarm', user.name);
+                            socket.emit('trigger-alarm', u.name);
                         };
                     } else {
-                        btn.innerText = `👤 ${user.name}`;
+                        btn.innerText = `👤 ${u.name}`;
                         btn.style.opacity = "0.7"; 
                     }
-                    container.appendChild(btn);
+                    div.appendChild(btn);
                 });
-                if (staffList.length === 0) container.innerHTML = '<p style="color:#666; margin-top:20px;">Κανένας online...</p>';
+                if (visibleCount === 0) div.innerHTML = '<p style="color:#666; font-style:italic; margin-top:20px;">Κανένας σερβιτόρος...</p>';
             }
-        });
+        };
 
-        socket.on('alarm-receipt', (data) => {
-            if (currentUser && currentUser.role === 'admin') {
-                const btns = document.querySelectorAll('.btn-staff');
-                btns.forEach(btn => {
-                    if(btn.innerText.includes(data.name)) {
-                        const originalText = btn.innerHTML;
-                        btn.style.background = '#00E676'; 
-                        btn.innerHTML = `✅ <b>${data.name}</b>`;
-                        setTimeout(() => { btn.style.background = ''; btn.innerHTML = originalText; }, 4000);
-                    }
-                });
-            }
-        });
-
-        socket.on('chat-message', (data) => {
-            const chatBox = document.getElementById('chat-messages');
-            if(chatBox) {
-                const div = document.createElement('div');
-                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.sender === currentUser?.name ? 'self' : ''}`;
-                div.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
-                chatBox.appendChild(div);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-        });
-
-        socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
-        socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
-        
-        socket.on('keep-alive-pulse', () => {
-            Watchdog.requestWakeLock();
-            if (!socket.connected) socket.connect();
-        });
-
-        // 🔥 ΛΗΨΗ TEST ALARM ΑΠΟ ΤΟΝ SERVER 🔥
-        socket.on('test-alarm', () => {
-            console.log("⚡ TEST ALARM RECEIVED");
-            Watchdog.triggerPanicMode(true); 
-        });
-
-        // --- 8. UI HELPERS ---
+        let selectedRole = '';
         function nextStep(n, role) {
-            if(role) localStorage.setItem('temp_role', role);
+            if(role) selectedRole = role;
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('step'+n).classList.add('active');
         }
 
+        function fullExit() {
+            localStorage.removeItem('bellgo_user');
+            localStorage.removeItem('bellgo_is_ringing');
+            if(typeof Logic !== 'undefined') Logic.logout();
+            else location.reload();
+        }
+
         function forcePlayAndLogin() {
+            const silence = document.getElementById('silence');
+            if(silence) {
+                silence.volume = 1.0;
+                silence.play().catch(e => {
+                    if(typeof fully !== 'undefined') fully.playSound("silence.mp3", true);
+                });
+            }
+            doLogin();
+        }
+
+        function doLogin() {
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
-            const role = localStorage.getItem('temp_role') || 'waiter';
-            
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
 
-            localStorage.setItem('bellgo_user', JSON.stringify({store, name, role, pass}));
-            
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('mainApp').style.display = 'flex';
-            document.getElementById('mainApp').classList.add('active');
-            
-            if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
-            else document.getElementById('listsPanel').style.display = 'block';
-            
-            if (!isFullyKiosk()) initFirebase();
+            localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
 
-            Logic.login(store, name, role, pass);
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const mainApp = document.getElementById('mainApp');
+            mainApp.classList.add('active');
+            mainApp.style.display = 'flex'; 
+
+            if (selectedRole !== 'admin') document.getElementById('listsPanel').style.display = 'none';
+            else document.getElementById('listsPanel').style.display = 'block';
+
+            if(typeof Logic !== 'undefined') Logic.login(store, name, selectedRole, pass);
         }
 
         window.onload = function() {
-            SetupBot.checkConfig();
-            const saved = localStorage.getItem('bellgo_user');
-            if(saved && document.getElementById('step1').classList.contains('active')) {
-                const u = JSON.parse(saved);
+            // 🔥 ΕΔΩ ΞΕΚΙΝΑΕΙ Ο ΑΥΤΟΜΑΤΟΣ ΕΛΕΓΧΟΣ ΤΟΥ SETUP BOT 🔥
+            // Αφού φορτώσει η σελίδα και το setup-bot.js
+            if(typeof SetupBot !== 'undefined') {
+                SetupBot.checkConfig();
+            }
+
+            const wasRinging = localStorage.getItem('bellgo_is_ringing');
+            const savedUser = localStorage.getItem('bellgo_user');
+            const isLoginPage = document.getElementById('step1') && document.getElementById('step1').classList.contains('active');
+
+            if (savedUser && isLoginPage) {
+                const u = JSON.parse(savedUser);
                 document.getElementById('inpStore').value = u.store;
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
-                localStorage.setItem('temp_role', u.role);
-                setTimeout(() => forcePlayAndLogin(), 500);
+                selectedRole = u.role;
+                setTimeout(() => {
+                    if(typeof forcePlayAndLogin === 'function') {
+                        forcePlayAndLogin();
+                        if (wasRinging === 'true') {
+                            setTimeout(() => { Watchdog.triggerPanicMode(); }, 1500);
+                        }
+                    }
+                }, 500);
             }
         };
     </script>
