@@ -116,7 +116,7 @@
     </div>
 
     <div id="alarmScreen" onclick="Watchdog.buttonAck()">
-        <h1 style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
+        <h1 id="alarmTitle" style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
         <button class="stop-btn">STOP</button>
     </div>
 
@@ -124,41 +124,7 @@
     <audio id="silence" loop><source src="silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. CONFIG ---
-        const socket = io(); // Init socket immediately
-        let currentUser = null;
-        let myToken = null; 
-        
-        // Helper για Fully
-        function isFullyKiosk() { return typeof fully !== 'undefined'; }
-
-        // --- 2. GLOBAL LISTENERS (Fix Red Dot) ---
-        socket.on('connect', () => {
-            console.log("✅ Connected");
-            const dot = document.getElementById('connStatus');
-            if(dot) dot.style.background = '#00E676';
-            
-            // Αν είμαστε ήδη μέσα και έγινε reconnect, ξαναστέλνουμε join
-            if(currentUser) {
-                let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
-                socket.emit('join-store', { 
-                    storeName: currentUser.store, 
-                    username: currentUser.name, 
-                    role: currentUser.role, 
-                    pass: currentUser.pass, 
-                    fcmToken: myToken || (isFullyKiosk() ? 'FULLY' : 'WEB'),
-                    deviceType: devType 
-                });
-            }
-        });
-
-        socket.on('disconnect', () => {
-            console.log("❌ Disconnected");
-            const dot = document.getElementById('connStatus');
-            if(dot) dot.style.background = 'red';
-        });
-
-        // --- 3. FIREBASE SETUP (Safe Mode) ---
+        // --- 1. FIREBASE SETUP ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -169,23 +135,42 @@
             measurementId: "G-379ETZJP8H"
         };
 
-        // Αρχικοποίηση Firebase μόνο αν ΔΕΝ είναι Fully (για να μην κολλάει)
-        let messaging = null;
-        if (!isFullyKiosk()) {
-            try {
-                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                messaging = firebase.messaging();
-                
-                messaging.onMessage((payload) => {
-                    console.log('Foreground Message:', payload);
-                    Watchdog.triggerPanicMode();
-                });
-            } catch (e) { console.log("Firebase not supported or failed", e); }
-        }
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+
+        // --- 2. GLOBAL VARS ---
+        const socket = io();
+        let currentUser = null;
+        let myToken = null; 
+        
+        function isFullyKiosk() { return typeof fully !== 'undefined'; }
+
+        // --- 3. SETUP BOT (XIAOMI SAFE) ---
+        const SetupBot = {
+            ranOnce: false,
+            init: function() {
+                if (this.ranOnce) return;
+                this.ranOnce = true;
+                if (isFullyKiosk()) {
+                    try {
+                        fully.setBooleanSetting("keepScreenOn", true);
+                        fully.setBooleanSetting("wifiWakeLock", true);
+                        fully.setBooleanSetting("preventSleep", true);
+                    } catch(e) {}
+                }
+            },
+            run: function() {
+                if (isFullyKiosk()) {
+                    fully.showToast("🤖 Manual Setup...");
+                    try { fully.requestOverlayPermission(); } catch(e){}
+                    setTimeout(() => { document.getElementById('setupBotBtn').style.display='none'; }, 1000);
+                }
+            }
+        };
 
         // --- 4. FIREBASE INIT ---
         async function initFirebase() {
-            if (isFullyKiosk() || !messaging) return; 
+            if (isFullyKiosk()) return; 
 
             try {
                 const permission = await Notification.requestPermission();
@@ -193,7 +178,6 @@
                     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
                     if (token) {
-                        console.log('FCM Token:', token);
                         myToken = token;
                         if(currentUser) {
                             socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
@@ -203,101 +187,93 @@
             } catch (err) { console.log('Firebase Error:', err); }
         }
 
-        // --- 5. SETUP BOT (FULLY) ---
-        const SetupBot = {
-            checkConfig: function() {
-                if (!isFullyKiosk()) return;
-                const s1 = fully.getBooleanSetting("keepScreenOn") == true || fully.getBooleanSetting("keepScreenOn") == "true";
-                const btn = document.getElementById('setupBotBtn');
-                if (!s1 && btn) {
-                    btn.style.display = 'flex';
-                    btn.classList.add('needs-setup');
-                }
-            },
-            run: function() {
-                if (isFullyKiosk()) {
-                    fully.showToast("🤖 Ρυθμίσεις (Full Power)...");
-                    fully.setBooleanSetting("keepScreenOn", true);
-                    fully.setBooleanSetting("unlockScreen", true);
-                    fully.setBooleanSetting("preventSleep", true);
-                    fully.setBooleanSetting("wifiWakeLock", true);
-                    fully.setBooleanSetting("forceWifi", true);
-                    fully.setBooleanSetting("listenVolumeButtons", true);
-                    if (typeof fully.requestOverlayPermission === 'function') fully.requestOverlayPermission();
-                    fully.showToast("✅ Έτοιμο!");
-                    setTimeout(() => { document.getElementById('setupBotBtn').style.display='none'; }, 1000);
-                }
-            }
-        };
+        messaging.onMessage((payload) => {
+            Watchdog.triggerPanicMode();
+        });
 
-        // --- 6. WATCHDOG ---
+        // --- 5. WATCHDOG (ANDROID FRIENDLY) ---
         const Watchdog = {
             interval: null,
             antiSleepInterval: null,
             panicInterval: null,
             isRinging: false,
+            wakeLock: null,
 
             start: function() {
-                console.log("🛡️ Watchdog: Main Active");
+                console.log("🛡️ Watchdog: Android Mode Active");
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                if (isFullyKiosk()) {
-                    fully.setBooleanSetting("preventSleep", true);
-                    fully.setBooleanSetting("wifiWakeLock", true);
-                    fully.setBooleanSetting("keepScreenOn", true);
-                }
+                SetupBot.init();
+                this.requestWakeLock();
 
                 document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'hidden' && this.isRinging) {
-                        this.buttonAck();
+                    if (document.visibilityState === 'visible') {
+                        this.requestWakeLock(); 
+                        if (!socket.connected) socket.connect();
                     }
                 });
-
-                document.addEventListener('keydown', (e) => {
-                    if ((e.key === "VolumeUp" || e.key === "VolumeDown") && this.isRinging) {
-                        this.buttonAck();
-                    }
-                });
-
-                // Web Audio Unlock
-                document.body.addEventListener('touchstart', () => { this.ensureAudioPlaying(); }, {once:true});
 
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
                          socket.emit('heartbeat'); 
+                         document.getElementById('connStatus').style.background = '#00E676';
+                     } else {
+                         document.getElementById('connStatus').style.background = 'red';
                      }
-                     this.ensureAudioPlaying();
                 }, 10000);
 
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     if (!socket.connected) socket.connect();
-                }, 900000); 
+                }, 300000); 
             },
 
-            triggerPanicMode: function() {
-                if (this.isRinging) return;
+            requestWakeLock: async function() {
+                if ('wakeLock' in navigator) {
+                    try {
+                        this.wakeLock = await navigator.wakeLock.request('screen');
+                    } catch (err) { console.log('Wake Lock Error:', err); }
+                }
+            },
+
+            triggerPanicMode: function(isTest = false) {
+                if (this.isRinging && !isTest) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
 
                 Logic.updateMediaSession('alarm');
 
-                const audio = document.getElementById('siren');
-                if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
-                
-                document.getElementById('alarmScreen').style.display = 'flex';
-                
-                if (isFullyKiosk()) {
-                    fully.turnScreenOn();
-                    try { fully.bringToForeground(); } catch(e) {} 
+                // 🔥 ΔΙΑΧΕΙΡΙΣΗ TEST ALARM vs REAL ALARM 🔥
+                if (isTest) {
+                    document.getElementById('alarmTitle').innerText = "🔊 TEST";
+                    const audio = document.getElementById('siren');
+                    if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
+                    
+                    document.getElementById('alarmScreen').style.display = 'flex';
+                    
+                    // Αυτόματο κλείσιμο μετά από 3 δευτερόλεπτα αν είναι τεστ
+                    setTimeout(() => {
+                        this.stopPanicMode();
+                    }, 3000);
+
+                } else {
+                    document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
+                    const audio = document.getElementById('siren');
+                    if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
+                    
+                    document.getElementById('alarmScreen').style.display = 'flex';
+                    
+                    if (isFullyKiosk()) {
+                        try { fully.turnScreenOn(); } catch(e){}
+                    }
+                    
+                    this.panicInterval = setInterval(() => {
+                        if (!this.isRinging) return;
+                        if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
+                    }, 500);
                 }
-                
-                this.panicInterval = setInterval(() => {
-                    if (!this.isRinging) return;
-                    if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
-                }, 500);
             },
 
             stopPanicMode: function() {
@@ -305,11 +281,13 @@
                 localStorage.removeItem('bellgo_is_ringing');
                 if (this.panicInterval) clearInterval(this.panicInterval);
                 if (navigator.vibrate) navigator.vibrate(0);
+                
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
+                
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                this.ensureAudioPlaying();
+                this.requestWakeLock();
                 Logic.updateMediaSession('active');
             },
             
@@ -318,15 +296,10 @@
                     socket.emit('alarm-ack'); 
                     this.stopPanicMode();
                 }
-            },
-
-            ensureAudioPlaying: function() {
-                const silence = document.getElementById('silence');
-                if (silence && silence.paused) silence.play().catch(e => {}); 
             }
         };
 
-        // --- 7. LOGIC CONTROLLER ---
+        // --- 6. LOGIC ---
         const Logic = {
             login: function(store, name, role, pass) {
                 this.updateMediaSession('active'); 
@@ -348,14 +321,17 @@
                 
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
+
+                // 🔥 ΖΗΤΑΜΕ TEST ALARM ΚΑΙ ΣΤΟ ANDROID 🔥
+                console.log("🤖 Asking Server for Initial Test...");
+                // Χρησιμοποιούμε το 'ios-login' γιατί ο server ακούει σε αυτό για test alarm
+                setTimeout(() => { socket.emit('ios-login'); }, 1500);
             },
 
             logout: function() {
-                // 🔥 FIX FOR FULLY: SKIP CONFIRM 🔥
                 if (!isFullyKiosk()) {
                     if(!confirm("Σίγουρα έξοδος;")) return;
                 }
-                
                 localStorage.removeItem('bellgo_user'); 
                 socket.emit('logout-user'); 
                 location.reload(); 
@@ -371,38 +347,45 @@
 
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
-                    const universalHandler = () => { 
-                        if (Watchdog.isRinging) Watchdog.buttonAck(); 
-                        else {
-                            Watchdog.ensureAudioPlaying();
-                            Logic.updateMediaSession('active');
-                        }
-                    };
-                    navigator.mediaSession.setActionHandler('play', universalHandler);
-                    navigator.mediaSession.setActionHandler('pause', universalHandler);
-                    navigator.mediaSession.setActionHandler('stop', universalHandler);
-                    navigator.mediaSession.setActionHandler('nexttrack', universalHandler);
-                    navigator.mediaSession.setActionHandler('previoustrack', universalHandler);
+                    const dummy = () => {};
+                    navigator.mediaSession.setActionHandler('play', dummy);
+                    navigator.mediaSession.setActionHandler('pause', dummy);
+                    navigator.mediaSession.setActionHandler('stop', dummy);
                 }
             },
 
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
-                navigator.mediaSession.playbackState = "playing";
-                const isAlarm = state === 'alarm';
-                const artwork = isAlarm
-                    ? [ { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' } ]
-                    : [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ];
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
-                    artist: isAlarm ? "ΠΑΤΑ PLAY ΓΙΑ STOP" : "System Online",
-                    album: "BellGo Main",
-                    artwork: artwork
-                });
+                if (state === 'alarm') {
+                    navigator.mediaSession.playbackState = "playing";
+                } else {
+                    navigator.mediaSession.playbackState = "none";
+                }
             }
         };
 
-        // --- 8. SOCKET LISTENERS ---
+        // --- 7. SOCKET LISTENERS ---
+        socket.on('connect', () => {
+            console.log("✅ Connected");
+            document.getElementById('connStatus').style.background = '#00E676';
+            if(currentUser) { 
+                 let devType = isFullyKiosk() ? 'Fully Kiosk' : 'Android';
+                 let tokenToSend = isFullyKiosk() ? 'FULLY' : (myToken || 'WEB');
+                 socket.emit('join-store', { 
+                    storeName: currentUser.store, 
+                    username: currentUser.name, 
+                    role: currentUser.role, 
+                    pass: currentUser.pass, 
+                    fcmToken: tokenToSend,
+                    deviceType: devType 
+                });
+            }
+        });
+
+        socket.on('disconnect', () => {
+             document.getElementById('connStatus').style.background = 'red';
+        });
+
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -458,29 +441,17 @@
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
         
         socket.on('keep-alive-pulse', () => {
-            console.log("💓 Keep Alive Pulse");
-            Watchdog.ensureAudioPlaying();
+            Watchdog.requestWakeLock();
             if (!socket.connected) socket.connect();
         });
 
-        // Anti-Close Prevention
-        const AntiCloseBot = {
-            init: function() {
-                history.pushState(null, null, location.href);
-                window.onpopstate = function () {
-                    if (currentUser) history.go(1);
-                };
-                window.addEventListener('beforeunload', function (e) {
-                    if (currentUser && !isFullyKiosk()) {
-                        e.preventDefault();
-                        e.returnValue = 'Προσοχή! Θα αποσυνδεθείτε!';
-                        return e.returnValue;
-                    }
-                });
-            }
-        };
+        // 🔥 ΛΗΨΗ TEST ALARM ΑΠΟ ΤΟΝ SERVER 🔥
+        socket.on('test-alarm', () => {
+            console.log("⚡ TEST ALARM RECEIVED");
+            Watchdog.triggerPanicMode(true); 
+        });
 
-        // --- 9. UI HELPERS ---
+        // --- 8. UI HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -504,9 +475,9 @@
             if (role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
             else document.getElementById('listsPanel').style.display = 'block';
             
-            initFirebase();
+            if (!isFullyKiosk()) initFirebase();
+
             Logic.login(store, name, role, pass);
-            AntiCloseBot.init();
         }
 
         window.onload = function() {
