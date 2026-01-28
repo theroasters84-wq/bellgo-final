@@ -16,62 +16,43 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <style>
-        /* ΒΑΣΙΚΟ ΣΤΗΣΙΜΟ */
-        body { 
-            background-color: #000; 
-            color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            text-align: center; 
-            margin: 0; 
-            height: 100dvh; 
-            width: 100vw; 
-            overflow: hidden; 
-            display: flex; 
-            flex-direction: column; 
-            -webkit-tap-highlight-color: transparent; 
-            transition: background-color 0.5s; /* Για το Pulse εφέ */
-        }
-
-        /* ΚΡΥΒΟΥΜΕ ΤΙΣ ΟΘΟΝΕΣ */
+        /* CSS ΕΝΣΩΜΑΤΩΜΕΝΟ & COMPACT */
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
         .active { display: flex !important; }
-
-        /* FORM STYLES */
-        h2 { font-weight: 600; margin-bottom: 20px; }
+        
         input { background: #1c1c1e; border: 1px solid #333; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; margin: 10px 0; text-align: center; -webkit-appearance: none; }
         input:focus { border-color: #34C759; outline: none; }
+
         button { padding: 15px; font-size: 18px; margin: 8px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; -webkit-appearance: none; }
         button:active { transform: scale(0.96); opacity: 0.8; }
+
         .btn-green { background: #34C759; color: white; }
         .btn-blue { background: #007AFF; }
         .btn-orange { background: #FF9500; color: white; }
         .btn-red { background: #FF3B30; color: white; width: 60px; height: 100%; padding: 0; font-size: 16px; border-radius: 8px; }
 
-        /* MAIN APP LAYOUT */
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
         #mainApp.active { display: flex !important; }
 
         .header { height: 50px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; flex-shrink: 0; padding-top: env(safe-area-inset-top); border-bottom: 1px solid #333; }
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
-        
-        /* LISTS */
         .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #333; padding: 10px; background: #000; -webkit-overflow-scrolling: touch; }
         .btn-staff { width: 100%; height: 60px; font-size: 20px; margin-bottom: 10px; display: block; border-radius: 12px; }
         .driver { background: #FF9500; border-left: 5px solid #FFD60A; }
         .waiter { background: #007AFF; border-left: 5px solid #64D2FF; }
 
-        /* CHAT */
         .chat-panel { flex: 1; display: flex; flex-direction: column; background: #121212; height: 100%; width: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; -webkit-overflow-scrolling: touch; }
         .chat-input-area { height: 70px; display: flex; padding: 10px; background: #1c1c1e; flex-shrink: 0; border-top: 1px solid #333; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 15px; height: 50px; background: #2c2c2e; border: none; color:white; border-radius: 8px; }
         #sendBtn { width: 25%; margin: 0 0 0 10px; background: #34C759; color: white; height: 50px; border-radius: 8px; }
+        
         .msg { padding: 8px 12px; margin-bottom: 5px; border-radius: 16px; background: #2c2c2e; font-size: 16px; word-wrap: break-word; max-width: 80%; }
         .msg.admin { background: #FF3B30; color: #FFFF00; font-size: 20px; font-weight: 900; text-align: center; width: 95%; max-width: 100%; border: 2px solid yellow; }
         .msg.self { background: #007AFF; text-align: right; align-self: flex-end; margin-left: auto; }
         .msg span.name { font-size: 10px; color: #8e8e93; display: block; margin-bottom: 2px; }
 
-        /* ALARM SCREEN */
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FF3B30; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; cursor: pointer; }
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: #FF3B30; font-size: 40px; font-weight: 900; border: none; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); animation: pulse 0.8s infinite; }
@@ -120,7 +101,7 @@
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <div id="connStatus"></div>
+                <div id="connStatus" onclick="socket.connect()"></div>
                 <div id="userInfo" style="font-size: 14px;">User | Store</div>
             </div>
             <button class="btn-red" onclick="fullExit()">Exit</button>
@@ -147,7 +128,6 @@
     <audio id="silence" loop playsinline><source src="/silence.mp3" type="audio/mpeg"></audio>
 
     <script>
-        // --- 1. FIREBASE SETUP ---
         const firebaseConfig = {
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
             authDomain: "bellgo-5dbe5.firebaseapp.com",
@@ -160,34 +140,19 @@
         firebase.initializeApp(firebaseConfig);
         const messaging = firebase.messaging();
 
-        // --- 2. GLOBAL VARS ---
+        // --- GLOBAL VARS & SOCKET ---
         const socket = io({
             transports: ['websocket', 'polling'], 
             reconnection: true,
             reconnectionAttempts: Infinity
         });
-        
+
         let currentUser = null;
         let myToken = null; 
         let hasTestRun = false; 
-        let isLoggedIn = false;
-        let wakeLock = null; // Screen Wake Lock
+        let audioContext = null; // 🔥 THE SECRET WEAPON 🔥
 
-        // --- 3. SOCKET LISTENERS ---
-        socket.on('connect', () => {
-            console.log("✅ Connected");
-            const dot = document.getElementById('connStatus');
-            if(dot) dot.style.background = '#34C759';
-            if(currentUser) Logic.login(currentUser.store, currentUser.name, currentUser.role, currentUser.pass);
-        });
-
-        socket.on('disconnect', () => {
-            console.log("❌ Disconnected");
-            const dot = document.getElementById('connStatus');
-            if(dot) dot.style.background = 'red';
-        });
-
-        // --- 4. IOS CHECKER ---
+        // --- IOS CHECKER ---
         const IOSBot = {
             check: function() {
                 const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
@@ -195,15 +160,7 @@
             }
         };
 
-        // --- 5. ANTI-CLOSE BOT ---
-        const AntiCloseBot = {
-            init: function() {
-                history.pushState(null, null, location.href);
-                window.onpopstate = function () { if (isLoggedIn) history.go(1); };
-            }
-        };
-
-        // --- 6. FIREBASE INIT ---
+        // --- FIREBASE INIT ---
         async function initFirebase() {
             try {
                 const permission = await Notification.requestPermission();
@@ -212,19 +169,59 @@
                     const token = await messaging.getToken({ serviceWorkerRegistration: registration });
                     if (token) {
                         myToken = token;
-                        if(currentUser) {
-                            socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
-                        }
+                        if(currentUser) socket.emit('update-token', { store: currentUser.store, user: currentUser.name, token: token });
                     }
                 }
             } catch (err) { console.log('Firebase Error:', err); }
         }
 
-        messaging.onMessage((payload) => {
-            Watchdog.triggerPanicMode();
-        });
+        messaging.onMessage((payload) => { Watchdog.triggerPanicMode(); });
 
-        // --- 7. WATCHDOG (HEAVY DUTY ANTI-SLEEP) ---
+        // --- DUAL AUDIO ENGINE (Tag + WebAudio) ---
+        const AudioEngine = {
+            init: function() {
+                // 1. Start the HTML5 Audio Tag Loop
+                const silence = document.getElementById('silence');
+                if(silence) silence.play().catch(e => console.log("HTML5 Audio blocked:", e));
+
+                // 2. Start the Web Audio API Oscillator (Bypass Audio Focus restrictions sometimes)
+                try {
+                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioContext = new AudioContext();
+                    
+                    // Resume context if suspended
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 1; // 1Hz (Inaudible)
+                    gainNode.gain.value = 0.001; // Tiny volume
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.start();
+                    console.log("🔊 WebAudio Engine Started");
+                    
+                } catch(e) {
+                    console.log("WebAudio API not supported", e);
+                }
+            },
+
+            ensureRunning: function() {
+                const silence = document.getElementById('silence');
+                if (silence && silence.paused) silence.play().catch(e=>{});
+                
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }
+        };
+
+        // --- WATCHDOG ---
         const Watchdog = {
             interval: null,
             isRinging: false,
@@ -234,20 +231,16 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // A. Screen Wake Lock (New iOS API)
-                this.requestWakeLock();
-
-                // B. Reconnect on Visibility Change
+                // Reconnect on Wake
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
-                        console.log("👀 App Visible - Reconnecting...");
-                        this.ensureAudioPlaying(); // Force Silence
-                        this.requestWakeLock();    // Re-request Lock
+                        AudioEngine.ensureRunning();
                         if (!socket.connected) socket.connect();
+                        document.getElementById('connStatus').style.background = socket.connected ? '#34C759' : 'red';
                     }
                 });
 
-                // C. Heartbeat Loop
+                // Heartbeat & Audio Check
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -257,38 +250,14 @@
                          document.getElementById('connStatus').style.background = 'red';
                          socket.connect(); 
                      }
-                     // 🔥 Κλειδί: Ελέγχουμε αν παίζει η σιωπή
-                     this.ensureAudioPlaying();
+                     AudioEngine.ensureRunning();
                 }, 10000);
             },
 
-            requestWakeLock: async function() {
-                if ('wakeLock' in navigator) {
-                    try {
-                        wakeLock = await navigator.wakeLock.request('screen');
-                        console.log('💡 Screen Wake Lock active');
-                    } catch (err) {
-                        console.log(`Wake Lock Error: ${err.name}, ${err.message}`);
-                    }
-                }
-            },
-
-            // 🔥 ΑΥΤΟ ΕΙΝΑΙ ΤΟ "PULSE" ΠΟΥ ΖΗΤΗΣΕΣ 🔥
-            // Αλλάζουμε το background για 200ms για να δείξουμε ζωή
-            flashScreen: function() {
-                if(this.isRinging) return;
-                document.body.style.backgroundColor = "#111"; // Lighter black
-                setTimeout(() => { document.body.style.backgroundColor = "#000"; }, 200);
-            },
-
             triggerPanicMode: function(isTest = false) {
-                console.log("🚨 TRIGGER PANIC MODE (Test: " + isTest + ")");
-                
                 if (this.isRinging && !isTest) return;
-                
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
-
                 Logic.updateMediaSession('alarm');
 
                 if (isTest) {
@@ -300,74 +269,53 @@
                 }
 
                 const audio = document.getElementById('siren');
-                if (audio) { 
-                    audio.currentTime = 0; audio.loop = true; 
-                    audio.play().catch(e => console.log("Sound Blocked. Press STOP to fix."));
-                }
+                if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
                 
-                const screen = document.getElementById('alarmScreen');
-                screen.style.display = 'flex';
-                screen.style.zIndex = '999999999';
-                
+                document.getElementById('alarmScreen').style.display = 'flex';
+                document.getElementById('alarmScreen').style.zIndex = '999999999';
                 if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
             },
 
             stopPanicMode: function() {
                 this.isRinging = false;
                 localStorage.removeItem('bellgo_is_ringing');
-                
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
-                
                 document.getElementById('alarmScreen').style.display = 'none';
-                
-                // Restart Silence loop IMMEDIATELY
-                this.ensureAudioPlaying();
+                AudioEngine.ensureRunning();
                 Logic.updateMediaSession('active'); 
             },
             
             buttonAck: function() {
+                AudioEngine.ensureRunning();
                 const siren = document.getElementById('siren');
-                const silence = document.getElementById('silence');
-                if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
-                if(silence) { silence.play().catch(e=>{}); }
+                if(siren) siren.play().then(() => siren.pause()).catch(e=>{});
 
                 if (this.isRinging) {
                     socket.emit('alarm-ack'); 
                     this.stopPanicMode();
                 }
-            },
-
-            ensureAudioPlaying: function() {
-                const silence = document.getElementById('silence');
-                // Αν δεν παίζει, το βάζουμε μπρος. Αυτό είναι το μυστικό.
-                if (silence && silence.paused) {
-                    console.log("🔈 Restarting Silence Loop...");
-                    silence.play().catch(e => {}); 
-                }
             }
         };
 
-        // --- 8. LOGIC CONTROLLER ---
+        // --- LOGIC ---
         const Logic = {
             login: function(store, name, role, pass) {
-                isLoggedIn = true; 
                 this.updateMediaSession('active'); 
                 this.setupMediaSession();
-                Watchdog.start();
                 
-                // 🔥 Start Continuous Audio NOW 🔥
-                Watchdog.ensureAudioPlaying();
-
+                // 🔥 Start Both Audio Engines 🔥
+                AudioEngine.init();
+                
+                Watchdog.start();
                 currentUser = { store, name, role, pass };
-                const tokenToSend = myToken || 'IOS-NO-TOKEN'; 
-
+                
                 socket.emit('join-store', { 
                     storeName: store, 
                     username: name, 
                     role: role, 
                     pass: pass, 
-                    fcmToken: tokenToSend,
+                    fcmToken: myToken || 'IOS-NO-TOKEN',
                     deviceType: 'iOS' 
                 });
                 
@@ -376,10 +324,7 @@
 
                 if (!hasTestRun) {
                     hasTestRun = true;
-                    setTimeout(() => {
-                        console.log("🍏 Requesting Server Test Alarm...");
-                        socket.emit('ios-login');
-                    }, 2500); 
+                    setTimeout(() => { socket.emit('ios-login'); }, 2500); 
                 }
             },
 
@@ -404,9 +349,7 @@
                     const universalHandler = () => { 
                         if (Watchdog.isRinging) Watchdog.buttonAck(); 
                         else {
-                            // Αν ο χρήστης πατήσει Pause, το ξαναβάζουμε μπρος!
-                            console.log("User Pressed Pause -> Denied -> Restarting");
-                            Watchdog.ensureAudioPlaying();
+                            AudioEngine.ensureRunning();
                             Logic.updateMediaSession('active');
                         }
                     };
@@ -420,13 +363,11 @@
 
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
-                navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING
-                
+                navigator.mediaSession.playbackState = "playing";
                 const isAlarm = state === 'alarm';
                 const artwork = isAlarm
                     ? [ { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' } ]
                     : [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ];
-                
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
                     artist: isAlarm ? "ΠΑΤΑ ΕΔΩ ΓΙΑ STOP" : "System Online",
@@ -436,7 +377,16 @@
             }
         };
 
-        // --- 9. SOCKET LISTENERS ---
+        // --- SOCKET LISTENERS ---
+        socket.on('connect', () => {
+            document.getElementById('connStatus').style.background = '#34C759';
+            if(currentUser) Logic.login(currentUser.store, currentUser.name, currentUser.role, currentUser.pass);
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connStatus').style.background = 'red';
+        });
+
         socket.on('staff-list-update', (staffList) => {
             const container = document.getElementById('staffListContainer');
             if(container) {
@@ -490,21 +440,13 @@
 
         socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
-        
         socket.on('keep-alive-pulse', () => {
-            console.log("💓 Keep Alive Pulse");
-            // Flash screen (visual pulse)
-            Watchdog.flashScreen();
-            Watchdog.ensureAudioPlaying();
+            AudioEngine.ensureRunning();
             if (!socket.connected) socket.connect();
         });
+        socket.on('test-alarm', () => { Watchdog.triggerPanicMode(true); });
 
-        socket.on('test-alarm', () => {
-            console.log("⚡ SERVER SENT TEST ALARM");
-            Watchdog.triggerPanicMode(true); 
-        });
-
-        // --- 10. UI HELPERS ---
+        // --- HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -512,10 +454,7 @@
         }
 
         function forcePlayAndLogin() {
-            // Manual user interaction triggers the continuous loop
-            const silence = document.getElementById('silence');
-            silence.play().catch(e => console.log("Silence start fail", e));
-
+            // AudioEngine init will happen inside login to ensure user gesture context
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
@@ -542,8 +481,6 @@
         window.onload = function() {
             IOSBot.check();
             if(socket.connected) document.getElementById('connStatus').style.background = '#34C759';
-            else socket.connect();
-
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
