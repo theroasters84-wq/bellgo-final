@@ -46,7 +46,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Πάτα "Allow" αν ζητηθεί</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
     </div>
 
     <div id="mainApp">
@@ -97,8 +97,7 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
-        let hasTestRun = false; 
-        let isLoggedIn = false; // Flag για το Anti-Close Bot
+        let isLoggedIn = false;
 
         // --- 3. IOS CHECKER ---
         const IOSBot = {
@@ -108,25 +107,13 @@
             }
         };
 
-        // --- 4. ANTI-CLOSE BOT (NEW) ---
+        // --- 4. ANTI-CLOSE BOT ---
         const AntiCloseBot = {
             init: function() {
-                // Παγίδευση Back Button
                 history.pushState(null, null, location.href);
                 window.onpopstate = function () {
-                    if (isLoggedIn) {
-                        history.go(1); // Σπρώχνει μπροστά αν πατήσει πίσω
-                    }
+                    if (isLoggedIn) history.go(1); // Block Back Button
                 };
-
-                // Παγίδευση Refresh/Close (Δουλεύει κυρίως σε Desktop/Android, λιγότερο σε iOS)
-                window.addEventListener('beforeunload', function (e) {
-                    if (isLoggedIn) {
-                        e.preventDefault();
-                        e.returnValue = 'Προσοχή! Θα αποσυνδεθείτε!';
-                        return e.returnValue;
-                    }
-                });
             }
         };
 
@@ -163,6 +150,7 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
+                // A. Lock Screen -> STOP (Αποδοχή)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         this.buttonAck(); 
@@ -173,6 +161,7 @@
                     }
                 });
 
+                // B. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -184,6 +173,7 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
+                // C. Anti-Sleep Audio Refresh
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     const silence = document.getElementById('silence');
@@ -196,6 +186,7 @@
 
             triggerPanicMode: function(isTest = false) {
                 console.log("🚨 TRIGGER PANIC MODE (Test: " + isTest + ")");
+                
                 if (this.isRinging && !isTest) return;
                 
                 this.isRinging = true;
@@ -217,7 +208,6 @@
                     audio.play().catch(e => console.log("Sound Blocked. Press STOP to fix."));
                 }
                 
-                // Force Show Screen
                 const screen = document.getElementById('alarmScreen');
                 screen.style.display = 'flex';
                 screen.style.zIndex = '999999999';
@@ -234,15 +224,15 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                const silence = document.getElementById('silence');
-                if(silence) {
-                    silence.currentTime = 0;
-                    silence.play().catch(e => {});
-                }
+                // 🔥 ΕΔΩ ΕΙΝΑΙ ΤΟ LOOP FIX 🔥
+                // Μόλις σταματήσει ο συναγερμός, ξεκινάμε αμέσως το Silence
+                // για να μην κλείσει η μπάρα και να μην κοιμηθεί το App.
+                this.ensureAudioPlaying();
                 Logic.updateMediaSession('active'); 
             },
             
             buttonAck: function() {
+                // Ξεκλείδωμα ήχου με το πάτημα
                 const siren = document.getElementById('siren');
                 const silence = document.getElementById('silence');
                 if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
@@ -263,7 +253,7 @@
         // --- 7. LOGIC CONTROLLER ---
         const Logic = {
             login: function(store, name, role, pass) {
-                isLoggedIn = true; // Bot Active
+                isLoggedIn = true; 
                 this.updateMediaSession('active'); 
                 this.setupMediaSession();
                 Watchdog.start();
@@ -283,19 +273,14 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
 
-                if (!hasTestRun) {
-                    console.log("🕒 Scheduling Test Alarm...");
-                    hasTestRun = true;
-                    setTimeout(() => {
-                        console.log("🚀 Executing Initial Test Alarm!");
-                        Watchdog.triggerPanicMode(true); 
-                    }, 1500);
-                }
+                // 🔥 ΖΗΤΑΜΕ ΤΕΣΤ ΑΠΟ ΤΟΝ SERVER ΓΙΑ ΝΑ ΞΕΚΛΕΙΔΩΣΟΥΜΕ ΤΟΝ ΗΧΟ 🔥
+                console.log("🍏 Requesting Server Test Alarm...");
+                socket.emit('ios-login');
             },
 
             logout: function() {
                 if(confirm("Σίγουρα έξοδος;")) {
-                    isLoggedIn = false; // Bot Inactive
+                    isLoggedIn = false;
                     localStorage.removeItem('bellgo_user'); 
                     socket.emit('logout-user'); 
                     location.reload(); 
@@ -313,14 +298,19 @@
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
-                        if (Watchdog.isRinging) Watchdog.buttonAck(); 
-                        else {
+                        if (Watchdog.isRinging) {
+                            Watchdog.buttonAck(); 
+                        } else {
+                            // 🔥 ΕΔΩ ΕΙΝΑΙ ΤΟ PAUSE FIX 🔥
+                            // Αν ο χρήστης πατήσει Pause ενώ δεν χτυπάει, 
+                            // το ξαναβάζουμε μπρος αμέσως!
+                            console.log("User paused silence -> Force Restart");
                             Watchdog.ensureAudioPlaying();
                             Logic.updateMediaSession('active');
                         }
                     };
                     navigator.mediaSession.setActionHandler('play', universalHandler);
-                    navigator.mediaSession.setActionHandler('pause', universalHandler);
+                    navigator.mediaSession.setActionHandler('pause', universalHandler); // <-- Εδώ πιάνουμε την παύση
                     navigator.mediaSession.setActionHandler('stop', universalHandler);
                     navigator.mediaSession.setActionHandler('nexttrack', universalHandler);
                     navigator.mediaSession.setActionHandler('previoustrack', universalHandler);
@@ -329,7 +319,7 @@
 
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
-                navigator.mediaSession.playbackState = "playing";
+                navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING
                 
                 const isAlarm = state === 'alarm';
                 const artwork = isAlarm
@@ -452,7 +442,7 @@
 
         window.onload = function() {
             IOSBot.check();
-            AntiCloseBot.init(); // Ξεκινάμε το Anti-Close
+            AntiCloseBot.init(); 
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
