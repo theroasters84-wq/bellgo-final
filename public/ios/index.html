@@ -15,7 +15,121 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ΒΑΣΙΚΟ ΣΤΗΣΙΜΟ */
+        body { 
+            background-color: #000; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; 
+            margin: 0; 
+            height: 100dvh; 
+            width: 100vw; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* ΚΡΥΒΟΥΜΕ ΤΙΣ ΟΘΟΝΕΣ - ΤΟ ΠΙΟ ΣΗΜΑΝΤΙΚΟ */
+        .screen { 
+            display: none; 
+            width: 100%; 
+            height: 100%; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .active { 
+            display: flex !important; 
+        }
+
+        /* FORM STYLES (iOS Look) */
+        h2 { font-weight: 600; margin-bottom: 20px; }
+
+        input { 
+            background: #1c1c1e; 
+            border: 1px solid #333; 
+            color: white; 
+            padding: 15px; 
+            font-size: 20px; 
+            width: 80%; 
+            border-radius: 12px; 
+            margin: 10px 0; 
+            text-align: center; 
+            -webkit-appearance: none; 
+        }
+        input:focus { border-color: #34C759; outline: none; }
+
+        button { 
+            padding: 15px; 
+            font-size: 18px; 
+            margin: 8px; 
+            border-radius: 12px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            color: white; 
+            width: 85%; 
+            transition: 0.1s; 
+            -webkit-appearance: none; 
+        }
+        button:active { transform: scale(0.96); opacity: 0.8; }
+
+        .btn-green { background: #34C759; color: white; }
+        .btn-blue { background: #007AFF; }
+        .btn-orange { background: #FF9500; color: white; }
+        .btn-red { background: #FF3B30; color: white; width: 60px; height: 100%; padding: 0; font-size: 16px; border-radius: 8px; }
+
+        /* APP LAYOUT */
+        #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
+        #mainApp.active { display: flex !important; }
+
+        .header { 
+            height: 50px; 
+            background: #1c1c1e; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 15px; 
+            flex-shrink: 0; 
+            padding-top: env(safe-area-inset-top); 
+            border-bottom: 1px solid #333;
+        }
+        .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
+        
+        /* LISTS */
+        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #333; padding: 10px; background: #000; -webkit-overflow-scrolling: touch; }
+        .btn-staff { width: 100%; height: 60px; font-size: 20px; margin-bottom: 10px; display: block; border-radius: 12px; }
+        .driver { background: #FF9500; border-left: 5px solid #FFD60A; }
+        .waiter { background: #007AFF; border-left: 5px solid #64D2FF; }
+
+        /* CHAT */
+        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #121212; height: 100%; width: 100%; }
+        #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; -webkit-overflow-scrolling: touch; }
+        .chat-input-area { height: 70px; display: flex; padding: 10px; background: #1c1c1e; flex-shrink: 0; border-top: 1px solid #333; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+        #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 15px; height: 50px; background: #2c2c2e; border: none; }
+        #sendBtn { width: 25%; margin: 0 0 0 10px; background: #34C759; color: white; height: 50px; }
+        
+        .msg { padding: 8px 12px; margin-bottom: 5px; border-radius: 16px; background: #2c2c2e; font-size: 16px; word-wrap: break-word; max-width: 80%; }
+        .msg.admin { background: #FF3B30; color: #FFFF00; font-size: 20px; font-weight: 900; text-align: center; width: 95%; max-width: 100%; border: 2px solid yellow; }
+        .msg.self { background: #007AFF; text-align: right; align-self: flex-end; margin-left: auto; }
+        .msg span.name { font-size: 10px; color: #8e8e93; display: block; margin-bottom: 2px; }
+
+        /* ALARM SCREEN */
+        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FF3B30; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.5s infinite; cursor: pointer; }
+        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: #FF3B30; font-size: 40px; font-weight: 900; border: none; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
+
+        /* iOS INSTALL POPUP */
+        #iosInstallPopup { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1c1c1e; border-top: 1px solid #333; padding: 20px; z-index: 6000; text-align: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+        #iosInstallPopup h3 { margin: 0 0 10px 0; color: #34C759; }
+        #iosInstallPopup p { font-size: 14px; color: #ccc; margin: 0; }
+        .ios-icon { font-size: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
+    </style>
 </head>
 <body>
 
@@ -46,7 +160,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
-        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου/ειδοποιήσεων</p>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Ζητείται άδεια ήχου</p>
     </div>
 
     <div id="mainApp">
@@ -97,6 +211,7 @@
         const socket = io();
         let currentUser = null;
         let myToken = null; 
+        let hasTestRun = false; 
         let isLoggedIn = false;
 
         // --- 3. IOS CHECKER ---
@@ -112,7 +227,7 @@
             init: function() {
                 history.pushState(null, null, location.href);
                 window.onpopstate = function () {
-                    if (isLoggedIn) history.go(1); // Block Back Button
+                    if (isLoggedIn) history.go(1); 
                 };
             }
         };
@@ -150,7 +265,6 @@
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
 
-                // A. Lock Screen -> STOP (Αποδοχή)
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'hidden' && this.isRinging) {
                         this.buttonAck(); 
@@ -161,7 +275,6 @@
                     }
                 });
 
-                // B. Heartbeat Loop
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
@@ -173,7 +286,6 @@
                      this.ensureAudioPlaying();
                 }, 10000);
 
-                // C. Anti-Sleep Audio Refresh
                 if (this.antiSleepInterval) clearInterval(this.antiSleepInterval);
                 this.antiSleepInterval = setInterval(() => {
                     const silence = document.getElementById('silence');
@@ -224,15 +336,12 @@
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                // 🔥 ΕΔΩ ΕΙΝΑΙ ΤΟ LOOP FIX 🔥
-                // Μόλις σταματήσει ο συναγερμός, ξεκινάμε αμέσως το Silence
-                // για να μην κλείσει η μπάρα και να μην κοιμηθεί το App.
+                // Restart Silence loop
                 this.ensureAudioPlaying();
                 Logic.updateMediaSession('active'); 
             },
             
             buttonAck: function() {
-                // Ξεκλείδωμα ήχου με το πάτημα
                 const siren = document.getElementById('siren');
                 const silence = document.getElementById('silence');
                 if(siren) { siren.play().then(() => siren.pause()).catch(e=>{}); }
@@ -273,8 +382,7 @@
                 document.getElementById('userInfo').innerText = `${name} (${role}) | ${store}`;
                 if (role === 'admin') socket.emit('get-staff-list'); 
 
-                // 🔥 ΖΗΤΑΜΕ ΤΕΣΤ ΑΠΟ ΤΟΝ SERVER ΓΙΑ ΝΑ ΞΕΚΛΕΙΔΩΣΟΥΜΕ ΤΟΝ ΗΧΟ 🔥
-                console.log("🍏 Requesting Server Test Alarm...");
+                console.log("🍏 Asking Server for Initial Test...");
                 socket.emit('ios-login');
             },
 
@@ -298,19 +406,15 @@
             setupMediaSession: function() {
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
-                        if (Watchdog.isRinging) {
-                            Watchdog.buttonAck(); 
-                        } else {
-                            // 🔥 ΕΔΩ ΕΙΝΑΙ ΤΟ PAUSE FIX 🔥
-                            // Αν ο χρήστης πατήσει Pause ενώ δεν χτυπάει, 
-                            // το ξαναβάζουμε μπρος αμέσως!
-                            console.log("User paused silence -> Force Restart");
+                        if (Watchdog.isRinging) Watchdog.buttonAck(); 
+                        else {
+                            console.log("Media Pause -> Restarting Silence");
                             Watchdog.ensureAudioPlaying();
                             Logic.updateMediaSession('active');
                         }
                     };
                     navigator.mediaSession.setActionHandler('play', universalHandler);
-                    navigator.mediaSession.setActionHandler('pause', universalHandler); // <-- Εδώ πιάνουμε την παύση
+                    navigator.mediaSession.setActionHandler('pause', universalHandler);
                     navigator.mediaSession.setActionHandler('stop', universalHandler);
                     navigator.mediaSession.setActionHandler('nexttrack', universalHandler);
                     navigator.mediaSession.setActionHandler('previoustrack', universalHandler);
@@ -319,7 +423,7 @@
 
             updateMediaSession: function(state) {
                 if (!('mediaSession' in navigator)) return;
-                navigator.mediaSession.playbackState = "playing"; // ΠΑΝΤΑ PLAYING
+                navigator.mediaSession.playbackState = "playing";
                 
                 const isAlarm = state === 'alarm';
                 const artwork = isAlarm
@@ -387,11 +491,7 @@
             }
         });
 
-        socket.on('kitchen-alarm', () => { 
-            console.log("⚡ SOCKET ALARM");
-            Watchdog.triggerPanicMode(); 
-        });
-        
+        socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
         
         socket.on('keep-alive-pulse', () => {
