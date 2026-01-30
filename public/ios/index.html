@@ -140,9 +140,8 @@
         let currentUser = null;
         let myToken = null; 
         let hasTestRun = false; 
-        let wakeLock = null; // Για να μην κλείνει η οθόνη
+        let wakeLock = null;
 
-        // --- IOS CHECKER ---
         const IOSBot = {
             check: function() {
                 const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
@@ -150,30 +149,21 @@
             }
         };
 
-        // --- WAKE LOCK (Για να μη σβήνει η οθόνη) ---
         async function requestWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('💡 Wake Lock Active');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('💡 Wake Lock Released');
-                    });
                 }
-            } catch (err) {
-                console.log('Wake Lock Error:', err);
-            }
+            } catch (err) { console.log('Wake Lock Error:', err); }
         }
 
-        // Επαναφορά WakeLock αν χαθεί
         document.addEventListener('visibilitychange', async () => {
             if (wakeLock !== null && document.visibilityState === 'visible') {
                 await requestWakeLock();
-                AudioEngine.ensureRunning(); // Ξύπνα και τον ήχο
+                AudioEngine.ensureRunning();
             }
         });
 
-        // --- FIREBASE INIT ---
         async function initFirebase() {
             try {
                 const permission = await Notification.requestPermission();
@@ -190,79 +180,72 @@
 
         messaging.onMessage((payload) => { Watchdog.triggerPanicMode(); });
 
-        // --- COMBAT AUDIO ENGINE (SILENT DISCO EDITION) ---
+        // --- IMPROVED AUDIO ENGINE FOR iOS ---
         const AudioEngine = {
             loopInterval: null,
 
             init: function() {
                 const silence = document.getElementById('silence');
                 if(silence) {
-                    // Πρέπει να έχει λίγο volume για να νομίζει το iOS ότι παίζουμε κάτι
-                    silence.volume = 0.05; 
-                    silence.play().catch(e => console.log("Init Audio Blocked:", e));
-                    
-                    // Ξεκινάμε την επιθετική παρακολούθηση
-                    this.startWatch();
+                    silence.muted = false;
+                    silence.volume = 0.1; // iOS needs some volume to keep the session alive
+                    silence.play().then(() => {
+                        console.log("🔊 Background Audio Persistence Started");
+                        this.startWatch();
+                    }).catch(e => console.log("Audio Init Blocked:", e));
                 }
             },
 
-            // Ελέγχει κάθε 4 δευτερόλεπτα αν σταμάτησε η "σιωπή"
             startWatch: function() {
                 if (this.loopInterval) clearInterval(this.loopInterval);
                 this.loopInterval = setInterval(() => {
                     this.ensureRunning();
-                }, 4000);
+                    if ('mediaSession' in navigator && !Watchdog.isRinging) {
+                        navigator.mediaSession.playbackState = "playing";
+                    }
+                }, 2000); // Check every 2 seconds to beat iOS sleep
             },
 
             ensureRunning: function() {
                 const silence = document.getElementById('silence');
-                // Αν δεν χτυπάει ο ΣΥΝΑΓΕΡΜΟΣ και η σιωπή σταμάτησε...
                 if (!Watchdog.isRinging && silence && (silence.paused || silence.ended)) {
-                    console.log("🔊 Silence stopped by OS. Restarting to keep connection alive...");
-                    silence.play().catch(e => { /* Ignore auto-play errors in background */ });
+                    silence.play().catch(e => {});
                 }
             }
         };
 
-        // --- WATCHDOG ---
         const Watchdog = {
             interval: null,
             isRinging: false,
 
             start: function() {
-                console.log("🍏 iOS Watchdog: Active");
                 const oldAlarm = localStorage.getItem('bellgo_is_ringing');
                 if (oldAlarm === 'true') this.stopPanicMode();
-
-                // Αν σταματήσει η σιωπή, προσπαθούμε να την ξαναβάλουμε
-                const silence = document.getElementById('silence');
-                silence.addEventListener('pause', () => {
-                    if (!this.isRinging && socket.connected) {
-                        AudioEngine.ensureRunning();
-                    }
-                });
 
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                      if (socket.connected) {
                          socket.emit('heartbeat'); 
                          document.getElementById('connStatus').style.background = '#34C759';
+                         // Sync Media Session metadata on heartbeat
+                         if(!this.isRinging) Logic.updateMediaSession('active');
                      } else {
                          document.getElementById('connStatus').style.background = 'red';
                          socket.connect(); 
                      }
-                }, 10000);
+                }, 8000);
             },
 
             triggerPanicMode: function(isTest = false) {
                 if (this.isRinging && !isTest) return;
                 this.isRinging = true;
                 localStorage.setItem('bellgo_is_ringing', 'true');
-                Logic.updateMediaSession('alarm');
-
-                // Σταματάμε τη σιωπή για να παίξει η σειρήνα
+                
+                // Stop silence immediately
                 const silence = document.getElementById('silence');
                 if(silence) silence.pause();
+
+                Logic.updateMediaSession('alarm');
 
                 if (isTest) {
                     document.getElementById('alarmTitle').innerText = "🔊 TEST";
@@ -273,7 +256,15 @@
                 }
 
                 const audio = document.getElementById('siren');
-                if (audio) { audio.currentTime = 0; audio.loop = true; audio.play().catch(e=>{}); }
+                if (audio) { 
+                    audio.muted = false;
+                    audio.volume = 1.0;
+                    audio.currentTime = 0; 
+                    audio.loop = true; 
+                    audio.play().catch(e => {
+                        setTimeout(() => audio.play(), 500); // Retry if iOS blocks
+                    }); 
+                }
                 
                 document.getElementById('alarmScreen').style.display = 'flex';
                 document.getElementById('alarmScreen').style.zIndex = '999999999';
@@ -284,19 +275,16 @@
                 this.isRinging = false;
                 localStorage.removeItem('bellgo_is_ringing');
                 
-                // Σταματάμε σειρήνα
                 const audio = document.getElementById('siren');
                 if (audio) { audio.pause(); audio.currentTime = 0; audio.loop = false; }
                 
                 document.getElementById('alarmScreen').style.display = 'none';
                 
-                // ΞΑΝΑΡΧΙΖΟΥΜΕ ΤΗ ΣΙΩΠΗ
                 AudioEngine.ensureRunning();
                 Logic.updateMediaSession('active'); 
             },
             
             buttonAck: function() {
-                // Hack για να ενεργοποιήσουμε τον ήχο μετά από αδράνεια
                 AudioEngine.ensureRunning();
                 const siren = document.getElementById('siren');
                 if(siren) siren.play().then(() => siren.pause()).catch(e=>{});
@@ -308,15 +296,13 @@
             }
         };
 
-        // --- LOGIC ---
         const Logic = {
             login: function(store, name, role, pass) {
-                this.updateMediaSession('active'); 
                 this.setupMediaSession();
+                this.updateMediaSession('active'); 
                 
-                // ΕΔΩ ΕΙΝΑΙ Η ΜΑΓΕΙΑ ΓΙΑ ΤΟ iOS
-                requestWakeLock(); // Κρατάμε οθόνη
-                AudioEngine.init(); // Ξεκινάμε τη Silent Disco
+                requestWakeLock();
+                AudioEngine.init(); 
                 Watchdog.start();
                 
                 currentUser = { store, name, role, pass };
@@ -359,10 +345,7 @@
                 if ('mediaSession' in navigator) {
                     const universalHandler = () => { 
                         if (Watchdog.isRinging) Watchdog.buttonAck(); 
-                        else {
-                            AudioEngine.ensureRunning(); // Force restart on remote pause
-                            Logic.updateMediaSession('active');
-                        }
+                        else AudioEngine.ensureRunning();
                     };
                     navigator.mediaSession.setActionHandler('play', universalHandler);
                     navigator.mediaSession.setActionHandler('pause', universalHandler);
@@ -381,14 +364,13 @@
                     : [ { src: 'https://cdn-icons-png.flaticon.com/512/190/190411.png', sizes: '512x512', type: 'image/png' } ];
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: isAlarm ? "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!" : "BellGo Active",
-                    artist: isAlarm ? "ΠΑΤΑ ΕΔΩ ΓΙΑ STOP" : "Connected",
+                    artist: isAlarm ? "ΠΑΤΑ ΕΔΩ ΓΙΑ STOP" : "Connected - Listening for calls",
                     album: "BellGo iOS",
                     artwork: artwork
                 });
             }
         };
 
-        // --- SOCKET LISTENERS ---
         socket.on('connect', () => {
             document.getElementById('connStatus').style.background = '#34C759';
             if(currentUser) Logic.login(currentUser.store, currentUser.name, currentUser.role, currentUser.pass);
@@ -420,21 +402,6 @@
                     }
                     container.appendChild(btn);
                 });
-                if (staffList.length === 0) container.innerHTML = '<p style="color:#666; margin-top:20px;">Κανένας online...</p>';
-            }
-        });
-
-        socket.on('alarm-receipt', (data) => {
-            if (currentUser && currentUser.role === 'admin') {
-                const btns = document.querySelectorAll('.btn-staff');
-                btns.forEach(btn => {
-                    if(btn.innerText.includes(data.name)) {
-                        const originalText = btn.innerHTML;
-                        btn.style.background = '#34C759'; 
-                        btn.innerHTML = `✅ <b>${data.name}</b>`;
-                        setTimeout(() => { btn.style.background = ''; btn.innerHTML = originalText; }, 4000);
-                    }
-                });
             }
         });
 
@@ -451,15 +418,8 @@
 
         socket.on('kitchen-alarm', () => { Watchdog.triggerPanicMode(); });
         socket.on('stop-alarm', () => { Watchdog.stopPanicMode(); });
-        
-        socket.on('keep-alive-pulse', () => {
-            AudioEngine.ensureRunning();
-            if (!socket.connected) socket.connect();
-        });
-        
         socket.on('test-alarm', () => { Watchdog.triggerPanicMode(true); });
 
-        // --- HELPERS ---
         function nextStep(n, role) {
             if(role) localStorage.setItem('temp_role', role);
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -491,7 +451,6 @@
 
         window.onload = function() {
             IOSBot.check();
-            if(socket.connected) document.getElementById('connStatus').style.background = '#34C759';
             const saved = localStorage.getItem('bellgo_user');
             if(saved && document.getElementById('step1').classList.contains('active')) {
                 const u = JSON.parse(saved);
