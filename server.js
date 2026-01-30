@@ -15,17 +15,18 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { origin: "*" },
-    pingTimeout: 60000, // Αυξημένο timeout για σταθερότητα
+    pingTimeout: 60000, 
     pingInterval: 25000 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. CONFIGURATION ---
+// --- 2. CONFIGURATION & STATE ---
 let activeUsers = {}; 
-const TIMEOUT_LIMIT = 180000; // 3 Λεπτά (Όριο αδράνειας/βίντεο)
-const ESCALATION_DELAY = 60000; // 1 Λεπτό (Καθυστέρηση ειδοποίησης Android)
-const DISCONNECT_GRACE_PERIOD = 45000; // 45 Δευτ. (Περιθώριο Ναυαγοσώστη)
+let pendingAlarms = {}; // 🔥 Η "Μνήμη" για κλήσεις που δεν έχουν απαντηθεί (STOP)
+const TIMEOUT_LIMIT = 180000; 
+const ESCALATION_DELAY = 60000; 
+const DISCONNECT_GRACE_PERIOD = 45000; 
 
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
@@ -45,15 +46,15 @@ io.on('connection', (socket) => {
 
         const userKey = `${cleanStore}_${cleanUser}`;
         socket.join(cleanStore);
+        socket.username = cleanUser; // Αποθήκευση στο socket για ευκολία
+        socket.store = cleanStore;
 
-        // 🔥 SMART RECONNECT: Αν ο χρήστης ξαναμπήκε γρήγορα, ακυρώνουμε τον "Ναυαγοσώστη"
         if (activeUsers[userKey] && activeUsers[userKey].disconnectTimeout) {
             clearTimeout(activeUsers[userKey].disconnectTimeout);
             activeUsers[userKey].disconnectTimeout = null;
-            console.log(`♻️ ${cleanUser} reconnected just in time! (Rescue cancelled)`);
+            console.log(`♻️ ${cleanUser} reconnected just in time!`);
         }
         
-        // Καθαρισμός παλιού timeout alarm
         if (activeUsers[userKey] && activeUsers[userKey].alarmTimeout) {
             clearTimeout(activeUsers[userKey].alarmTimeout);
         }
@@ -69,11 +70,19 @@ io.on('connection', (socket) => {
             deviceType: data.deviceType || 'Unknown', 
             lastSeen: Date.now(),
             alarmTimeout: null,
-            disconnectTimeout: null, // Timer για τον Ναυαγοσώστη
-            isIntentionalExit: false // Σημαία: Βγήκε μόνος του;
+            disconnectTimeout: null,
+            isIntentionalExit: false 
         };
 
-        console.log(`👤 ${cleanUser} (${activeUsers[userKey].deviceType}) joined ${cleanStore}`);
+        console.log(`👤 ${cleanUser} joined ${cleanStore}`);
+
+        // 🔥 ΕΛΕΓΧΟΣ ΓΙΑ ΕΚΚΡΕΜΕΙΣ ΚΛΗΣΕΙΣ (Persistent Alarm)
+        // Αν ο χρήστης συνδέθηκε και το όνομά του είναι στη λίστα pending, του στέλνουμε κλήση αμέσως
+        if (pendingAlarms[userKey]) {
+            console.log(`🔔 Delivering missed alarm to ${cleanUser}`);
+            socket.emit('kitchen-alarm');
+        }
+
         updateStore(cleanStore);
     });
 
@@ -87,10 +96,9 @@ io.on('connection', (socket) => {
 
     // --- 5. HEARTBEAT ---
     socket.on('heartbeat', () => {
-        const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        if (userKey) {
+        const userKey = `${socket.store}_${socket.username}`;
+        if (activeUsers[userKey]) {
             activeUsers[userKey].lastSeen = Date.now();
-            // Αν στέλνει heartbeat, ζει. Ακυρώνουμε τον Ναυαγοσώστη αν τρέχει.
             if (activeUsers[userKey].disconnectTimeout) {
                 clearTimeout(activeUsers[userKey].disconnectTimeout);
                 activeUsers[userKey].disconnectTimeout = null;
@@ -98,43 +106,31 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 6. LOGOUT (ΗΘΕΛΗΜΕΝΗ ΕΞΟΔΟΣ) ---
+    // --- 6. LOGOUT ---
     socket.on('logout-user', () => {
-        const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        if (userKey) {
-            activeUsers[userKey].isIntentionalExit = true; // ΣΗΜΑΔΙ ΟΤΙ ΒΓΗΚΕ ΜΟΝΟΣ ΤΟΥ
-            
+        const userKey = `${socket.store}_${socket.username}`;
+        if (activeUsers[userKey]) {
+            activeUsers[userKey].isIntentionalExit = true;
             if (activeUsers[userKey].alarmTimeout) clearTimeout(activeUsers[userKey].alarmTimeout);
             if (activeUsers[userKey].disconnectTimeout) clearTimeout(activeUsers[userKey].disconnectTimeout);
             
-            const store = activeUsers[userKey].store;
             delete activeUsers[userKey];
-            updateStore(store);
+            updateStore(socket.store);
             console.log(`🚪 ${userKey} logged out manually.`);
         }
     });
 
-    // --- 7. DISCONNECT (ΑΠΟΤΟΜΗ ΑΠΟΣΥΝΔΕΣΗ - ΝΑΥΑΓΟΣΩΣΤΗΣ) ---
+    // --- 7. DISCONNECT ---
     socket.on('disconnect', () => {
-        const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        
-        if (userKey) {
+        const userKey = `${socket.store}_${socket.username}`;
+        if (activeUsers[userKey]) {
             const user = activeUsers[userKey];
-
-            // Αν βγήκε μόνος του (πάτησε Exit), δεν κάνουμε τίποτα.
             if (user.isIntentionalExit) return;
 
-            console.log(`⚠️ ${user.username} disconnected unexpectedly (Video/Sleep). Starting Rescue Timer...`);
-
-            // Ξεκινάμε χρονόμετρο "Ναυαγοσώστη" (45 δευτερόλεπτα)
             user.disconnectTimeout = setTimeout(() => {
-                // Στέλνουμε ειδοποίηση "ΓΥΡΝΑ ΠΙΣΩ" (εκτός αν είναι Fully Kiosk)
                 if (user.fcmToken && user.fcmToken.length > 20 && user.fcmToken !== 'FULLY' && user.fcmToken !== 'WEB') {
-                    console.log(`🚑 Sending RESCUE Notification to ${user.username}`);
                     sendRescueNotification(user.fcmToken);
                 }
-                
-                // Τον διαγράφουμε μετά την ειδοποίηση
                 const store = user.store;
                 delete activeUsers[userKey];
                 updateStore(store);
@@ -144,56 +140,55 @@ io.on('connection', (socket) => {
 
     // --- 8. CHAT ---
     socket.on('chat-message', (data) => {
-        const userKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        if (userKey) {
-            const user = activeUsers[userKey];
-            io.to(user.store).emit('chat-message', {
-                sender: user.username,
-                role: user.role,
+        if (socket.store) {
+            io.to(socket.store).emit('chat-message', {
+                sender: socket.username,
+                role: activeUsers[`${socket.store}_${socket.username}`]?.role || 'user',
                 text: data.text
             });
         }
     });
 
-    // --- 9. TRIGGER ALARM ---
+    // --- 9. TRIGGER ALARM (ΜΕ ΕΠΙΜΟΝΗ) ---
     socket.on('trigger-alarm', (targetUsername) => {
-        const sender = Object.values(activeUsers).find(u => u.socketId === socket.id);
-        if (!sender) return;
-
-        const targetKey = `${sender.store}_${targetUsername}`;
+        const userKeyPrefix = socket.store;
+        const targetKey = `${userKeyPrefix}_${targetUsername}`;
         const target = activeUsers[targetKey];
 
+        // 🔥 Προσθήκη στη λίστα εκκρεμών κλήσεων
+        pendingAlarms[targetKey] = true;
+
         if (target) {
-            console.log(`🔔 Alarm to ${target.username} (${target.deviceType})...`);
-            
-            // Α. Στέλνουμε ΠΑΝΤΑ το Socket (Ήχος άμεσος)
+            console.log(`🔔 Alarm to ${target.username}...`);
             io.to(target.socketId).emit('kitchen-alarm'); 
 
-            // Β. iOS: Στέλνουμε ΑΜΕΣΩΣ Push
             if (target.deviceType === 'iOS' && target.fcmToken && target.fcmToken.length > 20) {
-                console.log(`📲 iOS Push sent.`);
                 sendPushNotification(target.fcmToken);
             } 
 
-            // Γ. Android Backup Timer
             if (target.alarmTimeout) clearTimeout(target.alarmTimeout);
-
             target.alarmTimeout = setTimeout(() => {
-                console.log(`⚠️ Backup Notification Timer fired for ${target.username}`);
                 if (target.fcmToken && target.fcmToken.length > 20 && target.fcmToken !== 'FULLY') {
                      sendPushNotification(target.fcmToken);
                 }
                 target.alarmTimeout = null; 
             }, ESCALATION_DELAY); 
+        } else {
+            // Αν ο στόχος είναι offline, στείλε Push αμέσως αν έχουμε token
+            // (Το Socket θα του σκάσει μόλις κάνει reconnect λόγω του pendingAlarms)
+            console.log(`📡 Target ${targetUsername} offline. Stored in pending.`);
         }
     });
 
     // --- 10. ALARM ACK (STOP) ---
     socket.on('alarm-ack', () => {
-        const senderKey = Object.keys(activeUsers).find(key => activeUsers[key].socketId === socket.id);
-        if(senderKey) {
-            const user = activeUsers[senderKey];
-            // Ακυρώνουμε το χρονόμετρο backup
+        const userKey = `${socket.store}_${socket.username}`;
+        
+        // 🔥 Η κλήση παραδόθηκε και ο χρήστης πάτησε STOP, άρα τη σβήνουμε από τη μνήμη
+        delete pendingAlarms[userKey];
+
+        if(activeUsers[userKey]) {
+            const user = activeUsers[userKey];
             if (user.alarmTimeout) {
                 clearTimeout(user.alarmTimeout);
                 user.alarmTimeout = null;
@@ -202,52 +197,30 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 11. INITIAL FORCE WAKE UP (TEST ALARM) ---
-    // Αυτό καλείται από iOS και πλέον από Android για να ξεκλειδώσει τον ήχο
     socket.on('ios-login', () => {
-        console.log(`🔊 Login Detected. Sending Test Alarm in 2s...`);
-        setTimeout(() => {
-            socket.emit('test-alarm'); 
-        }, 2000);
+        setTimeout(() => { socket.emit('test-alarm'); }, 2000);
     });
 
 }); 
 
-// --- 12. KEEP ALIVE PULSE ---
-setInterval(() => {
-    // console.log("💓 Keep-Alive Pulse");
-    io.emit('keep-alive-pulse'); 
-}, 600000); // 10 λεπτά
-
-// --- 13. CLEANUP LOOP (Ο ΝΑΥΑΓΟΣΩΣΤΗΣ ΑΔΡΑΝΕΙΑΣ) ---
+// --- CLEANUP & MAINTENANCE ---
 setInterval(() => {
     const now = Date.now();
     let storesToUpdate = new Set();
     
     Object.keys(activeUsers).forEach(key => {
         const user = activeUsers[key];
-        
-        // Αν έχουν περάσει 3 λεπτά χωρίς Heartbeat (άρα βλέπει βίντεο/κοιμάται)
         if (now - user.lastSeen > TIMEOUT_LIMIT) {
-            console.log(`💤 User ${user.username} inactive (>3min). Kicking & Rescuing.`);
-            
-            // Στέλνουμε ειδοποίηση "ΓΥΡΝΑ ΠΙΣΩ"
             if (user.fcmToken && user.fcmToken.length > 20 && user.fcmToken !== 'FULLY' && user.fcmToken !== 'WEB') {
                 sendRescueNotification(user.fcmToken);
             }
-            
-            if (user.alarmTimeout) clearTimeout(user.alarmTimeout);
-            if (user.disconnectTimeout) clearTimeout(user.disconnectTimeout);
-            
             storesToUpdate.add(user.store);
             delete activeUsers[key];
         }
     });
-    
     storesToUpdate.forEach(store => updateStore(store));
 }, 30000); 
 
-// HELPERS
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
     const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
@@ -257,27 +230,21 @@ function updateStore(storeName) {
 function sendPushNotification(token) {
     const message = {
         token: token,
-        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Τρέξε!" },
-        android: { priority: "high", notification: { sound: "default", clickAction: "FLUTTER_NOTIFICATION_CLICK" } },
+        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Σε περιμένουν!" },
+        android: { priority: "high", notification: { sound: "default" } },
         apns: { payload: { aps: { sound: "default", "content-available": 1 } } },
-        data: { url: "/", action: "alarm" }
+        data: { action: "alarm" }
     };
-    admin.messaging().send(message).catch(e => console.error("Push Error:", e.message));
+    admin.messaging().send(message).catch(e => {});
 }
 
-// Ειδοποίηση Ναυαγοσώστη
 function sendRescueNotification(token) {
     const message = {
         token: token,
-        notification: { 
-            title: "⚠️ ΑΠΟΣΥΝΔΕΘΗΚΕΣ!", 
-            body: "Το BellGo έκλεισε λόγω αδράνειας. Πάτα εδώ!" 
-        },
-        android: { priority: "high" },
-        apns: { payload: { aps: { sound: "default" } } },
-        data: { url: "/", action: "reconnect" }
+        notification: { title: "⚠️ ΑΠΟΣΥΝΔΕΘΗΚΕΣ!", body: "Ξαναμπές στο BellGo για να λαμβάνεις κλήσεις." },
+        data: { action: "reconnect" }
     };
-    admin.messaging().send(message).catch(e => console.error("Rescue Push Failed:", e));
+    admin.messaging().send(message).catch(e => {});
 }
 
 const PORT = process.env.PORT || 3000;
