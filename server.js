@@ -13,20 +13,14 @@ try {
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { 
-    cors: { origin: "*" },
-    pingTimeout: 60000, 
-    pingInterval: 25000 
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. CONFIGURATION & STATE ---
 let activeUsers = {}; 
-let pendingAlarms = {}; // 🔥 Η "Μνήμη" για κλήσεις που δεν έχουν απαντηθεί (STOP)
+let pendingAlarms = {}; 
 const TIMEOUT_LIMIT = 180000; 
-const ESCALATION_DELAY = 60000; 
-const DISCONNECT_GRACE_PERIOD = 45000; 
 
 const SHOP_PASSWORDS = {
     'CoffeeRoom1': '1234',
@@ -36,7 +30,6 @@ const SHOP_PASSWORDS = {
 
 io.on('connection', (socket) => {
     
-    // --- 3. LOGIN & RECONNECT ---
     socket.on('join-store', (data) => {
         const cleanStore = data.storeName ? data.storeName.trim() : "";
         const cleanUser = data.username ? data.username.trim() : "";
@@ -49,96 +42,30 @@ io.on('connection', (socket) => {
         socket.username = cleanUser; 
         socket.store = cleanStore;
 
-        if (activeUsers[userKey] && activeUsers[userKey].disconnectTimeout) {
-            clearTimeout(activeUsers[userKey].disconnectTimeout);
-            activeUsers[userKey].disconnectTimeout = null;
-            console.log(`♻️ ${cleanUser} reconnected just in time!`);
-        }
-        
-        if (activeUsers[userKey] && activeUsers[userKey].alarmTimeout) {
-            clearTimeout(activeUsers[userKey].alarmTimeout);
-        }
-
-        const existingToken = activeUsers[userKey] ? activeUsers[userKey].fcmToken : null;
-
         activeUsers[userKey] = {
             socketId: socket.id,
             username: cleanUser,
             role: data.role,
             store: cleanStore,
-            fcmToken: data.fcmToken || existingToken, 
-            deviceType: data.deviceType || 'Unknown', 
             lastSeen: Date.now(),
-            alarmTimeout: null,
-            disconnectTimeout: null,
-            isIntentionalExit: false 
+            deviceType: data.deviceType || 'iOS'
         };
 
         console.log(`👤 ${cleanUser} joined ${cleanStore}`);
 
-        // 🔥 ΕΛΕΓΧΟΣ ΓΙΑ ΕΚΚΡΕΜΕΙΣ ΚΛΗΣΕΙΣ (Persistent Alarm)
+        // Persistent Alarm: Αν υπάρχει κλήση, στείλε την αμέσως
         if (pendingAlarms[userKey]) {
-            console.log(`🔔 Delivering missed alarm to ${cleanUser}`);
             socket.emit('kitchen-alarm');
         }
 
-        // 🔥 Στέλνουμε τη λίστα ΑΜΕΣΩΣ στον Admin που μόλις μπήκε
         updateStore(cleanStore);
     });
 
-    // --- 4. UPDATE TOKEN ---
-    socket.on('update-token', (data) => {
-        const userKey = `${data.store}_${data.user}`;
-        if (activeUsers[userKey]) {
-            activeUsers[userKey].fcmToken = data.token;
-        }
-    });
-
-    // --- 5. HEARTBEAT ---
     socket.on('heartbeat', () => {
         const userKey = `${socket.store}_${socket.username}`;
-        if (activeUsers[userKey]) {
-            activeUsers[userKey].lastSeen = Date.now();
-            if (activeUsers[userKey].disconnectTimeout) {
-                clearTimeout(activeUsers[userKey].disconnectTimeout);
-                activeUsers[userKey].disconnectTimeout = null;
-            }
-        }
+        if (activeUsers[userKey]) activeUsers[userKey].lastSeen = Date.now();
     });
 
-    // --- 6. LOGOUT ---
-    socket.on('logout-user', () => {
-        const userKey = `${socket.store}_${socket.username}`;
-        if (activeUsers[userKey]) {
-            activeUsers[userKey].isIntentionalExit = true;
-            if (activeUsers[userKey].alarmTimeout) clearTimeout(activeUsers[userKey].alarmTimeout);
-            if (activeUsers[userKey].disconnectTimeout) clearTimeout(activeUsers[userKey].disconnectTimeout);
-            
-            delete activeUsers[userKey];
-            updateStore(socket.store);
-            console.log(`🚪 ${userKey} logged out manually.`);
-        }
-    });
-
-    // --- 7. DISCONNECT ---
-    socket.on('disconnect', () => {
-        const userKey = `${socket.store}_${socket.username}`;
-        if (activeUsers[userKey]) {
-            const user = activeUsers[userKey];
-            if (user.isIntentionalExit) return;
-
-            user.disconnectTimeout = setTimeout(() => {
-                if (user.fcmToken && user.fcmToken.length > 20 && user.fcmToken !== 'FULLY' && user.fcmToken !== 'WEB') {
-                    sendRescueNotification(user.fcmToken);
-                }
-                const store = user.store;
-                delete activeUsers[userKey];
-                updateStore(store);
-            }, DISCONNECT_GRACE_PERIOD);
-        }
-    });
-
-    // --- 8. CHAT ---
     socket.on('chat-message', (data) => {
         if (socket.store) {
             io.to(socket.store).emit('chat-message', {
@@ -149,119 +76,49 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 9. TRIGGER ALARM ---
     socket.on('trigger-alarm', (targetUsername) => {
-        const userKeyPrefix = socket.store;
-        const targetKey = `${userKeyPrefix}_${targetUsername}`;
-        const target = activeUsers[targetKey];
-
-        // 🔥 Προσθήκη στη μνήμη (Pending)
+        const targetKey = `${socket.store}_${targetUsername}`;
         pendingAlarms[targetKey] = true;
         
-        // Ενημερώνουμε ΑΜΕΣΩΣ τον Admin ότι η κλήση είναι ενεργή (για να γίνει κίτρινο το κουμπί)
-        updateStore(socket.store);
-
+        const target = activeUsers[targetKey];
         if (target) {
-            console.log(`🔔 Alarm to ${target.username}...`);
-            io.to(target.socketId).emit('kitchen-alarm'); 
-
-            if (target.deviceType === 'iOS' && target.fcmToken && target.fcmToken.length > 20) {
-                sendPushNotification(target.fcmToken);
-            } 
-
-            if (target.alarmTimeout) clearTimeout(target.alarmTimeout);
-            target.alarmTimeout = setTimeout(() => {
-                if (target.fcmToken && target.fcmToken.length > 20 && target.fcmToken !== 'FULLY') {
-                     sendPushNotification(target.fcmToken);
-                }
-                target.alarmTimeout = null; 
-            }, ESCALATION_DELAY); 
-        } else {
-            console.log(`📡 Target ${targetUsername} offline. Stored in pending.`);
+            io.to(target.socketId).emit('kitchen-alarm');
         }
+        updateStore(socket.store);
     });
 
-    // --- 10. ALARM ACK (STOP) ---
     socket.on('alarm-ack', () => {
         const userKey = `${socket.store}_${socket.username}`;
         
-        // 🔥 Διαγραφή από τη μνήμη
-        delete pendingAlarms[userKey];
-
-        if(activeUsers[userKey]) {
-            const user = activeUsers[userKey];
-            if (user.alarmTimeout) {
-                clearTimeout(user.alarmTimeout);
-                user.alarmTimeout = null;
-            }
-            // Στέλνουμε το σήμα επιτυχίας
-            io.to(user.store).emit('alarm-receipt', { name: user.username });
-            
-            // Ενημερώνουμε τη λίστα ότι πλέον ΔΕΝ χτυπάει
-            updateStore(user.store);
+        if (pendingAlarms[userKey]) {
+            delete pendingAlarms[userKey];
+            // Ενημέρωση όλων στο μαγαζί ότι η κλήση απαντήθηκε
+            io.to(socket.store).emit('alarm-receipt', { name: socket.username });
+            updateStore(socket.store);
         }
     });
 
-    socket.on('ios-login', () => {
-        setTimeout(() => { socket.emit('test-alarm'); }, 2000);
+    socket.on('disconnect', () => {
+        // Δεν διαγράφουμε αμέσως για να αντέχει σε μικρο-διακοπές WiFi
+        setTimeout(() => {
+            const userKey = `${socket.store}_${socket.username}`;
+            if (activeUsers[userKey] && Date.now() - activeUsers[userKey].lastSeen > 15000) {
+                delete activeUsers[userKey];
+                updateStore(socket.store);
+            }
+        }, 10000);
     });
-
 }); 
 
-// --- CLEANUP & MAINTENANCE ---
-setInterval(() => {
-    const now = Date.now();
-    let storesToUpdate = new Set();
-    
-    Object.keys(activeUsers).forEach(key => {
-        const user = activeUsers[key];
-        if (now - user.lastSeen > TIMEOUT_LIMIT) {
-            if (user.fcmToken && user.fcmToken.length > 20 && user.fcmToken !== 'FULLY' && user.fcmToken !== 'WEB') {
-                sendRescueNotification(user.fcmToken);
-            }
-            storesToUpdate.add(user.store);
-            delete activeUsers[key];
-        }
-    });
-    storesToUpdate.forEach(store => updateStore(store));
-}, 30000); 
-
-// 🔥 Η ΣΗΜΑΝΤΙΚΗ ΑΛΛΑΓΗ ΕΔΩ 🔥
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    
-    // Προσθέτουμε την πληροφορία "isRinging" για τον κάθε χρήστη
-    const formattedStaff = staff.map(u => {
-        const userKey = `${storeName}_${u.username}`;
-        return { 
-            name: u.username, 
-            role: u.role,
-            isRinging: !!pendingAlarms[userKey] // True αν υπάρχει στη λίστα αναμονής
-        };
-    });
-
+    const formattedStaff = staff.map(u => ({
+        name: u.username, 
+        role: u.role,
+        isRinging: !!pendingAlarms[`${storeName}_${u.username}`]
+    }));
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
-function sendPushNotification(token) {
-    const message = {
-        token: token,
-        notification: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", body: "Σε περιμένουν!" },
-        android: { priority: "high", notification: { sound: "default" } },
-        apns: { payload: { aps: { sound: "default", "content-available": 1 } } },
-        data: { action: "alarm" }
-    };
-    admin.messaging().send(message).catch(e => {});
-}
-
-function sendRescueNotification(token) {
-    const message = {
-        token: token,
-        notification: { title: "⚠️ ΑΠΟΣΥΝΔΕΘΗΚΕΣ!", body: "Ξαναμπές στο BellGo για να λαμβάνεις κλήσεις." },
-        data: { action: "reconnect" }
-    };
-    admin.messaging().send(message).catch(e => {});
-}
-
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
