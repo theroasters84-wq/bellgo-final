@@ -12,7 +12,7 @@
     <style>
         /* BASIC SETUP */
         body { background-color: #121212; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .active { display: flex !important; }
         
         /* INPUTS & BUTTONS */
@@ -24,9 +24,9 @@
         .btn-orange { background: #FF6D00; color: black; }
         .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 14px; border-radius: 8px; }
         
-        /* APK DOWNLOAD BUTTON STYLE */
-        .btn-apk { background: #333; border: 1px solid #555; color: #00E676; width: auto; padding: 5px 12px; font-size: 13px; height: 35px; text-decoration: none; display: flex; align-items: center; border-radius: 8px; margin-right: 8px; font-weight: bold; }
-        
+        /* APK DOWNLOAD BUTTON STYLE - TOP RIGHT ABSOLUTE */
+        .btn-apk-floating { position: absolute; top: 20px; right: 20px; background: #333; border: 1px solid #00E676; color: #00E676; padding: 8px 15px; font-size: 14px; text-decoration: none; border-radius: 20px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+
         /* MAIN LAYOUT */
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
         .header { height: 60px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; padding-top: env(safe-area-inset-top); }
@@ -65,6 +65,8 @@
 
     <audio id="masterPlayer" preload="auto" playsinline loop></audio>
 
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk-floating">📲 Download App</a>
+
     <div id="step1" class="screen active">
         <h2>🏬 Όνομα Μαγαζιού</h2>
         <input type="text" id="inpStore">
@@ -93,10 +95,7 @@
                 <div id="connStatus"></div>
                 <div id="userInfo" style="font-size: 12px; line-height:1.1;">User</div>
             </div>
-            <div style="display:flex; align-items:center;">
-                <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk">📲 APP</a>
-                <button class="btn-red" onclick="fullExit()">Exit</button>
-            </div>
+            <button class="btn-red" onclick="fullExit()">Exit</button>
         </div>
         <div class="content-area">
             <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
@@ -120,7 +119,7 @@
         let selectedRole = '';
         let currentUser = null;
         let lastList = [];
-        let acceptedFlash = {}; // Μνήμη για το ποιος αποδέχτηκε
+        let acceptedFlash = {}; 
 
         const AudioEngine = {
             player: null,
@@ -128,7 +127,6 @@
             init() {
                 this.player = document.getElementById('masterPlayer');
                 this.playSilence();
-                // Απλό Hack για να κρατάει τον browser ξύπνιο
                 setInterval(() => { if (!this.ringing && this.player.paused) this.player.play().catch(e=>{}); }, 3000);
             },
             playSilence() { this.ringing = false; this.player.src = "/silence.mp3"; this.player.volume = 0.01; this.player.play().catch(e=>{}); },
@@ -169,26 +167,26 @@
 
         const Logic = {
             login(store, name, role, pass) {
+                // Κρύβουμε το κουμπί Download όταν συνδεθείς
+                document.querySelector('.btn-apk-floating').style.display = 'none';
+
                 socket = io();
                 currentUser = { store, name, role, pass };
                 document.getElementById('userInfo').innerHTML = `<b>${name}</b><br>${store}`;
 
                 socket.on('connect', () => {
-                    // Καθαρό join-store χωρίς περιττά data
                     socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass });
                 });
 
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
                 
-                // --- ΔΙΑΧΕΙΡΙΣΗ ΑΠΟΔΟΧΗΣ ---
+                // ΔΙΑΧΕΙΡΙΣΗ ΑΠΟΔΟΧΗΣ
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
-                        // 1. Καταγράφουμε την αποδοχή
                         acceptedFlash[data.name] = true;
-                        // 2. Ανανεώνουμε τη λίστα
                         this.renderList(lastList);
                         
-                        // 3. Αυτόματο σβήσιμο μετά από 30 δευτερόλεπτα (όχι 7)
+                        // Κρατάει το πράσινο για 30 δευτερόλεπτα
                         setTimeout(() => {
                             if(acceptedFlash[data.name]) {
                                 delete acceptedFlash[data.name];
@@ -228,24 +226,16 @@
                     btn.id = `btn-${u.name}`;
                     
                     if(selectedRole === 'admin') {
-                        // ΠΕΡΙΠΤΩΣΗ 1: ΑΠΟΔΟΧΗ (ΠΡΑΣΙΝΟ)
                         if (acceptedFlash[u.name]) {
                             btn.classList.add('success-call');
                             btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b><br><span style="font-size:12px;opacity:0.8">(Πάτα για OK)</span>`;
-                            
-                            // Κλικ για να το σβήσεις χειροκίνητα
-                            btn.onclick = () => {
-                                delete acceptedFlash[u.name];
-                                this.renderList(lastList);
-                            };
+                            btn.onclick = () => { delete acceptedFlash[u.name]; this.renderList(lastList); };
                         } 
-                        // ΠΕΡΙΠΤΩΣΗ 2: ΧΤΥΠΑΕΙ (ΚΙΤΡΙΝΟ)
                         else if (u.isRinging) {
                             btn.classList.add('pending-call');
                             btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ...<br><b>${u.name}</b>`;
                              btn.onclick = () => { socket.emit('trigger-alarm', u.name); };
                         } 
-                        // ΠΕΡΙΠΤΩΣΗ 3: ΗΡΕΜΙΑ (ΚΑΝΟΝΙΚΟ)
                         else {
                             btn.innerHTML = `🔔 <b>${u.name}</b>`;
                             btn.onclick = () => {
