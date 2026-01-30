@@ -3,329 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Web</title>
+    <title>BellGo Ultimate</title>
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
     
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
     <style>
-        /* BASIC SETUP */
+        /* CSS STYLES */
         body { background-color: #121212; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .active { display: flex !important; }
         
-        /* AUDIO PLAYER VISIBLE */
-        audio { width: 80%; height: 40px; margin-top: 10px; border-radius: 20px; border: 1px solid #333; }
+        h1 { margin-bottom: 20px; font-size: 30px; letter-spacing: 2px; }
 
-        /* INPUTS & BUTTONS */
-        input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; margin: 10px 0; text-align: center; -webkit-appearance: none; }
-        button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; }
+        button { padding: 20px; font-size: 18px; margin: 10px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; -webkit-appearance: none; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+
+        .btn-setup { background: #333; color: #FF6D00; border: 1px solid #FF6D00; font-size: 14px; padding: 10px; width: auto; }
+        .btn-pompos { background: #FF3D00; color: white; height: 80px; font-size: 22px; }
+        .btn-dekths { background: #2962FF; color: white; height: 80px; font-size: 22px; }
+        .btn-fake { background: #333; border: 1px solid #555; }
         
-        .btn-green { background: #00E676; color: black; }
-        .btn-blue { background: #2962FF; }
-        .btn-orange { background: #FF6D00; color: black; }
-        .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 14px; border-radius: 8px; }
-        
-        .btn-apk-floating { position: absolute; top: 10px; right: 10px; background: #333; border: 1px solid #00E676; color: #00E676; padding: 6px 12px; font-size: 12px; text-decoration: none; border-radius: 20px; font-weight: bold; z-index: 1000; }
+        .btn-apk { 
+            background: linear-gradient(45deg, #00C853, #00E676); 
+            color: black; 
+            text-decoration: none; 
+            padding: 15px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            display: inline-block; 
+            margin-bottom: 30px; 
+            width: 80%;
+            box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);
+        }
 
-        /* MAIN LAYOUT */
-        #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
-        .header { height: 60px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; padding-top: env(safe-area-inset-top); }
-        .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
-        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 10px; background: #000; -webkit-overflow-scrolling: touch; }
-
-        /* STAFF BUTTONS */
-        .btn-staff { width: 100%; height: 85px; font-size: 17px; margin-bottom: 12px; display: block; border-radius: 12px; line-height: 1.3; transition: all 0.2s; border: 2px solid transparent; }
-        .driver { background: #333; color: #FF6D00; border: 1px solid #FF6D00; }
-        .waiter { background: #333; color: #2962FF; border: 1px solid #2962FF; }
-
-        /* ALERT STATES */
-        .pending-call { background: #FFD600 !important; color: #000 !important; animation: pulseStatus 1s infinite; border: 3px solid white; }
-        .success-call { background: #00E676 !important; color: #000 !important; border: 3px solid white !important; font-weight: 900; }
-        
-        @keyframes pulseStatus { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-
-        /* CHAT */
-        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #121212; }
-        #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; }
-        .chat-input-area { height: 70px; display: flex; padding: 10px; background: #1c1c1e; border-top: 1px solid #333; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-        #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 15px; height: 50px; background: #2c2c2e; border: none; color: white; border-radius: 8px; }
-        #sendBtn { width: 25%; margin-left: 10px; background: #00E676; color: black; height: 50px; border-radius: 8px; }
-        
         /* ALARM OVERLAY */
-        #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; }
+        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
-        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; animation: pulse 0.5s infinite; }
         
-        #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; }
-    </style>
+        .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; animation: pulse 0.5s infinite; box-shadow: 0 0 50px rgba(255,255,255,0.8); }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-    <script src="/socket.io/socket.io.js"></script>
+        #fakeLockScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 8888; flex-direction: column; align-items: center; justify-content: center; color: #333; }
+
+        /* STATUS CLASSES FOR ADMIN BUTTON */
+        .admin-accepted { background: #00E676 !important; color: black !important; border: 2px solid white; }
+        .admin-calling { background: #FFD600 !important; color: black !important; animation: pulse 1s infinite; }
+    </style>
 </head>
 <body>
 
-    <div style="background:#000; padding:10px;">
-        <audio id="masterPlayer" controls loop playsinline></audio>
-        <div style="font-size:10px; color:gray;">🔊 Audio Engine Active</div>
+    <div style="position:absolute; top:0; left:0; width:1px; height:1px; opacity:0.1; overflow:hidden;">
+        <audio id="alertSound" src="alert.mp3" loop playsinline></audio>
+        <audio id="silenceSound" src="silence.mp3" loop playsinline></audio>
     </div>
 
-    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk-floating">📲 App</a>
+    <div id="loginScreen" class="screen active">
+        <h1>BELLGO</h1>
+        
+        <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk">
+            📲 Download App (v1.0)
+        </a>
 
-    <div id="step1" class="screen active">
-        <h2>🏬 Όνομα Μαγαζιού</h2>
-        <input type="text" id="inpStore">
-        <button class="btn-green" onclick="nextStep(2)">Επόμενο</button>
-    </div>
-    <div id="step2" class="screen">
-        <h2>👤 Το Όνομά σου</h2>
-        <input type="text" id="inpName">
-        <button class="btn-green" onclick="nextStep(3)">Επόμενο</button>
-    </div>
-    <div id="step3" class="screen">
-        <h2>👔 Ο Ρόλος σου</h2>
-        <button class="btn-green" onclick="nextStep(4, 'admin')">ADMIN (Κουζίνα)</button>
-        <button class="btn-blue" onclick="nextStep(4, 'waiter')">ΣΕΡΒΙΤΟΡΟΣ</button>
-        <button class="btn-orange" onclick="nextStep(4, 'driver')">ΔΙΑΝΟΜΕΑΣ</button>
-    </div>
-    <div id="step4" class="screen">
-        <h2>🔑 Κωδικός</h2>
-        <input type="password" id="inpPass" inputmode="numeric">
-        <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
+        <div style="height: 20px;"></div>
+
+        <button class="btn-pompos" onclick="startApp('admin')">ΕΙΜΑΙ ΠΟΜΠΟΣ<br><span style="font-size:14px">(Κουζίνα/Admin)</span></button>
+        <button class="btn-dekths" onclick="startApp('staff')">ΕΙΜΑΙ ΔΕΚΤΗΣ<br><span style="font-size:14px">(Σερβιτόρος/Διανομέας)</span></button>
     </div>
 
-    <div id="mainApp">
-        <div class="header">
-            <div style="display:flex; align-items:center;">
-                <div id="connStatus"></div>
-                <div id="userInfo" style="font-size: 12px; line-height:1.1;">User</div>
-            </div>
-            <button class="btn-red" onclick="fullExit()">Exit</button>
+    <div id="pomposScreen" class="screen">
+        <h1>ΠΟΜΠΟΣ</h1>
+        <button id="btnCall" class="btn-pompos" onclick="triggerAlarm()">🔔 ΚΛΗΣΗ</button>
+        <p id="statusMsg" style="color:#aaa; margin-top:20px;">Ready</p>
+        <button class="btn-fake" onclick="location.reload()" style="margin-top:50px; width:50%;">ΕΞΟΔΟΣ</button>
+    </div>
+
+    <div id="dekthsScreen" class="screen">
+        <h1>ΔΕΚΤΗΣ</h1>
+        <h2 style="color:#00C853; border: 1px solid #00C853; padding: 10px; border-radius: 8px;">● ONLINE</h2>
+        <div style="margin-top: 40px;">
+            <button class="btn-fake" onclick="enableFakeLock()">🌙 FAKE LOCK (Black Screen)</button>
         </div>
-        <div class="content-area">
-            <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
-            <div class="chat-panel">
-                <div id="chat-messages"></div>
-                <div class="chat-input-area">
-                    <input type="text" id="chatInput" placeholder="Μήνυμα...">
-                    <button id="sendBtn" onclick="Logic.sendChat()">📩</button>
-                </div>
-            </div>
-        </div>
+        <p style="font-size:12px; color:#666; margin-top:20px;">*Μην κλείνεις την εφαρμογή.</p>
+        <button class="btn-fake" onclick="location.reload()" style="margin-top:20px; width:50%;">ΕΞΟΔΟΣ</button>
     </div>
 
-    <div id="alarmScreen" onclick="Watchdog.buttonAck()">
-        <h1 style="color:white; font-size: 50px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
-        <button class="stop-btn">STOP</button>
+    <div id="fakeLockScreen" onclick="disableFakeLock()">
+        <p>Double Tap to Unlock</p>
+    </div>
+
+    <div id="alarmOverlay">
+        <h1>🚨 ΚΛΗΣΗ!</h1>
+        <button class="stop-btn" onclick="stopAlarm()">STOP</button>
     </div>
 
     <script>
-        let socket = null;
-        let selectedRole = '';
-        let currentUser = null;
-        let lastList = [];
-        let acceptedFlash = {}; 
+        const socket = io();
+        let myFcmToken = null;
+        let wakeLock = null;
 
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
+            authDomain: "bellgo-5dbe5.firebaseapp.com",
+            projectId: "bellgo-5dbe5",
+            storageBucket: "bellgo-5dbe5.firebasestorage.app",
+            messagingSenderId: "799314495253",
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+            measurementId: "G-379ETZJP8H"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+
+        // --- AUDIO ENGINE ---
         const AudioEngine = {
-            player: null,
-            ringing: false,
+            alert: document.getElementById('alertSound'),
+            silence: document.getElementById('silenceSound'),
             
-            init() {
-                this.player = document.getElementById('masterPlayer');
-                // Ξεκινάμε με Silence
-                this.playSilence();
-                
-                // Αν ο χρήστης το κάνει Pause κατά λάθος, το ξαναξεκινάμε
-                this.player.onpause = () => {
-                    if (!this.ringing) {
-                        console.log("Auto-resuming silence...");
-                        this.playSilence();
-                    }
-                };
-            },
-
             playSilence() {
-                this.ringing = false;
-                this.player.src = "/silence.mp3";
-                this.player.loop = true;
-                this.player.volume = 0.1;
-                this.player.play().catch(e => console.log("User interaction needed"));
+                this.alert.pause();
+                this.alert.currentTime = 0;
+                this.silence.volume = 0.1;
+                this.silence.play().catch(e => console.log("User interaction needed"));
             },
-
-            playAlarm() {
-                this.ringing = true;
-                this.player.src = "/alert.mp3";
-                this.player.loop = true;
-                this.player.volume = 1.0;
-                this.player.play().catch(e => console.log("Audio Error"));
-            }
-        };
-
-        const Watchdog = {
-            isRinging: false,
             
-            start() {
-                setInterval(() => {
-                    if (socket && socket.connected) {
-                        socket.emit('heartbeat');
-                        document.getElementById('connStatus').style.background = '#00E676';
-                    } else {
-                        document.getElementById('connStatus').style.background = 'red';
-                        if(socket) socket.connect();
-                    }
-                }, 5000); // Check every 5s
-            },
-
-            triggerPanicMode() {
-                if (this.isRinging) return;
-                this.isRinging = true;
-                AudioEngine.playAlarm();
-                document.getElementById('alarmScreen').style.display = 'flex';
+            playAlert() {
+                this.silence.pause();
+                this.alert.volume = 1.0;
+                this.alert.play().catch(e => console.error(e));
                 if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-            },
+            }
+        };
 
-            stopPanicMode() {
-                this.isRinging = false;
-                document.getElementById('alarmScreen').style.display = 'none';
-                
-                // ΑΜΕΣΗ ΕΠΙΣΤΡΟΦΗ ΣΤΟ SILENCE
-                AudioEngine.playSilence();
-            },
-
-            buttonAck() {
-                if (this.isRinging) {
-                    // Στέλνουμε 3 φορές την εντολή για σιγουριά (Spamming)
-                    socket.emit('alarm-ack');
-                    setTimeout(() => socket.emit('alarm-ack'), 100);
-                    setTimeout(() => socket.emit('alarm-ack'), 300);
-                    
-                    this.stopPanicMode();
+        // --- APP LOGIC ---
+        async function startApp(role) {
+            // Ζητάμε Full Screen και Wakelock
+            try {
+                if(role === 'staff' && 'wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
                 }
-            }
-        };
+            } catch(e) {}
 
-        const Logic = {
-            login(store, name, role, pass) {
-                document.querySelector('.btn-apk-floating').style.display = 'none';
-
-                socket = io();
-                currentUser = { store, name, role, pass };
-                document.getElementById('userInfo').innerHTML = `<b>${name}</b><br>${store}`;
-
-                socket.on('connect', () => {
-                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass });
-                });
-
-                socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
+            // Firebase Token (μόνο για staff)
+            if (role === 'staff') {
+                try {
+                    const token = await messaging.getToken();
+                    if(token) myFcmToken = token;
+                    console.log("Token:", token);
+                } catch(e) { console.log("Token Error", e); }
                 
-                socket.on('alarm-receipt', (data) => {
-                    if (selectedRole === 'admin') {
-                        acceptedFlash[data.name] = true;
-                        this.renderList(lastList);
-                        setTimeout(() => {
-                            if(acceptedFlash[data.name]) {
-                                delete acceptedFlash[data.name];
-                                this.renderList(lastList);
-                            }
-                        }, 30000); 
-                    }
-                });
-
-                socket.on('staff-list-update', (list) => {
-                    lastList = list;
-                    this.renderList(list);
-                });
-                
-                socket.on('chat-message', (data) => {
-                    const box = document.getElementById('chat-messages');
-                    const div = document.createElement('div');
-                    div.className = `msg ${data.sender === currentUser.name ? 'self' : ''}`;
-                    div.style.padding = "8px 12px"; div.style.marginBottom = "5px"; div.style.borderRadius = "12px"; div.style.background = "#2c2c2e"; div.style.fontSize = "15px"; div.style.maxWidth = "85%";
-                    if(data.sender === currentUser.name) { div.style.background = "#2962FF"; div.style.marginLeft = "auto"; }
-                    div.innerHTML = `<small style="color:gray">${data.sender}</small><br>${data.text}`;
-                    box.appendChild(div);
-                    box.scrollTop = box.scrollHeight;
-                });
-
-                AudioEngine.init();
-                Watchdog.start();
-            },
-
-            renderList(list) {
-                const div = document.getElementById('staffListContainer');
-                div.innerHTML = '';
-                list.forEach(u => {
-                    if (u.role === 'admin') return;
-                    const btn = document.createElement('button');
-                    btn.className = `btn-staff ${u.role}`;
-                    btn.id = `btn-${u.name}`;
-                    
-                    if(selectedRole === 'admin') {
-                        if (acceptedFlash[u.name]) {
-                            btn.classList.add('success-call');
-                            btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b><br><span style="font-size:12px;opacity:0.8">(Πάτα για OK)</span>`;
-                            btn.onclick = () => { delete acceptedFlash[u.name]; this.renderList(lastList); };
-                        } 
-                        else if (u.isRinging) {
-                            btn.classList.add('pending-call');
-                            btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ...<br><b>${u.name}</b>`;
-                             btn.onclick = () => { socket.emit('trigger-alarm', u.name); };
-                        } 
-                        else {
-                            btn.innerHTML = `🔔 <b>${u.name}</b>`;
-                            btn.onclick = () => {
-                                btn.classList.add('pending-call');
-                                btn.innerHTML = `⏳ ΚΛΗΣΗ...<br><b>${u.name}</b>`;
-                                socket.emit('trigger-alarm', u.name);
-                            };
-                        }
-                    } else {
-                        btn.innerText = `👤 ${u.name}`;
-                        btn.style.opacity = "0.5";
-                    }
-                    div.appendChild(btn);
-                });
-            },
-
-            sendChat() {
-                const inp = document.getElementById('chatInput');
-                if(inp.value.trim()) { socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
+                // Ξεκινάμε τον σιωπηλό ήχο για να μένει ξύπνιο το Android
+                AudioEngine.playSilence();
             }
-        };
 
-        function nextStep(n, role) {
-            if(role) selectedRole = role;
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('step'+n).classList.add('active');
+            // Σύνδεση Socket
+            socket.emit('join-store', { 
+                storeName: 'General', 
+                username: role, 
+                role: role,
+                fcmToken: myFcmToken 
+            });
+
+            // Αλλαγή Οθόνης
+            document.getElementById('loginScreen').classList.remove('active');
+            if (role === 'admin') document.getElementById('pomposScreen').classList.add('active');
+            else document.getElementById('dekthsScreen').classList.add('active');
+
+            // Setup Media Session Buttons (για έλεγχο από Lock Screen)
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({ title: 'BellGo Active', artist: 'Waiting for calls...' });
+                navigator.mediaSession.setActionHandler('play', stopAlarm);
+                navigator.mediaSession.setActionHandler('pause', stopAlarm);
+                navigator.mediaSession.setActionHandler('stop', stopAlarm);
+            }
         }
 
-        function forcePlayAndLogin() {
-            const store = document.getElementById('inpStore').value.trim();
-            const name = document.getElementById('inpName').value.trim();
-            const pass = document.getElementById('inpPass').value.trim();
-            if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
-            
-            localStorage.setItem('bellgo_user', JSON.stringify({store, name, role: selectedRole, pass}));
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('mainApp').style.display = 'flex';
-            if (selectedRole !== 'admin') document.getElementById('listsPanel').style.display = 'none';
-
-            Logic.login(store, name, selectedRole, pass);
+        // --- ALARM SENDING (ADMIN) ---
+        function triggerAlarm() {
+            socket.emit('trigger-alarm');
+            const btn = document.getElementById('btnCall');
+            btn.innerHTML = "⏳ ΚΑΛΕΙ...";
+            btn.classList.add('admin-calling');
         }
 
-        function fullExit() { localStorage.removeItem('bellgo_user'); location.reload(); }
+        // --- ALARM RECEIVING (STAFF & FEEDBACK) ---
+        socket.on('ring-bell', () => {
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            AudioEngine.playAlert();
+        });
 
-        window.onload = function() {
-            const saved = localStorage.getItem('bellgo_user');
-            if(saved) {
-                const u = JSON.parse(saved);
-                document.getElementById('inpStore').value = u.store;
-                document.getElementById('inpName').value = u.name;
-                document.getElementById('inpPass').value = u.pass;
-                selectedRole = u.role;
-                setTimeout(() => forcePlayAndLogin(), 1000);
-            }
-        };
+        socket.on('kitchen-alarm', () => {
+            // Για συμβατότητα με τον server κώδικα αν στέλνει αυτό το event
+            document.getElementById('alarmOverlay').style.display = 'flex';
+            AudioEngine.playAlert();
+        });
+
+        // --- FEEDBACK ΑΠΟΔΟΧΗΣ (ADMIN) ---
+        socket.on('alarm-receipt', (data) => {
+            // Αυτό τρέχει στον ADMIN όταν ο staff πατήσει STOP
+            const btn = document.getElementById('btnCall');
+            btn.classList.remove('admin-calling');
+            btn.classList.add('admin-accepted');
+            btn.innerHTML = "✅ Η ΚΛΗΣΗ ΑΠΟΔΕΚΤΗΚΕ";
+            document.getElementById('statusMsg').innerText = `Αποδοχή από: ${data.name || 'Staff'}`;
+
+            // Επαναφορά μετά από 5 δευτερόλεπτα
+            setTimeout(() => {
+                btn.classList.remove('admin-accepted');
+                btn.innerHTML = "🔔 ΚΛΗΣΗ";
+                document.getElementById('statusMsg').innerText = "Ready";
+            }, 5000);
+        });
+
+        // --- STOPPING ALARM (STAFF) ---
+        function stopAlarm() {
+            // 1. Τοπικό Σταμάτημα
+            document.getElementById('alarmOverlay').style.display = 'none';
+            AudioEngine.playSilence(); // Επιστροφή στο silence loop
+
+            // 2. Ενημέρωση Server (Η ΔΙΟΡΘΩΣΗ)
+            // Στέλνουμε πολλές φορές για σιγουριά στο Android
+            socket.emit('alarm-ack');
+            setTimeout(() => socket.emit('alarm-ack'), 200);
+            setTimeout(() => socket.emit('alarm-ack'), 500);
+        }
+
+        // --- UTILS ---
+        function enableFakeLock() {
+            document.getElementById('fakeLockScreen').style.display = 'flex';
+            if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+        }
+        function disableFakeLock() {
+            document.getElementById('fakeLockScreen').style.display = 'none';
+            if(document.exitFullscreen) document.exitFullscreen();
+        }
+
+        // Heartbeat για να μην κλείνει το socket
+        setInterval(() => {
+            if(socket.connected) socket.emit('heartbeat');
+        }, 5000);
+
     </script>
 </body>
 </html>
