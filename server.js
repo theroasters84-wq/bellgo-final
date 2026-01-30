@@ -9,6 +9,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// State
 let activeUsers = {}; 
 let pendingAlarms = {}; 
 
@@ -60,7 +61,7 @@ io.on('connection', (socket) => {
         const userKey = `${socket.store}_${socket.username}`;
         if (pendingAlarms[userKey]) {
             delete pendingAlarms[userKey];
-            // Ενημερώνουμε την κουζίνα (Admin) ότι ο συγκεκριμένος χρήστης απάντησε
+            // Broadcast σε ΟΛΟΥΣ στο store για να πρασινίσει το κουμπί στον Admin
             io.to(socket.store).emit('alarm-receipt', { name: socket.username });
             updateStore(socket.store);
         }
@@ -79,7 +80,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         const userKey = `${socket.store}_${socket.username}`;
         setTimeout(() => {
-            if (activeUsers[userKey]) {
+            if (activeUsers[userKey] && (Date.now() - activeUsers[userKey].lastSeen > 10000)) {
                 delete activeUsers[userKey];
                 updateStore(socket.store);
             }
