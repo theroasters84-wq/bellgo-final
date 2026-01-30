@@ -20,6 +20,7 @@ const SHOP_PASSWORDS = {
 
 io.on('connection', (socket) => {
     
+    // --- 1. JOIN STORE ---
     socket.on('join-store', (data) => {
         const cleanStore = data.storeName ? data.storeName.trim() : "";
         const cleanUser = data.username ? data.username.trim() : "";
@@ -37,16 +38,26 @@ io.on('connection', (socket) => {
             lastSeen: Date.now()
         };
 
+        // Αν υπάρχει εκκρεμής κλήση γι' αυτόν που μόλις μπήκε, χτύπα
         if (pendingAlarms[userKey]) socket.emit('kitchen-alarm');
+        
         updateStore(cleanStore);
+        console.log(`👤 Joined: ${cleanUser} @ ${cleanStore}`);
     });
 
+    // --- 2. HEARTBEAT ---
     socket.on('heartbeat', () => {
-        const userKey = `${socket.store}_${socket.username}`;
-        if (activeUsers[userKey]) activeUsers[userKey].lastSeen = Date.now();
+        if (socket.store && socket.username) {
+            const userKey = `${socket.store}_${socket.username}`;
+            if (activeUsers[userKey]) activeUsers[userKey].lastSeen = Date.now();
+        }
     });
 
+    // --- 3. TRIGGER ALARM (Από Admin) ---
     socket.on('trigger-alarm', (targetUsername) => {
+        // Αν χάθηκε η σύνδεση του Admin, δεν κάνουμε τίποτα
+        if (!socket.store) return;
+
         const targetKey = `${socket.store}_${targetUsername}`;
         pendingAlarms[targetKey] = true;
         
@@ -56,22 +67,34 @@ io.on('connection', (socket) => {
         updateStore(socket.store);
     });
 
-    // --- Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ ΕΔΩ ---
-    socket.on('alarm-ack', () => {
-        const userKey = `${socket.store}_${socket.username}`;
-        
-        // 1. Σβήνουμε την κλήση από τη μνήμη
+    // --- 4. ALARM ACK (ΑΠΟΔΟΧΗ - Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ) ---
+    socket.on('alarm-ack', (data) => {
+        // Προσπαθούμε να βρούμε τα στοιχεία είτε από το μήνυμα (data) είτε από τη μνήμη (socket)
+        // Αυτό λύνει το πρόβλημα όταν το Android χάνει τη σύνδεση στο background
+        const username = data?.name || socket.username;
+        const store = data?.store || socket.store;
+
+        // Αν δεν ξέρουμε ποιος είναι και από πού, δεν μπορούμε να κάνουμε τίποτα
+        if (!username || !store) {
+            console.log("⚠️ ACK received but user unknown. Ignoring.");
+            return;
+        }
+
+        const userKey = `${store}_${username}`;
+        console.log(`✅ ACK processing for: ${username} in ${store}`);
+
+        // A. Σβήνουμε την κλήση από τη μνήμη
         if (pendingAlarms[userKey]) delete pendingAlarms[userKey];
 
-        // 2. Στέλνουμε ΤΟ ΣΗΜΑ ΣΕ ΟΛΟΥΣ (Broadcast) ΑΝΕΞΑΡΤΗΤΑ αν βρήκαμε pending alarm
-        // Αυτό λύνει το πρόβλημα συγχρονισμού App-Web
-        if (socket.store && socket.username) {
-            io.to(socket.store).emit('alarm-receipt', { name: socket.username });
-            updateStore(socket.store);
-            console.log(`✅ ACK received & broadcasted for: ${socket.username}`);
-        }
+        // B. Στέλνουμε ΤΟ ΣΗΜΑ ΣΕ ΟΛΟΥΣ (Broadcast) στο συγκεκριμένο μαγαζί
+        // Έτσι το βλέπει ο Admin ακόμα κι αν το socket του Driver είχε αλλάξει ID
+        io.to(store).emit('alarm-receipt', { name: username });
+        
+        // C. Ανανεώνουμε τη λίστα για να φύγει το κίτρινο χρώμα
+        updateStore(store);
     });
 
+    // --- 5. CHAT ---
     socket.on('chat-message', (data) => {
         if (socket.store) {
             io.to(socket.store).emit('chat-message', {
@@ -82,18 +105,22 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- 6. DISCONNECT ---
     socket.on('disconnect', () => {
         const userKey = `${socket.store}_${socket.username}`;
+        // Δίνουμε λίγο χρόνο πριν τον διαγράψουμε, μήπως είναι απλά refresh ή μικρο-διακοπή
         setTimeout(() => {
             if (activeUsers[userKey] && (Date.now() - activeUsers[userKey].lastSeen > 10000)) {
                 delete activeUsers[userKey];
-                updateStore(socket.store);
+                if(socket.store) updateStore(socket.store);
             }
         }, 5000);
     });
 }); 
 
+// Helper function για ενημέρωση λίστας
 function updateStore(storeName) {
+    if(!storeName) return;
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
     const formattedStaff = staff.map(u => ({
         name: u.username, 
