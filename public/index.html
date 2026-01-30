@@ -33,15 +33,14 @@
         .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; background: #121212; }
         
         /* STAFF LIST BUTTONS */
-        .btn-staff { width: 98%; height: 70px; font-size: 18px; margin-bottom: 10px; display: block; border: 2px solid transparent; }
+        .btn-staff { width: 98%; height: 75px; font-size: 19px; margin-bottom: 12px; display: block; border: 2px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
         
         /* STATUS STYLES */
-        .pending-call { background: #FFD600 !important; color: black !important; animation: pulseStatus 1s infinite; border: 3px solid white; }
-        .success-call { background: #00E676 !important; color: black !important; border: 3px solid white !important; font-weight: 900; }
-        @keyframes pulseStatus { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-
+        .pending-call { background: #FFD600 !important; color: black !important; border: 4px solid #FFAB00 !important; font-weight: 900; transform: scale(0.98); }
+        .success-call { background: #00E676 !important; color: black !important; border: 4px solid white !important; font-weight: 900; }
+        
         /* CHAT */
         .chat-panel { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; height: 100%; width: 100%; }
         #chat-messages { flex: 1; overflow-y: auto; padding: 10px; text-align: left; }
@@ -126,40 +125,19 @@
         let currentUser = null;
         let lastList = [];
         let acceptedFlash = {}; 
+        let callingFlash = {}; // ΝΕΑ ΜΕΤΑΒΛΗΤΗ ΓΙΑ ΤΟ "Calling..."
 
-        // --- AUDIO ENGINE ---
         const AudioEngine = {
             alert: document.getElementById('siren'),
             silence: document.getElementById('silence'),
             ringing: false,
-
-            init() {
-                this.playSilence();
-                // Αν σταματήσει κατά λάθος (Android optimization), το ξαναβάζουμε
-                this.silence.onpause = () => { if(!this.ringing) this.playSilence(); };
-            },
-
-            playSilence() {
-                this.ringing = false;
-                this.alert.pause();
-                this.alert.currentTime = 0;
-                this.silence.volume = 0.1;
-                this.silence.play().catch(e => console.log("Click needed"));
-            },
-
-            playAlert() {
-                this.ringing = true;
-                this.silence.pause();
-                this.alert.volume = 1.0;
-                this.alert.play().catch(e => console.error(e));
-                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-            }
+            init() { this.playSilence(); this.silence.onpause = () => { if(!this.ringing) this.playSilence(); }; },
+            playSilence() { this.ringing = false; this.alert.pause(); this.alert.currentTime = 0; this.silence.volume = 0.1; this.silence.play().catch(e => {}); },
+            playAlert() { this.ringing = true; this.silence.pause(); this.alert.volume = 1.0; this.alert.play().catch(e => {}); if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]); }
         };
 
-        // --- WATCHDOG (ALARM MANAGER) ---
         const Watchdog = {
             isRinging: false,
-
             start() {
                 setInterval(() => {
                     if (socket && socket.connected) {
@@ -171,82 +149,52 @@
                     }
                 }, 5000);
             },
-
             triggerPanicMode() {
                 if (this.isRinging) return;
                 this.isRinging = true;
                 AudioEngine.playAlert();
                 document.getElementById('alarmScreen').style.display = 'flex';
             },
-
             stopPanicMode() {
                 this.isRinging = false;
                 document.getElementById('alarmScreen').style.display = 'none';
                 AudioEngine.playSilence();
             },
-
             buttonAck() {
                 if (this.isRinging) {
-                    // --- Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ ΕΔΩ ---
-                    // Στέλνουμε το Όνομα και το Μαγαζί ρητά μέσα στο πακέτο!
-                    // Αυτό είναι απαραίτητο αν το Socket έχει κάνει reconnect και έχει χάσει τα data.
-                    const payload = { 
-                        name: currentUser.name, 
-                        store: currentUser.store 
-                    };
-
+                    const payload = { name: currentUser.name, store: currentUser.store };
                     socket.emit('alarm-ack', payload);
-                    
-                    // Spamming για σιγουριά στο δίκτυο
                     setTimeout(() => socket.emit('alarm-ack', payload), 150);
                     setTimeout(() => socket.emit('alarm-ack', payload), 400);
-                    
                     this.stopPanicMode();
                 }
             }
         };
 
-        // --- APP LOGIC ---
         const Logic = {
             login(store, name, role, pass) {
                 document.querySelector('.btn-apk-floating').style.display = 'none';
-
                 socket = io();
                 currentUser = { store, name, role, pass };
                 document.getElementById('userInfo').innerText = `${name} | ${store}`;
 
-                socket.on('connect', () => {
-                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass });
-                });
-
+                socket.on('connect', () => { socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass }); });
                 socket.on('disconnect', () => { document.getElementById('connStatus').style.background = 'red'; });
-
-                // Events
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
                 socket.on('ring-bell', () => Watchdog.triggerPanicMode()); 
                 
-                // --- ACCEPTANCE LOGIC ---
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
                         acceptedFlash[data.name] = true;
                         this.renderStaffList(lastList);
-                        
                         setTimeout(() => {
-                            if(acceptedFlash[data.name]) {
-                                delete acceptedFlash[data.name];
-                                this.renderStaffList(lastList);
-                            }
+                            if(acceptedFlash[data.name]) { delete acceptedFlash[data.name]; this.renderStaffList(lastList); }
                         }, 30000);
                     }
                 });
 
-                socket.on('staff-list-update', (list) => {
-                    lastList = list;
-                    this.renderStaffList(list);
-                });
-
+                socket.on('staff-list-update', (list) => { lastList = list; this.renderStaffList(list); });
                 socket.on('chat-message', (data) => this.renderChat(data));
-
                 Watchdog.start();
             },
 
@@ -259,22 +207,32 @@
                     btn.className = `btn-staff ${u.role}`;
                     
                     if(selectedRole === 'admin') {
-                        if (acceptedFlash[u.name]) {
+                        // 1. ΑΝ ΤΟ ΜΟΛΙΣ ΠΑΤΗΣΕΣ (Flash 5 sec)
+                        if (callingFlash[u.name]) {
+                            btn.className += ' pending-call';
+                            btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ <b>${u.name.toUpperCase()}</b>...`;
+                        }
+                        // 2. ΑΝ ΑΠΑΝΤΗΣΕ (Πράσινο)
+                        else if (acceptedFlash[u.name]) {
                             btn.className += ' success-call';
                             btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b><br><span style="font-size:12px">(Click to clear)</span>`;
                             btn.onclick = () => { delete acceptedFlash[u.name]; this.renderStaffList(lastList); };
                         }
-                        else if (u.isRinging) {
-                            btn.className += ' pending-call';
-                            btn.innerHTML = `⏳ ΚΛΗΣΗ...<br><b>${u.name}</b>`;
-                            btn.onclick = () => { socket.emit('trigger-alarm', u.name); };
-                        }
+                        // 3. Normal
                         else {
                             btn.innerHTML = `🔔 <b>${u.name}</b>`;
                             btn.onclick = () => {
-                                btn.className += ' pending-call';
-                                btn.innerHTML = `⏳ ΚΛΗΣΗ...<br><b>${u.name}</b>`;
+                                // SEND ALARM
                                 socket.emit('trigger-alarm', u.name);
+                                
+                                // LOCAL VISUAL FEEDBACK (5 Seconds)
+                                callingFlash[u.name] = true;
+                                this.renderStaffList(lastList); // Re-render immediately
+                                
+                                setTimeout(() => {
+                                    delete callingFlash[u.name];
+                                    this.renderStaffList(lastList);
+                                }, 5000);
                             };
                         }
                     } else {
@@ -300,7 +258,6 @@
             }
         };
 
-        // --- NAVIGATION & INIT ---
         function nextStep(n, role) {
             if(role) selectedRole = role;
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -309,28 +266,19 @@
 
         function forcePlayAndLogin() {
             AudioEngine.init();
-            
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
-
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
-
             localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
-
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('mainApp').style.display = 'flex';
             document.getElementById('mainApp').classList.add('active');
-
             if (selectedRole !== 'admin') document.getElementById('listsPanel').style.display = 'none';
-
             Logic.login(store, name, selectedRole, pass);
         }
 
-        function fullExit() {
-            localStorage.removeItem('bellgo_user');
-            location.reload();
-        }
+        function fullExit() { localStorage.removeItem('bellgo_user'); location.reload(); }
 
         window.onload = function() {
             const savedUser = localStorage.getItem('bellgo_user');
