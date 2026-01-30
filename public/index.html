@@ -34,12 +34,14 @@
         .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 10px; background: #000; -webkit-overflow-scrolling: touch; }
 
         /* BUTTON STATES (ADMIN) */
-        .btn-staff { width: 100%; height: 75px; font-size: 18px; margin-bottom: 12px; display: block; border-radius: 12px; line-height: 1.2; }
+        .btn-staff { width: 100%; height: 75px; font-size: 18px; margin-bottom: 12px; display: block; border-radius: 12px; line-height: 1.2; transition: all 0.3s ease; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
 
-        .pending-call { background: #FFD600 !important; color: #000 !important; animation: pulseStatus 1s infinite; }
-        .success-call { background: #00E676 !important; color: #000 !important; border: 2px solid white !important; }
+        /* ΚΛΑΣΕΙΣ ΚΑΤΑΣΤΑΣΗΣ ΚΛΗΣΗΣ */
+        .pending-call { background: #FFD600 !important; color: #000 !important; animation: pulseStatus 1s infinite; border: 2px solid #FFAB00; }
+        .success-call { background: #00E676 !important; color: #000 !important; border: 2px solid white !important; transform: scale(1.02); }
+        
         @keyframes pulseStatus { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
         /* CHAT */
@@ -61,6 +63,11 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
+        
+        /* iOS Install Popup */
+        #iosInstallPopup { display: none; position: fixed; bottom: 0; left: 0; width: 100%; background: #1c1c1e; border-top: 1px solid #333; padding: 20px; z-index: 6000; text-align: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+        #iosInstallPopup h3 { margin: 0 0 10px 0; color: #00E676; }
+        .ios-icon { font-size: 20px; display: inline-block; vertical-align: middle; margin: 0 5px; }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -68,6 +75,12 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 </head>
 <body>
+
+    <div id="iosInstallPopup">
+        <h3>📲 Εγκατάσταση BellGo</h3>
+        <p>1. Πάτα <b>Κοινοποίηση</b> <span class="ios-icon">⏏️</span></p>
+        <p>2. Επίλεξε <b>"Προσθήκη στην Οθόνη Αφετηρίας"</b> <span class="ios-icon">➕</span></p>
+    </div>
 
     <audio id="masterPlayer" preload="auto" playsinline loop></audio>
 
@@ -91,6 +104,7 @@
         <h2>🔑 Κωδικός</h2>
         <input type="password" id="inpPass" placeholder="" inputmode="numeric" pattern="[0-9]*">
         <button class="btn-green" onclick="forcePlayAndLogin()">ΕΙΣΟΔΟΣ</button>
+        <p style="font-size: 12px; color: gray; margin-top: 20px;">*Η εφαρμογή θα παραμείνει ενεργή</p>
     </div>
 
     <div id="mainApp">
@@ -244,13 +258,14 @@
                     messaging.getToken().then(token => {
                         socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: token || 'WEB', deviceType: 'iOS' });
                     }).catch(() => {
-                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, deviceType: 'iOS' });
+                        socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, fcmToken: 'WEB', deviceType: 'iOS' });
                     });
                 });
 
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
                 socket.on('stop-alarm', () => Watchdog.stopPanicMode());
                 
+                // --- ΔΙΑΧΕΙΡΙΣΗ ΑΠΟΔΟΧΗΣ ΚΛΗΣΗΣ ---
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
                         const btn = document.getElementById(`btn-${data.name}`);
@@ -259,8 +274,11 @@
                             btn.classList.add('success-call');
                             btn.innerHTML = `✅ ΕΓΙΝΕ ΑΠΟΔΟΧΗ!<br><b>${data.name}</b>`;
                             setTimeout(() => {
-                                btn.classList.remove('success-call');
-                                btn.innerHTML = `🔔 <b>${data.name}</b>`;
+                                // Επαναφορά μόνο αν δεν έχει ξαναμπεί σε pending
+                                if (!btn.classList.contains('pending-call')) {
+                                    btn.classList.remove('success-call');
+                                    btn.innerHTML = `🔔 <b>${data.name}</b>`;
+                                }
                             }, 5000);
                         }
                     }
@@ -284,7 +302,14 @@
                     btn.id = `btn-${u.name}`;
                     
                     if(selectedRole === 'admin') {
-                        btn.innerHTML = `🔔 <b>${u.name}</b>`;
+                        // Ελέγχουμε αν ο χρήστης χτυπάει ήδη (Persistent Alarm)
+                        if (u.isRinging) {
+                            btn.classList.add('pending-call');
+                            btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ...<br><b>${u.name}</b>`;
+                        } else {
+                            btn.innerHTML = `🔔 <b>${u.name}</b>`;
+                        }
+
                         btn.onclick = () => {
                             btn.classList.add('pending-call');
                             btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ...<br><b>${u.name}</b>`;
@@ -341,6 +366,7 @@
         }
 
         window.onload = function() {
+            if (window.navigator.standalone === false) document.getElementById('iosInstallPopup').style.display = 'block';
             const saved = localStorage.getItem('bellgo_user');
             if(saved) {
                 const u = JSON.parse(saved);
