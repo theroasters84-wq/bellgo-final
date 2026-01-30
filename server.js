@@ -9,7 +9,6 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// State
 let activeUsers = {}; 
 let pendingAlarms = {}; 
 
@@ -57,13 +56,19 @@ io.on('connection', (socket) => {
         updateStore(socket.store);
     });
 
+    // --- Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ ΕΔΩ ---
     socket.on('alarm-ack', () => {
         const userKey = `${socket.store}_${socket.username}`;
-        if (pendingAlarms[userKey]) {
-            delete pendingAlarms[userKey];
-            // Broadcast σε ΟΛΟΥΣ στο store για να πρασινίσει το κουμπί στον Admin
+        
+        // 1. Σβήνουμε την κλήση από τη μνήμη
+        if (pendingAlarms[userKey]) delete pendingAlarms[userKey];
+
+        // 2. Στέλνουμε ΤΟ ΣΗΜΑ ΣΕ ΟΛΟΥΣ (Broadcast) ΑΝΕΞΑΡΤΗΤΑ αν βρήκαμε pending alarm
+        // Αυτό λύνει το πρόβλημα συγχρονισμού App-Web
+        if (socket.store && socket.username) {
             io.to(socket.store).emit('alarm-receipt', { name: socket.username });
             updateStore(socket.store);
+            console.log(`✅ ACK received & broadcasted for: ${socket.username}`);
         }
     });
 
