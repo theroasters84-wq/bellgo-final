@@ -187,10 +187,19 @@
 
             buttonAck() {
                 if (this.isRinging) {
-                    // SPAM ACK ΓΙΑ ΝΑ ΠΕΡΑΣΕΙ ΣΤΟ SERVER
-                    socket.emit('alarm-ack');
-                    setTimeout(() => socket.emit('alarm-ack'), 150);
-                    setTimeout(() => socket.emit('alarm-ack'), 400);
+                    // --- Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ ΕΔΩ ---
+                    // Στέλνουμε το Όνομα και το Μαγαζί ρητά μέσα στο πακέτο!
+                    // Αυτό είναι απαραίτητο αν το Socket έχει κάνει reconnect και έχει χάσει τα data.
+                    const payload = { 
+                        name: currentUser.name, 
+                        store: currentUser.store 
+                    };
+
+                    socket.emit('alarm-ack', payload);
+                    
+                    // Spamming για σιγουριά στο δίκτυο
+                    setTimeout(() => socket.emit('alarm-ack', payload), 150);
+                    setTimeout(() => socket.emit('alarm-ack', payload), 400);
                     
                     this.stopPanicMode();
                 }
@@ -200,7 +209,6 @@
         // --- APP LOGIC ---
         const Logic = {
             login(store, name, role, pass) {
-                // Hide APK button on login
                 document.querySelector('.btn-apk-floating').style.display = 'none';
 
                 socket = io();
@@ -215,15 +223,14 @@
 
                 // Events
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
-                socket.on('ring-bell', () => Watchdog.triggerPanicMode()); // Backup event
+                socket.on('ring-bell', () => Watchdog.triggerPanicMode()); 
                 
-                // --- ACCEPTANCE LOGIC (GREEN BUTTON) ---
+                // --- ACCEPTANCE LOGIC ---
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
                         acceptedFlash[data.name] = true;
                         this.renderStaffList(lastList);
                         
-                        // Keep green for 30 seconds
                         setTimeout(() => {
                             if(acceptedFlash[data.name]) {
                                 delete acceptedFlash[data.name];
@@ -252,19 +259,16 @@
                     btn.className = `btn-staff ${u.role}`;
                     
                     if(selectedRole === 'admin') {
-                        // Priority 1: Accepted (Green)
                         if (acceptedFlash[u.name]) {
                             btn.className += ' success-call';
                             btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b><br><span style="font-size:12px">(Click to clear)</span>`;
                             btn.onclick = () => { delete acceptedFlash[u.name]; this.renderStaffList(lastList); };
                         }
-                        // Priority 2: Ringing (Yellow)
                         else if (u.isRinging) {
                             btn.className += ' pending-call';
                             btn.innerHTML = `⏳ ΚΛΗΣΗ...<br><b>${u.name}</b>`;
                             btn.onclick = () => { socket.emit('trigger-alarm', u.name); };
                         }
-                        // Priority 3: Normal
                         else {
                             btn.innerHTML = `🔔 <b>${u.name}</b>`;
                             btn.onclick = () => {
@@ -336,8 +340,6 @@
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
                 selectedRole = u.role;
-                
-                // Auto-login delay
                 setTimeout(() => { forcePlayAndLogin(); }, 500);
             }
         };
