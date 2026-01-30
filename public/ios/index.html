@@ -51,6 +51,8 @@
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: #FF3B30; font-size: 40px; font-weight: 900; border: none; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); animation: pulse 0.8s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
+        
+        .wake-indicator { font-size: 10px; color: #34C759; margin-left: 5px; }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -88,6 +90,7 @@
             <div style="display:flex; align-items:center;">
                 <div id="connStatus"></div>
                 <div id="userInfo" style="font-size: 14px;">User | Store</div>
+                <span id="wakeLockStatus" class="wake-indicator">🔒</span>
             </div>
             <button class="btn-red" onclick="fullExit()">Exit</button>
         </div>
@@ -129,14 +132,104 @@
         let selectedRole = '';
         let wakeLock = null;
 
+        // --- WAKE LOCK MANAGER ---
+        const WakeLockManager = {
+            wakeLock: null,
+            
+            async request() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        this.wakeLock = await navigator.wakeLock.request('screen');
+                        document.getElementById('wakeLockStatus').innerText = '🔓';
+                        console.log('Wake Lock activated');
+                        
+                        this.wakeLock.addEventListener('release', () => {
+                            console.log('Wake Lock released');
+                            document.getElementById('wakeLockStatus').innerText = '🔒';
+                            // Αν χάσουμε το wake lock, προσπαθούμε ξανά
+                            setTimeout(() => this.request(), 1000);
+                        });
+                    }
+                } catch (err) {
+                    console.error('Wake Lock error:', err);
+                    // Fallback: κρατάμε την οθόνη ενεργή με άλλο τρόπο
+                    this.fallbackKeepAwake();
+                }
+            },
+
+            async release() {
+                if (this.wakeLock) {
+                    await this.wakeLock.release();
+                    this.wakeLock = null;
+                }
+            },
+
+            // Backup μέθοδος για παλιότερα iOS
+            fallbackKeepAwake() {
+                // Παίζουμε ένα αθόρυβο video loop
+                const video = document.createElement('video');
+                video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC';
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.style.display = 'none';
+                video.style.position = 'fixed';
+                video.style.width = '1px';
+                video.style.height = '1px';
+                document.body.appendChild(video);
+                video.play().catch(e => console.log('Video fallback failed'));
+            }
+        };
+
+        // --- NOTIFICATION MANAGER ---
+        const NotificationManager = {
+            async requestPermission() {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    const permission = await Notification.requestPermission();
+                    console.log('Notification permission:', permission);
+                }
+            },
+
+            async getFCMToken() {
+                try {
+                    const token = await messaging.getToken({
+                        vapidKey: 'YOUR_VAPID_KEY_HERE'  // Πρέπει να το αντικαταστήσεις
+                    });
+                    console.log('FCM Token:', token);
+                    return token;
+                } catch (err) {
+                    console.error('FCM Token error:', err);
+                    return null;
+                }
+            },
+
+            setupForegroundListener() {
+                messaging.onMessage((payload) => {
+                    console.log('Foreground message:', payload);
+                    if (payload.data && payload.data.type === 'alarm') {
+                        Watchdog.triggerPanicMode();
+                    }
+                });
+            }
+        };
+
         // --- MASTER AUDIO ENGINE ---
         const AudioEngine = {
             player: null,
             ringing: false,
+            audioContext: null,
 
             init: function() {
                 this.player = document.getElementById('masterPlayer');
                 this.player.muted = false;
+                
+                // Δημιουργία AudioContext για καλύτερο control
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('AudioContext not supported');
+                }
+                
                 this.playSilence();
                 
                 // Watchdog για να μην σταματάει ποτέ ο player
@@ -144,15 +237,21 @@
                     if (!this.ringing && (this.player.paused || this.player.ended)) {
                         this.player.play().catch(e => {});
                     }
-                    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
-                }, 3000);
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.playbackState = "playing";
+                    }
+                    // Resume AudioContext αν έχει παγώσει
+                    if (this.audioContext && this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                }, 2000);
             },
 
             playSilence: function() {
                 this.ringing = false;
                 this.player.src = "/silence.mp3";
-                this.player.volume = 0.1;
-                this.player.play().catch(e => console.log("Waiting for user click..."));
+                this.player.volume = 0.05;
+                this.player.play().catch(e => console.log("Waiting for user interaction..."));
             },
 
             playAlarm: function() {
@@ -161,6 +260,7 @@
                 this.player.src = "/alert.mp3";
                 this.player.volume = 1.0;
                 this.player.play().catch(e => {
+                    console.error('Alarm play failed, retrying...', e);
                     setTimeout(() => this.player.play(), 500);
                 });
             },
@@ -171,32 +271,103 @@
             }
         };
 
+        // --- ENHANCED WATCHDOG ---
         const Watchdog = {
             isRinging: false,
+            heartbeatInterval: null,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 10,
 
             start: function() {
-                setInterval(() => {
+                // Heartbeat κάθε 5 δευτερόλεπτα
+                this.heartbeatInterval = setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
                         document.getElementById('connStatus').style.background = '#34C759';
+                        this.reconnectAttempts = 0;
                     } else {
                         document.getElementById('connStatus').style.background = 'red';
+                        this.attemptReconnect();
                     }
-                }, 8000);
+                }, 5000);
+
+                // Visibility change handler
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden && socket && !socket.connected) {
+                        console.log('App became visible, reconnecting...');
+                        this.attemptReconnect();
+                    }
+                });
+
+                // Page show event (για iOS back/forward cache)
+                window.addEventListener('pageshow', (event) => {
+                    if (event.persisted && socket && !socket.connected) {
+                        console.log('Page restored from cache, reconnecting...');
+                        this.attemptReconnect();
+                    }
+                });
+            },
+
+            attemptReconnect: function() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    console.log(`Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+                    if (socket) {
+                        socket.connect();
+                    }
+                }
             },
 
             triggerPanicMode: function() {
                 if (this.isRinging) return;
                 this.isRinging = true;
+                
+                // Audio
                 AudioEngine.playAlarm();
+                
+                // Visual
                 document.getElementById('alarmScreen').style.display = 'flex';
-                if (navigator.vibrate) navigator.vibrate([1000, 50, 1000]);
+                
+                // Vibration (πολύ πιο έντονο για iOS)
+                if (navigator.vibrate) {
+                    // Δυνατό μοτίβο δόνησης
+                    const vibratePattern = [500, 100, 500, 100, 500, 100, 1000];
+                    navigator.vibrate(vibratePattern);
+                    
+                    // Συνεχής δόνηση
+                    this.vibrateInterval = setInterval(() => {
+                        if (this.isRinging) {
+                            navigator.vibrate(vibratePattern);
+                        }
+                    }, 2000);
+                }
+
+                // Wake the screen
+                WakeLockManager.request();
+
+                // Notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('🚨 ΚΛΗΣΗ ΕΚΤΑΚΤΗΣ ΑΝΑΓΚΗΣ!', {
+                        body: 'Πάτα για να σταματήσεις',
+                        tag: 'bellgo-alarm',
+                        requireInteraction: true,
+                        vibrate: vibratePattern
+                    });
+                }
             },
 
             stopPanicMode: function() {
                 this.isRinging = false;
                 AudioEngine.stopAlarm();
                 document.getElementById('alarmScreen').style.display = 'none';
+                
+                // Σταμάτα τη δόνηση
+                if (navigator.vibrate) {
+                    navigator.vibrate(0);
+                    if (this.vibrateInterval) {
+                        clearInterval(this.vibrateInterval);
+                    }
+                }
             },
 
             buttonAck: function() {
@@ -209,15 +380,43 @@
 
         const Logic = {
             login: function(store, name, role, pass) {
-                socket = io();
+                socket = io({
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000,
+                    reconnectionAttempts: Infinity,
+                    transports: ['websocket', 'polling']
+                });
+                
                 currentUser = { store, name, role, pass };
 
                 socket.on('connect', () => {
-                    socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass, deviceType: 'iOS' });
+                    console.log('Connected to server');
+                    socket.emit('join-store', { 
+                        storeName: store, 
+                        username: name, 
+                        role: role, 
+                        pass: pass, 
+                        deviceType: 'iOS',
+                        userAgent: navigator.userAgent
+                    });
+                    document.getElementById('connStatus').style.background = '#34C759';
                 });
 
-                socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
-                socket.on('stop-alarm', () => Watchdog.stopPanicMode());
+                socket.on('disconnect', () => {
+                    console.log('Disconnected from server');
+                    document.getElementById('connStatus').style.background = 'red';
+                });
+
+                socket.on('kitchen-alarm', () => {
+                    console.log('🚨 ALARM RECEIVED!');
+                    Watchdog.triggerPanicMode();
+                });
+                
+                socket.on('stop-alarm', () => {
+                    console.log('✅ ALARM STOPPED');
+                    Watchdog.stopPanicMode();
+                });
                 
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
@@ -237,12 +436,30 @@
                 socket.on('staff-list-update', (list) => this.renderList(list));
                 socket.on('chat-message', (data) => this.renderChat(data));
                 
+                // Initialize managers
+                WakeLockManager.request();
+                NotificationManager.requestPermission();
+                NotificationManager.setupForegroundListener();
                 AudioEngine.init();
                 Watchdog.start();
+                
+                // Media Session API
                 if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'BellGo Active',
+                        artist: 'Notification System',
+                        album: store
+                    });
                     navigator.mediaSession.setActionHandler('play', () => Watchdog.buttonAck());
                     navigator.mediaSession.setActionHandler('pause', () => Watchdog.buttonAck());
                 }
+
+                // Prevent iOS from sleeping
+                document.addEventListener('touchstart', () => {
+                    if (AudioEngine.player.paused) {
+                        AudioEngine.player.play().catch(e => {});
+                    }
+                }, { passive: true });
             },
 
             renderList: function(list) {
@@ -278,7 +495,10 @@
 
             sendChat: function() {
                 const inp = document.getElementById('chatInput');
-                if(inp.value.trim()) { socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
+                if(inp.value.trim()) { 
+                    socket.emit('chat-message', { text: inp.value }); 
+                    inp.value = ''; 
+                }
             }
         };
 
@@ -298,16 +518,24 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('mainApp').style.display = 'flex';
             document.getElementById('mainApp').classList.add('active');
-            if (selectedRole !== 'admin') document.getElementById('listsPanel').style.display = 'none';
+            document.getElementById('userInfo').innerText = `${name} | ${store}`;
+            
+            if (selectedRole !== 'admin') {
+                document.getElementById('listsPanel').style.display = 'none';
+            }
 
             Logic.login(store, name, selectedRole, pass);
         }
 
         function fullExit() {
-            localStorage.removeItem('bellgo_user');
-            location.reload();
+            if (confirm('Είσαι σίγουρος ότι θέλεις να βγεις;')) {
+                WakeLockManager.release();
+                localStorage.removeItem('bellgo_user');
+                location.reload();
+            }
         }
 
+        // Auto-login on page load
         window.onload = function() {
             const saved = localStorage.getItem('bellgo_user');
             if(saved) {
@@ -319,6 +547,20 @@
                 setTimeout(() => forcePlayAndLogin(), 1000);
             }
         };
+
+        // Handle app coming back from background
+        window.addEventListener('focus', () => {
+            console.log('App focused');
+            WakeLockManager.request();
+            if (socket && !socket.connected) {
+                socket.connect();
+            }
+        });
+
+        // Prevent iOS from pausing
+        window.addEventListener('blur', () => {
+            console.log('App blurred - maintaining connection');
+        });
     </script>
 </body>
 </html>
