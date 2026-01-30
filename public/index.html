@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-title" content="BellGo">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
     
-    <link rel="manifest" href="manifest.json"> 
     <style>
         body { background-color: #121212; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
@@ -22,10 +21,11 @@
         .btn-green { background: #00E676; color: black; }
         .btn-blue { background: #2962FF; }
         .btn-orange { background: #FF6D00; color: black; }
-        .btn-red { background: #D32F2F; color: white; width: 60px; height: 100%; padding: 0; font-size: 16px; border-radius: 8px; }
+        .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 14px; border-radius: 8px; }
+        .btn-apk { background: #444; color: #fff; width: auto; padding: 5px 10px; font-size: 12px; height: 35px; text-decoration: none; display: flex; align-items: center; border-radius: 8px; margin-right: 5px; }
         
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
-        .header { height: 50px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; padding-top: env(safe-area-inset-top); }
+        .header { height: 60px; background: #1c1c1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; padding-top: env(safe-area-inset-top); }
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
         .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 10px; background: #000; -webkit-overflow-scrolling: touch; }
 
@@ -33,7 +33,6 @@
         .driver { background: #333; color: #FF6D00; border: 1px solid #FF6D00; }
         .waiter { background: #333; color: #2962FF; border: 1px solid #2962FF; }
 
-        /* STATES */
         .pending-call { background: #FFD600 !important; color: #000 !important; animation: pulseStatus 1s infinite; border: 3px solid white; }
         .success-call { background: #00E676 !important; color: #000 !important; border: 3px solid white !important; font-weight: 900; }
         
@@ -45,10 +44,6 @@
         #chatInput { width: 70%; margin: 0; text-align: left; padding-left: 15px; height: 50px; background: #2c2c2e; border: none; color: white; border-radius: 8px; }
         #sendBtn { width: 25%; margin-left: 10px; background: #00E676; color: black; height: 50px; border-radius: 8px; }
         
-        .msg { padding: 8px 12px; margin-bottom: 5px; border-radius: 16px; background: #2c2c2e; font-size: 16px; max-width: 80%; }
-        .msg.admin { background: #D50000; color: #FFFF00; font-size: 20px; font-weight: 900; text-align: center; width: 95%; max-width: 100%; border: 2px solid yellow; }
-        .msg.self { background: #2962FF; align-self: flex-end; margin-left: auto; }
-        
         #alarmScreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: red; z-index: 9999999; flex-direction: column; align-items: center; justify-content: center; animation: flash 0.3s infinite; }
         @keyframes flash { 0% { background: #ff0000; } 50% { background: #000000; } 100% { background: #ff0000; } }
         .stop-btn { width: 250px; height: 250px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 10px solid yellow; animation: pulse 0.5s infinite; }
@@ -57,8 +52,6 @@
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 </head>
 <body>
 
@@ -90,9 +83,12 @@
         <div class="header">
             <div style="display:flex; align-items:center;">
                 <div id="connStatus"></div>
-                <div id="userInfo" style="font-size: 14px;">User</div>
+                <div id="userInfo" style="font-size: 12px; line-height:1.1;">User</div>
             </div>
-            <button class="btn-red" onclick="fullExit()">Exit</button>
+            <div style="display:flex; align-items:center;">
+                <a href="/bellgo.apk" class="btn-apk" download>📲 APK</a>
+                <button class="btn-red" onclick="fullExit()">Exit</button>
+            </div>
         </div>
         <div class="content-area">
             <div id="listsPanel" class="lists-panel"><div id="staffListContainer"></div></div>
@@ -112,13 +108,11 @@
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", authDomain: "bellgo-5dbe5.firebaseapp.com", projectId: "bellgo-5dbe5", storageBucket: "bellgo-5dbe5.firebasestorage.app", messagingSenderId: "799314495253", appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c" };
-        firebase.initializeApp(firebaseConfig);
-        const messaging = firebase.messaging();
-
         let socket = null;
         let selectedRole = '';
         let currentUser = null;
+        let lastList = [];
+        let acceptedFlash = {}; 
 
         const AudioEngine = {
             player: null,
@@ -168,7 +162,7 @@
             login(store, name, role, pass) {
                 socket = io();
                 currentUser = { store, name, role, pass };
-                document.getElementById('userInfo').innerText = `${name} | ${store}`;
+                document.getElementById('userInfo').innerHTML = `<b>${name}</b><br>${store}`;
 
                 socket.on('connect', () => {
                     socket.emit('join-store', { storeName: store, username: name, role: role, pass: pass });
@@ -176,26 +170,32 @@
 
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
                 
-                // --- Η ΔΙΟΡΘΩΣΗ ΓΙΑ ΤΗΝ ΑΠΟΔΟΧΗ ---
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
-                        const btn = document.getElementById(`btn-${data.name}`);
-                        if (btn) {
-                            btn.classList.remove('pending-call');
-                            btn.classList.add('success-call');
-                            btn.innerHTML = `✅ Η ΚΛΗΣΗ ΕΓΙΝΕ ΑΠΟΔΕΚΤΗ!<br><b>${data.name}</b>`;
-                            
-                            // Επαναφορά μετά από 6 δευτερόλεπτα
-                            setTimeout(() => {
-                                btn.classList.remove('success-call');
-                                btn.innerHTML = `🔔 <b>${data.name}</b>`;
-                            }, 6000);
-                        }
+                        acceptedFlash[data.name] = true;
+                        this.renderList(lastList);
+                        setTimeout(() => {
+                            delete acceptedFlash[data.name];
+                            this.renderList(lastList);
+                        }, 7000);
                     }
                 });
 
-                socket.on('staff-list-update', (list) => this.renderList(list));
-                socket.on('chat-message', (data) => this.renderChat(data));
+                socket.on('staff-list-update', (list) => {
+                    lastList = list;
+                    this.renderList(list);
+                });
+                
+                socket.on('chat-message', (data) => {
+                    const box = document.getElementById('chat-messages');
+                    const div = document.createElement('div');
+                    div.className = `msg ${data.sender === currentUser.name ? 'self' : ''}`;
+                    div.style.padding = "8px 12px"; div.style.marginBottom = "5px"; div.style.borderRadius = "12px"; div.style.background = "#2c2c2e"; div.style.fontSize = "15px"; div.style.maxWidth = "85%";
+                    if(data.sender === currentUser.name) { div.style.background = "#2962FF"; div.style.marginLeft = "auto"; }
+                    div.innerHTML = `<small style="color:gray">${data.sender}</small><br>${data.text}`;
+                    box.appendChild(div);
+                    box.scrollTop = box.scrollHeight;
+                });
 
                 AudioEngine.init();
                 Watchdog.start();
@@ -211,14 +211,18 @@
                     btn.id = `btn-${u.name}`;
                     
                     if(selectedRole === 'admin') {
-                        if (u.isRinging) {
+                        if (acceptedFlash[u.name]) {
+                            btn.classList.add('success-call');
+                            btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b>`;
+                        } else if (u.isRinging) {
                             btn.classList.add('pending-call');
                             btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ ΕΞΕΛΙΞΗ...<br><b>${u.name}</b>`;
                         } else {
                             btn.innerHTML = `🔔 <b>${u.name}</b>`;
                         }
+                        
                         btn.onclick = () => {
-                            if(!btn.classList.contains('pending-call')) {
+                            if(!u.isRinging && !acceptedFlash[u.name]) {
                                 btn.classList.add('pending-call');
                                 btn.innerHTML = `⏳ ΚΛΗΣΗ...<br><b>${u.name}</b>`;
                                 socket.emit('trigger-alarm', u.name);
@@ -230,15 +234,6 @@
                     }
                     div.appendChild(btn);
                 });
-            },
-
-            renderChat(data) {
-                const box = document.getElementById('chat-messages');
-                const div = document.createElement('div');
-                div.className = `msg ${data.role === 'admin' ? 'admin' : ''} ${data.sender === currentUser.name ? 'self' : ''}`;
-                div.innerHTML = `<small>${data.sender}</small><br>${data.text}`;
-                box.appendChild(div);
-                box.scrollTop = box.scrollHeight;
             },
 
             sendChat() {
@@ -262,8 +257,6 @@
             localStorage.setItem('bellgo_user', JSON.stringify({store, name, role: selectedRole, pass}));
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('mainApp').style.display = 'flex';
-            if (selectedRole !== 'admin') document.getElementById('listsPanel').style.display = 'none';
-
             Logic.login(store, name, selectedRole, pass);
         }
 
