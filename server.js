@@ -23,7 +23,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- 2. CONFIGURATION & STATE ---
 let activeUsers = {}; 
-let pendingAlarms = {}; // 🔥 Μνήμη για Persistent Alarms
+let pendingAlarms = {}; // 🔥 Η "Μνήμη" για κλήσεις που δεν έχουν απαντηθεί (STOP)
 const TIMEOUT_LIMIT = 180000; 
 const ESCALATION_DELAY = 60000; 
 const DISCONNECT_GRACE_PERIOD = 45000; 
@@ -49,7 +49,6 @@ io.on('connection', (socket) => {
         socket.username = cleanUser; 
         socket.store = cleanStore;
 
-        // Smart Reconnect Logic
         if (activeUsers[userKey] && activeUsers[userKey].disconnectTimeout) {
             clearTimeout(activeUsers[userKey].disconnectTimeout);
             activeUsers[userKey].disconnectTimeout = null;
@@ -77,15 +76,14 @@ io.on('connection', (socket) => {
 
         console.log(`👤 ${cleanUser} joined ${cleanStore}`);
 
-        // 🔥 ΒΕΛΤΙΩΣΗ: Αποστολή λίστας ΑΜΕΣΩΣ στον νέο χρήστη (Admin/Waiter κλπ)
-        // Έτσι ο Admin βλέπει ποιοι είναι μέσα τη στιγμή που συνδέεται.
-        updateStore(cleanStore);
-
-        // Έλεγχος για εκκρεμείς κλήσεις (Persistent Alarm)
+        // 🔥 ΕΛΕΓΧΟΣ ΓΙΑ ΕΚΚΡΕΜΕΙΣ ΚΛΗΣΕΙΣ (Persistent Alarm)
         if (pendingAlarms[userKey]) {
             console.log(`🔔 Delivering missed alarm to ${cleanUser}`);
             socket.emit('kitchen-alarm');
         }
+
+        // 🔥 Στέλνουμε τη λίστα ΑΜΕΣΩΣ στον Admin που μόλις μπήκε
+        updateStore(cleanStore);
     });
 
     // --- 4. UPDATE TOKEN ---
@@ -153,10 +151,15 @@ io.on('connection', (socket) => {
 
     // --- 9. TRIGGER ALARM ---
     socket.on('trigger-alarm', (targetUsername) => {
-        const targetKey = `${socket.store}_${targetUsername}`;
+        const userKeyPrefix = socket.store;
+        const targetKey = `${userKeyPrefix}_${targetUsername}`;
         const target = activeUsers[targetKey];
 
+        // 🔥 Προσθήκη στη μνήμη (Pending)
         pendingAlarms[targetKey] = true;
+        
+        // Ενημερώνουμε ΑΜΕΣΩΣ τον Admin ότι η κλήση είναι ενεργή (για να γίνει κίτρινο το κουμπί)
+        updateStore(socket.store);
 
         if (target) {
             console.log(`🔔 Alarm to ${target.username}...`);
@@ -173,12 +176,16 @@ io.on('connection', (socket) => {
                 }
                 target.alarmTimeout = null; 
             }, ESCALATION_DELAY); 
+        } else {
+            console.log(`📡 Target ${targetUsername} offline. Stored in pending.`);
         }
     });
 
     // --- 10. ALARM ACK (STOP) ---
     socket.on('alarm-ack', () => {
         const userKey = `${socket.store}_${socket.username}`;
+        
+        // 🔥 Διαγραφή από τη μνήμη
         delete pendingAlarms[userKey];
 
         if(activeUsers[userKey]) {
@@ -187,7 +194,11 @@ io.on('connection', (socket) => {
                 clearTimeout(user.alarmTimeout);
                 user.alarmTimeout = null;
             }
+            // Στέλνουμε το σήμα επιτυχίας
             io.to(user.store).emit('alarm-receipt', { name: user.username });
+            
+            // Ενημερώνουμε τη λίστα ότι πλέον ΔΕΝ χτυπάει
+            updateStore(user.store);
         }
     });
 
@@ -215,9 +226,20 @@ setInterval(() => {
     storesToUpdate.forEach(store => updateStore(store));
 }, 30000); 
 
+// 🔥 Η ΣΗΜΑΝΤΙΚΗ ΑΛΛΑΓΗ ΕΔΩ 🔥
 function updateStore(storeName) {
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    const formattedStaff = staff.map(u => ({ name: u.username, role: u.role }));
+    
+    // Προσθέτουμε την πληροφορία "isRinging" για τον κάθε χρήστη
+    const formattedStaff = staff.map(u => {
+        const userKey = `${storeName}_${u.username}`;
+        return { 
+            name: u.username, 
+            role: u.role,
+            isRinging: !!pendingAlarms[userKey] // True αν υπάρχει στη λίστα αναμονής
+        };
+    });
+
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
