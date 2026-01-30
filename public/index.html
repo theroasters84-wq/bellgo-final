@@ -15,6 +15,9 @@
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: relative; }
         .active { display: flex !important; }
         
+        /* AUDIO PLAYER VISIBLE */
+        audio { width: 80%; height: 40px; margin-top: 10px; border-radius: 20px; border: 1px solid #333; }
+
         /* INPUTS & BUTTONS */
         input { background: #222; border: 1px solid #444; color: white; padding: 15px; font-size: 20px; width: 80%; border-radius: 12px; margin: 10px 0; text-align: center; -webkit-appearance: none; }
         button { padding: 15px; font-size: 18px; margin: 5px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; color: white; width: 85%; transition: 0.1s; }
@@ -24,8 +27,7 @@
         .btn-orange { background: #FF6D00; color: black; }
         .btn-red { background: #D32F2F; color: white; width: 50px; height: 100%; padding: 0; font-size: 14px; border-radius: 8px; }
         
-        /* APK DOWNLOAD BUTTON STYLE - TOP RIGHT ABSOLUTE */
-        .btn-apk-floating { position: absolute; top: 20px; right: 20px; background: #333; border: 1px solid #00E676; color: #00E676; padding: 8px 15px; font-size: 14px; text-decoration: none; border-radius: 20px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .btn-apk-floating { position: absolute; top: 10px; right: 10px; background: #333; border: 1px solid #00E676; color: #00E676; padding: 6px 12px; font-size: 12px; text-decoration: none; border-radius: 20px; font-weight: bold; z-index: 1000; }
 
         /* MAIN LAYOUT */
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
@@ -63,9 +65,12 @@
 </head>
 <body>
 
-    <audio id="masterPlayer" preload="auto" playsinline loop></audio>
+    <div style="background:#000; padding:10px;">
+        <audio id="masterPlayer" controls loop playsinline></audio>
+        <div style="font-size:10px; color:gray;">🔊 Audio Engine Active</div>
+    </div>
 
-    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk-floating">📲 Download App</a>
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk-floating">📲 App</a>
 
     <div id="step1" class="screen active">
         <h2>🏬 Όνομα Μαγαζιού</h2>
@@ -124,17 +129,41 @@
         const AudioEngine = {
             player: null,
             ringing: false,
+            
             init() {
                 this.player = document.getElementById('masterPlayer');
+                // Ξεκινάμε με Silence
                 this.playSilence();
-                setInterval(() => { if (!this.ringing && this.player.paused) this.player.play().catch(e=>{}); }, 3000);
+                
+                // Αν ο χρήστης το κάνει Pause κατά λάθος, το ξαναξεκινάμε
+                this.player.onpause = () => {
+                    if (!this.ringing) {
+                        console.log("Auto-resuming silence...");
+                        this.playSilence();
+                    }
+                };
             },
-            playSilence() { this.ringing = false; this.player.src = "/silence.mp3"; this.player.volume = 0.01; this.player.play().catch(e=>{}); },
-            playAlarm() { this.ringing = true; this.player.src = "/alert.mp3"; this.player.volume = 1.0; this.player.play(); }
+
+            playSilence() {
+                this.ringing = false;
+                this.player.src = "/silence.mp3";
+                this.player.loop = true;
+                this.player.volume = 0.1;
+                this.player.play().catch(e => console.log("User interaction needed"));
+            },
+
+            playAlarm() {
+                this.ringing = true;
+                this.player.src = "/alert.mp3";
+                this.player.loop = true;
+                this.player.volume = 1.0;
+                this.player.play().catch(e => console.log("Audio Error"));
+            }
         };
 
         const Watchdog = {
             isRinging: false,
+            
             start() {
                 setInterval(() => {
                     if (socket && socket.connected) {
@@ -144,22 +173,32 @@
                         document.getElementById('connStatus').style.background = 'red';
                         if(socket) socket.connect();
                     }
-                }, 8000);
+                }, 5000); // Check every 5s
             },
+
             triggerPanicMode() {
                 if (this.isRinging) return;
                 this.isRinging = true;
                 AudioEngine.playAlarm();
                 document.getElementById('alarmScreen').style.display = 'flex';
+                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
             },
+
             stopPanicMode() {
                 this.isRinging = false;
-                AudioEngine.playSilence();
                 document.getElementById('alarmScreen').style.display = 'none';
+                
+                // ΑΜΕΣΗ ΕΠΙΣΤΡΟΦΗ ΣΤΟ SILENCE
+                AudioEngine.playSilence();
             },
+
             buttonAck() {
                 if (this.isRinging) {
+                    // Στέλνουμε 3 φορές την εντολή για σιγουριά (Spamming)
                     socket.emit('alarm-ack');
+                    setTimeout(() => socket.emit('alarm-ack'), 100);
+                    setTimeout(() => socket.emit('alarm-ack'), 300);
+                    
                     this.stopPanicMode();
                 }
             }
@@ -167,7 +206,6 @@
 
         const Logic = {
             login(store, name, role, pass) {
-                // Κρύβουμε το κουμπί Download όταν συνδεθείς
                 document.querySelector('.btn-apk-floating').style.display = 'none';
 
                 socket = io();
@@ -180,13 +218,10 @@
 
                 socket.on('kitchen-alarm', () => Watchdog.triggerPanicMode());
                 
-                // ΔΙΑΧΕΙΡΙΣΗ ΑΠΟΔΟΧΗΣ
                 socket.on('alarm-receipt', (data) => {
                     if (selectedRole === 'admin') {
                         acceptedFlash[data.name] = true;
                         this.renderList(lastList);
-                        
-                        // Κρατάει το πράσινο για 30 δευτερόλεπτα
                         setTimeout(() => {
                             if(acceptedFlash[data.name]) {
                                 delete acceptedFlash[data.name];
