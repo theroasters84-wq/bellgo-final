@@ -70,8 +70,11 @@
 <body>
 
     <div style="position:absolute; top:0; left:0; width:1px; height:1px; opacity:0.01; overflow:hidden;">
-        <audio id="siren" src="alert.mp3" loop playsinline></audio>
+        <audio id="siren" src="alert.mp3" preload="auto" playsinline></audio>
         <audio id="silence" src="silence.mp3" loop playsinline></audio>
+        <video id="dummyVideo" loop playsinline muted style="width:1px;height:1px;">
+            <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
+        </video>
     </div>
 
     <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk-floating">📲 APP</a>
@@ -121,6 +124,7 @@
     <div id="alarmScreen" onclick="Watchdog.buttonAck()">
         <h1 id="alarmTitle" style="color:white; font-size: 60px; font-weight:900;">🚨 ΚΛΗΣΗ!</h1>
         <button id="alarmBtn" class="stop-btn">STOP</button>
+        <p style="margin-top:20px; font-size:14px; opacity:0.8;">(Πατήστε STOP ή τα ακουστικά)</p>
     </div>
 
     <script>
@@ -131,33 +135,74 @@
         let acceptedFlash = {}; 
         let callingFlash = {};
 
+        // --- AUDIO ENGINE (HEART OF ANTI-SLEEP) ---
         const AudioEngine = {
             alert: document.getElementById('siren'),
             silence: document.getElementById('silence'),
+            video: document.getElementById('dummyVideo'),
             ringing: false,
+
             init() { 
                 this.playSilence(); 
-                this.silence.onpause = () => { if(!this.ringing) this.playSilence(); }; 
+                
+                // FORCE LOOP: Αν το σύστημα σταματήσει το silent, το ξαναξεκινάμε
+                this.silence.onpause = () => { 
+                    if(!this.ringing) {
+                        console.log("♻️ Auto-resuming silence...");
+                        this.playSilence(); 
+                    }
+                };
+                
+                // Ξεκινάμε και το Dummy Video
+                this.video.play().catch(e => console.log("Video autoplay blocked (expected)"));
             },
+
             playSilence() { 
                 this.ringing = false; 
                 this.alert.pause(); 
                 this.alert.currentTime = 0; 
-                this.silence.volume = 0.1; 
-                this.silence.play().catch(e => {}); 
+                
+                this.silence.volume = 0.05; // Πολύ χαμηλά, αλλά όχι 0 (γιατί το iOS το αγνοεί στο 0)
+                this.silence.play().then(() => {
+                    this.setupMediaSession("BellGo Active", "System Online");
+                }).catch(e => console.log("Click needed for silence"));
             },
+
             playAlert() { 
                 this.ringing = true; 
                 this.silence.pause(); 
+                
                 this.alert.volume = 1.0; 
-                this.alert.play().catch(e => {}); 
+                this.alert.play().then(() => {
+                    this.setupMediaSession("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY/PAUSE ΓΙΑ STOP");
+                }).catch(e => {}); 
+                
                 if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]); 
+            },
+
+            setupMediaSession(title, artist) {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: title,
+                        artist: artist,
+                        album: "BellGo App"
+                    });
+                    
+                    // 🔥 ΕΔΩ ΤΟ ΜΥΣΤΙΚΟ: Όλα τα κουμπιά κάνουν STOP 🔥
+                    const action = () => Watchdog.buttonAck();
+                    navigator.mediaSession.setActionHandler('play', action);
+                    navigator.mediaSession.setActionHandler('pause', action);
+                    navigator.mediaSession.setActionHandler('stop', action);
+                    navigator.mediaSession.setActionHandler('nexttrack', action);
+                    navigator.mediaSession.setActionHandler('previoustrack', action);
+                }
             }
         };
 
         const Watchdog = {
             isRinging: false,
             start() {
+                // Heartbeat & WakeLock Renewal
                 setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
@@ -166,13 +211,17 @@
                         document.getElementById('connStatus').style.background = 'red';
                         if(socket) socket.connect();
                     }
+                    
+                    // Request WakeLock repeatedly
+                    if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
+                    
                 }, 5000);
             },
             triggerPanicMode() {
                 if (this.isRinging) return;
                 this.isRinging = true;
                 
-                // Reset UI to standard alarm
+                // UI RESET
                 const screen = document.getElementById('alarmScreen');
                 screen.className = ''; 
                 document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
@@ -184,10 +233,12 @@
             stopPanicMode() {
                 this.isRinging = false;
                 document.getElementById('alarmScreen').style.display = 'none';
+                
+                // 🔥 IMMEDIATE RETURN TO SILENCE LOOP 🔥
                 AudioEngine.playSilence();
             },
             buttonAck() {
-                // Αν είναι το TEST MODE (κατά την είσοδο), το χειριζόμαστε τοπικά
+                // Χειρισμός Test Mode
                 if (document.getElementById('alarmScreen').classList.contains('test-mode')) {
                     Logic.finalizeLogin();
                     return;
@@ -196,38 +247,35 @@
                 if (this.isRinging) {
                     const payload = { name: currentUser.name, store: currentUser.store };
                     socket.emit('alarm-ack', payload);
+                    
+                    // Spamming για σιγουριά δικτύου
                     setTimeout(() => socket.emit('alarm-ack', payload), 150);
                     setTimeout(() => socket.emit('alarm-ack', payload), 400);
+                    
                     this.stopPanicMode();
                 }
             }
         };
 
         const Logic = {
-            // 1. Ξεκινάει το Test Audio
             testAudioAndLogin(store, name, role, pass) {
-                // Παίζουμε ήχο συναγερμού
+                // Unlock Video & Audio
+                AudioEngine.video.play().catch(e=>{}); 
                 AudioEngine.playAlert();
                 
-                // Εμφανίζουμε την οθόνη ως TEST
                 const screen = document.getElementById('alarmScreen');
                 screen.classList.add('test-mode');
                 screen.style.display = 'flex';
-                
                 document.getElementById('alarmTitle').innerText = "🔊 TEST ΗΧΟΥ";
                 document.getElementById('alarmBtn').innerText = "ΕΙΣΟΔΟΣ";
                 
-                // Αποθηκεύουμε τα στοιχεία προσωρινά
                 currentUser = { store, name, role, pass };
             },
 
-            // 2. Καλείται όταν πατήσεις το κουμπί στο Test Screen
             finalizeLogin() {
-                // Σταματάμε τον ήχο και ξεκινάμε τη σιωπή (AudioContext Unlocked!)
                 AudioEngine.playSilence();
                 document.getElementById('alarmScreen').style.display = 'none';
                 document.getElementById('alarmScreen').classList.remove('test-mode');
-
                 document.querySelector('.btn-apk-floating').style.display = 'none';
                 
                 // Setup UI
@@ -236,7 +284,7 @@
                 document.getElementById('mainApp').classList.add('active');
                 if (currentUser.role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
 
-                // Connect Socket
+                // Connect
                 socket = io();
                 socket.on('connect', () => { 
                     socket.emit('join-store', { 
@@ -324,15 +372,15 @@
         }
 
         function forcePlayAndLogin() {
+            AudioEngine.init();
             const store = document.getElementById('inpStore').value.trim();
             const name = document.getElementById('inpName').value.trim();
             const pass = document.getElementById('inpPass').value.trim();
             if(!store || !name || !pass) return alert("Συμπλήρωσε τα πάντα!");
             
             localStorage.setItem('bellgo_user', JSON.stringify({ store, name, role: selectedRole, pass }));
-            document.getElementById('mainApp').style.display = 'flex'; // Pre-load layout
+            document.getElementById('mainApp').style.display = 'flex'; 
             
-            // Start the Audio Unlock Sequence instead of direct login
             Logic.testAudioAndLogin(store, name, selectedRole, pass);
         }
 
@@ -346,7 +394,6 @@
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
                 selectedRole = u.role;
-                // Auto-trigger the test sequence to ensure audio is ready
                 setTimeout(() => { forcePlayAndLogin(); }, 500);
             }
         };
