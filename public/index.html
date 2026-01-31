@@ -89,8 +89,8 @@
 <body>
 
     <div class="media-hidden">
-        <audio id="audioSilence" src="silence.mp3" loop playsinline onvolumechange="AudioEngine.handleVolumeChange()"></audio>
-        <audio id="audioAlarm" src="alert.mp3" preload="auto" playsinline onvolumechange="AudioEngine.handleVolumeChange()"></audio>
+        <audio id="mainAudio" src="silence.mp3" loop playsinline onvolumechange="AudioEngine.handleVolumeChange()"></audio>
+        
         <video id="videoDummy" loop playsinline muted style="width:1px; height:1px;">
             <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
         </video>
@@ -133,7 +133,7 @@
     <div id="alarmOverlay" onclick="AudioEngine.stopAlarm(true)">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <button id="alarmBtn" class="stop-btn">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(ή πάτα Volume Button / Play)</div>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button για Αποδοχή)</div>
     </div>
 
     <script>
@@ -143,47 +143,47 @@
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
-        
-        // --- GHOST PROTOCOL VARIABLES ---
         let ghosts = {}; 
         let knownStaff = [];
+        let heartbeatInterval = null;
 
         const AudioEngine = {
-            silence: document.getElementById('audioSilence'),
-            alarm: document.getElementById('audioAlarm'),
+            player: document.getElementById('mainAudio'),
             video: document.getElementById('videoDummy'),
             isRinging: false,
             vibrationInterval: null,
-            ignoreVolumeChanges: false, // Flag to prevent instant stop on alarm start
+            ignoreVolumeChanges: false, 
 
             init() {
-                // Initialize silence at low volume
-                this.silence.volume = 0.1; 
-                this.silence.play().catch(e => {});
+                // Start with silence
+                this.player.src = 'silence.mp3';
+                this.player.volume = 0.1; 
+                this.player.loop = true;
                 
-                // Auto-restart silence if stopped by system (unless ringing)
-                this.silence.onpause = () => { 
-                    if (!this.isRinging) this.silence.play().catch(e => {}); 
+                // CRITICAL: We play immediately on user interaction (Login)
+                this.player.play().catch(e => console.log("Init play failed", e));
+                
+                // Safety net: Restart if paused by system unexpectedly
+                this.player.onpause = () => { 
+                    if (!this.isRinging) this.player.play().catch(e => {}); 
                 };
-                
+
                 this.video.play().catch(e => {});
                 
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
                     const stopAction = () => this.stopAlarm(true);
-                    // Bind all media keys to STOP logic
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => 
                         navigator.mediaSession.setActionHandler(a, stopAction)
                     );
                 }
             },
 
-            // --- KEY FEATURE: VOLUME BUTTONS AS ACCEPT ---
+            // --- VOLUME BUTTON LOGIC ---
             handleVolumeChange() {
                 if (!this.isRinging) return;
                 if (this.ignoreVolumeChanges) return;
-
-                console.log("Volume Change Detected -> Stopping Alarm");
+                console.log("Volume Button -> Stopping Alarm");
                 this.stopAlarm(true);
             },
 
@@ -193,9 +193,7 @@
                         title: title,
                         artist: artist,
                         album: "BellGo Store",
-                        artwork: [
-                            { src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }
-                        ]
+                        artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
             },
@@ -204,38 +202,39 @@
                 if(this.isRinging) return;
 
                 this.isRinging = true;
-                this.silence.pause(); // Pause silence so alarm takes over
                 
-                // IGNORE VOLUME CHANGES FOR 2 SECONDS (so setting volume to 100% doesn't stop it)
-                this.ignoreVolumeChanges = true;
-                
-                this.alarm.loop = true;
-                this.alarm.currentTime = 0;
-                this.alarm.volume = 1.0; // Force Max Volume
-                this.alarm.play().catch(e => console.log("Audio Blocked", e));
+                // --- THE SWAP TRICK ---
+                // We do NOT pause. We just swap the SRC while it's "hot".
+                // iOS allows this because the session is active.
+                this.player.src = 'alert.mp3';
+                this.player.volume = 1.0; 
+                this.player.loop = true;
+                this.player.play().catch(e => console.log("Alarm blocked", e));
 
-                // Enable volume buttons detection after 2 seconds
+                // Ignore volume changes for 2 seconds to avoid instant self-cancellation
+                this.ignoreVolumeChanges = true;
                 setTimeout(() => { this.ignoreVolumeChanges = false; }, 2000);
 
-                // Vibration Loop (Immediate)
+                // Vibration (Android mainly, ignored by iOS)
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
                 this.vibrationInterval = setInterval(() => { if(navigator.vibrate) navigator.vibrate([2000, 100]); }, 2200);
 
-                this.updateMediaSession(isTest ? "🔊 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY H KOYMΠΙ ΕΝΤΑΣΗΣ");
+                this.updateMediaSession(isTest ? "🔊 TEST" : "🚨 ΚΛΗΣΗ!", "ΠΑΤΑ ΚΟΥΜΠΙ ΓΙΑ STOP");
 
+                // UI
                 const overlay = document.getElementById('alarmOverlay');
                 const btn = document.getElementById('alarmBtn');
                 const txt = document.getElementById('alarmText');
 
                 if (isTest) {
                     overlay.classList.add('test-mode');
-                    txt.innerText = "🔊 ΕΛΕΓΧΟΣ ΗΧΟΥ";
+                    txt.innerText = "🔊 SOUND CHECK";
                     btn.innerText = "OK";
                 } else {
                     overlay.classList.remove('test-mode');
-                    txt.innerText = "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ";
-                    btn.innerText = "STOP (VOL KEY)";
+                    txt.innerText = "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ";
+                    btn.innerText = "STOP";
                     this.handleNotifications();
                 }
                 overlay.style.display = 'flex';
@@ -243,23 +242,20 @@
 
             stopAlarm(sendAck = false) {
                 if (!this.isRinging && document.getElementById('alarmOverlay').style.display === 'none') return;
-                
                 const isTest = document.getElementById('alarmOverlay').classList.contains('test-mode');
                 
                 this.isRinging = false;
                 
-                // Stop Alarm
-                this.alarm.pause();
-                this.alarm.currentTime = 0;
+                // --- SWAP BACK TO SILENCE IMMEDIATELY ---
+                // This keeps the connection alive
+                this.player.src = 'silence.mp3';
+                this.player.volume = 0.1;
+                this.player.loop = true;
+                this.player.play().catch(e => {});
                 
-                // Stop Vibration
                 if (this.vibrationInterval) { clearInterval(this.vibrationInterval); this.vibrationInterval = null; }
                 if(navigator.vibrate) navigator.vibrate(0);
 
-                // --- CRITICAL: RESTART SILENCE AUTOMATICALLY ---
-                this.silence.volume = 0.1; 
-                this.silence.play().catch(e => {});
-                
                 this.updateMediaSession("BellGo Active", userData.store);
                 document.getElementById('alarmOverlay').style.display = 'none';
 
@@ -270,28 +266,25 @@
             },
 
             handleNotifications() {
-                // IMMEDIATE NOTIFICATION
+                // Send immediate high priority notification
                 this.sendLocalNotification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ ΕΔΩ ΤΩΡΑ!");
                 
-                // ANDROID BACKUP NOTIFICATION (30 SECONDS)
                 if (/Android/.test(navigator.userAgent)) {
                     if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
                     androidNotificationTimer = setTimeout(() => {
                         if (this.isRinging) this.sendLocalNotification("🚨 ΑΚΟΜΑ ΧΤΥΠΑΕΙ!", "Άνοιξε την εφαρμογή!");
-                    }, 30000); // Changed to 30 seconds
+                    }, 30000);
                 }
             },
 
             sendLocalNotification(title, body) {
                 if (Notification.permission === "granted") {
                     try { 
-                        // Note: Vibration pattern in notification options works mostly on Android
                         new Notification(title, { 
                             body: body, 
                             icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', 
                             requireInteraction: true, 
-                            tag: 'alarm',
-                            vibrate: [2000, 100, 2000] 
+                            tag: 'alarm'
                         }); 
                     } catch (e) {}
                 }
@@ -308,11 +301,11 @@
                 if (!rawStore || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
 
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
-                
-                // --- SAVE SESSION ---
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
 
+                // Initialize Audio Engine (Starts Silence)
                 AudioEngine.init();
+                // Trigger Test Alarm immediately to warm up the 'Switching' capability
                 AudioEngine.triggerAlarm(true);
             },
 
@@ -338,21 +331,18 @@
                 });
             },
 
-            // --- AUTO LOGIN CHECK ---
             checkSession() {
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
                     try {
                         userData = JSON.parse(saved);
-                        // Pre-fill inputs just in case
                         document.getElementById('inpStore').value = userData.store;
                         document.getElementById('inpName').value = userData.name;
                         document.getElementById('inpPass').value = userData.pass;
                         document.getElementById('inpRole').value = userData.role;
                         
-                        // Start Audio Init (Will trigger Blue Screen OK)
-                        AudioEngine.init();
-                        AudioEngine.triggerAlarm(true);
+                        // User needs to tap Login to start audio correctly on iOS
+                        // So we don't auto-skip the login screen, we just pre-fill.
                     } catch (e) {
                         localStorage.removeItem('bellgo_session');
                     }
@@ -382,7 +372,6 @@
 
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
                 socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
-                
                 socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
@@ -391,52 +380,45 @@
                 if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
             },
 
+            // --- AGGRESSIVE HEARTBEAT ---
             startHeartbeat() {
-                setInterval(() => {
+                if(heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
                     if (socket && socket.connected) {
+                        // Send ping to server
                         socket.emit('heartbeat');
+                        // Reset Wake Lock
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
-                }, 2000); 
+                }, 2000); // Ping every 2 seconds
             },
 
             logout() {
-                AudioEngine.silence.pause();
-                AudioEngine.alarm.pause();
-                // --- CLEAR SESSION ---
+                AudioEngine.player.pause();
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
             },
 
-            // --- GHOST PROTOCOL LOGIC ---
+            // --- GHOST PROTOCOL (Display Logic) ---
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
-                
-                // 1. Detect Back Online
                 serverList.forEach(u => {
-                    if (ghosts[u.name]) {
-                        clearTimeout(ghosts[u.name].timer); 
-                        delete ghosts[u.name]; 
-                    }
+                    if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
                 });
-
-                // 2. Detect Disconnected
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
-                    
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
                         ghosts[u.name] = {
                             data: u,
                             timer: setTimeout(() => {
-                                delete ghosts[u.name]; // Kill ghost after 3 mins
+                                delete ghosts[u.name];
                                 App.renderMergedList(lastStaffList);
                             }, 180000) 
                         };
                     }
                 });
-
                 knownStaff = serverList;
                 this.renderMergedList(serverList);
             },
@@ -444,7 +426,6 @@
             renderMergedList(serverList) {
                 const mergedList = [...serverList];
                 Object.values(ghosts).forEach(g => mergedList.push(g.data));
-                
                 lastStaffList = mergedList;
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
@@ -493,11 +474,9 @@
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
                 const isMe = data.sender === userData.name;
-                
                 let roleClass = 'waiter';
                 if (data.role) roleClass = data.role.toLowerCase();
                 if (isMe) roleClass = 'me';
-                
                 div.className = `msg ${roleClass}`;
                 if (!isMe) div.classList.add('other');
                 div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
@@ -506,11 +485,9 @@
             }
         };
 
-        // --- CHECK FOR SAVED SESSION ON LOAD ---
         window.onload = function() {
             App.checkSession();
         };
     </script>
-    
 </body>
 </html>
