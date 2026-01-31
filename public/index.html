@@ -30,8 +30,8 @@
         .btn-login:active { transform: scale(0.98); }
 
         /* GOOGLE BUTTON STYLE */
-        .btn-google { background: white; color: #444; display: flex; align-items: center; justify-content: center; gap: 15px; border: 1px solid #ddd; margin-top: 20px; }
-        .btn-google img { width: 24px; height: 24px; }
+        .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #4285F4; margin-top: 15px; }
+        .btn-google img { width: 24px; height: 24px; background: white; border-radius: 50%; padding: 2px; }
 
         /* --- MAIN APP --- */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -53,8 +53,8 @@
         
         .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
         
-        /* GHOST STYLING (Searching...) */
-        .btn-staff.ghost { opacity: 0.5; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
+        /* GHOST STYLING */
+        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
         .btn-staff.ghost span.status { color: #ffab00 !important; font-weight: bold; animation: pulseText 1.5s infinite; }
         @keyframes pulseText { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
@@ -118,9 +118,9 @@
         </div>
 
         <div id="adminInputs" style="display:none;">
-            <p style="font-size:14px; color:#ccc; margin-bottom:20px; text-align:center;">
-                Είσοδος διαχειριστή με Google.<br>
-                (Αυτόματη Εγγραφή/Σύνδεση)
+            <p style="font-size:14px; color:#ccc; margin-bottom:10px; text-align:center;">
+                Είσοδος μόνο για ιδιοκτήτες.<br>
+                Το email σας θα είναι το Store ID.
             </p>
             <button class="btn-login btn-google" onclick="App.loginGoogle()">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
@@ -149,21 +149,11 @@
     <div id="alarmOverlay" onclick="AudioEngine.stopAlarm(true)">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <button id="alarmBtn" class="stop-btn">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button για Αποδοχή)</div>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button ή Play για Αποδοχή)</div>
     </div>
 
     <script>
-        // --- FIREBASE CONFIG (bellgofinall) ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDyqu5tLS2hY3kS1XvHOrfw8CatB_mwI9A",
-            authDomain: "bellgofinall.firebaseapp.com",
-            projectId: "bellgofinall",
-            storageBucket: "bellgofinall.firebasestorage.app",
-            messagingSenderId: "654570848224",
-            appId: "1:654570848224:web:50704c332d885e3a0df585",
-            measurementId: "G-TPYZLBGCSQ"
-        };
-
+        const firebaseConfig = { apiKey: "AIzaSyDyqu5tLS2hY3kS1XvHOrfw8CatB_mwI9A", authDomain: "bellgofinall.firebaseapp.com", projectId: "bellgofinall", storageBucket: "bellgofinall.firebasestorage.app", messagingSenderId: "654570848224", appId: "1:654570848224:web:50704c332d885e3a0df585", measurementId: "G-TPYZLBGCSQ" };
         try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
 
         let socket = null;
@@ -184,15 +174,18 @@
             ignoreVolumeChanges: false, 
 
             init() {
+                // Initialize with Silence
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1; 
                 this.player.loop = true;
                 
+                // AGGRESSIVE PLAY & PERSISTENCE
                 const playPromise = this.player.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => { console.log("Audio Play blocked", error); });
                 }
                 
+                // If system pauses it, force restart immediately (except when ringing)
                 this.player.onpause = () => { 
                     console.log("System paused audio - Forcing resume");
                     if (!this.isRinging) this.player.play().catch(e => {}); 
@@ -200,15 +193,17 @@
                 
                 this.video.play().catch(e => {});
                 
+                // --- AGGRESSIVE MEDIA SESSION ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
                     
+                    // Register ALL handlers to trigger StopAlarm
                     const stopAction = () => this.stopAlarm(true);
-                    
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekto'].forEach(a => 
                         navigator.mediaSession.setActionHandler(a, stopAction)
                     );
 
+                    // Periodic Refresh to keep lock screen controls alive
                     if (mediaSessionInterval) clearInterval(mediaSessionInterval);
                     mediaSessionInterval = setInterval(() => {
                         if (!this.isRinging) {
@@ -218,9 +213,12 @@
                 }
             },
 
+            // --- VOLUME BUTTON HACK ---
             handleVolumeChange() {
                 if (!this.isRinging) return;
+                // Ignore the initial volume setting when alarm starts
                 if (this.ignoreVolumeChanges) return;
+
                 console.log("Volume Change Detected -> Accepting Alarm");
                 this.stopAlarm(true);
             },
@@ -239,11 +237,13 @@
                 if(this.isRinging) return;
                 this.isRinging = true;
                 
+                // --- SEAMLESS SWITCH TO ALARM ---
                 this.player.src = 'alert.mp3';
                 this.player.volume = 1.0; 
                 this.player.loop = true;
                 this.player.play().catch(e => {});
 
+                // Ignore volume changes for 200ms to allow volume set
                 this.ignoreVolumeChanges = true;
                 setTimeout(() => { this.ignoreVolumeChanges = false; }, 200);
 
@@ -276,6 +276,7 @@
                 
                 this.isRinging = false;
                 
+                // --- SEAMLESS SWITCH BACK TO SILENCE ---
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -341,6 +342,7 @@
                 firebase.auth().signInWithPopup(provider)
                     .then((result) => {
                         const email = result.user.email;
+                        // STORE ID = ADMIN EMAIL
                         this.completeLogin({ 
                             store: email.toLowerCase(), 
                             name: result.user.displayName || "Admin", 
@@ -391,13 +393,9 @@
                 if (saved) {
                     try {
                         userData = JSON.parse(saved);
-                        
-                        // AUTO RECONNECT (No UI needed if session exists)
+                        // AUTO RECONNECT (Watchdog will catch if socket is down)
                         this.finishLoginSequence();
-                        
-                        // Initialize audio silently if possible (might fail until interaction)
                         AudioEngine.init();
-                        
                     } catch (e) {
                         localStorage.removeItem('bellgo_session');
                     }
@@ -409,7 +407,7 @@
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500, reconnectionAttempts: Infinity });
                 
                 socket.on('connect', () => {
-                    console.log("Socket Connected - Sending Join Store");
+                    console.log("Socket Connected");
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
@@ -436,12 +434,10 @@
                     }
                 });
 
-                // CLEAN EXIT LOGIC (IMMEDIATE REMOVAL)
+                // CLEAN EXIT LOGIC
                 socket.on('user-clean-exit', (name) => {
                     console.log(name + " logged out manually.");
                     cleanExits.add(name);
-                    
-                    // If they are in ghost list, remove them immediately
                     if (ghosts[name]) {
                         clearTimeout(ghosts[name].timer);
                         delete ghosts[name];
@@ -478,19 +474,20 @@
                 if (connectionWatchdog) clearInterval(connectionWatchdog);
                 connectionWatchdog = setInterval(() => {
                     if (userData.name && userData.store) {
-                        if (!socket || !socket.connected) App.forceReconnect();
+                        if (!socket || !socket.connected) {
+                            console.log("Watchdog: Connection lost. Reconnecting...");
+                            App.forceReconnect();
+                        }
                     }
                 }, 3000);
             },
 
             logout() {
                 AudioEngine.player.pause();
-                
                 // SEND CLEAN EXIT SIGNAL
                 if(socket && socket.connected) {
                     socket.emit('manual-logout', { name: userData.name, storeName: userData.store });
                 }
-
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
@@ -498,29 +495,24 @@
 
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
-                
-                // 1. Detect who came back
                 serverList.forEach(u => {
                     if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
                 });
-
-                // 2. Detect who left
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
-                    
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        // CHECK: Did they leave on purpose?
+                        // CHECK: Did they exit cleanly?
                         if (cleanExits.has(u.name)) {
-                            // Do nothing. They are gone.
+                            // Do nothing. Clean exit.
                         } else {
-                            // GHOST PROTOCOL: Searching...
+                            // GHOST PROTOCOL (3 Minutes)
                             ghosts[u.name] = {
                                 data: u,
                                 timer: setTimeout(() => {
                                     delete ghosts[u.name];
                                     App.renderMergedList(lastStaffList);
-                                }, 180000) // 3 Minutes
+                                }, 180000) 
                             };
                         }
                     }
