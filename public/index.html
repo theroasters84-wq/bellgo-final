@@ -30,10 +30,10 @@
         #mainApp { width: 100%; height: 100%; display: none; flex-direction: column; } 
         .header { height: 50px; background: #333; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; }
         .content-area { flex: 1; display: flex; overflow: hidden; height: 100%; position: relative; }
-        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; background: #121212; }
+        .lists-panel { flex: 1; overflow-y: auto; border-right: 1px solid #444; padding: 5px; background: #121212; display: flex; flex-direction: column; }
         
         /* STAFF LIST BUTTONS */
-        .btn-staff { width: 98%; height: 75px; font-size: 19px; margin-bottom: 12px; display: block; border: 2px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn-staff { width: 98%; height: 75px; font-size: 19px; margin-bottom: 12px; display: block; border: 2px solid transparent; box-shadow: 0 4px 6px rgba(0,0,0,0.3); flex-shrink: 0; }
         .driver { background: #E65100; border-left: 5px solid #FFD180; }
         .waiter { background: #0D47A1; border-left: 5px solid #82B1FF; }
         
@@ -63,6 +63,8 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         
         #connStatus { width: 12px; height: 12px; border-radius: 50%; background: red; display: inline-block; margin-right: 8px; border: 2px solid #555; }
+
+        .empty-list { color: #666; font-style: italic; margin-top: 20px; font-size: 14px; }
     </style>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -135,7 +137,7 @@
         let acceptedFlash = {}; 
         let callingFlash = {};
 
-        // --- AUDIO ENGINE (HEART OF ANTI-SLEEP) ---
+        // --- AUDIO ENGINE ---
         const AudioEngine = {
             alert: document.getElementById('siren'),
             silence: document.getElementById('silence'),
@@ -144,25 +146,20 @@
 
             init() { 
                 this.playSilence(); 
-                
-                // FORCE LOOP: Αν το σύστημα σταματήσει το silent, το ξαναξεκινάμε
                 this.silence.onpause = () => { 
                     if(!this.ringing) {
                         console.log("♻️ Auto-resuming silence...");
                         this.playSilence(); 
                     }
                 };
-                
-                // Ξεκινάμε και το Dummy Video
-                this.video.play().catch(e => console.log("Video autoplay blocked (expected)"));
+                this.video.play().catch(e => console.log("Video autoplay blocked"));
             },
 
             playSilence() { 
                 this.ringing = false; 
                 this.alert.pause(); 
                 this.alert.currentTime = 0; 
-                
-                this.silence.volume = 0.05; // Πολύ χαμηλά, αλλά όχι 0 (γιατί το iOS το αγνοεί στο 0)
+                this.silence.volume = 0.05; 
                 this.silence.play().then(() => {
                     this.setupMediaSession("BellGo Active", "System Online");
                 }).catch(e => console.log("Click needed for silence"));
@@ -171,7 +168,6 @@
             playAlert() { 
                 this.ringing = true; 
                 this.silence.pause(); 
-                
                 this.alert.volume = 1.0; 
                 this.alert.play().then(() => {
                     this.setupMediaSession("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY/PAUSE ΓΙΑ STOP");
@@ -182,19 +178,11 @@
 
             setupMediaSession(title, artist) {
                 if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: title,
-                        artist: artist,
-                        album: "BellGo App"
-                    });
-                    
-                    // 🔥 ΕΔΩ ΤΟ ΜΥΣΤΙΚΟ: Όλα τα κουμπιά κάνουν STOP 🔥
+                    navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: "BellGo App" });
                     const action = () => Watchdog.buttonAck();
-                    navigator.mediaSession.setActionHandler('play', action);
-                    navigator.mediaSession.setActionHandler('pause', action);
-                    navigator.mediaSession.setActionHandler('stop', action);
-                    navigator.mediaSession.setActionHandler('nexttrack', action);
-                    navigator.mediaSession.setActionHandler('previoustrack', action);
+                    ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'].forEach(evt => 
+                        navigator.mediaSession.setActionHandler(evt, action)
+                    );
                 }
             }
         };
@@ -202,7 +190,6 @@
         const Watchdog = {
             isRinging: false,
             start() {
-                // Heartbeat & WakeLock Renewal
                 setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
@@ -211,47 +198,34 @@
                         document.getElementById('connStatus').style.background = 'red';
                         if(socket) socket.connect();
                     }
-                    
-                    // Request WakeLock repeatedly
                     if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
-                    
                 }, 5000);
             },
             triggerPanicMode() {
                 if (this.isRinging) return;
                 this.isRinging = true;
-                
-                // UI RESET
                 const screen = document.getElementById('alarmScreen');
                 screen.className = ''; 
                 document.getElementById('alarmTitle').innerText = "🚨 ΚΛΗΣΗ!";
                 document.getElementById('alarmBtn').innerText = "STOP";
-                
                 AudioEngine.playAlert();
                 screen.style.display = 'flex';
             },
             stopPanicMode() {
                 this.isRinging = false;
                 document.getElementById('alarmScreen').style.display = 'none';
-                
-                // 🔥 IMMEDIATE RETURN TO SILENCE LOOP 🔥
                 AudioEngine.playSilence();
             },
             buttonAck() {
-                // Χειρισμός Test Mode
                 if (document.getElementById('alarmScreen').classList.contains('test-mode')) {
                     Logic.finalizeLogin();
                     return;
                 }
-
                 if (this.isRinging) {
                     const payload = { name: currentUser.name, store: currentUser.store };
                     socket.emit('alarm-ack', payload);
-                    
-                    // Spamming για σιγουριά δικτύου
                     setTimeout(() => socket.emit('alarm-ack', payload), 150);
                     setTimeout(() => socket.emit('alarm-ack', payload), 400);
-                    
                     this.stopPanicMode();
                 }
             }
@@ -259,7 +233,6 @@
 
         const Logic = {
             testAudioAndLogin(store, name, role, pass) {
-                // Unlock Video & Audio
                 AudioEngine.video.play().catch(e=>{}); 
                 AudioEngine.playAlert();
                 
@@ -282,7 +255,13 @@
                 document.getElementById('userInfo').innerText = `${currentUser.name} | ${currentUser.store}`;
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById('mainApp').classList.add('active');
-                if (currentUser.role !== 'admin') document.getElementById('listsPanel').style.display = 'none';
+                
+                // Αν ΔΕΝ είναι admin, κρύψε τη λίστα. Αν είναι admin, άσ' τη να φαίνεται.
+                if (currentUser.role !== 'admin') {
+                    document.getElementById('listsPanel').style.display = 'none';
+                } else {
+                    document.getElementById('listsPanel').style.display = 'flex';
+                }
 
                 // Connect
                 socket = io();
@@ -302,14 +281,19 @@
                 socket.on('alarm-receipt', (data) => {
                     if (currentUser.role === 'admin') {
                         acceptedFlash[data.name] = true;
-                        this.renderStaffList(lastList);
+                        Logic.renderStaffList(lastList);
                         setTimeout(() => {
-                            if(acceptedFlash[data.name]) { delete acceptedFlash[data.name]; this.renderStaffList(lastList); }
+                            if(acceptedFlash[data.name]) { delete acceptedFlash[data.name]; Logic.renderStaffList(lastList); }
                         }, 30000);
                     }
                 });
 
-                socket.on('staff-list-update', (list) => { lastList = list; this.renderStaffList(list); });
+                socket.on('staff-list-update', (list) => { 
+                    console.log("Updated Staff List:", list); // Debugging
+                    lastList = list; 
+                    Logic.renderStaffList(list); 
+                });
+                
                 socket.on('chat-message', (data) => this.renderChat(data));
                 
                 Watchdog.start();
@@ -318,12 +302,23 @@
             renderStaffList(list) {
                 const div = document.getElementById('staffListContainer');
                 div.innerHTML = '';
-                list.forEach(u => {
-                    if (u.role === 'admin') return; 
+                
+                // Φιλτράρισμα: Ο Admin δεν βλέπει άλλους Admins, βλέπει μόνο προσωπικό
+                const filteredList = list.filter(u => u.role !== 'admin');
+
+                // Αν η λίστα είναι άδεια (αφού φύγουν οι admins)
+                if (filteredList.length === 0) {
+                    div.innerHTML = '<div class="empty-list">Αναμονή για σύνδεση<br>σερβιτόρων/διανομέων...</div>';
+                    return;
+                }
+
+                filteredList.forEach(u => {
                     const btn = document.createElement('button');
-                    btn.className = `btn-staff ${u.role}`;
+                    // Fallback για να μην σκάσει αν λείπει ο ρόλος
+                    const safeRole = u.role ? u.role.toLowerCase() : 'waiter';
+                    btn.className = `btn-staff ${safeRole}`;
                     
-                    if(selectedRole === 'admin') {
+                    if(currentUser.role === 'admin') {
                         if (callingFlash[u.name]) {
                             btn.className += ' pending-call';
                             btn.innerHTML = `⏳ ΚΛΗΣΗ ΣΕ <b>${u.name.toUpperCase()}</b>...`;
@@ -331,18 +326,19 @@
                         else if (acceptedFlash[u.name]) {
                             btn.className += ' success-call';
                             btn.innerHTML = `✅ ΑΠΟΔΕΚΤΗΚΕ!<br><b>${u.name}</b><br><span style="font-size:12px">(Click to clear)</span>`;
-                            btn.onclick = () => { delete acceptedFlash[u.name]; this.renderStaffList(lastList); };
+                            btn.onclick = () => { delete acceptedFlash[u.name]; Logic.renderStaffList(lastList); };
                         }
                         else {
                             btn.innerHTML = `🔔 <b>${u.name}</b>`;
                             btn.onclick = () => {
                                 socket.emit('trigger-alarm', u.name);
                                 callingFlash[u.name] = true;
-                                this.renderStaffList(lastList);
-                                setTimeout(() => { delete callingFlash[u.name]; this.renderStaffList(lastList); }, 5000);
+                                Logic.renderStaffList(lastList);
+                                setTimeout(() => { delete callingFlash[u.name]; Logic.renderStaffList(lastList); }, 5000);
                             };
                         }
                     } else {
+                        // Αν είμαι σερβιτόρος και βλέπω άλλους (σπάνιο, αλλά υπάρχει στον κώδικα)
                         btn.innerText = `👤 ${u.name}`;
                         btn.style.opacity = "0.6";
                     }
@@ -359,7 +355,7 @@
                 const div = document.getElementById('chat-messages');
                 const msgDiv = document.createElement('div');
                 msgDiv.className = 'msg ' + (data.role === 'admin' ? 'admin' : '') + (data.sender === currentUser.name ? ' self' : '');
-                msgDiv.innerHTML = `<span class="name">${data.sender}</span>${data.text}`;
+                msgDiv.innerHTML = `<span class="name" style="font-size:10px; display:block; opacity:0.7">${data.sender}</span>${data.text}`;
                 div.appendChild(msgDiv);
                 div.scrollTop = div.scrollHeight;
             }
@@ -394,6 +390,7 @@
                 document.getElementById('inpName').value = u.name;
                 document.getElementById('inpPass').value = u.pass;
                 selectedRole = u.role;
+                // Μικρή καθυστέρηση για να προλάβει να φορτώσει το DOM
                 setTimeout(() => { forcePlayAndLogin(); }, 500);
             }
         };
