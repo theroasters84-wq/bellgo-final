@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Final</title>
+    <title>BellGo Ultra</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -50,7 +50,10 @@
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
         
-        .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
+        /* Ghost Style (Searching...) */
+        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
+        .btn-staff.ghost span.status { color: #ffab00 !important; font-weight: bold; animation: pulseText 1.5s infinite; }
+        @keyframes pulseText { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
         /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
@@ -58,27 +61,15 @@
         
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; color: white; }
         .msg .sender-name { font-size: 11px; margin-bottom: 4px; display: block; opacity: 0.8; font-weight: bold; }
-        
-        /* Message Colors */
         .msg.me { align-self: flex-end; background: #00E676; color: black; border-bottom-right-radius: 2px; }
         .msg.me .sender-name { text-align: right; color: #004d26; }
-        
         .msg.other { align-self: flex-start; border-bottom-left-radius: 2px; }
         .msg.waiter { background: #1565C0; }
         .msg.driver { background: #E65100; }
         .msg.admin { background: #D32F2F; border: 1px solid yellow; }
 
-        /* Chat Input Area */
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; padding-bottom: max(10px, env(safe-area-inset-bottom)); flex-shrink: 0; }
-        
-        /* FIX: High contrast input for visibility */
-        .chat-input input { 
-            border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; 
-            border: 1px solid #444; background: #333 !important; color: white !important; 
-            -webkit-text-fill-color: white !important; /* iOS Safari Fix */
-            caret-color: #00E676; /* Green cursor */
-        }
-        
+        .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; border: 1px solid #444; background: #333 !important; color: white !important; -webkit-text-fill-color: white !important; caret-color: #00E676; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 45px; color: black; }
 
         /* --- ALARM OVERLAY --- */
@@ -152,7 +143,10 @@
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
-        let lastStaffList = [];
+        
+        // --- GHOST PROTOCOL VARIABLES ---
+        let ghosts = {}; // Stores disconnected users: { 'name': { userObject: u, timer: timeoutID } }
+        let knownStaff = []; // Stores the last valid list from server
 
         const AudioEngine = {
             silence: document.getElementById('audioSilence'),
@@ -186,7 +180,6 @@
                 this.alarm.volume = 1.0;
                 this.alarm.play().catch(e => console.log("Audio Blocked"));
 
-                // Loop Vibration
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
                 this.vibrationInterval = setInterval(() => { if(navigator.vibrate) navigator.vibrate([2000, 100]); }, 2200);
@@ -258,7 +251,6 @@
 
                 if (!rawStore || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
 
-                // CRITICAL FIX: Ensure consistent store names (lowercase)
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 
                 AudioEngine.init();
@@ -293,9 +285,6 @@
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
-                    document.getElementById('staffPanel').classList.remove('offline-mode');
-                    
-                    // CRITICAL FIX: Send keys exactly as server expects them (storeName, username)
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -307,12 +296,14 @@
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
-                    document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
                 socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
-                socket.on('staff-list-update', (list) => this.renderStaffList(list));
+                
+                // GHOST PROTOCOL LIST UPDATE
+                socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
+                
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
 
@@ -336,33 +327,86 @@
                 window.location.reload();
             },
 
-            renderStaffList(list) {
-                if (!list) list = [];
-                lastStaffList = list;
+            // --- GHOST PROTOCOL LOGIC ---
+            processStaffList(serverList) {
+                if (!serverList) serverList = [];
+                
+                // 1. Detect who came back online (Ghost -> Live)
+                serverList.forEach(u => {
+                    if (ghosts[u.name]) {
+                        clearTimeout(ghosts[u.name].timer); // Stop the 3-min countdown
+                        delete ghosts[u.name]; // Remove from ghost list
+                    }
+                });
+
+                // 2. Detect who just disconnected (Live -> Ghost)
+                knownStaff.forEach(u => {
+                    const isStillOnline = serverList.find(s => s.name === u.name);
+                    const isAlreadyGhost = ghosts[u.name];
+                    
+                    if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
+                        // Create Ghost
+                        ghosts[u.name] = {
+                            data: u,
+                            timer: setTimeout(() => {
+                                delete ghosts[u.name]; // Kill ghost after 3 mins
+                                App.renderMergedList(lastStaffList); // Re-render without him
+                            }, 180000) // 3 Minutes
+                        };
+                    }
+                });
+
+                // 3. Update known staff
+                knownStaff = serverList;
+                
+                // 4. Render Merged List (Live + Ghosts)
+                this.renderMergedList(serverList);
+            },
+
+            renderMergedList(serverList) {
+                // Combine Live users + Ghost users
+                const mergedList = [...serverList];
+                Object.values(ghosts).forEach(g => mergedList.push(g.data));
+                
+                lastStaffList = mergedList; // Save for render
+                
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 
-                if (userData.role !== 'admin') return; // Only admin sees list
+                if (userData.role !== 'admin') return;
 
-                if (list.length === 0) {
+                // Handle empty list (only show "Waiting" if truly no one is online OR ghosting)
+                if (mergedList.length === 0) {
                      container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
                      return;
                 }
                 
-                list.forEach(u => {
+                mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
+                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    btn.className = `btn-staff ${safeRole}`;
-                    btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">IDLE</span>`;
-                    btn.onclick = () => {
-                        socket.emit('trigger-alarm', u.name);
-                        const statusSpan = btn.querySelector('.status');
-                        statusSpan.innerText = "📞 CALLING...";
-                        statusSpan.style.color = "yellow";
-                        statusSpan.style.fontWeight = "bold";
-                        setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
-                    };
+                    
+                    // Check if user is a Ghost
+                    const isGhost = ghosts[u.name] !== undefined;
+                    
+                    btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
+                    
+                    const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
+                    btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">${statusText}</span>`;
+                    
+                    // Only allow calling if NOT a ghost
+                    if (!isGhost) {
+                        btn.onclick = () => {
+                            socket.emit('trigger-alarm', u.name);
+                            const statusSpan = btn.querySelector('.status');
+                            statusSpan.innerText = "📞 CALLING...";
+                            statusSpan.style.color = "yellow";
+                            statusSpan.style.fontWeight = "bold";
+                            setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
+                        };
+                    }
+                    
                     container.appendChild(btn);
                 });
             },
