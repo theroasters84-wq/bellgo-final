@@ -160,6 +160,7 @@
         let cleanExits = new Set();
         let heartbeatInterval = null;
         let connectionWatchdog = null; 
+        let mediaSessionInterval = null;
 
         const AudioEngine = {
             player: document.getElementById('mainAudio'),
@@ -174,41 +175,45 @@
                 this.player.volume = 0.1; 
                 this.player.loop = true;
                 
-                // Aggressively Start Playing
+                // AGGRESSIVE PLAY
                 const playPromise = this.player.play();
                 if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.log("Audio Play blocked - waiting for interaction", error);
-                    });
+                    playPromise.catch(error => { console.log("Audio Play blocked", error); });
                 }
                 
-                // AGGRESSIVE KEEP ALIVE: Restart immediately if system pauses it
+                // AUTO-RESUME if system pauses it
                 this.player.onpause = () => { 
                     console.log("System paused audio - Forcing resume");
-                    this.player.play().catch(e => {}); 
+                    if (!this.isRinging) this.player.play().catch(e => {}); 
                 };
                 
                 this.video.play().catch(e => {});
                 
-                // --- MEDIA SESSION (LOCK SCREEN CONTROLS) ---
+                // --- AGGRESSIVE MEDIA SESSION ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
-                    // Force state to "playing" to keep controls visible
-                    navigator.mediaSession.playbackState = "playing";
                     
                     // ALL ACTIONS -> STOP ALARM
                     const stopAction = () => this.stopAlarm(true);
-                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => 
+                    
+                    // Register all possible handlers to look like a "Real" Music App
+                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekto'].forEach(a => 
                         navigator.mediaSession.setActionHandler(a, stopAction)
                     );
+
+                    // PERIODIC REFRESH to keep lock screen controls alive
+                    if (mediaSessionInterval) clearInterval(mediaSessionInterval);
+                    mediaSessionInterval = setInterval(() => {
+                        if (!this.isRinging) {
+                            navigator.mediaSession.playbackState = "playing";
+                        }
+                    }, 5000); // Every 5 seconds tell the OS "I am playing!"
                 }
             },
 
-            // --- THE VOLUME BUTTON HACK ---
             handleVolumeChange() {
                 if (!this.isRinging) return;
                 if (this.ignoreVolumeChanges) return;
-
                 console.log("Volume Change Detected -> Accepting Alarm");
                 this.stopAlarm(true);
             },
@@ -219,7 +224,6 @@
                         title: title, artist: artist, album: "BellGo Store",
                         artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
                     });
-                    // KEEP ALIVE: Re-assert playing state
                     navigator.mediaSession.playbackState = "playing";
                 }
             },
@@ -267,7 +271,8 @@
                 
                 this.isRinging = false;
                 
-                // --- SEAMLESS SWITCH BACK TO SILENCE (NEVER PAUSE) ---
+                // --- SEAMLESS SWITCH BACK TO SILENCE ---
+                // Do NOT Pause. Just swap source. Keeps the session "Hot".
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
