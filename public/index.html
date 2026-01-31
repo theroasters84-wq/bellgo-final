@@ -99,6 +99,7 @@
 
     <div id="loginScreen">
         <h1>🔔 BellGo Login</h1>
+        
         <div class="input-group">
             <select id="inpRole" onchange="App.toggleLoginInputs()">
                 <option value="waiter">🟦 Σερβιτόρος</option>
@@ -172,15 +173,29 @@
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1; 
                 this.player.loop = true;
-                this.player.play().catch(e => console.log("Init play failed", e));
                 
-                // Prevent system pausing
-                this.player.onpause = () => { if (!this.isRinging) this.player.play().catch(e => {}); };
+                // Aggressively Start Playing
+                const playPromise = this.player.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Audio Play blocked - waiting for interaction", error);
+                    });
+                }
+                
+                // AGGRESSIVE KEEP ALIVE: Restart immediately if system pauses it
+                this.player.onpause = () => { 
+                    console.log("System paused audio - Forcing resume");
+                    this.player.play().catch(e => {}); 
+                };
+                
                 this.video.play().catch(e => {});
                 
                 // --- MEDIA SESSION (LOCK SCREEN CONTROLS) ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
+                    // Force state to "playing" to keep controls visible
+                    navigator.mediaSession.playbackState = "playing";
+                    
                     // ALL ACTIONS -> STOP ALARM
                     const stopAction = () => this.stopAlarm(true);
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => 
@@ -191,12 +206,9 @@
 
             // --- THE VOLUME BUTTON HACK ---
             handleVolumeChange() {
-                // Only act if ringing
                 if (!this.isRinging) return;
-                // Ignore the initial volume set by the alarm start
                 if (this.ignoreVolumeChanges) return;
 
-                // If user pressed volume button -> ACCEPT
                 console.log("Volume Change Detected -> Accepting Alarm");
                 this.stopAlarm(true);
             },
@@ -207,6 +219,8 @@
                         title: title, artist: artist, album: "BellGo Store",
                         artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
                     });
+                    // KEEP ALIVE: Re-assert playing state
+                    navigator.mediaSession.playbackState = "playing";
                 }
             },
 
@@ -220,7 +234,7 @@
                 this.player.loop = true;
                 this.player.play().catch(e => {});
 
-                // Ignore volume changes for 200ms (fast reaction allowed)
+                // Ignore volume changes for 200ms
                 this.ignoreVolumeChanges = true;
                 setTimeout(() => { this.ignoreVolumeChanges = false; }, 200);
 
@@ -253,8 +267,7 @@
                 
                 this.isRinging = false;
                 
-                // --- SEAMLESS SWITCH BACK TO SILENCE ---
-                // Treat it like "Next Track" - Do NOT Pause
+                // --- SEAMLESS SWITCH BACK TO SILENCE (NEVER PAUSE) ---
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -387,7 +400,7 @@
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500, reconnectionAttempts: Infinity });
                 
                 socket.on('connect', () => {
-                    console.log("Socket Connected");
+                    console.log("Socket Connected - Sending Join Store");
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
@@ -415,6 +428,7 @@
                 });
 
                 socket.on('user-clean-exit', (name) => {
+                    console.log(name + " logged out manually.");
                     cleanExits.add(name);
                     if (ghosts[name]) {
                         clearTimeout(ghosts[name].timer);
