@@ -29,7 +29,6 @@
         .btn-login { width: 100%; max-width: 350px; padding: 15px; font-size: 18px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
         .btn-login:active { transform: scale(0.98); }
 
-        /* GOOGLE BUTTON STYLE */
         .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #4285F4; }
         .btn-google img { width: 24px; height: 24px; background: white; border-radius: 50%; padding: 2px; }
 
@@ -100,7 +99,6 @@
 
     <div id="loginScreen">
         <h1>🔔 BellGo Login</h1>
-        
         <div class="input-group">
             <select id="inpRole" onchange="App.toggleLoginInputs()">
                 <option value="waiter">🟦 Σερβιτόρος</option>
@@ -117,8 +115,7 @@
 
         <div id="adminInputs" style="display:none;">
             <p style="font-size:14px; color:#ccc; margin-bottom:10px; text-align:center;">
-                Είσοδος μόνο για ιδιοκτήτες.<br>
-                Το email σας θα είναι το Store ID.
+                Είσοδος μόνο για ιδιοκτήτες.<br>Το email σας θα είναι το Store ID.
             </p>
             <button class="btn-login btn-google" onclick="App.loginGoogle()">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
@@ -147,11 +144,10 @@
     <div id="alarmOverlay" onclick="AudioEngine.stopAlarm(true)">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <button id="alarmBtn" class="stop-btn">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button για Αποδοχή)</div>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button ή Play για Αποδοχή)</div>
     </div>
 
     <script>
-        // --- NEW CONFIG FOR 'bellgofinall' ---
         const firebaseConfig = { apiKey: "AIzaSyDyqu5tLS2hY3kS1XvHOrfw8CatB_mwI9A", authDomain: "bellgofinall.firebaseapp.com", projectId: "bellgofinall", storageBucket: "bellgofinall.firebasestorage.app", messagingSenderId: "654570848224", appId: "1:654570848224:web:50704c332d885e3a0df585", measurementId: "G-TPYZLBGCSQ" };
         try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
 
@@ -160,7 +156,7 @@
         let androidNotificationTimer = null;
         let ghosts = {}; 
         let knownStaff = [];
-        let cleanExits = new Set(); // Stores names of clean exits
+        let cleanExits = new Set();
         let heartbeatInterval = null;
         let connectionWatchdog = null; 
 
@@ -172,23 +168,36 @@
             ignoreVolumeChanges: false, 
 
             init() {
+                // Initialize with Silence
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1; 
                 this.player.loop = true;
                 this.player.play().catch(e => console.log("Init play failed", e));
+                
+                // Prevent system pausing
                 this.player.onpause = () => { if (!this.isRinging) this.player.play().catch(e => {}); };
                 this.video.play().catch(e => {});
                 
+                // --- MEDIA SESSION (LOCK SCREEN CONTROLS) ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
+                    // ALL ACTIONS -> STOP ALARM
                     const stopAction = () => this.stopAlarm(true);
-                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, stopAction));
+                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => 
+                        navigator.mediaSession.setActionHandler(a, stopAction)
+                    );
                 }
             },
 
+            // --- THE VOLUME BUTTON HACK ---
             handleVolumeChange() {
+                // Only act if ringing
                 if (!this.isRinging) return;
+                // Ignore the initial volume set by the alarm start
                 if (this.ignoreVolumeChanges) return;
+
+                // If user pressed volume button -> ACCEPT
+                console.log("Volume Change Detected -> Accepting Alarm");
                 this.stopAlarm(true);
             },
 
@@ -205,14 +214,15 @@
                 if(this.isRinging) return;
                 this.isRinging = true;
                 
-                // --- SWAP SOURCE TRICK ---
+                // --- SEAMLESS SWITCH TO ALARM ---
                 this.player.src = 'alert.mp3';
                 this.player.volume = 1.0; 
                 this.player.loop = true;
                 this.player.play().catch(e => {});
 
+                // Ignore volume changes for 200ms (fast reaction allowed)
                 this.ignoreVolumeChanges = true;
-                setTimeout(() => { this.ignoreVolumeChanges = false; }, 2000);
+                setTimeout(() => { this.ignoreVolumeChanges = false; }, 200);
 
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
@@ -243,7 +253,8 @@
                 
                 this.isRinging = false;
                 
-                // --- SWAP BACK TO SILENCE ---
+                // --- SEAMLESS SWITCH BACK TO SILENCE ---
+                // Treat it like "Next Track" - Do NOT Pause
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -291,7 +302,6 @@
                 }
             },
 
-            // --- 1. STAFF LOGIN (MANUAL - NO PASSWORD) ---
             loginManual() {
                 const rawStore = document.getElementById('inpStore').value.trim();
                 const name = document.getElementById('inpName').value.trim();
@@ -303,13 +313,11 @@
                 this.completeLogin({ store: rawStore.toLowerCase(), name, role, pass: '' });
             },
 
-            // --- 2. ADMIN LOGIN (GOOGLE AUTH) ---
             loginGoogle() {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 firebase.auth().signInWithPopup(provider)
                     .then((result) => {
                         const email = result.user.email;
-                        // STORE ID becomes the Admin's Email
                         this.completeLogin({ 
                             store: email.toLowerCase(), 
                             name: result.user.displayName || "Admin", 
@@ -379,7 +387,7 @@
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500, reconnectionAttempts: Infinity });
                 
                 socket.on('connect', () => {
-                    console.log("Socket Connected - Sending Join Store");
+                    console.log("Socket Connected");
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
@@ -406,17 +414,13 @@
                     }
                 });
 
-                // --- CLEAN EXIT HANDLER (Immediate Removal) ---
                 socket.on('user-clean-exit', (name) => {
-                    console.log(name + " logged out manually. Removing immediately.");
                     cleanExits.add(name);
-                    
                     if (ghosts[name]) {
                         clearTimeout(ghosts[name].timer);
                         delete ghosts[name];
                         App.renderMergedList(lastStaffList);
                     }
-                    
                     setTimeout(() => cleanExits.delete(name), 10000);
                 });
 
@@ -455,12 +459,9 @@
 
             logout() {
                 AudioEngine.player.pause();
-                
-                // --- MANUAL LOGOUT SIGNAL ---
                 if(socket && socket.connected) {
                     socket.emit('manual-logout', { name: userData.name, storeName: userData.store });
                 }
-
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
@@ -468,21 +469,14 @@
 
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
-                
                 serverList.forEach(u => {
                     if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
                 });
-
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
-                    
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        // CHECK: Did they exit cleanly?
-                        if (cleanExits.has(u.name)) {
-                            // Do nothing. They left on purpose.
-                        } else {
-                            // Create Ghost (Search for 3 mins)
+                        if (!cleanExits.has(u.name)) {
                             ghosts[u.name] = {
                                 data: u,
                                 timer: setTimeout(() => {
