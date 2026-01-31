@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Final Loop</title>
+    <title>BellGo Ultra</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -49,6 +49,9 @@
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
+        
+        /* Ghost Style (Disconnected but kept in list) */
+        .btn-staff.ghost { opacity: 0.5; filter: grayscale(100%); border-left-color: #666; }
 
         /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; }
@@ -56,10 +59,8 @@
         
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; }
         .msg .sender-name { font-size: 11px; margin-bottom: 4px; display: block; opacity: 0.8; font-weight: bold; }
-        
         .msg.me { align-self: flex-end; background: #00E676; color: black; border-bottom-right-radius: 2px; }
         .msg.me .sender-name { text-align: right; color: #004d26; }
-        
         .msg.other { align-self: flex-start; border-bottom-left-radius: 2px; }
         .msg.waiter { background: #1565C0; color: white; }
         .msg.driver { background: #E65100; color: white; }
@@ -97,16 +98,9 @@
 
     <div id="loginScreen">
         <h1>🔔 BellGo Login</h1>
-        
-        <div class="input-group">
-            <input type="text" id="inpStore" placeholder="Όνομα Μαγαζιού (π.χ. Coffee1)">
-        </div>
-        <div class="input-group">
-            <input type="text" id="inpName" placeholder="Το Όνομά σου">
-        </div>
-        <div class="input-group">
-            <input type="password" id="inpPass" placeholder="Κωδικός" inputmode="numeric">
-        </div>
+        <div class="input-group"><input type="text" id="inpStore" placeholder="Όνομα Μαγαζιού"></div>
+        <div class="input-group"><input type="text" id="inpName" placeholder="Το Όνομά σου"></div>
+        <div class="input-group"><input type="password" id="inpPass" placeholder="Κωδικός" inputmode="numeric"></div>
         <div class="input-group">
             <select id="inpRole">
                 <option value="waiter">🟦 Σερβιτόρος</option>
@@ -114,32 +108,22 @@
                 <option value="admin">🟥 ADMIN (Κουζίνα)</option>
             </select>
         </div>
-        
         <button class="btn-login" onclick="App.login()">ΣΥΝΔΕΣΗ</button>
     </div>
 
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" title="Tap to reconnect"></span>
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
                 <span id="headerInfo" class="user-info">Connecting...</span>
             </div>
             <button class="btn-logout" onclick="App.logout()">EXIT</button>
         </div>
-        
         <div class="content">
-            <div id="staffPanel" class="staff-panel">
-                <div id="staffList"></div>
-            </div>
-            
+            <div id="staffPanel" class="staff-panel"><div id="staffList"></div></div>
             <div class="chat-panel">
-                <div id="chatBox" class="chat-messages">
-                    <div style="text-align:center; opacity:0.5; margin-top:20px;">Καλημέρα! Chat ready.</div>
-                </div>
-                <div class="chat-input">
-                    <input type="text" id="msgInput" placeholder="Γράψε μήνυμα...">
-                    <button onclick="App.sendChat()">➤</button>
-                </div>
+                <div id="chatBox" class="chat-messages"><div style="text-align:center; opacity:0.5; margin-top:20px;">Chat ready.</div></div>
+                <div class="chat-input"><input type="text" id="msgInput" placeholder="Μήνυμα..."><button onclick="App.sendChat()">➤</button></div>
             </div>
         </div>
     </div>
@@ -151,87 +135,52 @@
     </div>
 
     <script>
-        // --- FIREBASE CONFIG ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
-            authDomain: "bellgo-5dbe5.firebaseapp.com",
-            projectId: "bellgo-5dbe5",
-            storageBucket: "bellgo-5dbe5.firebasestorage.app",
-            messagingSenderId: "799314495253",
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
-            measurementId: "G-379ETZJP8H"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", authDomain: "bellgo-5dbe5.firebaseapp.com", projectId: "bellgo-5dbe5", storageBucket: "bellgo-5dbe5.firebasestorage.app", messagingSenderId: "799314495253", appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", measurementId: "G-379ETZJP8H" };
+        try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
 
-        try {
-            firebase.initializeApp(firebaseConfig);
-            const messaging = firebase.messaging();
-        } catch(e) { console.error("Firebase init error", e); }
-
-        // --- GLOBAL STATE ---
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
+        let lastStaffList = []; // Keeps track of staff to prevent ghosts
 
-        // --- AUDIO ENGINE ---
         const AudioEngine = {
             silence: document.getElementById('audioSilence'),
             alarm: document.getElementById('audioAlarm'),
             video: document.getElementById('videoDummy'),
             isRinging: false,
-            vibrationInterval: null, // Timer for repeating vibration
+            vibrationInterval: null,
 
             init() {
                 this.silence.volume = 0.05; 
-                this.silence.play().catch(e => console.log("Silence play failed (click needed)"));
-
-                this.silence.onpause = () => {
-                    if (!this.isRinging) {
-                        console.log("♻️ Restarting Silence Loop...");
-                        this.silence.play().catch(e => {});
-                    }
-                };
+                this.silence.play().catch(e => {});
+                this.silence.onpause = () => { if (!this.isRinging) this.silence.play().catch(e => {}); };
                 this.video.play().catch(e => {});
-
+                
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
                     const stopAction = () => this.stopAlarm(true);
-                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(action => {
-                        navigator.mediaSession.setActionHandler(action, stopAction);
-                    });
+                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, stopAction));
                 }
             },
 
             updateMediaSession(title, artist) {
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: title,
-                        artist: artist,
-                        album: "BellGo Store"
-                    });
-                }
+                if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: "BellGo Store" });
             },
 
             triggerAlarm(isTest = false) {
                 this.isRinging = true;
                 this.silence.pause();
                 
-                // --- LOOP AUDIO ---
-                this.alarm.loop = true; // IMPORTANT: Enables Audio Loop
+                // Audio Loop
+                this.alarm.loop = true;
                 this.alarm.currentTime = 0;
                 this.alarm.volume = 1.0;
-                this.alarm.play().catch(e => console.log("Alarm play blocked"));
+                this.alarm.play().catch(e => console.log("Bg Audio Blocked - Notification will handle"));
 
-                // --- LOOP VIBRATION ---
-                // First vibration
-                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500]);
-                
-                // Clear any old interval
+                // Vibration Loop (MAX POWER: 2s ON, 0.1s OFF)
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
-                
-                // Set interval to repeat vibration every 3.5 seconds
-                this.vibrationInterval = setInterval(() => {
-                    if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500]);
-                }, 3500);
+                if(navigator.vibrate) navigator.vibrate([2000, 100]);
+                this.vibrationInterval = setInterval(() => { if(navigator.vibrate) navigator.vibrate([2000, 100]); }, 2200);
 
                 this.updateMediaSession(isTest ? "🔊 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY ΓΙΑ ΑΠΟΔΟΧΗ");
 
@@ -242,7 +191,7 @@
                 if (isTest) {
                     overlay.classList.add('test-mode');
                     txt.innerText = "🔊 ΕΛΕΓΧΟΣ ΗΧΟΥ";
-                    btn.innerText = "OK (ΞΕΚΛΕΙΔΩΜΑ)";
+                    btn.innerText = "OK";
                 } else {
                     overlay.classList.remove('test-mode');
                     txt.innerText = "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ";
@@ -259,14 +208,10 @@
                 this.isRinging = false;
                 this.alarm.pause();
                 this.alarm.currentTime = 0;
-                this.alarm.loop = false; // Disable loop safety
+                this.alarm.loop = false;
                 
-                // --- STOP VIBRATION LOOP ---
-                if (this.vibrationInterval) {
-                    clearInterval(this.vibrationInterval);
-                    this.vibrationInterval = null;
-                }
-                if(navigator.vibrate) navigator.vibrate(0); // Kill current buzz immediately
+                if (this.vibrationInterval) { clearInterval(this.vibrationInterval); this.vibrationInterval = null; }
+                if(navigator.vibrate) navigator.vibrate(0);
 
                 this.silence.play().catch(e => {});
                 this.updateMediaSession("BellGo Active", userData.store);
@@ -274,48 +219,44 @@
 
                 if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
 
-                if (isTest) {
-                    App.finishLoginSequence();
-                } else if (sendAck) {
-                    if(socket && socket.connected) {
-                        socket.emit('alarm-ack', { name: userData.name, store: userData.store });
-                    }
-                }
+                if (isTest) App.finishLoginSequence();
+                else if (sendAck && socket && socket.connected) socket.emit('alarm-ack', { name: userData.name, store: userData.store });
             },
 
             handleNotifications() {
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                const isAndroid = /Android/.test(navigator.userAgent);
-
-                if (isIOS) {
-                    this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Η κουζίνα σε καλεί τώρα!");
-                } else if (isAndroid) {
+                // Always send aggressive notification
+                this.sendLocalNotification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ ΕΔΩ ΤΩΡΑ!");
+                
+                // Android Backup
+                if (/Android/.test(navigator.userAgent)) {
                     if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
                     androidNotificationTimer = setTimeout(() => {
-                        if (this.isRinging) this.sendLocalNotification("🚨 ΑΠΑΝΤΗΣΕ!", "Εκκρεμεί κλήση 30δ!");
-                    }, 30000);
-                } else {
-                    this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Κλήση από κουζίνα");
+                        if (this.isRinging) this.sendLocalNotification("🚨 ΑΚΟΜΑ ΧΤΥΠΑΕΙ!", "Άνοιξε την εφαρμογή!");
+                    }, 10000);
                 }
             },
 
             sendLocalNotification(title, body) {
                 if (Notification.permission === "granted") {
-                    try { new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png' }); } catch (e) {}
+                    try { 
+                        new Notification(title, { 
+                            body: body, 
+                            icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png',
+                            requireInteraction: true, // Force user interaction
+                            tag: 'alarm'
+                        }); 
+                    } catch (e) {}
                 }
             }
         };
 
-        // --- APP LOGIC ---
         const App = {
             login() {
                 const store = document.getElementById('inpStore').value.trim();
                 const name = document.getElementById('inpName').value.trim();
                 const pass = document.getElementById('inpPass').value.trim();
                 const role = document.getElementById('inpRole').value;
-
                 if (!store || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
-
                 userData = { store, name, role, pass };
                 AudioEngine.init();
                 AudioEngine.triggerAlarm(true);
@@ -323,13 +264,10 @@
 
             finishLoginSequence() {
                 document.getElementById('loginScreen').style.display = 'none';
-                document.querySelector('.btn-apk').style.display = 'none'; // Hide download button
+                document.querySelector('.btn-apk').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
-
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
-                else document.getElementById('staffPanel').classList.remove('active');
-
                 if (Notification.requestPermission) Notification.requestPermission();
                 
                 try {
@@ -340,48 +278,32 @@
                 this.connectSocket();
                 this.startHeartbeat();
 
-                // IPHONE WAKE LISTENER
+                // FORCE RECONNECT ON WAKE
                 document.addEventListener("visibilitychange", () => {
                     if (document.visibilityState === "visible") {
-                        if (socket && !socket.connected) {
-                            console.log("App visible - Force Reconnect");
-                            socket.connect();
-                        }
+                        if (socket && !socket.connected) socket.connect();
                     }
                 });
             },
 
             connectSocket() {
-                // FIXED FOR IPHONE: Polling FIRST, then Websocket
-                socket = io({
-                    transports: ['polling', 'websocket'], 
-                    reconnection: true,
-                    reconnectionAttempts: Infinity,
-                    reconnectionDelay: 1000
+                socket = io({ 
+                    transports: ['polling', 'websocket'], // Polling first for iOS stability
+                    reconnection: true, 
+                    reconnectionDelay: 500,
+                    timeout: 5000 
                 });
                 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
-                    
-                    socket.emit('join-store', { 
-                        storeName: userData.store, 
-                        username: userData.name, 
-                        role: userData.role,
-                        pass: userData.pass
-                    });
+                    socket.emit('join-store', userData);
                 });
 
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
-                    // CLEAN GHOSTS
-                    this.renderStaffList([]); 
-                });
-                
-                socket.on('connect_error', (err) => {
-                    console.log("Socket Error:", err);
-                    document.getElementById('connDot').style.background = 'orange';
+                    // DO NOT CLEAR STAFF LIST HERE - PREVENTS GHOSTS
                 });
 
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
@@ -391,10 +313,7 @@
             },
 
             forceReconnect() {
-                if(socket) {
-                    socket.disconnect();
-                    setTimeout(() => socket.connect(), 500);
-                }
+                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
             },
 
             startHeartbeat() {
@@ -403,7 +322,7 @@
                         socket.emit('heartbeat');
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
-                }, 4000);
+                }, 2000); // Super aggressive heartbeat (2s)
             },
 
             logout() {
@@ -414,20 +333,17 @@
             },
 
             renderStaffList(list) {
+                lastStaffList = list; // Keep record
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 
                 if (list.length === 0 && userData.role === 'admin' && socket.connected) {
                      container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
                      return;
-                } else if (!socket.connected && userData.role === 'admin') {
-                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#d32f2f;">🔴 OFFLINE<br>Cleaning list...</div>';
-                     return;
                 }
                 
                 list.forEach(u => {
                     if (u.role === 'admin') return; 
-                    
                     const btn = document.createElement('button');
                     btn.className = `btn-staff ${u.role}`;
                     btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">IDLE</span>`;
@@ -438,11 +354,7 @@
                         statusSpan.innerText = "📞 CALLING...";
                         statusSpan.style.color = "yellow";
                         statusSpan.style.fontWeight = "bold";
-                        setTimeout(() => {
-                            statusSpan.innerText = "IDLE";
-                            statusSpan.style.color = "white";
-                            statusSpan.style.fontWeight = "normal";
-                        }, 5000);
+                        setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
                     };
                     container.appendChild(btn);
                 });
@@ -470,5 +382,6 @@
             }
         };
     </script>
+    
 </body>
 </html>
