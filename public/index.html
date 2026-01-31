@@ -21,7 +21,7 @@
         
         .input-group { width: 85%; margin-bottom: 12px; }
         input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 18px; text-align: center; -webkit-appearance: none; }
-        select { text-align-last: center; } /* Center text in select for Chrome */
+        select { text-align-last: center; } 
         
         .btn-login { width: 85%; padding: 15px; font-size: 20px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; }
         
@@ -30,31 +30,30 @@
         
         /* Header */
         .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; }
-        .status-dot { width: 12px; height: 12px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; }
+        .status-dot { width: 12px; height: 12px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; }
         .user-info { font-size: 14px; color: #ccc; }
-        .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; }
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
-        /* Content Area (Split View) */
+        /* Content Area */
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         
-        /* Staff List (Left) - Only visible to Admin usually, or full width if mobile logic demands */
-        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; /* Hidden by default until role check */ }
+        /* Staff List */
+        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; }
         .staff-panel.active { display: block; }
 
-        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
         .btn-staff:active { transform: scale(0.98); }
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
 
-        /* Chat Panel (Right) */
+        /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; }
         .msg .sender-name { font-size: 11px; margin-bottom: 4px; display: block; opacity: 0.8; font-weight: bold; }
         
-        /* Styles based on sender */
         .msg.me { align-self: flex-end; background: #00E676; color: black; border-bottom-right-radius: 2px; }
         .msg.me .sender-name { text-align: right; color: #004d26; }
         
@@ -63,24 +62,22 @@
         .msg.driver { background: #E65100; color: white; }
         .msg.admin { background: #D32F2F; color: white; border: 1px solid yellow; }
 
-        /* Chat Input */
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; }
-        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; }
+        .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; border:none; background: #333; color: white; }
+        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 45px; }
 
         /* --- ALARM OVERLAY --- */
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
         
-        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
+        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; -webkit-user-select: none; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        /* Test Mode Style (Blue instead of Red) */
         #alarmOverlay.test-mode { background: #2962FF !important; animation: none; }
         #alarmOverlay.test-mode .stop-btn { color: #2962FF; border-color: white; animation: none; }
 
         /* --- HIDDEN MEDIA --- */
-        .media-hidden { position: absolute; width: 1px; height: 1px; opacity: 0.01; overflow: hidden; pointer-events: none; }
+        .media-hidden { position: absolute; width: 1px; height: 1px; opacity: 0.01; overflow:hidden; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -88,7 +85,7 @@
     <div class="media-hidden">
         <audio id="audioSilence" src="silence.mp3" loop playsinline></audio>
         <audio id="audioAlarm" src="alert.mp3" preload="auto" playsinline></audio>
-        <video id="videoDummy" loop playsinline muted>
+        <video id="videoDummy" loop playsinline muted style="width:1px; height:1px;">
             <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
         </video>
     </div>
@@ -120,7 +117,7 @@
         <div class="header">
             <div style="display:flex; align-items:center;">
                 <span id="connDot" class="status-dot"></span>
-                <span id="headerInfo" class="user-info">...</span>
+                <span id="headerInfo" class="user-info">Connecting...</span>
             </div>
             <button class="btn-logout" onclick="App.logout()">EXIT</button>
         </div>
@@ -132,7 +129,7 @@
             
             <div class="chat-panel">
                 <div id="chatBox" class="chat-messages">
-                    <div style="text-align:center; opacity:0.5; margin-top:20px;">Καλημέρα! Το Chat είναι έτοιμο.</div>
+                    <div style="text-align:center; opacity:0.5; margin-top:20px;">Καλημέρα! Chat ready.</div>
                 </div>
                 <div class="chat-input">
                     <input type="text" id="msgInput" placeholder="Γράψε μήνυμα...">
@@ -143,9 +140,9 @@
     </div>
 
     <div id="alarmOverlay" onclick="AudioEngine.stopAlarm(true)">
-        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold;">🚨 ΚΛΗΣΗ!</div>
+        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <button id="alarmBtn" class="stop-btn">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px;">(ή πάτα το κουμπί στα ακουστικά)</div>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(ή πάτα Play/Pause στα ακουστικά)</div>
     </div>
 
     <script>
@@ -170,7 +167,7 @@
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
 
-        // --- AUDIO ENGINE ---
+        // --- AUDIO ENGINE (HEART OF THE APP) ---
         const AudioEngine = {
             silence: document.getElementById('audioSilence'),
             alarm: document.getElementById('audioAlarm'),
@@ -178,26 +175,30 @@
             isRinging: false,
 
             init() {
-                // Prepare Silence Loop
-                this.silence.volume = 0.05;
+                // 1. SILENCE LOOP (Keep connection alive)
+                this.silence.volume = 0.05; // Not 0, or iOS kills it
+                this.silence.play().catch(e => console.log("Silence play failed (click needed)"));
+
+                // If audio stops (OS kills it), restart it immediately
                 this.silence.onpause = () => {
                     if (!this.isRinging) {
-                        console.log("♻️ Silence Loop Restart");
+                        console.log("♻️ Restarting Silence Loop...");
                         this.silence.play().catch(e => {});
                     }
                 };
-                
-                // Prepare Dummy Video (Anti-sleep)
+
+                // 2. DUMMY VIDEO (Anti-Sleep for Android/iOS)
                 this.video.play().catch(e => {});
 
-                // Setup Media Session (Lock Screen Controls)
+                // 3. MEDIA SESSION (Lock Screen Controls)
                 if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: "BellGo Active",
-                        artist: "System Online",
-                        album: "Connected"
-                    });
-                    const stopAction = () => this.stopAlarm(true);
+                    this.updateMediaSession("BellGo Active", "Online");
+                    
+                    const stopAction = () => {
+                        console.log("Media Key Pressed");
+                        this.stopAlarm(true);
+                    };
+                    
                     // Map ALL buttons to stop alarm
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekbackward', 'seekforward'].forEach(action => {
                         navigator.mediaSession.setActionHandler(action, stopAction);
@@ -205,24 +206,38 @@
                 }
             },
 
+            updateMediaSession(title, artist) {
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: title,
+                        artist: artist,
+                        album: "BellGo Store"
+                    });
+                }
+            },
+
             triggerAlarm(isTest = false) {
                 this.isRinging = true;
-                this.silence.pause();
                 
+                // Pause silence, Play alarm
+                this.silence.pause();
                 this.alarm.currentTime = 0;
                 this.alarm.volume = 1.0;
-                this.alarm.play().catch(e => console.log("Alarm blocked"));
-
-                // Vibration
-                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
-
-                // Update Lock Screen
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata.title = isTest ? "🔔 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!";
-                    navigator.mediaSession.metadata.artist = "ΠΑΤΑ PLAY ΓΙΑ ΑΠΟΔΟΧΗ";
+                
+                const playPromise = this.alarm.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Alarm play blocked. User interaction needed.");
+                    });
                 }
 
-                // Show Overlay
+                // Vibration (Aggressive)
+                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
+
+                // Update Lock Screen text
+                this.updateMediaSession(isTest ? "🔊 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY ΓΙΑ ΑΠΟΔΟΧΗ");
+
+                // Show UI Overlay
                 const overlay = document.getElementById('alarmOverlay');
                 const btn = document.getElementById('alarmBtn');
                 const txt = document.getElementById('alarmText');
@@ -230,17 +245,18 @@
                 if (isTest) {
                     overlay.classList.add('test-mode');
                     txt.innerText = "🔊 ΕΛΕΓΧΟΣ ΗΧΟΥ";
-                    btn.innerText = "OK";
+                    btn.innerText = "OK (ΞΕΚΛΕΙΔΩΜΑ)";
                 } else {
                     overlay.classList.remove('test-mode');
                     txt.innerText = "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ";
                     btn.innerText = "STOP";
-                    this.handleNotifications(); // Handle OS specific notifications
+                    this.handleNotifications();
                 }
                 overlay.style.display = 'flex';
             },
 
             stopAlarm(sendAck = false) {
+                // If not ringing and overlay is hidden, do nothing
                 if (!this.isRinging && document.getElementById('alarmOverlay').style.display === 'none') return;
 
                 const isTest = document.getElementById('alarmOverlay').classList.contains('test-mode');
@@ -249,14 +265,11 @@
                 this.alarm.pause();
                 this.alarm.currentTime = 0;
                 
-                // Resume Silence
-                this.silence.play().catch(e=>{});
+                // RESUME SILENCE IMMEDIATELY
+                this.silence.play().catch(e => console.log("Resume silence failed"));
                 
-                // Reset Lock Screen
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata.title = "BellGo Active";
-                    navigator.mediaSession.metadata.artist = userData.store;
-                }
+                // Reset Lock Screen text
+                this.updateMediaSession("BellGo Active", userData.store);
 
                 // Hide Overlay
                 document.getElementById('alarmOverlay').style.display = 'none';
@@ -264,11 +277,13 @@
                 // Clear Android Timer
                 if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
 
-                // Logic specific actions
+                // Actions
                 if (isTest) {
                     App.finishLoginSequence();
                 } else if (sendAck) {
-                    if(socket) socket.emit('alarm-ack', { name: userData.name, store: userData.store });
+                    if(socket && socket.connected) {
+                        socket.emit('alarm-ack', { name: userData.name, store: userData.store });
+                    }
                 }
             },
 
@@ -277,25 +292,27 @@
                 const isAndroid = /Android/.test(navigator.userAgent);
 
                 if (isIOS) {
-                    // iPhone: Immediate Notification
+                    // iPhone sends immediate
                     this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Η κουζίνα σε καλεί τώρα!");
                 } else if (isAndroid) {
-                    // Android: Wait 30s
+                    // Android waits 30s
                     if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
                     androidNotificationTimer = setTimeout(() => {
                         if (this.isRinging) {
-                            this.sendLocalNotification("🚨 ΑΠΑΝΤΗΣΕ!", "Η κουζίνα περιμένει 30δευτ!");
+                            this.sendLocalNotification("🚨 ΑΠΑΝΤΗΣΕ!", "Εκκρεμεί κλήση 30δ!");
                         }
                     }, 30000);
                 } else {
-                    // Desktop/Other: Immediate
                     this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Κλήση από κουζίνα");
                 }
             },
 
             sendLocalNotification(title, body) {
                 if (Notification.permission === "granted") {
-                    new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png' });
+                    // Try/Catch for older browsers
+                    try {
+                        new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png' });
+                    } catch (e) {}
                 }
             }
         };
@@ -312,36 +329,34 @@
 
                 userData = { store, name, role, pass };
 
-                // 1. Initialise Audio Context
+                // 1. Initialize Audio Context (MUST happen on user click)
                 AudioEngine.init();
 
-                // 2. Trigger Fake Alarm (Test Mode) to force interaction
+                // 2. Trigger Fake Alarm (Test Mode) to force OS to accept audio
                 AudioEngine.triggerAlarm(true);
             },
 
             finishLoginSequence() {
-                // Called after user clicks "OK" on the test alarm
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
-                document.getElementById('headerInfo').innerText = `${userData.name} (${userData.role}) | ${userData.store}`;
+                document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
 
-                // Setup View based on Role
+                // Setup Roles
                 if (userData.role === 'admin') {
                     document.getElementById('staffPanel').classList.add('active');
-                    // Admin gets smaller chat usually, but here equal split is requested roughly
                 } else {
                     document.getElementById('staffPanel').classList.remove('active');
                 }
 
-                // Request Notification Permission
-                Notification.requestPermission();
+                // Request Permissions
+                if (Notification.requestPermission) Notification.requestPermission();
                 
-                // Get Firebase Token (Log only for now)
+                // Get FCM Token (Optional logging)
                 try {
                     const messaging = firebase.messaging();
-                    messaging.getToken({ vapidKey: 'BMc_...' }).then((currentToken) => { // Replace with your Vapid if needed, or leave generic
-                        if (currentToken) console.log("FCM Token:", currentToken);
-                    }).catch((err) => console.log('An error occurred while retrieving token. ', err));
+                    messaging.getToken({ vapidKey: 'BMc_...' }).then((t) => {
+                        if(t) console.log("FCM:", t);
+                    }).catch(e => {});
                 } catch(e){}
 
                 this.connectSocket();
@@ -349,10 +364,18 @@
             },
 
             connectSocket() {
-                socket = io(); // Assumes server is serving this file
+                // CONNECT with options optimized for iOS (Websockets + Polling fallback)
+                socket = io({
+                    transports: ['websocket', 'polling'], // Critical for iOS
+                    reconnection: true,
+                    reconnectionAttempts: Infinity,
+                    reconnectionDelay: 1000
+                });
                 
                 socket.on('connect', () => {
-                    document.getElementById('connDot').style.background = '#00E676'; // Green
+                    document.getElementById('connDot').style.background = '#00E676';
+                    document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store} (Online)`;
+                    
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -363,29 +386,44 @@
 
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
+                    document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
+                });
+                
+                socket.on('connect_error', (err) => {
+                    console.log("Socket Error:", err);
+                    document.getElementById('connDot').style.background = 'orange';
                 });
 
-                // INCOMING ALARM (Staff side)
+                // EVENTS
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
-                
-                // KITCHEN ALARM (Admin side - rarely used but included)
                 socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
-
-                // STAFF LIST UPDATE (Admin side)
                 socket.on('staff-list-update', (list) => this.renderStaffList(list));
-
-                // CHAT
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
 
             startHeartbeat() {
+                // Aggressive heartbeat to keep connection alive
                 setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
-                        // Request WakeLock again
+                        // Keep WakeLock active
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
-                }, 5000);
+                }, 4000);
+            },
+
+            logout() {
+                // 1. Stop Audio
+                AudioEngine.silence.pause();
+                AudioEngine.alarm.pause();
+                
+                // 2. Disconnect Socket explicitely
+                if (socket) {
+                    socket.disconnect();
+                }
+
+                // 3. Reload Page
+                window.location.reload();
             },
 
             renderStaffList(list) {
@@ -393,32 +431,24 @@
                 container.innerHTML = '';
                 
                 list.forEach(u => {
-                    if (u.role === 'admin') return; // Don't show admins in list
+                    if (u.role === 'admin') return; 
                     
                     const btn = document.createElement('button');
                     btn.className = `btn-staff ${u.role}`;
-                    btn.innerHTML = `
-                        <span>${u.name}</span>
-                        <span class="status" id="status-${u.name}">IDLE</span>
-                    `;
+                    btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">IDLE</span>`;
                     
-                    // Click to Call
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.name);
-                        // Visual Feedback
                         const statusSpan = btn.querySelector('.status');
                         statusSpan.innerText = "📞 CALLING...";
                         statusSpan.style.color = "yellow";
                         statusSpan.style.fontWeight = "bold";
-                        
-                        // Reset visual after 5s
                         setTimeout(() => {
                             statusSpan.innerText = "IDLE";
                             statusSpan.style.color = "white";
                             statusSpan.style.fontWeight = "normal";
                         }, 5000);
                     };
-
                     container.appendChild(btn);
                 });
             },
@@ -427,7 +457,6 @@
                 const inp = document.getElementById('msgInput');
                 const txt = inp.value.trim();
                 if (!txt) return;
-                
                 socket.emit('chat-message', { text: txt });
                 inp.value = '';
             },
@@ -435,7 +464,6 @@
             renderChat(data) {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
-                
                 const isMe = data.sender === userData.name;
                 let roleClass = data.role || 'waiter';
                 if (isMe) roleClass = 'me';
@@ -443,19 +471,11 @@
                 div.className = `msg ${roleClass}`;
                 if (!isMe) div.classList.add('other');
 
-                div.innerHTML = `
-                    <span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>
-                    ${data.text}
-                `;
-                
+                div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
                 box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
             }
         };
-
-        logout = function() {
-            location.reload();
-        }
     </script>
 </body>
 </html>
