@@ -90,7 +90,6 @@
 
     <div class="media-hidden">
         <audio id="mainAudio" src="silence.mp3" loop playsinline onvolumechange="AudioEngine.handleVolumeChange()"></audio>
-        
         <video id="videoDummy" loop playsinline muted style="width:1px; height:1px;">
             <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
         </video>
@@ -146,6 +145,7 @@
         let ghosts = {}; 
         let knownStaff = [];
         let heartbeatInterval = null;
+        let connectionWatchdog = null; // NEW: The Watchdog
 
         const AudioEngine = {
             player: document.getElementById('mainAudio'),
@@ -155,44 +155,30 @@
             ignoreVolumeChanges: false, 
 
             init() {
-                // Start with silence
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1; 
                 this.player.loop = true;
-                
-                // CRITICAL: We play immediately on user interaction (Login)
                 this.player.play().catch(e => console.log("Init play failed", e));
-                
-                // Safety net: Restart if paused by system unexpectedly
-                this.player.onpause = () => { 
-                    if (!this.isRinging) this.player.play().catch(e => {}); 
-                };
-
+                this.player.onpause = () => { if (!this.isRinging) this.player.play().catch(e => {}); };
                 this.video.play().catch(e => {});
                 
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
                     const stopAction = () => this.stopAlarm(true);
-                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => 
-                        navigator.mediaSession.setActionHandler(a, stopAction)
-                    );
+                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, stopAction));
                 }
             },
 
-            // --- VOLUME BUTTON LOGIC ---
             handleVolumeChange() {
                 if (!this.isRinging) return;
                 if (this.ignoreVolumeChanges) return;
-                console.log("Volume Button -> Stopping Alarm");
                 this.stopAlarm(true);
             },
 
             updateMediaSession(title, artist) {
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
-                        title: title,
-                        artist: artist,
-                        album: "BellGo Store",
+                        title: title, artist: artist, album: "BellGo Store",
                         artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
@@ -200,29 +186,21 @@
 
             triggerAlarm(isTest = false) {
                 if(this.isRinging) return;
-
                 this.isRinging = true;
-                
-                // --- THE SWAP TRICK ---
-                // We do NOT pause. We just swap the SRC while it's "hot".
-                // iOS allows this because the session is active.
                 this.player.src = 'alert.mp3';
                 this.player.volume = 1.0; 
                 this.player.loop = true;
-                this.player.play().catch(e => console.log("Alarm blocked", e));
+                this.player.play().catch(e => {});
 
-                // Ignore volume changes for 2 seconds to avoid instant self-cancellation
                 this.ignoreVolumeChanges = true;
                 setTimeout(() => { this.ignoreVolumeChanges = false; }, 2000);
 
-                // Vibration (Android mainly, ignored by iOS)
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
                 this.vibrationInterval = setInterval(() => { if(navigator.vibrate) navigator.vibrate([2000, 100]); }, 2200);
 
                 this.updateMediaSession(isTest ? "🔊 TEST" : "🚨 ΚΛΗΣΗ!", "ΠΑΤΑ ΚΟΥΜΠΙ ΓΙΑ STOP");
 
-                // UI
                 const overlay = document.getElementById('alarmOverlay');
                 const btn = document.getElementById('alarmBtn');
                 const txt = document.getElementById('alarmText');
@@ -245,9 +223,6 @@
                 const isTest = document.getElementById('alarmOverlay').classList.contains('test-mode');
                 
                 this.isRinging = false;
-                
-                // --- SWAP BACK TO SILENCE IMMEDIATELY ---
-                // This keeps the connection alive
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -258,7 +233,6 @@
 
                 this.updateMediaSession("BellGo Active", userData.store);
                 document.getElementById('alarmOverlay').style.display = 'none';
-
                 if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
 
                 if (isTest) App.finishLoginSequence();
@@ -266,9 +240,7 @@
             },
 
             handleNotifications() {
-                // Send immediate high priority notification
                 this.sendLocalNotification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ ΕΔΩ ΤΩΡΑ!");
-                
                 if (/Android/.test(navigator.userAgent)) {
                     if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
                     androidNotificationTimer = setTimeout(() => {
@@ -280,12 +252,7 @@
             sendLocalNotification(title, body) {
                 if (Notification.permission === "granted") {
                     try { 
-                        new Notification(title, { 
-                            body: body, 
-                            icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', 
-                            requireInteraction: true, 
-                            tag: 'alarm'
-                        }); 
+                        new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png', requireInteraction: true, tag: 'alarm' }); 
                     } catch (e) {}
                 }
             }
@@ -302,10 +269,7 @@
 
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-
-                // Initialize Audio Engine (Starts Silence)
                 AudioEngine.init();
-                // Trigger Test Alarm immediately to warm up the 'Switching' capability
                 AudioEngine.triggerAlarm(true);
             },
 
@@ -325,9 +289,18 @@
 
                 this.connectSocket();
                 this.startHeartbeat();
+                this.startConnectionWatchdog(); // START THE WATCHDOG
+
+                // iOS Safari fix for back/forward cache
+                window.addEventListener("pageshow", (event) => {
+                    if (event.persisted) {
+                        console.log("Page revived from background - forcing reconnect");
+                        App.forceReconnect();
+                    }
+                });
 
                 document.addEventListener("visibilitychange", () => {
-                    if (document.visibilityState === "visible" && socket && !socket.connected) socket.connect();
+                    if (document.visibilityState === "visible") App.forceReconnect();
                 });
             },
 
@@ -340,9 +313,6 @@
                         document.getElementById('inpName').value = userData.name;
                         document.getElementById('inpPass').value = userData.pass;
                         document.getElementById('inpRole').value = userData.role;
-                        
-                        // User needs to tap Login to start audio correctly on iOS
-                        // So we don't auto-skip the login screen, we just pre-fill.
                     } catch (e) {
                         localStorage.removeItem('bellgo_session');
                     }
@@ -350,12 +320,15 @@
             },
 
             connectSocket() {
-                socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
+                if(socket && socket.connected) return;
+                socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500, reconnectionAttempts: Infinity });
                 
                 socket.on('connect', () => {
+                    console.log("Socket Connected - Sending Join Store");
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
+                    // ALWAYS send join-store on connect to ensure server knows us
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -365,6 +338,7 @@
                 });
 
                 socket.on('disconnect', () => {
+                    console.log("Socket Disconnected");
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
                     document.getElementById('staffPanel').classList.add('offline-mode');
@@ -377,20 +351,40 @@
             },
 
             forceReconnect() {
-                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
+                if (!socket || !socket.connected) {
+                    console.log("Force Reconnecting...");
+                    if(socket) socket.connect();
+                    else this.connectSocket();
+                } else {
+                    // Even if connected, ensure we are joined
+                    socket.emit('join-store', { 
+                        storeName: userData.store, username: userData.name, role: userData.role, pass: userData.pass 
+                    });
+                }
             },
 
-            // --- AGGRESSIVE HEARTBEAT ---
+            // --- HEARTBEAT & WATCHDOG ---
             startHeartbeat() {
                 if(heartbeatInterval) clearInterval(heartbeatInterval);
                 heartbeatInterval = setInterval(() => {
                     if (socket && socket.connected) {
-                        // Send ping to server
                         socket.emit('heartbeat');
-                        // Reset Wake Lock
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
-                }, 2000); // Ping every 2 seconds
+                }, 2000);
+            },
+
+            startConnectionWatchdog() {
+                if (connectionWatchdog) clearInterval(connectionWatchdog);
+                // Checks every 3 seconds if we have user data but NO connection
+                connectionWatchdog = setInterval(() => {
+                    if (userData.name && userData.store) {
+                        if (!socket || !socket.connected) {
+                            console.log("Watchdog: Connection lost. Reconnecting...");
+                            App.forceReconnect();
+                        }
+                    }
+                }, 3000);
             },
 
             logout() {
@@ -400,7 +394,7 @@
                 window.location.reload();
             },
 
-            // --- GHOST PROTOCOL (Display Logic) ---
+            // --- GHOST PROTOCOL ---
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
                 serverList.forEach(u => {
