@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Unified</title>
+    <title>BellGo Final</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -30,7 +30,7 @@
         
         /* Header */
         .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; }
-        .status-dot { width: 12px; height: 12px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; }
+        .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
         .user-info { font-size: 14px; color: #ccc; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
@@ -116,7 +116,7 @@
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" class="status-dot"></span>
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" title="Tap to reconnect"></span>
                 <span id="headerInfo" class="user-info">Connecting...</span>
             </div>
             <button class="btn-logout" onclick="App.logout()">EXIT</button>
@@ -167,7 +167,7 @@
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
 
-        // --- AUDIO ENGINE (HEART OF THE APP) ---
+        // --- AUDIO ENGINE ---
         const AudioEngine = {
             silence: document.getElementById('audioSilence'),
             alarm: document.getElementById('audioAlarm'),
@@ -175,32 +175,21 @@
             isRinging: false,
 
             init() {
-                // 1. SILENCE LOOP (Keep connection alive)
-                this.silence.volume = 0.05; // Not 0, or iOS kills it
+                this.silence.volume = 0.05; 
                 this.silence.play().catch(e => console.log("Silence play failed (click needed)"));
 
-                // If audio stops (OS kills it), restart it immediately
                 this.silence.onpause = () => {
                     if (!this.isRinging) {
                         console.log("♻️ Restarting Silence Loop...");
                         this.silence.play().catch(e => {});
                     }
                 };
-
-                // 2. DUMMY VIDEO (Anti-Sleep for Android/iOS)
                 this.video.play().catch(e => {});
 
-                // 3. MEDIA SESSION (Lock Screen Controls)
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
-                    
-                    const stopAction = () => {
-                        console.log("Media Key Pressed");
-                        this.stopAlarm(true);
-                    };
-                    
-                    // Map ALL buttons to stop alarm
-                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekbackward', 'seekforward'].forEach(action => {
+                    const stopAction = () => this.stopAlarm(true);
+                    ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'].forEach(action => {
                         navigator.mediaSession.setActionHandler(action, stopAction);
                     });
                 }
@@ -218,26 +207,16 @@
 
             triggerAlarm(isTest = false) {
                 this.isRinging = true;
-                
-                // Pause silence, Play alarm
                 this.silence.pause();
                 this.alarm.currentTime = 0;
                 this.alarm.volume = 1.0;
                 
-                const playPromise = this.alarm.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.log("Alarm play blocked. User interaction needed.");
-                    });
-                }
+                this.alarm.play().catch(e => console.log("Alarm play blocked"));
 
-                // Vibration (Aggressive)
                 if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
 
-                // Update Lock Screen text
                 this.updateMediaSession(isTest ? "🔊 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY ΓΙΑ ΑΠΟΔΟΧΗ");
 
-                // Show UI Overlay
                 const overlay = document.getElementById('alarmOverlay');
                 const btn = document.getElementById('alarmBtn');
                 const txt = document.getElementById('alarmText');
@@ -256,28 +235,19 @@
             },
 
             stopAlarm(sendAck = false) {
-                // If not ringing and overlay is hidden, do nothing
                 if (!this.isRinging && document.getElementById('alarmOverlay').style.display === 'none') return;
-
                 const isTest = document.getElementById('alarmOverlay').classList.contains('test-mode');
                 
                 this.isRinging = false;
                 this.alarm.pause();
                 this.alarm.currentTime = 0;
                 
-                // RESUME SILENCE IMMEDIATELY
-                this.silence.play().catch(e => console.log("Resume silence failed"));
-                
-                // Reset Lock Screen text
+                this.silence.play().catch(e => {});
                 this.updateMediaSession("BellGo Active", userData.store);
-
-                // Hide Overlay
                 document.getElementById('alarmOverlay').style.display = 'none';
 
-                // Clear Android Timer
                 if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
 
-                // Actions
                 if (isTest) {
                     App.finishLoginSequence();
                 } else if (sendAck) {
@@ -292,15 +262,11 @@
                 const isAndroid = /Android/.test(navigator.userAgent);
 
                 if (isIOS) {
-                    // iPhone sends immediate
                     this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Η κουζίνα σε καλεί τώρα!");
                 } else if (isAndroid) {
-                    // Android waits 30s
                     if (androidNotificationTimer) clearTimeout(androidNotificationTimer);
                     androidNotificationTimer = setTimeout(() => {
-                        if (this.isRinging) {
-                            this.sendLocalNotification("🚨 ΑΠΑΝΤΗΣΕ!", "Εκκρεμεί κλήση 30δ!");
-                        }
+                        if (this.isRinging) this.sendLocalNotification("🚨 ΑΠΑΝΤΗΣΕ!", "Εκκρεμεί κλήση 30δ!");
                     }, 30000);
                 } else {
                     this.sendLocalNotification("🚨 ΚΛΗΣΗ!", "Κλήση από κουζίνα");
@@ -309,10 +275,7 @@
 
             sendLocalNotification(title, body) {
                 if (Notification.permission === "granted") {
-                    // Try/Catch for older browsers
-                    try {
-                        new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png' });
-                    } catch (e) {}
+                    try { new Notification(title, { body: body, icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png' }); } catch (e) {}
                 }
             }
         };
@@ -328,11 +291,7 @@
                 if (!store || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
 
                 userData = { store, name, role, pass };
-
-                // 1. Initialize Audio Context (MUST happen on user click)
                 AudioEngine.init();
-
-                // 2. Trigger Fake Alarm (Test Mode) to force OS to accept audio
                 AudioEngine.triggerAlarm(true);
             },
 
@@ -341,32 +300,34 @@
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
 
-                // Setup Roles
-                if (userData.role === 'admin') {
-                    document.getElementById('staffPanel').classList.add('active');
-                } else {
-                    document.getElementById('staffPanel').classList.remove('active');
-                }
+                if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
+                else document.getElementById('staffPanel').classList.remove('active');
 
-                // Request Permissions
                 if (Notification.requestPermission) Notification.requestPermission();
                 
-                // Get FCM Token (Optional logging)
                 try {
                     const messaging = firebase.messaging();
-                    messaging.getToken({ vapidKey: 'BMc_...' }).then((t) => {
-                        if(t) console.log("FCM:", t);
-                    }).catch(e => {});
+                    messaging.getToken({ vapidKey: 'BMc_...' }).then(t => { if(t) console.log("FCM:", t); }).catch(e => {});
                 } catch(e){}
 
                 this.connectSocket();
                 this.startHeartbeat();
+
+                // IPHONE WAKE LISTENER
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") {
+                        if (socket && !socket.connected) {
+                            console.log("App visible - Force Reconnect");
+                            socket.connect();
+                        }
+                    }
+                });
             },
 
             connectSocket() {
-                // CONNECT with options optimized for iOS (Websockets + Polling fallback)
+                // FIXED FOR IPHONE: Polling FIRST, then Websocket
                 socket = io({
-                    transports: ['websocket', 'polling'], // Critical for iOS
+                    transports: ['polling', 'websocket'], 
                     reconnection: true,
                     reconnectionAttempts: Infinity,
                     reconnectionDelay: 1000
@@ -374,7 +335,7 @@
                 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store} (Online)`;
+                    document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     
                     socket.emit('join-store', { 
                         storeName: userData.store, 
@@ -387,6 +348,8 @@
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
+                    // CLEAN GHOSTS
+                    this.renderStaffList([]); 
                 });
                 
                 socket.on('connect_error', (err) => {
@@ -394,41 +357,46 @@
                     document.getElementById('connDot').style.background = 'orange';
                 });
 
-                // EVENTS
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
                 socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
                 socket.on('staff-list-update', (list) => this.renderStaffList(list));
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
 
+            forceReconnect() {
+                if(socket) {
+                    socket.disconnect();
+                    setTimeout(() => socket.connect(), 500);
+                }
+            },
+
             startHeartbeat() {
-                // Aggressive heartbeat to keep connection alive
                 setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
-                        // Keep WakeLock active
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
                 }, 4000);
             },
 
             logout() {
-                // 1. Stop Audio
                 AudioEngine.silence.pause();
                 AudioEngine.alarm.pause();
-                
-                // 2. Disconnect Socket explicitely
-                if (socket) {
-                    socket.disconnect();
-                }
-
-                // 3. Reload Page
+                if (socket) socket.disconnect();
                 window.location.reload();
             },
 
             renderStaffList(list) {
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
+                
+                if (list.length === 0 && userData.role === 'admin' && socket.connected) {
+                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
+                     return;
+                } else if (!socket.connected && userData.role === 'admin') {
+                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#d32f2f;">🔴 OFFLINE<br>Cleaning list...</div>';
+                     return;
+                }
                 
                 list.forEach(u => {
                     if (u.role === 'admin') return; 
@@ -467,10 +435,8 @@
                 const isMe = data.sender === userData.name;
                 let roleClass = data.role || 'waiter';
                 if (isMe) roleClass = 'me';
-                
                 div.className = `msg ${roleClass}`;
                 if (!isMe) div.classList.add('other');
-
                 div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
                 box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
