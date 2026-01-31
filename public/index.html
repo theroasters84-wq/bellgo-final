@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Final</title>
+    <title>BellGo Final Loop</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -15,6 +15,9 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
+        /* --- APK BUTTON --- */
+        .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
         /* --- LOGIN SCREEN --- */
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 20px; color: #00E676; font-size: 32px; }
@@ -89,6 +92,8 @@
             <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
         </video>
     </div>
+
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk" target="_blank">📲 APP</a>
 
     <div id="loginScreen">
         <h1>🔔 BellGo Login</h1>
@@ -173,6 +178,7 @@
             alarm: document.getElementById('audioAlarm'),
             video: document.getElementById('videoDummy'),
             isRinging: false,
+            vibrationInterval: null, // Timer for repeating vibration
 
             init() {
                 this.silence.volume = 0.05; 
@@ -208,12 +214,24 @@
             triggerAlarm(isTest = false) {
                 this.isRinging = true;
                 this.silence.pause();
+                
+                // --- LOOP AUDIO ---
+                this.alarm.loop = true; // IMPORTANT: Enables Audio Loop
                 this.alarm.currentTime = 0;
                 this.alarm.volume = 1.0;
-                
                 this.alarm.play().catch(e => console.log("Alarm play blocked"));
 
-                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 1000]);
+                // --- LOOP VIBRATION ---
+                // First vibration
+                if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500]);
+                
+                // Clear any old interval
+                if (this.vibrationInterval) clearInterval(this.vibrationInterval);
+                
+                // Set interval to repeat vibration every 3.5 seconds
+                this.vibrationInterval = setInterval(() => {
+                    if(navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500]);
+                }, 3500);
 
                 this.updateMediaSession(isTest ? "🔊 TEST TEST" : "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ PLAY ΓΙΑ ΑΠΟΔΟΧΗ");
 
@@ -241,7 +259,15 @@
                 this.isRinging = false;
                 this.alarm.pause();
                 this.alarm.currentTime = 0;
+                this.alarm.loop = false; // Disable loop safety
                 
+                // --- STOP VIBRATION LOOP ---
+                if (this.vibrationInterval) {
+                    clearInterval(this.vibrationInterval);
+                    this.vibrationInterval = null;
+                }
+                if(navigator.vibrate) navigator.vibrate(0); // Kill current buzz immediately
+
                 this.silence.play().catch(e => {});
                 this.updateMediaSession("BellGo Active", userData.store);
                 document.getElementById('alarmOverlay').style.display = 'none';
@@ -297,6 +323,7 @@
 
             finishLoginSequence() {
                 document.getElementById('loginScreen').style.display = 'none';
+                document.querySelector('.btn-apk').style.display = 'none'; // Hide download button
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
 
