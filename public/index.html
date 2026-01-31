@@ -90,6 +90,7 @@
 
     <div class="media-hidden">
         <audio id="mainAudio" src="silence.mp3" loop playsinline onvolumechange="AudioEngine.handleVolumeChange()"></audio>
+        
         <video id="videoDummy" loop playsinline muted style="width:1px; height:1px;">
             <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAu1tZGF0AAACrgYF//+q3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE1MiByMjg1NCBlOWE1OTAzIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAA7mWIhAAz//727L4FNf2f0JcRLMXaSnA+KqSAgHc0wAAAAwAAAwAAJuKiZ0WFMeJsgAAAHGAFBCwCPCVC" type="video/mp4">
         </video>
@@ -115,14 +116,13 @@
         </div>
 
         <div id="adminInputs" style="display:none;">
-            <p style="font-size:14px; color:#ccc; margin-bottom:20px; text-align:center;">
-                Οι διαχειριστές συνδέονται μόνο με Google.<br>
-                Το email σας θα είναι το "κλειδί" του καταστήματος.
+            <p style="font-size:14px; color:#ccc; margin-bottom:10px; text-align:center;">
+                Είσοδος μόνο για ιδιοκτήτες.<br>
+                Το email σας θα είναι το Store ID.
             </p>
-            
             <button class="btn-login btn-google" onclick="App.loginGoogle()">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
-                ΕΙΣΟΔΟΣ ΜΕ GOOGLE
+                ΣΥΝΔΕΣΗ ΜΕ GOOGLE
             </button>
         </div>
     </div>
@@ -151,18 +151,16 @@
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", authDomain: "bellgo-5dbe5.firebaseapp.com", projectId: "bellgo-5dbe5", storageBucket: "bellgo-5dbe5.firebasestorage.app", messagingSenderId: "799314495253", appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", measurementId: "G-379ETZJP8H" };
-        try { 
-            firebase.initializeApp(firebaseConfig); 
-            const messaging = firebase.messaging(); 
-        } catch(e) {}
+        // --- NEW CONFIG FOR 'bellgofinall' ---
+        const firebaseConfig = { apiKey: "AIzaSyDyqu5tLS2hY3kS1XvHOrfw8CatB_mwI9A", authDomain: "bellgofinall.firebaseapp.com", projectId: "bellgofinall", storageBucket: "bellgofinall.firebasestorage.app", messagingSenderId: "654570848224", appId: "1:654570848224:web:50704c332d885e3a0df585", measurementId: "G-TPYZLBGCSQ" };
+        try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
 
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
         let ghosts = {}; 
         let knownStaff = [];
-        let cleanExits = new Set();
+        let cleanExits = new Set(); // Stores names of clean exits
         let heartbeatInterval = null;
         let connectionWatchdog = null; 
 
@@ -206,6 +204,8 @@
             triggerAlarm(isTest = false) {
                 if(this.isRinging) return;
                 this.isRinging = true;
+                
+                // --- SWAP SOURCE TRICK ---
                 this.player.src = 'alert.mp3';
                 this.player.volume = 1.0; 
                 this.player.loop = true;
@@ -242,6 +242,8 @@
                 const isTest = document.getElementById('alarmOverlay').classList.contains('test-mode');
                 
                 this.isRinging = false;
+                
+                // --- SWAP BACK TO SILENCE ---
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -296,9 +298,7 @@
                 const role = document.getElementById('inpRole').value;
 
                 if (!rawStore || !name) return alert("Συμπλήρωσε όλα τα πεδία!");
-                
-                // Store needs to be an email now, as it's the Admin's email
-                if (!rawStore.includes('@')) return alert("Το κατάστημα είναι το Email του Ιδιοκτήτη!");
+                if (!rawStore.includes('@')) return alert("Βάλε το σωστό Email του καταστήματος!");
 
                 this.completeLogin({ store: rawStore.toLowerCase(), name, role, pass: '' });
             },
@@ -309,8 +309,9 @@
                 firebase.auth().signInWithPopup(provider)
                     .then((result) => {
                         const email = result.user.email;
+                        // STORE ID becomes the Admin's Email
                         this.completeLogin({ 
-                            store: email.toLowerCase(), // Store ID = Admin Email
+                            store: email.toLowerCase(), 
                             name: result.user.displayName || "Admin", 
                             role: 'admin', 
                             pass: 'google-auth' 
@@ -396,7 +397,6 @@
                     document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
-                // NEW: Handle Subscription Check from Server
                 socket.on('subscription-expired', (data) => {
                     document.getElementById('mainApp').style.display = 'none';
                     if(confirm("Η συνδρομή σας έληξε! Πατήστε OK για ανανέωση.")) {
@@ -406,7 +406,7 @@
                     }
                 });
 
-                // Clean Exit Handler
+                // --- CLEAN EXIT HANDLER (Immediate Removal) ---
                 socket.on('user-clean-exit', (name) => {
                     console.log(name + " logged out manually. Removing immediately.");
                     cleanExits.add(name);
@@ -416,6 +416,7 @@
                         delete ghosts[name];
                         App.renderMergedList(lastStaffList);
                     }
+                    
                     setTimeout(() => cleanExits.delete(name), 10000);
                 });
 
@@ -455,7 +456,7 @@
             logout() {
                 AudioEngine.player.pause();
                 
-                // Manual Logout Signal
+                // --- MANUAL LOGOUT SIGNAL ---
                 if(socket && socket.connected) {
                     socket.emit('manual-logout', { name: userData.name, storeName: userData.store });
                 }
@@ -467,14 +468,21 @@
 
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
+                
                 serverList.forEach(u => {
                     if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
                 });
+
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
+                    
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        if (!cleanExits.has(u.name)) {
+                        // CHECK: Did they exit cleanly?
+                        if (cleanExits.has(u.name)) {
+                            // Do nothing. They left on purpose.
+                        } else {
+                            // Create Ghost (Search for 3 mins)
                             ghosts[u.name] = {
                                 data: u,
                                 timer: setTimeout(() => {
