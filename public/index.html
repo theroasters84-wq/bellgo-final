@@ -22,14 +22,15 @@
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; padding: 20px; }
         h1 { margin-bottom: 20px; color: #00E676; font-size: 32px; }
         
-        .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; }
+        .input-group { width: 100%; max-width: 350px; margin-bottom: 12px; }
         input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 18px; text-align: center; -webkit-appearance: none; }
         select { text-align-last: center; font-weight: bold; color: #00E676; } 
         
-        .btn-login { width: 100%; max-width: 350px; padding: 15px; font-size: 20px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        .btn-login { width: 100%; max-width: 350px; padding: 15px; font-size: 18px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
         .btn-login:active { transform: scale(0.98); }
-        
-        .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
+
+        /* GOOGLE BUTTON STYLE */
+        .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #4285F4; }
         .btn-google img { width: 24px; height: 24px; background: white; border-radius: 50%; padding: 2px; }
 
         /* --- MAIN APP --- */
@@ -108,19 +109,20 @@
         </div>
 
         <div id="staffInputs">
-            <div class="input-group"><input type="email" id="inpStore" placeholder="Email Μαγαζιού (Admin)"></div>
+            <div class="input-group"><input type="email" id="inpStore" placeholder="Email Αφεντικού (Store ID)"></div>
             <div class="input-group"><input type="text" id="inpName" placeholder="Το Όνομά σου"></div>
             <button class="btn-login" onclick="App.loginManual()">ΣΥΝΔΕΣΗ</button>
         </div>
 
         <div id="adminInputs" style="display:none;">
-            <p style="font-size:14px; color:#ccc; margin-bottom:10px; text-align:center;">
-                Είσοδος μόνο για ιδιοκτήτες.<br>
-                Το email σας θα είναι το Store ID.
+            <p style="font-size:14px; color:#ccc; margin-bottom:20px; text-align:center;">
+                Οι διαχειριστές συνδέονται μόνο με Google.<br>
+                Το email σας θα είναι το "κλειδί" του καταστήματος.
             </p>
+            
             <button class="btn-login btn-google" onclick="App.loginGoogle()">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
-                ΣΥΝΔΕΣΗ ΜΕ GOOGLE
+                ΕΙΣΟΔΟΣ ΜΕ GOOGLE
             </button>
         </div>
     </div>
@@ -160,7 +162,7 @@
         let androidNotificationTimer = null;
         let ghosts = {}; 
         let knownStaff = [];
-        let cleanExits = new Set(); // Stores names of people who logged out manually
+        let cleanExits = new Set();
         let heartbeatInterval = null;
         let connectionWatchdog = null; 
 
@@ -287,25 +289,28 @@
                 }
             },
 
-            // --- MANUAL LOGIN (Waiter/Driver - NO PASSWORD) ---
+            // --- 1. STAFF LOGIN (MANUAL - NO PASSWORD) ---
             loginManual() {
                 const rawStore = document.getElementById('inpStore').value.trim();
                 const name = document.getElementById('inpName').value.trim();
                 const role = document.getElementById('inpRole').value;
 
                 if (!rawStore || !name) return alert("Συμπλήρωσε όλα τα πεδία!");
+                
+                // Store needs to be an email now, as it's the Admin's email
+                if (!rawStore.includes('@')) return alert("Το κατάστημα είναι το Email του Ιδιοκτήτη!");
 
                 this.completeLogin({ store: rawStore.toLowerCase(), name, role, pass: '' });
             },
 
-            // --- GOOGLE LOGIN (Admin) ---
+            // --- 2. ADMIN LOGIN (GOOGLE AUTH) ---
             loginGoogle() {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 firebase.auth().signInWithPopup(provider)
                     .then((result) => {
                         const email = result.user.email;
                         this.completeLogin({ 
-                            store: email.toLowerCase(), 
+                            store: email.toLowerCase(), // Store ID = Admin Email
                             name: result.user.displayName || "Admin", 
                             role: 'admin', 
                             pass: 'google-auth' 
@@ -391,6 +396,7 @@
                     document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
+                // NEW: Handle Subscription Check from Server
                 socket.on('subscription-expired', (data) => {
                     document.getElementById('mainApp').style.display = 'none';
                     if(confirm("Η συνδρομή σας έληξε! Πατήστε OK για ανανέωση.")) {
@@ -400,19 +406,16 @@
                     }
                 });
 
-                // --- NEW LISTENER FOR CLEAN EXIT ---
+                // Clean Exit Handler
                 socket.on('user-clean-exit', (name) => {
                     console.log(name + " logged out manually. Removing immediately.");
                     cleanExits.add(name);
                     
-                    // Kill ghost if exists
                     if (ghosts[name]) {
                         clearTimeout(ghosts[name].timer);
                         delete ghosts[name];
                         App.renderMergedList(lastStaffList);
                     }
-                    
-                    // Auto-clear from list after 10 seconds to save memory
                     setTimeout(() => cleanExits.delete(name), 10000);
                 });
 
@@ -452,7 +455,7 @@
             logout() {
                 AudioEngine.player.pause();
                 
-                // --- TELL SERVER WE ARE LEAVING INTENTIONALLY ---
+                // Manual Logout Signal
                 if(socket && socket.connected) {
                     socket.emit('manual-logout', { name: userData.name, storeName: userData.store });
                 }
@@ -464,23 +467,14 @@
 
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
-                
-                // 1. Detect Back Online
                 serverList.forEach(u => {
                     if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
                 });
-
-                // 2. Detect Disconnected
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
-                    
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        // CHECK: Did they exit cleanly?
-                        if (cleanExits.has(u.name)) {
-                            // Do nothing. They left on purpose.
-                        } else {
-                            // Create Ghost (Search for 3 mins)
+                        if (!cleanExits.has(u.name)) {
                             ghosts[u.name] = {
                                 data: u,
                                 timer: setTimeout(() => {
