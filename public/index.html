@@ -30,8 +30,21 @@
         .btn-login:active { transform: scale(0.98); }
 
         /* GOOGLE BUTTON STYLE */
-        .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #4285F4; margin-top: 15px; }
-        .btn-google img { width: 24px; height: 24px; background: white; border-radius: 50%; padding: 2px; }
+        .btn-google { 
+            background: white; 
+            color: #444; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 15px; 
+            border: 1px solid #ddd; 
+            margin-top: 20px; 
+        }
+        .btn-google img { 
+            width: 24px; 
+            height: 24px; 
+            background: transparent;
+        }
 
         /* --- MAIN APP --- */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -52,8 +65,6 @@
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
         
         .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
-        
-        /* GHOST STYLING */
         .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
         .btn-staff.ghost span.status { color: #ffab00 !important; font-weight: bold; animation: pulseText 1.5s infinite; }
         @keyframes pulseText { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
@@ -179,13 +190,13 @@
                 this.player.volume = 0.1; 
                 this.player.loop = true;
                 
-                // AGGRESSIVE PLAY & PERSISTENCE
+                // AGGRESSIVE PLAY START
                 const playPromise = this.player.play();
                 if (playPromise !== undefined) {
-                    playPromise.catch(error => { console.log("Audio Play blocked", error); });
+                    playPromise.catch(error => { console.log("Audio Play blocked - Waiting for gesture", error); });
                 }
                 
-                // If system pauses it, force restart immediately (except when ringing)
+                // PERSISTENCE: If system pauses it, force restart immediately
                 this.player.onpause = () => { 
                     console.log("System paused audio - Forcing resume");
                     if (!this.isRinging) this.player.play().catch(e => {}); 
@@ -193,30 +204,30 @@
                 
                 this.video.play().catch(e => {});
                 
-                // --- AGGRESSIVE MEDIA SESSION ---
+                // --- AGGRESSIVE MEDIA SESSION (STICKY BAR) ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
                     
-                    // Register ALL handlers to trigger StopAlarm
+                    // Register ALL handlers to trigger StopAlarm (Accept)
                     const stopAction = () => this.stopAlarm(true);
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekto'].forEach(a => 
                         navigator.mediaSession.setActionHandler(a, stopAction)
                     );
 
-                    // Periodic Refresh to keep lock screen controls alive
+                    // REFRESH METADATA EVERY 3 SECONDS (Keeps it on lock screen)
                     if (mediaSessionInterval) clearInterval(mediaSessionInterval);
                     mediaSessionInterval = setInterval(() => {
                         if (!this.isRinging) {
                             navigator.mediaSession.playbackState = "playing";
                         }
-                    }, 5000); 
+                    }, 3000); 
                 }
             },
 
-            // --- VOLUME BUTTON HACK ---
+            // --- VOLUME BUTTON LOGIC ---
             handleVolumeChange() {
                 if (!this.isRinging) return;
-                // Ignore the initial volume setting when alarm starts
+                // Ignore the initial volume set by the alarm start
                 if (this.ignoreVolumeChanges) return;
 
                 console.log("Volume Change Detected -> Accepting Alarm");
@@ -243,9 +254,9 @@
                 this.player.loop = true;
                 this.player.play().catch(e => {});
 
-                // Ignore volume changes for 200ms to allow volume set
+                // Ignore volume changes for 100ms (Reduced for faster reaction)
                 this.ignoreVolumeChanges = true;
-                setTimeout(() => { this.ignoreVolumeChanges = false; }, 200);
+                setTimeout(() => { this.ignoreVolumeChanges = false; }, 100);
 
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
@@ -276,7 +287,7 @@
                 
                 this.isRinging = false;
                 
-                // --- SEAMLESS SWITCH BACK TO SILENCE ---
+                // --- SEAMLESS SWITCH BACK TO SILENCE (CRITICAL FOR PERSISTENCE) ---
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -407,7 +418,7 @@
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500, reconnectionAttempts: Infinity });
                 
                 socket.on('connect', () => {
-                    console.log("Socket Connected");
+                    console.log("Socket Connected - Sending Join Store");
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
