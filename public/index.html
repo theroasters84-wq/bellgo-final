@@ -41,8 +41,8 @@
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         
         /* Staff List */
-        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; }
-        .staff-panel.active { display: block; }
+        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
+        .staff-panel.active { display: flex; }
 
         .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
         .btn-staff:active { transform: scale(0.98); }
@@ -50,8 +50,8 @@
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
         
-        /* Ghost Style (Disconnected but kept in list) */
-        .btn-staff.ghost { opacity: 0.5; filter: grayscale(100%); border-left-color: #666; }
+        /* Offline Mode Style for Buttons */
+        .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
 
         /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; }
@@ -98,7 +98,7 @@
 
     <div id="loginScreen">
         <h1>🔔 BellGo Login</h1>
-        <div class="input-group"><input type="text" id="inpStore" placeholder="Όνομα Μαγαζιού"></div>
+        <div class="input-group"><input type="text" id="inpStore" placeholder="Όνομα Μαγαζιού (π.χ. Coffee1)"></div>
         <div class="input-group"><input type="text" id="inpName" placeholder="Το Όνομά σου"></div>
         <div class="input-group"><input type="password" id="inpPass" placeholder="Κωδικός" inputmode="numeric"></div>
         <div class="input-group">
@@ -114,7 +114,7 @@
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" title="Tap to reconnect"></span>
                 <span id="headerInfo" class="user-info">Connecting...</span>
             </div>
             <button class="btn-logout" onclick="App.logout()">EXIT</button>
@@ -141,8 +141,8 @@
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
         let androidNotificationTimer = null;
-        let lastStaffList = []; // Keeps track of staff to prevent ghosts
-
+        
+        // --- AUDIO ENGINE ---
         const AudioEngine = {
             silence: document.getElementById('audioSilence'),
             alarm: document.getElementById('audioAlarm'),
@@ -171,13 +171,13 @@
                 this.isRinging = true;
                 this.silence.pause();
                 
-                // Audio Loop
+                // LOOP AUDIO
                 this.alarm.loop = true;
                 this.alarm.currentTime = 0;
                 this.alarm.volume = 1.0;
-                this.alarm.play().catch(e => console.log("Bg Audio Blocked - Notification will handle"));
+                this.alarm.play().catch(e => console.log("Audio Blocked"));
 
-                // Vibration Loop (MAX POWER: 2s ON, 0.1s OFF)
+                // LOOP VIBRATION (2s ON, 0.1s OFF)
                 if (this.vibrationInterval) clearInterval(this.vibrationInterval);
                 if(navigator.vibrate) navigator.vibrate([2000, 100]);
                 this.vibrationInterval = setInterval(() => { if(navigator.vibrate) navigator.vibrate([2000, 100]); }, 2200);
@@ -224,7 +224,6 @@
             },
 
             handleNotifications() {
-                // Always send aggressive notification
                 this.sendLocalNotification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", "ΠΑΤΑ ΕΔΩ ΤΩΡΑ!");
                 
                 // Android Backup
@@ -242,8 +241,9 @@
                         new Notification(title, { 
                             body: body, 
                             icon: 'https://cdn-icons-png.flaticon.com/512/10337/10337229.png',
-                            requireInteraction: true, // Force user interaction
-                            tag: 'alarm'
+                            requireInteraction: true, 
+                            tag: 'alarm',
+                            vibrate: [2000, 100, 2000] 
                         }); 
                     } catch (e) {}
                 }
@@ -252,12 +252,16 @@
 
         const App = {
             login() {
-                const store = document.getElementById('inpStore').value.trim();
+                const rawStore = document.getElementById('inpStore').value.trim();
                 const name = document.getElementById('inpName').value.trim();
                 const pass = document.getElementById('inpPass').value.trim();
                 const role = document.getElementById('inpRole').value;
-                if (!store || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
-                userData = { store, name, role, pass };
+
+                if (!rawStore || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
+
+                // CRITICAL FIX: Lowercase store name so admins/waiters match rooms
+                userData = { store: rawStore.toLowerCase(), name, role, pass };
+                
                 AudioEngine.init();
                 AudioEngine.triggerAlarm(true);
             },
@@ -267,6 +271,7 @@
                 document.querySelector('.btn-apk').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
+
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
                 if (Notification.requestPermission) Notification.requestPermission();
                 
@@ -278,32 +283,31 @@
                 this.connectSocket();
                 this.startHeartbeat();
 
-                // FORCE RECONNECT ON WAKE
                 document.addEventListener("visibilitychange", () => {
-                    if (document.visibilityState === "visible") {
-                        if (socket && !socket.connected) socket.connect();
-                    }
+                    if (document.visibilityState === "visible" && socket && !socket.connected) socket.connect();
                 });
             },
 
             connectSocket() {
                 socket = io({ 
-                    transports: ['polling', 'websocket'], // Polling first for iOS stability
+                    transports: ['polling', 'websocket'], 
                     reconnection: true, 
-                    reconnectionDelay: 500,
-                    timeout: 5000 
+                    reconnectionDelay: 500 
                 });
                 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
+                    // Remove "offline" style from list
+                    document.getElementById('staffPanel').classList.remove('offline-mode');
                     socket.emit('join-store', userData);
                 });
 
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
-                    // DO NOT CLEAR STAFF LIST HERE - PREVENTS GHOSTS
+                    // Visual cue only, do NOT clear list (Ghost Mode)
+                    document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
@@ -322,7 +326,7 @@
                         socket.emit('heartbeat');
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
                     }
-                }, 2000); // Super aggressive heartbeat (2s)
+                }, 2000); 
             },
 
             logout() {
@@ -333,19 +337,27 @@
             },
 
             renderStaffList(list) {
-                lastStaffList = list; // Keep record
+                if (!list) return;
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 
-                if (list.length === 0 && userData.role === 'admin' && socket.connected) {
+                // Only show buttons for Admins
+                if (userData.role !== 'admin') return;
+
+                if (list.length === 0) {
                      container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
                      return;
                 }
                 
                 list.forEach(u => {
-                    if (u.role === 'admin') return; 
+                    // Hide Admins from the list (Admin doesn't call Admin)
+                    if (String(u.role).toLowerCase() === 'admin') return; 
+                    
                     const btn = document.createElement('button');
-                    btn.className = `btn-staff ${u.role}`;
+                    // Ensure role matches CSS class
+                    const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
+                    btn.className = `btn-staff ${safeRole}`;
+                    
                     btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">IDLE</span>`;
                     
                     btn.onclick = () => {
@@ -372,8 +384,11 @@
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
                 const isMe = data.sender === userData.name;
-                let roleClass = data.role || 'waiter';
+                
+                let roleClass = 'waiter';
+                if (data.role) roleClass = data.role.toLowerCase();
                 if (isMe) roleClass = 'me';
+                
                 div.className = `msg ${roleClass}`;
                 if (!isMe) div.classList.add('other');
                 div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
