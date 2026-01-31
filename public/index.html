@@ -29,8 +29,9 @@
         .btn-login { width: 100%; max-width: 350px; padding: 15px; font-size: 18px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; transition: 0.2s; }
         .btn-login:active { transform: scale(0.98); }
 
-        /* Register Button Style */
-        .btn-register { background: #333; color: white; border: 1px solid #555; }
+        /* GOOGLE BUTTON STYLE */
+        .btn-google { background: #4285F4; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid #4285F4; }
+        .btn-google img { width: 24px; height: 24px; background: white; border-radius: 50%; padding: 2px; }
 
         /* --- MAIN APP --- */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -116,13 +117,13 @@
 
         <div id="adminInputs" style="display:none;">
             <p style="font-size:14px; color:#ccc; margin-bottom:10px; text-align:center;">
-                Διαχείριση καταστήματος
+                Είσοδος διαχειριστή με Google.<br>
+                (Αυτόματη Εγγραφή/Σύνδεση)
             </p>
-            <div class="input-group"><input type="email" id="inpAdminEmail" placeholder="Email (Store ID)"></div>
-            <div class="input-group"><input type="password" id="inpAdminPass" placeholder="Κωδικός"></div>
-            
-            <button class="btn-login" onclick="App.loginAdmin()">ΣΥΝΔΕΣΗ</button>
-            <button class="btn-login btn-register" onclick="App.registerAdmin()">ΕΓΓΡΑΦΗ (ΝΕΟ)</button>
+            <button class="btn-login btn-google" onclick="App.loginGoogle()">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G">
+                ΣΥΝΔΕΣΗ ΜΕ GOOGLE
+            </button>
         </div>
     </div>
 
@@ -181,15 +182,18 @@
             ignoreVolumeChanges: false, 
 
             init() {
+                // Initialize with Silence
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1; 
                 this.player.loop = true;
                 
+                // AGGRESSIVE PLAY
                 const playPromise = this.player.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(error => { console.log("Audio Play blocked", error); });
                 }
                 
+                // AUTO-RESUME if system pauses it
                 this.player.onpause = () => { 
                     console.log("System paused audio - Forcing resume");
                     if (!this.isRinging) this.player.play().catch(e => {}); 
@@ -197,14 +201,18 @@
                 
                 this.video.play().catch(e => {});
                 
+                // --- AGGRESSIVE MEDIA SESSION ---
                 if ('mediaSession' in navigator) {
                     this.updateMediaSession("BellGo Active", "Online");
+                    
                     const stopAction = () => this.stopAlarm(true);
                     
+                    // Register all possible handlers
                     ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekto'].forEach(a => 
                         navigator.mediaSession.setActionHandler(a, stopAction)
                     );
 
+                    // PERIODIC REFRESH
                     if (mediaSessionInterval) clearInterval(mediaSessionInterval);
                     mediaSessionInterval = setInterval(() => {
                         if (!this.isRinging) {
@@ -235,11 +243,13 @@
                 if(this.isRinging) return;
                 this.isRinging = true;
                 
+                // --- SEAMLESS SWITCH TO ALARM ---
                 this.player.src = 'alert.mp3';
                 this.player.volume = 1.0; 
                 this.player.loop = true;
                 this.player.play().catch(e => {});
 
+                // Ignore volume changes for 200ms
                 this.ignoreVolumeChanges = true;
                 setTimeout(() => { this.ignoreVolumeChanges = false; }, 200);
 
@@ -272,6 +282,7 @@
                 
                 this.isRinging = false;
                 
+                // --- SEAMLESS SWITCH BACK TO SILENCE ---
                 this.player.src = 'silence.mp3';
                 this.player.volume = 0.1;
                 this.player.loop = true;
@@ -331,46 +342,20 @@
                 this.completeLogin({ store: rawStore.toLowerCase(), name, role, pass: '' });
             },
 
-            // --- 2. ADMIN LOGIN (EMAIL/PASS) ---
-            loginAdmin() {
-                const email = document.getElementById('inpAdminEmail').value.trim();
-                const pass = document.getElementById('inpAdminPass').value.trim();
-
-                if(!email || !pass) return alert("Συμπλήρωσε Email και Κωδικό");
-
-                firebase.auth().signInWithEmailAndPassword(email, pass)
-                    .then((userCredential) => {
-                        this.completeLogin({
-                            store: email.toLowerCase(), // Store ID = Email
-                            name: "Admin",
-                            role: 'admin',
-                            pass: 'firebase-auth' 
+            // --- 2. ADMIN LOGIN (Google Auth) ---
+            loginGoogle() {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                firebase.auth().signInWithPopup(provider)
+                    .then((result) => {
+                        const email = result.user.email;
+                        this.completeLogin({ 
+                            store: email.toLowerCase(), 
+                            name: result.user.displayName || "Admin", 
+                            role: 'admin', 
+                            pass: 'google-auth' 
                         });
-                    })
-                    .catch((error) => {
-                        alert("Σφάλμα: " + error.message);
-                    });
-            },
-
-            // --- 3. ADMIN REGISTER (EMAIL/PASS) ---
-            registerAdmin() {
-                const email = document.getElementById('inpAdminEmail').value.trim();
-                const pass = document.getElementById('inpAdminPass').value.trim();
-
-                if(!email || !pass) return alert("Συμπλήρωσε Email και Κωδικό");
-
-                firebase.auth().createUserWithEmailAndPassword(email, pass)
-                    .then((userCredential) => {
-                        alert("Επιτυχής Εγγραφή! Συνδέεστε...");
-                        this.completeLogin({
-                            store: email.toLowerCase(),
-                            name: "Admin",
-                            role: 'admin',
-                            pass: 'firebase-auth'
-                        });
-                    })
-                    .catch((error) => {
-                        alert("Σφάλμα Εγγραφής: " + error.message);
+                    }).catch((error) => {
+                        alert("Error: " + error.message);
                     });
             },
 
@@ -416,7 +401,6 @@
                         if (userData.role === 'admin') {
                             document.getElementById('inpRole').value = 'admin';
                             App.toggleLoginInputs();
-                            document.getElementById('inpAdminEmail').value = userData.store;
                         } else {
                             document.getElementById('inpStore').value = userData.store;
                             document.getElementById('inpName').value = userData.name;
@@ -461,6 +445,7 @@
                 });
 
                 socket.on('user-clean-exit', (name) => {
+                    console.log(name + " logged out manually.");
                     cleanExits.add(name);
                     if (ghosts[name]) {
                         clearTimeout(ghosts[name].timer);
