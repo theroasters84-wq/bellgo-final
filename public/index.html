@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Final</title>
+    <title>BellGo Ultra</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -13,8 +13,6 @@
     <style>
         /* --- GENERAL --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        /* FIX: Use dvh for mobile browsers */
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
         /* --- APK BUTTON --- */
@@ -31,40 +29,38 @@
         .btn-login { width: 85%; padding: 15px; font-size: 20px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; }
         
         /* --- MAIN APP --- */
-        #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
+        #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
         
         /* Header */
-        .header { height: 50px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
         .user-info { font-size: 14px; color: #ccc; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
         /* Content Area */
-        .content { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: column; }
+        .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         
         /* Staff List */
-        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-bottom: 1px solid #333; padding: 5px; display: none; flex-direction: column; max-height: 40%; }
+        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
-        .btn-staff { width: 100%; padding: 12px; margin-bottom: 8px; border: none; border-radius: 8px; font-size: 16px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
+        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
         .btn-staff:active { transform: scale(0.98); }
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
         
-        /* Ghost Style (Searching...) */
+        .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
         .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
         .btn-staff.ghost span.status { color: #ffab00 !important; font-weight: bold; animation: pulseText 1.5s infinite; }
         @keyframes pulseText { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
         /* Chat Panel */
-        .chat-panel { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
+        .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
         
-        /* Messages Area */
-        .chat-messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-        
-        .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; color: white; }
-        .msg .sender-name { font-size: 10px; margin-bottom: 2px; display: block; opacity: 0.8; font-weight: bold; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; color: white; }
+        .msg .sender-name { font-size: 11px; margin-bottom: 4px; display: block; opacity: 0.8; font-weight: bold; }
         .msg.me { align-self: flex-end; background: #00E676; color: black; border-bottom-right-radius: 2px; }
         .msg.me .sender-name { text-align: right; color: #004d26; }
         .msg.other { align-self: flex-start; border-bottom-left-radius: 2px; }
@@ -72,25 +68,9 @@
         .msg.driver { background: #E65100; }
         .msg.admin { background: #D32F2F; border: 1px solid yellow; }
 
-        /* Chat Input Area - Optimized for Mobile */
-        .chat-input { 
-            display: flex; 
-            padding: 8px; 
-            background: #1e1e1e; 
-            border-top: 1px solid #333; 
-            flex-shrink: 0; /* Prevent shrinking */
-            /* iOS Safe Area */
-            padding-bottom: max(8px, env(safe-area-inset-bottom)); 
-        }
-        
-        .chat-input input { 
-            border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 40px; 
-            border: 1px solid #444; background: #333 !important; color: white !important; 
-            -webkit-text-fill-color: white !important; 
-            caret-color: #00E676; font-size: 16px; /* Prevent Zoom on iOS */
-        }
-        
-        .chat-input button { width: 45px; margin-left: 8px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 40px; color: black; flex-shrink: 0; }
+        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; padding-bottom: max(10px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+        .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; border: 1px solid #444; background: #333 !important; color: white !important; -webkit-text-fill-color: white !important; caret-color: #00E676; }
+        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 45px; color: black; }
 
         /* --- ALARM OVERLAY --- */
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
@@ -273,6 +253,9 @@
 
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 
+                // --- SAVE SESSION ---
+                localStorage.setItem('bellgo_session', JSON.stringify(userData));
+
                 AudioEngine.init();
                 AudioEngine.triggerAlarm(true);
             },
@@ -299,13 +282,34 @@
                 });
             },
 
+            // --- AUTO LOGIN CHECK ---
+            checkSession() {
+                const saved = localStorage.getItem('bellgo_session');
+                if (saved) {
+                    try {
+                        userData = JSON.parse(saved);
+                        // Pre-fill inputs just in case
+                        document.getElementById('inpStore').value = userData.store;
+                        document.getElementById('inpName').value = userData.name;
+                        document.getElementById('inpPass').value = userData.pass;
+                        document.getElementById('inpRole').value = userData.role;
+                        
+                        // Start Audio Init (Will trigger Blue Screen OK)
+                        AudioEngine.init();
+                        AudioEngine.triggerAlarm(true);
+                    } catch (e) {
+                        localStorage.removeItem('bellgo_session');
+                    }
+                }
+            },
+
             connectSocket() {
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
                 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
-                    // Send keys exactly as server expects them
+                    document.getElementById('staffPanel').classList.remove('offline-mode');
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -317,14 +321,13 @@
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
+                    document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
                 socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
                 socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
                 
-                // GHOST PROTOCOL LIST UPDATE
                 socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
-                
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
 
@@ -344,6 +347,8 @@
             logout() {
                 AudioEngine.silence.pause();
                 AudioEngine.alarm.pause();
+                // --- CLEAR SESSION ---
+                localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
             },
@@ -352,45 +357,39 @@
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
                 
-                // 1. Detect who came back online (Ghost -> Live)
+                // 1. Detect Back Online
                 serverList.forEach(u => {
                     if (ghosts[u.name]) {
-                        clearTimeout(ghosts[u.name].timer); // Stop the 3-min countdown
-                        delete ghosts[u.name]; // Remove from ghost list
+                        clearTimeout(ghosts[u.name].timer); 
+                        delete ghosts[u.name]; 
                     }
                 });
 
-                // 2. Detect who just disconnected (Live -> Ghost)
+                // 2. Detect Disconnected
                 knownStaff.forEach(u => {
                     const isStillOnline = serverList.find(s => s.name === u.name);
                     const isAlreadyGhost = ghosts[u.name];
                     
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        // Create Ghost
                         ghosts[u.name] = {
                             data: u,
                             timer: setTimeout(() => {
                                 delete ghosts[u.name]; // Kill ghost after 3 mins
-                                App.renderMergedList(lastStaffList); // Re-render without him
-                            }, 180000) // 3 Minutes
+                                App.renderMergedList(lastStaffList);
+                            }, 180000) 
                         };
                     }
                 });
 
-                // 3. Update known staff
                 knownStaff = serverList;
-                
-                // 4. Render Merged List (Live + Ghosts)
                 this.renderMergedList(serverList);
             },
 
             renderMergedList(serverList) {
-                // Combine Live users + Ghost users
                 const mergedList = [...serverList];
                 Object.values(ghosts).forEach(g => mergedList.push(g.data));
                 
-                lastStaffList = mergedList; // Save for render
-                
+                lastStaffList = mergedList;
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 
@@ -403,15 +402,11 @@
                 
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    
-                    // Check if user is a Ghost
                     const isGhost = ghosts[u.name] !== undefined;
                     
                     btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
-                    
                     const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
                     btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">${statusText}</span>`;
                     
@@ -425,7 +420,6 @@
                             setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
                         };
                     }
-                    
                     container.appendChild(btn);
                 });
             },
@@ -454,6 +448,11 @@
                 box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
             }
+        };
+
+        // --- CHECK FOR SAVED SESSION ON LOAD ---
+        window.onload = function() {
+            App.checkSession();
         };
     </script>
     
