@@ -1,63 +1,68 @@
-// Ένα μικρό MP3 "ησυχίας" κωδικοποιημένο σε κείμενο (Base64)
-// Αυτό ξεγελάει το Android ότι παίζει "αρχείο" ενώ δεν ακούγεται τίποτα.
-const SILENT_MP3_DATA = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAApAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//oeDAAAAAAAASwgAAAAIvXHAAAAAAASxyb84AAANIAAAA0gAAAB"; 
-
 const AudioEngine = {
-    hostPlayer: null,  // Το "Αόρατο" Χαλί
-    sirenPlayer: null, // Η Σειρήνα
+    hostPlayer: null,  // Παίζει το silence.mp3 (Για να κρατάει την μπάρα)
+    sirenPlayer: null, // Παίζει το alert.mp3 (Για τον ήχο κλήσης)
     isRinging: false,
     vibrationInterval: null,
     alarmStartTime: 0,
 
     init() {
-        console.log("🔈 Audio Engine: Base64 Silent Mode");
+        console.log("🔈 Audio Engine: Full Volume Silence Mode");
         
-        // 1. HOST PLAYER (Το αόρατο χαλί)
+        // 1. HOST PLAYER (Το "Χαλί")
         if (!this.hostPlayer) {
             this.hostPlayer = document.createElement('audio');
             this.hostPlayer.id = 'hostPlayer';
-            
-            // Χρησιμοποιούμε τον κώδικα αντί για αρχείο
-            this.hostPlayer.src = SILENT_MP3_DATA; 
+            this.hostPlayer.src = 'silence.mp3'; // Βεβαιώσου ότι υπάρχει στο public
             this.hostPlayer.loop = true;
             
-            // ΚΟΛΠΟ: Βάζουμε την ένταση στο 100% !
-            // Το Android βλέπει 100% και κρατάει την μπάρα ανοιχτή.
-            // Εμείς δεν ακούμε τίποτα γιατί το αρχείο είναι κενό.
+            // --- ΤΟ ΚΛΕΙΔΙ ---
+            // Βάζουμε την ένταση στο 100%. 
+            // Το κινητό νομίζει ότι παίζει τέρμα μουσική και κρατάει την μπάρα ανοιχτή.
             this.hostPlayer.volume = 1.0; 
             
             // Αν πατήσει Pause στην μπάρα -> ΑΠΟΔΟΧΗ
             this.hostPlayer.onpause = () => {
                 if (this.isRinging) {
-                    console.log("⏸️ Pause Detected -> ACCEPT");
+                    console.log("⏸️ System Pause -> ACCEPTING CALL");
                     this.stopAlarm();
                 } else {
-                    // Αν δεν χτυπάει, απαγορεύουμε το Pause (για να μην φύγει η μπάρα)
-                    console.log("⚠️ Keep-Alive enforce");
+                    // Αν δεν χτυπάει, απαγορεύουμε το Pause (Restart)
+                    console.log("⚠️ Keep-Alive enforce: Restarting Silence");
                     this.hostPlayer.play();
                 }
             };
             
+            // Αν αλλάξει την ένταση -> ΑΠΟΔΟΧΗ (Backup)
+            this.hostPlayer.onvolumechange = () => {
+                 if (this.isRinging && (Date.now() - this.alarmStartTime > 2000)) {
+                    console.log("🎚️ Volume Changed -> ACCEPTING CALL");
+                    this.stopAlarm();
+                 }
+            };
+
             document.body.appendChild(this.hostPlayer);
         }
 
-        // 2. SIREN PLAYER (Ο ήχος κλήσης)
+        // 2. SIREN PLAYER (Η Σειρήνα)
         if (!this.sirenPlayer) {
             this.sirenPlayer = document.createElement('audio');
             this.sirenPlayer.id = 'sirenPlayer';
-            this.sirenPlayer.src = 'alert.mp3'; // Βεβαιώσου ότι το alert.mp3 υπάρχει στο public
+            this.sirenPlayer.src = 'alert.mp3';
             this.sirenPlayer.loop = true;
-            this.sirenPlayer.volume = 1.0; 
+            this.sirenPlayer.volume = 1.0; // Τέρμα ένταση
             document.body.appendChild(this.sirenPlayer);
         }
 
         this.setupMediaSession();
         
-        // Ξεκινάμε το αόρατο χαλί
+        // Ξεκινάμε τη Σιωπή
         const playPromise = this.hostPlayer.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
+                // Ενημέρωση μπάρας
                 this.updateMetadata("BellGo Active", "🟢 Online", "https://cdn-icons-png.flaticon.com/512/190/190411.png");
+                
+                // Λέμε στο σύστημα ότι παίζουμε ΚΑΝΟΝΙΚΑ
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
             }).catch(e => console.log("Waiting for interaction..."));
         }
@@ -67,10 +72,12 @@ const AudioEngine = {
         if ('mediaSession' in navigator) {
             const acceptCall = () => {
                 if (this.isRinging) {
-                    console.log("⏯️ Media Button -> ACCEPT");
+                    console.log("⏯️ Media Button -> ACCEPTING CALL");
                     this.stopAlarm();
                 }
             };
+
+            // Όλα τα κουμπιά κάνουν STOP
             navigator.mediaSession.setActionHandler('play', acceptCall);
             navigator.mediaSession.setActionHandler('pause', acceptCall);
             navigator.mediaSession.setActionHandler('stop', acceptCall);
@@ -82,11 +89,12 @@ const AudioEngine = {
     // --- TRIGGER ALARM ---
     triggerAlarm() {
         if (this.isRinging) return;
+        
         this.isRinging = true;
         this.alarmStartTime = Date.now();
         console.log("🔔 ALARM START");
 
-        // UI
+        // 1. UI Overlay
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
@@ -94,14 +102,14 @@ const AudioEngine = {
             if (slider) slider.value = 50; 
         }
 
-        // AUDIO: Παίζουμε τη Σειρήνα (Πάνω από το αόρατο χαλί)
+        // 2. AUDIO: Παίζει η Σειρήνα (Πάνω από τη σιωπή)
         this.sirenPlayer.currentTime = 0;
         this.sirenPlayer.play().catch(e => console.error("Siren error:", e));
 
-        // METADATA
+        // 3. METADATA UPDATE
         this.updateMetadata("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ", "Πάτα ΠΑΥΣΗ για Αποδοχή", "https://cdn-icons-png.flaticon.com/512/564/564619.png");
 
-        // VIBRATION
+        // 4. VIBRATION
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]); 
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -116,6 +124,7 @@ const AudioEngine = {
     // --- STOP ALARM ---
     stopAlarm() {
         if (!this.isRinging) return;
+        
         console.log("🔕 ALARM STOP");
         this.isRinging = false;
 
@@ -123,7 +132,7 @@ const AudioEngine = {
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'none';
 
-        // Stop Siren Only
+        // Stop Siren Only (Η σιωπή συνεχίζει από κάτω)
         this.sirenPlayer.pause();
         this.sirenPlayer.currentTime = 0;
 
@@ -162,9 +171,10 @@ const AudioEngine = {
     }
 };
 
-// Physical buttons
+// Physical buttons Listener
 window.addEventListener('keydown', (e) => {
     if (AudioEngine.isRinging) {
+        // Ασφάλεια 2 δευτερολέπτων
         if (Date.now() - AudioEngine.alarmStartTime > 2000) {
             const validKeys = [24, 25, 179, 32, 13]; 
             if (validKeys.includes(e.keyCode)) {
@@ -172,14 +182,6 @@ window.addEventListener('keydown', (e) => {
                 AudioEngine.stopAlarm();
             }
         }
-    }
-});
-
-// Volume Change (Backup)
-// Ακούμε τον hostPlayer γιατί αυτός είναι πάντα ενεργός
-window.addEventListener('volumechange', () => {
-    if (AudioEngine.isRinging && (Date.now() - AudioEngine.alarmStartTime > 2000)) {
-         AudioEngine.stopAlarm();
     }
 });
 
