@@ -6,7 +6,6 @@ const admin = require("firebase-admin");
 
 // --- ΡΥΘΜΙΣΗ FIREBASE ADMIN ---
 try {
-    // Βεβαιώσου ότι το serviceAccountKey.json είναι στα Secret Files του Render
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
@@ -28,15 +27,15 @@ io.on('connection', (socket) => {
     
     // 1. ΣΥΝΔΕΣΗ
     socket.on('join-store', (data) => {
-        const rawName = data.username || data.name || "";
-        const cleanUser = rawName.trim();
-        const cleanStore = data.storeName ? data.storeName.trim().toLowerCase() : "";
+        const cleanUser = (data.username || data.name || "").trim();
+        const cleanStore = (data.storeName || "").trim().toLowerCase();
         
         if (!cleanStore || !cleanUser) return;
 
         const userKey = `${cleanStore}_${cleanUser}`;
         
         socket.join(cleanStore);
+        // Αποθηκεύουμε τα στοιχεία στο socket για να τα βλέπει το Chat
         socket.username = cleanUser; 
         socket.store = cleanStore;
         socket.role = data.role;
@@ -46,7 +45,7 @@ io.on('connection', (socket) => {
             username: cleanUser, 
             role: data.role,
             store: cleanStore,
-            fcmToken: data.token, // Το διαβατήριο για ειδοποιήσεις
+            fcmToken: data.token, 
             lastSeen: Date.now()
         };
 
@@ -62,7 +61,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM (Η ΚΡΙΣΙΜΗ ΑΛΛΑΓΗ ΓΙΑ ΤΗ ΔΟΝΗΣΗ)
+    // 3. TRIGGER ALARM (ΔΟΝΗΣΗ)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
         
@@ -72,31 +71,24 @@ io.on('connection', (socket) => {
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            // A. SOCKET (Αν η εφαρμογή είναι ανοιχτή -> Ήχος)
-            io.to(targetUser.socketId).emit('ring-bell');
+            io.to(targetUser.socketId).emit('ring-bell'); // Ήχος (Ανοιχτό)
 
-            // B. FIREBASE (Αν η εφαρμογή είναι κλειστή -> Δόνηση)
+            // Firebase Data Message (Κλειστό -> Δόνηση)
             if (targetUser.fcmToken) {
                 const message = {
                     token: targetUser.fcmToken,
-                    // ΣΗΜΑΝΤΙΚΟ: Στέλνουμε ΜΟΝΟ data (όχι notification object)
-                    // Αυτό αναγκάζει το Service Worker να αναλάβει δράση και να δονηθεί.
                     data: {
                         title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
                         body: "Πάτα για αποδοχή!",
                         url: "/",
                         type: "alarm"
                     },
-                    android: {
-                        priority: "high" // Υψηλή προτεραιότητα για να ξυπνήσει το κινητό
-                    }
+                    android: { priority: "high" }
                 };
 
                 admin.messaging().send(message)
-                    .then((res) => console.log('✅ FCM (Data Only) Sent:', res))
+                    .then((res) => console.log('✅ FCM Sent:', res))
                     .catch((err) => console.error('❌ FCM Error:', err));
-            } else {
-                console.log("⚠️ No FCM Token for this user.");
             }
         }
     });
@@ -105,11 +97,26 @@ io.on('connection', (socket) => {
     socket.on('update-token', (data) => {
         if (socket.store && data.username && data.token) {
              const userKey = `${socket.store}_${data.username}`;
-             if (activeUsers[userKey]) activeUsers[userKey].fcmToken = data.token;
+             if (activeUsers[userKey]) {
+                 activeUsers[userKey].fcmToken = data.token;
+                 console.log(`🔄 Token updated for ${data.username}`);
+             }
         }
     });
 
-    // 5. DISCONNECT
+    // 5. CHAT MESSAGE (ΑΥΤΟ ΕΛΕΙΠΕ!)
+    socket.on('chat-message', (msgData) => {
+        if (socket.store && socket.username) {
+            // Στέλνουμε το μήνυμα σε ΟΛΟΥΣ στο δωμάτιο (store)
+            io.to(socket.store).emit('chat-message', {
+                sender: socket.username,
+                role: socket.role,
+                text: msgData.text
+            });
+        }
+    });
+
+    // 6. DISCONNECT
     socket.on('disconnect', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
