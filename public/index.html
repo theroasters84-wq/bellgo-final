@@ -111,7 +111,6 @@
     <script src="player.js"></script>
 
     <script>
-        // --- 1. FIREBASE CONFIG ---
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -122,7 +121,6 @@
             measurementId: "G-379ETZJP8H" 
         };
 
-        // Αρχικοποίηση
         try { 
             firebase.initializeApp(firebaseConfig); 
             var messaging = firebase.messaging(); 
@@ -134,9 +132,8 @@
         let knownStaff = [];
         let heartbeatInterval = null;
 
-        // --- 2. FIREBASE NOTIFICATIONS (Service Worker) ---
+        // --- 1. FIREBASE MESSAGING LOGIC ---
         if ('serviceWorker' in navigator) {
-            // Εγγραφή του αρχείου που δονείται στο παρασκήνιο
             navigator.serviceWorker.register('./firebase-messaging-sw.js')
             .then(function(registration) {
                 console.log('✅ Service Worker Registered');
@@ -145,7 +142,9 @@
             .then((permission) => {
                 if (permission === 'granted') {
                     console.log('🔔 Permission Granted');
-                    return messaging.getToken(); // Χωρίς Vapid Key (Default)
+                    
+                    // ΕΔΩ ΕΒΑΛΑ ΤΟ VAPID KEY ΠΟΥ ΜΟΥ ΕΣΤΕΙΛΕΣ
+                    return messaging.getToken({ vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM" }); 
                 }
             })
             .then((token) => {
@@ -153,7 +152,7 @@
                     console.log("🔥 TOKEN:", token);
                     localStorage.setItem('fcm_token', token);
                     
-                    // ΕΜΦΑΝΙΣΗ TOKEN ΣΤΗΝ ΟΘΟΝΗ (ΓΙΑ ΝΑ ΤΟ ΑΝΤΙΓΡΑΨΕΙΣ)
+                    // ΕΜΦΑΝΙΣΗ ΣΤΗΝ ΟΘΟΝΗ (ΓΙΑ ΝΑ ΤΟ ΠΑΡΕΙΣ ΕΥΚΟΛΑ)
                     window.prompt("Token συσκευής (Αντίγραψέ το):", token);
                 } else {
                     console.log('No token available.');
@@ -164,12 +163,10 @@
             });
         }
 
-        // ΟΤΑΝ Η ΕΦΑΡΜΟΓΗ ΕΙΝΑΙ ΑΝΟΙΧΤΗ (Foreground)
+        // --- 2. FOREGROUND MESSAGE ---
         messaging.onMessage((payload) => {
             console.log('📩 Foreground Message:', payload);
-            if (window.AudioEngine) {
-                window.AudioEngine.triggerAlarm();
-            }
+            if (window.AudioEngine) window.AudioEngine.triggerAlarm();
         });
 
         // --- 3. MAIN APP LOGIC ---
@@ -185,10 +182,7 @@
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
 
-                // Εκκίνηση Audio Engine (Χρειάζεται user interaction εδώ)
-                if(window.AudioEngine) {
-                    AudioEngine.init();
-                }
+                if(window.AudioEngine) AudioEngine.init();
                 
                 this.finishLoginSequence();
             },
@@ -232,9 +226,7 @@
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
                     
-                    // Στέλνουμε και το FCM Token αν το έχουμε
                     const fcmToken = localStorage.getItem('fcm_token');
-
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -272,7 +264,6 @@
             },
 
             logout() {
-                // Δεν κάνουμε pause στον player για να μείνει το Keep-Alive αν θέλουμε
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
