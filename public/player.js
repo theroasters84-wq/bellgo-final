@@ -1,30 +1,39 @@
+// Ένα μικρό MP3 "ησυχίας" κωδικοποιημένο σε κείμενο (Base64)
+// Αυτό ξεγελάει το Android ότι παίζει "αρχείο" ενώ δεν ακούγεται τίποτα.
+const SILENT_MP3_DATA = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAApAAADTGF2ZjU4LjQ1LjEwMAAAAAAAAAAAAAAA//oeDAAAAAAAASwgAAAAIvXHAAAAAAASxyb84AAANIAAAA0gAAAB"; 
+
 const AudioEngine = {
-    hostPlayer: null,  // Παίζει το test.mp3 (Μουσική Χαλί)
-    sirenPlayer: null, // Παίζει το alert.mp3 (Σειρήνα)
+    hostPlayer: null,  // Το "Αόρατο" Χαλί
+    sirenPlayer: null, // Η Σειρήνα
     isRinging: false,
     vibrationInterval: null,
     alarmStartTime: 0,
 
     init() {
-        console.log("🔈 Audio Engine: Muted-Song Keep Alive");
+        console.log("🔈 Audio Engine: Base64 Silent Mode");
         
-        // 1. HOST PLAYER (Το τραγούδι που κρατάει την μπάρα)
+        // 1. HOST PLAYER (Το αόρατο χαλί)
         if (!this.hostPlayer) {
             this.hostPlayer = document.createElement('audio');
             this.hostPlayer.id = 'hostPlayer';
-            this.hostPlayer.src = 'test.mp3'; // Βάλε το τραγούδι που δουλεύει!
+            
+            // Χρησιμοποιούμε τον κώδικα αντί για αρχείο
+            this.hostPlayer.src = SILENT_MP3_DATA; 
             this.hostPlayer.loop = true;
             
-            // ΚΟΛΠΟ: Ένταση σχεδόν μηδέν, αλλά όχι μηδέν (για να μην το κόψει το Android)
-            this.hostPlayer.volume = 0.001; 
+            // ΚΟΛΠΟ: Βάζουμε την ένταση στο 100% !
+            // Το Android βλέπει 100% και κρατάει την μπάρα ανοιχτή.
+            // Εμείς δεν ακούμε τίποτα γιατί το αρχείο είναι κενό.
+            this.hostPlayer.volume = 1.0; 
             
             // Αν πατήσει Pause στην μπάρα -> ΑΠΟΔΟΧΗ
             this.hostPlayer.onpause = () => {
                 if (this.isRinging) {
-                    console.log("⏸️ Pause -> ACCEPT");
+                    console.log("⏸️ Pause Detected -> ACCEPT");
                     this.stopAlarm();
                 } else {
-                    // Αν δεν χτυπάει, απαγορεύουμε το Pause (για να μην κλείσει η μπάρα)
+                    // Αν δεν χτυπάει, απαγορεύουμε το Pause (για να μην φύγει η μπάρα)
+                    console.log("⚠️ Keep-Alive enforce");
                     this.hostPlayer.play();
                 }
             };
@@ -36,15 +45,15 @@ const AudioEngine = {
         if (!this.sirenPlayer) {
             this.sirenPlayer = document.createElement('audio');
             this.sirenPlayer.id = 'sirenPlayer';
-            this.sirenPlayer.src = 'alert.mp3';
+            this.sirenPlayer.src = 'alert.mp3'; // Βεβαιώσου ότι το alert.mp3 υπάρχει στο public
             this.sirenPlayer.loop = true;
-            this.sirenPlayer.volume = 1.0; // Τέρμα ένταση
+            this.sirenPlayer.volume = 1.0; 
             document.body.appendChild(this.sirenPlayer);
         }
 
         this.setupMediaSession();
         
-        // Ξεκινάμε το "Βουβό Τραγούδι"
+        // Ξεκινάμε το αόρατο χαλί
         const playPromise = this.hostPlayer.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
@@ -58,7 +67,7 @@ const AudioEngine = {
         if ('mediaSession' in navigator) {
             const acceptCall = () => {
                 if (this.isRinging) {
-                    console.log("⏯️ Button -> ACCEPT");
+                    console.log("⏯️ Media Button -> ACCEPT");
                     this.stopAlarm();
                 }
             };
@@ -70,6 +79,7 @@ const AudioEngine = {
         }
     },
 
+    // --- TRIGGER ALARM ---
     triggerAlarm() {
         if (this.isRinging) return;
         this.isRinging = true;
@@ -84,7 +94,7 @@ const AudioEngine = {
             if (slider) slider.value = 50; 
         }
 
-        // AUDIO: Παίζουμε τη Σειρήνα
+        // AUDIO: Παίζουμε τη Σειρήνα (Πάνω από το αόρατο χαλί)
         this.sirenPlayer.currentTime = 0;
         this.sirenPlayer.play().catch(e => console.error("Siren error:", e));
 
@@ -103,6 +113,7 @@ const AudioEngine = {
         this.sendNotification();
     },
 
+    // --- STOP ALARM ---
     stopAlarm() {
         if (!this.isRinging) return;
         console.log("🔕 ALARM STOP");
@@ -165,8 +176,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Volume Change (Backup)
-// ΠΡΟΣΟΧΗ: Εδώ ακούμε τον Host Player γιατί αυτός παίζει συνέχεια
-// Αν αλλάξει η ένταση του συστήματος, το πιάνουμε.
+// Ακούμε τον hostPlayer γιατί αυτός είναι πάντα ενεργός
 window.addEventListener('volumechange', () => {
     if (AudioEngine.isRinging && (Date.now() - AudioEngine.alarmStartTime > 2000)) {
          AudioEngine.stopAlarm();
