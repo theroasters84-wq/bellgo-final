@@ -2,93 +2,72 @@ const AudioEngine = {
     player: null,
     isRinging: false,
     vibrationInterval: null,
-    alarmStartTime: 0, 
 
     init() {
-        console.log("🔈 Audio Engine Initializing...");
+        console.log("🔈 Audio Engine: System Media Mode Initialized");
         
-        // 1. Δημιουργία ΕΝΟΣ και ΜΟΝΑΔΙΚΟΥ Audio Element
+        // 1. Δημιουργία Audio Element
         if (!this.player) {
             this.player = document.createElement('audio');
             this.player.id = 'mainAudioPlayer';
-            this.player.loop = true; // Loop πάντα (είτε silence είτε alert)
-            
-            // Ακρόαση για αλλαγή έντασης (Volume Buttons)
-            this.player.onvolumechange = () => this.handleVolumeChange();
-            
+            this.player.loop = true; 
             document.body.appendChild(this.player);
         }
 
-        // 2. Ζητάμε άδεια για Ειδοποιήσεις
-        if (Notification.permission !== "granted") Notification.requestPermission();
-
-        // 3. Ρύθμιση Media Session (Κουμπιά Ακουστικών / Lock Screen)
-        // Ορίζουμε ότι το Play, Pause, Stop, Next, Prev κάνουν όλα STOP στο Alarm
+        // 2. Ρύθμιση Media Session (Τα κουμπιά της μπάρας)
         if ('mediaSession' in navigator) {
-            const stopAction = () => {
-                console.log("⏯️ Media Key Pressed -> Stopping Alarm");
+            const acceptCall = () => {
+                console.log("⏯️ Media Button Pressed -> ACCEPTING CALL");
                 this.stopAlarm();
             };
-            navigator.mediaSession.setActionHandler('play', stopAction);
-            navigator.mediaSession.setActionHandler('pause', stopAction);
-            navigator.mediaSession.setActionHandler('stop', stopAction);
-            navigator.mediaSession.setActionHandler('previoustrack', stopAction);
-            navigator.mediaSession.setActionHandler('nexttrack', stopAction);
+
+            // Όλα τα κουμπιά κάνουν Αποδοχή (Stop)
+            navigator.mediaSession.setActionHandler('play', acceptCall);
+            navigator.mediaSession.setActionHandler('pause', acceptCall);
+            navigator.mediaSession.setActionHandler('stop', acceptCall);
+            navigator.mediaSession.setActionHandler('previoustrack', acceptCall);
+            navigator.mediaSession.setActionHandler('nexttrack', acceptCall);
         }
 
-        // 4. Ξεκινάμε με Σιωπή (Χωρίς να πειράξουμε την ένταση του χρήστη)
-        this.player.src = 'silence.mp3'; 
+        // 3. Ξεκινάμε με "Silence Mode"
+        this.startSilenceSession();
+    },
+
+    // --- ΛΕΙΤΟΥΡΓΙΑ 1: ΚΑΤΑΣΤΑΣΗ ΑΝΑΜΟΝΗΣ (SILENCE) ---
+    startSilenceSession() {
+        this.player.src = 'silence.mp3';
         
-        // Προσπάθεια για Auto-Play
+        // Ενημέρωση της Μπάρας Ειδοποιήσεων (Να φαίνεται ότι είμαστε Online)
+        this.updateMetadata("BellGo Active", "🟢 Συνδεδεμένος", "https://cdn-icons-png.flaticon.com/512/190/190411.png");
+
         const playPromise = this.player.play();
         if (playPromise !== undefined) {
-            playPromise
-                .then(() => console.log("✅ Silence playing (Session Active)"))
-                .catch(e => console.log("⚠️ Waiting for interaction..."));
+            playPromise.catch(e => console.log("Waiting for click to start audio session..."));
         }
     },
 
-    // Λογική για τα κουμπιά έντασης
-    handleVolumeChange() {
-        if (!this.isRinging) return;
-
-        // Ασφάλεια 2 δευτερολέπτων (για να μην το κλείσει κατά λάθος με το που το πιάσει)
-        if (Date.now() - this.alarmStartTime < 2000) return;
-
-        console.log("🎚️ Volume Changed -> ACCEPTING CALL");
-        this.stopAlarm();
-    },
-
+    // --- ΛΕΙΤΟΥΡΓΙΑ 2: ΚΛΗΣΗ (ALARM) ---
     triggerAlarm() {
         if (this.isRinging) return;
-        
         this.isRinging = true;
-        this.alarmStartTime = Date.now();
-        console.log("🔔 TRIGGER ALARM");
+        console.log("🔔 TRIGGER ALARM: Switching Track to Alert");
 
         // 1. Εμφάνιση Κόκκινης Οθόνης
         const overlay = document.getElementById('alarmOverlay');
-        if (overlay) overlay.style.display = 'flex';
-
-        // 2. Επαναφορά Slider στη μέση (αν υπάρχει)
-        const slider = document.getElementById('acceptSlider');
-        if (slider) slider.value = 50;
-
-        // 3. ΑΛΛΑΓΗ ΠΗΓΗΣ ΣΤΟΝ ΙΔΙΟ PLAYER (Χωρίς αλλαγή έντασης)
-        // Ο ήχος θα παίξει στην ένταση που έχει ήδη η συσκευή
-        this.player.src = 'alert.mp3'; 
-        this.player.play().catch(e => console.error("❌ Play failed:", e));
-
-        // 4. Ενημέρωση τίτλου στην οθόνη κλειδώματος
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ",
-                artist: "BellGo Alert",
-                album: "Πάτα Play/Pause για Αποδοχή"
-            });
+        if (overlay) {
+            overlay.style.display = 'flex';
+            // Reset Slider
+            const slider = document.getElementById('acceptSlider');
+            if (slider) slider.value = 50; 
         }
 
-        // 5. Δόνηση
+        // 2. ΑΛΛΑΓΗ "ΤΡΑΓΟΥΔΙΟΥ" ΣΤΗΝ ΜΠΑΡΑ
+        this.player.src = 'alert.mp3';
+        this.updateMetadata("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ", "Πάτα Play/Next για Αποδοχή", "https://cdn-icons-png.flaticon.com/512/564/564619.png");
+        
+        this.player.play().catch(e => console.error("❌ Play failed:", e));
+
+        // 3. Δόνηση
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]); 
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -96,13 +75,12 @@ const AudioEngine = {
                 navigator.vibrate([1000, 500]);
             }, 1600);
         }
-
-        this.sendNotification();
     },
 
+    // --- ΛΕΙΤΟΥΡΓΙΑ 3: ΑΠΟΔΟΧΗ & ΕΠΙΣΤΡΟΦΗ ΣΤΟ SILENCE ---
     stopAlarm() {
         if (!this.isRinging) return;
-        console.log("🔕 STOP ALARM -> Back to Silence");
+        console.log("🔕 STOP ALARM -> Returning to Silence");
         
         this.isRinging = false;
 
@@ -114,48 +92,40 @@ const AudioEngine = {
         if (this.vibrationInterval) clearInterval(this.vibrationInterval);
         if (navigator.vibrate) navigator.vibrate(0);
 
-        // 6. ΕΠΙΣΤΡΟΦΗ ΣΤΗ ΣΙΩΠΗ (Στον ίδιο Player)
-        // Δεν κάνουμε pause, απλά αλλάζουμε το src 'on the fly' για να μην κοπεί το session
-        this.player.src = 'silence.mp3';
-        this.player.play().catch(() => {});
-
-        // Ενημέρωση τίτλου (Online)
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: "BellGo Active",
-                artist: "Online"
-            });
-        }
+        // ΕΠΙΣΤΡΟΦΗ ΣΤΟ SILENCE (Σαν να μπήκε το επόμενο τραγούδι)
+        this.startSilenceSession();
     },
 
-    sendNotification() {
-        if (Notification.permission === "granted") {
-            try {
-                const notif = new Notification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", {
-                    body: "Πάτα εδώ για αποδοχή",
-                    icon: "/icon.png",
-                    vibrate: [200, 100, 200],
-                    requireInteraction: true,
-                    tag: 'alarm-tag'
-                });
-                notif.onclick = () => { window.focus(); this.stopAlarm(); notif.close(); };
-            } catch (e) {}
+    // Βοηθητική συνάρτηση για να αλλάζουμε τα γράμματα στην μπάρα
+    updateMetadata(title, artist, iconUrl) {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: artist,
+                album: "BellGo System",
+                artwork: [{ src: iconUrl, sizes: '512x512', type: 'image/png' }]
+            });
         }
     }
 };
 
-// Physical buttons listener (Για Fully Kiosk)
+// Physical buttons Listener (Volume buttons as backup)
 window.addEventListener('keydown', (e) => {
     if (AudioEngine.isRinging) {
-        // Space, Enter, Volume keys, Play/Pause
-        const validKeys = [24, 25, 179, 32, 13, 85, 86]; // 85=Play/Pause
+        // Αν πατήσει Space, Enter, Volume Up/Down
+        const validKeys = [24, 25, 179, 32, 13]; 
         if (validKeys.includes(e.keyCode)) {
-            // Αν έχουν περάσει 2 δευτερόλεπτα
-            if (Date.now() - AudioEngine.alarmStartTime > 2000) {
-                e.preventDefault(); 
-                AudioEngine.stopAlarm();
-            }
+            e.preventDefault(); 
+            AudioEngine.stopAlarm();
         }
+    }
+});
+
+// Τέλος, κάνουμε το volume change να λειτουργεί επίσης ως STOP
+// (Προσοχή: Μόνο αν χτυπάει)
+document.addEventListener('volumechange', () => {
+    if (AudioEngine.isRinging) {
+         AudioEngine.stopAlarm();
     }
 });
 
