@@ -1,13 +1,9 @@
 {
-  "database": {
-    "rules": "1server/database.rules.json"
+  "to": "ΤΟ_TOKEN_ΤΗΣ_ΣΥΣΚΕΥΗΣ",
+  "data": {
+    "title": "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+    "body": "Τραπέζι 5",
+    "type": "alarm"
   },
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  }
+  "priority": "high"
 }
