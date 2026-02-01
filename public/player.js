@@ -1,38 +1,41 @@
 const AudioEngine = {
-    player: null,
+    player: null, // ΕΝΑΣ και ΜΟΝΑΔΙΚΟΣ Player για όλα
     isRinging: false,
-    wakeLock: null,      // Κρατάει την οθόνη ανοιχτή (WakeLock API)
+    wakeLock: null,
     vibrationInterval: null,
-    alarmStartTime: 0,   // Χρονόμετρο για ασφάλεια Volume Button
+    alarmStartTime: 0,
 
     async init() {
-        console.log("🔊 AudioEngine: 19Hz Unified Player Mode");
+        console.log("🔊 AudioEngine: Playlist Mode (Single Player)");
 
-        // 1. ΔΗΜΙΟΥΡΓΙΑ ΤΟΥ ΕΝΟΣ ΚΑΙ ΜΟΝΑΔΙΚΟΥ PLAYER
+        // 1. ΔΗΜΙΟΥΡΓΙΑ ΤΟΥ PLAYER (Αν δεν υπάρχει)
         if (!this.player) {
             this.player = document.createElement("audio");
-            this.player.id = 'mainAudioPlayer';
-            this.player.loop = true;
-            this.player.volume = 1.0; // ΤΕΡΜΑ ΕΝΤΑΣΗ (Για να μην κοιμηθεί το Android)
-            this.player.src = "tone19hz.wav"; // Ξεκινάμε με τον υπόηχο
+            this.player.id = 'unifiedPlayer';
+            this.player.loop = true; // Πάντα loop (είτε είναι tone είτε alarm)
+            this.player.volume = 1.0; // Πάντα τέρμα
             
-            // --- LOGIC 1: PAUSE BUTTON (Media Session) ---
+            // Ξεκινάμε με το Track 1 (Υπόηχος)
+            this.player.src = "tone19hz.wav"; 
+            
+            // --- ΛΟΓΙΚΗ ΑΠΟΔΟΧΗΣ ---
+            
+            // Α. Αν πατηθεί Pause (από μπάρα ή ακουστικά)
             this.player.onpause = () => {
                 if (this.isRinging) {
-                    console.log("⏸️ System Pause -> ACCEPTING CALL");
-                    this.stopAlarm();
+                    console.log("⏯️ Pause -> NEXT TRACK (Accept)");
+                    this.stopAlarm(); // Αυτό θα αλλάξει το τραγούδι πίσω στο tone
                 } else {
-                    // Αν πατηθεί Pause ενώ είμαστε Online (όχι κλήση), το ξαναξεκινάμε αμέσως!
-                    console.log("⚠️ Keep-Alive enforce: Restarting Tone");
+                    // Αν είμαστε online, δεν αφήνουμε να σταματήσει
+                    console.log("⚠️ Keep-Alive: Restarting...");
                     this.player.play();
                 }
             };
 
-            // --- LOGIC 2: VOLUME BUTTONS ---
+            // Β. Αν αλλάξει η ένταση (Volume Buttons)
             this.player.onvolumechange = () => {
-                // Αν χτυπάει ΚΑΙ έχουν περάσει 2 δευτερόλεπτα (για να μην το κλείσει κατά λάθος στην αρχή)
                 if (this.isRinging && (Date.now() - this.alarmStartTime > 2000)) {
-                    console.log("🎚️ Volume Changed -> ACCEPTING CALL");
+                    console.log("🎚️ Volume -> NEXT TRACK (Accept)");
                     this.stopAlarm();
                 }
             };
@@ -40,87 +43,48 @@ const AudioEngine = {
             document.body.appendChild(this.player);
         }
 
-        // 2. WAKE LOCK (Κρατάει την οθόνη/CPU ξύπνια)
+        // 2. ΡΥΘΜΙΣΕΙΣ ΣΥΣΤΗΜΑΤΟΣ
         this.requestWakeLock();
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") this.requestWakeLock();
-        });
-
-        // 3. MEDIA SESSION (Κουμπιά Lock Screen)
         this.setupMediaSession();
 
-        // 4. ΕΚΚΙΝΗΣΗ (Παίζουμε τον υπόηχο)
+        // 3. ΕΚΚΙΝΗΣΗ PLAYLIST (Track 1)
         try {
             await this.player.play();
-            this.setIdleMetadata();
-            console.log("✅ 19Hz Tone Playing (System thinks it's music)");
+            this.updateMetadata("online"); // Δείχνουμε "Online"
+            console.log("✅ Track 1 Playing (Tone)");
         } catch (e) {
-            console.log("⏳ Waiting for user interaction...", e);
+            console.log("⏳ Waiting for interaction...", e);
         }
     },
 
-    // Ζητάει από το Android να μην σβήσει την οθόνη
-    async requestWakeLock() {
-        if ('wakeLock' in navigator) {
-            try {
-                this.wakeLock = await navigator.wakeLock.request("screen");
-                console.log("🔆 Wake Lock ACTIVE");
-            } catch (e) { console.log("WakeLock Error", e); }
-        }
-    },
-
-    setupMediaSession() {
-        if (!("mediaSession" in navigator)) return;
-
-        const accept = () => {
-            if (this.isRinging) {
-                console.log("✅ ACCEPT via Media Button");
-                this.stopAlarm();
-            }
-        };
-
-        // Όλα τα κουμπιά (Play, Pause, Next, Prev) κάνουν Αποδοχή
-        ["play", "pause", "stop", "nexttrack", "previoustrack"].forEach(action => {
-            try { navigator.mediaSession.setActionHandler(action, accept); } catch(e){}
-        });
-    },
-
-    // --- 🚨 TRIGGER ALARM (ΚΛΗΣΗ) ---
+    // --- ΤΟ ΚΡΙΣΙΜΟ ΣΗΜΕΙΟ: ΑΛΛΑΓΗ ΤΡΑΓΟΥΔΙΟΥ (ΚΛΗΣΗ) ---
     async triggerAlarm() {
         if (this.isRinging) return;
 
         this.isRinging = true;
         this.alarmStartTime = Date.now();
-        console.log("🚨 ALARM START");
+        console.log("🚨 CHANGING TRACK TO: ALARM");
 
-        // 1. UI: Εμφάνιση Κόκκινης Οθόνης
+        // 1. Ενημερώνουμε την μπάρα ΠΡΙΝ αλλάξει ο ήχος (για να φαίνεται άμεσα)
+        this.updateMetadata("alarm");
+
+        // 2. UI: Εμφάνιση κόκκινης οθόνης
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
             const slider = document.getElementById('acceptSlider');
-            if (slider) slider.value = 50; // Reset Slider στη μέση
+            if (slider) slider.value = 50;
         }
 
-        // 2. AUDIO: Αλλαγή src σε ALERT.MP3
+        // 3. ΑΛΛΑΓΗ ΠΗΓΗΣ (Σαν να μπαίνει το επόμενο τραγούδι)
         this.player.src = "alert.mp3";
-        this.player.loop = true;
+        this.player.load(); // Αναγκάζουμε τον browser να φορτώσει το νέο αρχείο
         
         try {
             await this.player.play();
         } catch (e) { console.error("Play Error", e); }
 
-        // 3. METADATA: Ενημέρωση μπάρας
-        if ("mediaSession" in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
-                album: "BellGo Alert",
-                artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/564/564619.png", sizes: "512x512", type: "image/png" }]
-            });
-            navigator.mediaSession.playbackState = "playing";
-        }
-
-        // 4. VIBRATION
+        // 4. Δόνηση
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]);
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -130,42 +94,79 @@ const AudioEngine = {
         this.sendNotification();
     },
 
-    // --- 🛑 STOP / ACCEPT (ΑΠΟΔΟΧΗ) ---
+    // --- ΤΟ ΚΡΙΣΙΜΟ ΣΗΜΕΙΟ: ΕΠΙΣΤΡΟΦΗ (ΑΠΟΔΟΧΗ) ---
     async stopAlarm() {
         if (!this.isRinging) return;
 
-        console.log("🛑 ALARM STOP -> Back to Tone");
+        console.log("🛑 CHANGING TRACK TO: TONE (Silence)");
         this.isRinging = false;
 
-        // 1. UI: Απόκρυψη
+        // 1. Ενημέρωση Μπάρας
+        this.updateMetadata("online");
+
+        // 2. UI: Απόκρυψη
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'none';
 
-        // 2. AUDIO: Επιστροφή στον υπόηχο (TONE19HZ.WAV)
+        // 3. ΑΛΛΑΓΗ ΠΗΓΗΣ ΠΙΣΩ
         this.player.src = "tone19hz.wav";
-        this.player.loop = true;
-
+        this.player.load(); // Φόρτωση
+        
         try {
             await this.player.play();
         } catch (e) {}
 
-        // 3. RESET
-        this.setIdleMetadata();
+        // 4. Stop Vibrate
         if (this.vibrationInterval) clearInterval(this.vibrationInterval);
         if (navigator.vibrate) navigator.vibrate(0);
     },
 
-    setIdleMetadata() {
+    // Διαχείριση των τίτλων στην μπάρα
+    updateMetadata(state) {
         if (!("mediaSession" in navigator)) return;
 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: "🟢 BellGo Online",
-            artist: "Αναμονή...",
-            album: "System Active",
-            artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/190/190411.png", sizes: "512x512", type: "image/png" }]
-        });
-
+        if (state === "alarm") {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                artist: "Πάτα ΕΔΩ για Αποδοχή", // Πατώντας οπουδήποτε στην μπάρα
+                album: "BellGo Alert",
+                artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/564/564619.png", sizes: "512x512", type: "image/png" }]
+            });
+        } else {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: "🟢 BellGo Online",
+                artist: "Σύστημα σε Αναμονή",
+                album: "BellGo System",
+                artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/190/190411.png", sizes: "512x512", type: "image/png" }]
+            });
+        }
+        
+        // Λέμε στο σύστημα ότι παίζουμε ΚΑΝΟΝΙΚΑ
         navigator.mediaSession.playbackState = "playing";
+    },
+
+    setupMediaSession() {
+        if (!("mediaSession" in navigator)) return;
+
+        // Ό,τι και να πατήσει ο χρήστης στην μπάρα, σημαίνει ΑΠΟΔΟΧΗ
+        const accept = () => {
+            if (this.isRinging) {
+                console.log("✅ ACCEPT via Media Button");
+                this.stopAlarm();
+            }
+        };
+
+        ["play", "pause", "stop", "nexttrack", "previoustrack"].forEach(action => {
+            try { navigator.mediaSession.setActionHandler(action, accept); } catch(e){}
+        });
+    },
+
+    async requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                this.wakeLock = await navigator.wakeLock.request("screen");
+            } catch (e) {}
+        }
     },
 
     sendNotification() {
@@ -174,8 +175,6 @@ const AudioEngine = {
                 const notif = new Notification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", {
                     body: "Πάτα εδώ για αποδοχή",
                     icon: "/icon.png",
-                    vibrate: [200, 100, 200],
-                    requireInteraction: true,
                     tag: 'alarm-tag'
                 });
                 notif.onclick = () => { window.focus(); this.stopAlarm(); notif.close(); };
@@ -184,10 +183,9 @@ const AudioEngine = {
     }
 };
 
-// Physical Buttons Listener (Για Fully Kiosk / Android Wrappers)
+// Physical Buttons (Backup)
 window.addEventListener('keydown', (e) => {
     if (AudioEngine.isRinging) {
-        // Ασφάλεια 2 δευτερολέπτων
         if (Date.now() - AudioEngine.alarmStartTime > 2000) {
             const validKeys = [24, 25, 179, 32, 13]; 
             if (validKeys.includes(e.keyCode)) {
