@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <title>Bellgo User</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="../permissions/manifest.json">
+    <style>
+        body { font-family: sans-serif; background: #333; color: white; margin: 0; overflow: hidden; }
+        .full-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        /* Login Screen */
+        #login-view { background: #222; z-index: 10; }
+        input, select, button { padding: 15px; margin: 10px; font-size: 18px; width: 80%; }
+        button { background: #2ecc71; border: none; color: white; font-weight: bold; }
+        
+        /* Main User Dashboard */
+        #main-view { display: none; background: #444; }
+        .status-indicator { width: 30px; height: 30px; border-radius: 50%; margin-bottom: 20px; }
+        .online-dot { background: lime; box-shadow: 0 0 10px lime; }
+        .offline-dot { background: red; }
+        
+        /* Fake Lock Screen */
+        #fake-lock { display: none; background: black; z-index: 999; }
+        
+        /* Alarm Screen (Οθόνη 4) */
+        #alarm-view { display: none; background: red; z-index: 1000; animation: flash 0.5s infinite; }
+        @keyframes flash { 0% { background: red; } 50% { background: darkred; } 100% { background: red; } }
+        
+        /* Chat Overlay */
+        #chat-overlay { position: fixed; bottom: 0; width: 100%; background: white; color: black; height: 30%; overflow-y: scroll; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="login-view" class="full-screen">
+        <h2>Bellgo Σύνδεση</h2>
+        <input type="text" id="admin-email" placeholder="Email Διαχειριστή">
+        <input type="text" id="my-name" placeholder="Το Όνομά σου">
+        <select id="my-role">
+            <option value="waiter">Σερβιτόρος</option>
+            <option value="driver">Διανομέας</option>
+        </select>
+        <button id="btn-login">ΕΙΣΟΔΟΣ</button>
+    </div>
+
+    <div id="main-view" class="full-screen">
+        <div id="status-dot" class="status-indicator offline-dot"></div>
+        <h2 id="user-title"></h2>
+        <button id="btn-fake-lock">🔒 Fake Lock (Μαύρη Οθόνη)</button>
+        <button id="btn-logout">🚪 Έξοδος</button>
+        <div id="chat-box"></div>
+    </div>
+
+    <div id="fake-lock" class="full-screen">
+        <div style="color: #111;">Tap 3 times to unlock</div>
+    </div>
+
+    <div id="alarm-view" class="full-screen">
+        <h1>⚠️ ΕΙΔΟΠΟΙΗΣΗ ⚠️</h1>
+        <h2>Σε ζητάει ο Admin!</h2>
+        <button id="btn-accept" style="background: white; color: red; font-size: 24px;">ΑΠΟΔΟΧΗ</button>
+    </div>
+
+    <script type="module" src="../4player/player.js"></script>
+
+    <script type="module">
+        import { db, ref, set, onDisconnect, onValue, update, sanitizeEmail, push } from '../firebase-config.js';
+        
+        let adminEmail = "";
+        let myName = "";
+        let myRole = "";
+        let myId = ""; // Generated ID based on name
+
+        // 5 Second Timeout Logic for Android App users (No socket)
+        const isAndroidApp = navigator.userAgent.includes('wv'); // Simple check for WebView
+
+        document.getElementById('btn-login').addEventListener('click', () => {
+            const emailRaw = document.getElementById('admin-email').value;
+            adminEmail = sanitizeEmail(emailRaw);
+            myName = document.getElementById('my-name').value;
+            myRole = document.getElementById('my-role').value;
+            myId = myName.replace(/\s+/g, '').toLowerCase(); // Simple ID
+
+            if(adminEmail && myName) {
+                startSession();
+            }
+        });
+
+        function startSession() {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('main-view').style.display = 'flex';
+            document.body.style.backgroundColor = myRole === 'waiter' ? '#3498db' : '#e67e22'; // Αλλαγή χρώματος βάσει ρόλου
+            document.getElementById('user-title').innerText = `${myName} (${myRole})`;
+
+            // Firebase Presence
+            const userRef = ref(db, `users/${adminEmail}/${myId}`);
+            const connectedRef = ref(db, '.info/connected');
+
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    document.getElementById('status-dot').className = 'status-indicator online-dot';
+                    update(userRef, { 
+                        status: 'online', 
+                        name: myName, 
+                        role: myRole,
+                        lastSeen: Date.now()
+                    });
+                    onDisconnect(userRef).update({ status: 'offline', lastSeen: Date.now() });
+                } else {
+                    document.getElementById('status-dot').className = 'status-indicator offline-dot';
+                }
+            });
+
+            // Listen for Calls
+            onValue(userRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.callState === 'ringing') {
+                    triggerAlarm();
+                } else if (data && data.callState === 'accepted') {
+                    stopAlarm(); // Admin saw it
+                }
+            });
+
+            // Chat Listener
+            // (Μπορείς να προσθέσεις κώδικα chat εδώ όπως στο admin)
+        }
+
+        // --- Alarm Logic ---
+        function triggerAlarm() {
+            document.getElementById('alarm-view').style.display = 'flex';
+            window.startRinging(); // From player.js
+
+            // Αν είναι Android App χωρίς Socket, σταμάτα μετά από 5 δευτερόλεπτα
+            if (isAndroidApp) {
+                setTimeout(() => {
+                    acceptCall(); // Auto accept or just stop ringing
+                }, 5000);
+            }
+        }
+
+        function stopAlarm() {
+            document.getElementById('alarm-view').style.display = 'none';
+            window.stopRinging(); // From player.js
+        }
+
+        function acceptCall() {
+            update(ref(db, `users/${adminEmail}/${myId}`), {
+                callState: 'accepted'
+            });
+            stopAlarm();
+        }
+
+        document.getElementById('btn-accept').addEventListener('click', acceptCall);
+
+        // --- Fake Lock ---
+        const fakeLock = document.getElementById('fake-lock');
+        document.getElementById('btn-fake-lock').addEventListener('click', () => {
+            fakeLock.style.display = 'flex';
+        });
+
+        let tapCount = 0;
+        fakeLock.addEventListener('click', () => {
+            tapCount++;
+            if(tapCount >= 3) {
+                fakeLock.style.display = 'none';
+                tapCount = 0;
+            }
+        });
+        
+        // Export acceptCall for player.js to use via keys
+        window.acceptCallGlobal = acceptCall; 
+        window.myStatus = 'idle'; // state tracker
+    </script>
+</body>
+</html>
