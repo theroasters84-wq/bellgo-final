@@ -14,6 +14,7 @@
         
         .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
 
+        /* LOGIN SCREEN STYLES */
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
         
@@ -26,7 +27,9 @@
         
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .divider { text-align: center; color: #555; margin: 5px 0; font-size: 14px; }
 
+        /* MAIN APP STYLES */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
@@ -90,7 +93,14 @@
         </div>
 
         <div id="adminForm" class="login-form" style="display:none;">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής Κουζίνας</p>
+            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:5px;">Διαχειριστής Κουζίνας</p>
+            
+            <input type="email" id="inpAdminEmail" placeholder="Email Διαχειριστή">
+            <input type="password" id="inpAdminPass" placeholder="Κωδικός">
+            <button class="btn-login" onclick="App.loginAdminEmail()">ΣΥΝΔΕΣΗ ME EMAIL</button>
+
+            <div class="divider">--- Ή ---</div>
+
             <button class="btn-google" onclick="App.loginAdminGoogle()">
                 <span>G</span> Σύνδεση με Google
             </button>
@@ -127,7 +137,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // ΠΡΟΣΘΕΣΑΜΕ ΤΟ signInWithEmailAndPassword
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = { 
@@ -145,7 +156,7 @@
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // 1. SETUP NOTIFICATIONS (ΜΕ ΔΙΟΡΘΩΣΗ)
+        // 1. SETUP NOTIFICATIONS
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
@@ -163,7 +174,7 @@
                             console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
                             
-                            // --- Η ΔΙΟΡΘΩΣΗ: ΣΤΕΛΝΟΥΜΕ ΤΟ TOKEN ΣΤΟΝ SERVER ΑΜΕΣΩΣ ---
+                            // Στέλνουμε το Token στον Server αμέσως
                             if (window.socket && window.socket.connected) {
                                 console.log("🔄 Sending Token update to server...");
                                 window.socket.emit('update-token', {
@@ -171,7 +182,6 @@
                                     token: token
                                 });
                             }
-                            // ---------------------------------------------------------
                         }
                     }
                 } catch (err) {
@@ -186,7 +196,7 @@
         });
 
         // 2. APP LOGIC
-        window.socket = null; // Κάνουμε το socket global για να το βλέπει το setupNotifications
+        window.socket = null;
         window.userData = { store: '', name: '', role: '' };
         let ghosts = {}; 
         let knownStaff = [];
@@ -208,6 +218,7 @@
         };
 
         window.App = {
+            // STAFF LOGIN
             loginStaff: () => {
                 const storeEmail = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
                 const myName = document.getElementById('inpMyName').value.trim();
@@ -220,6 +231,7 @@
                 App.completeLogin(user);
             },
 
+            // ADMIN GOOGLE LOGIN
             loginAdminGoogle: () => {
                 signInWithPopup(auth, provider)
                     .then((result) => {
@@ -236,12 +248,35 @@
                     });
             },
 
+            // ADMIN EMAIL LOGIN (ΝΕΟ)
+            loginAdminEmail: () => {
+                const email = document.getElementById('inpAdminEmail').value.trim();
+                const pass = document.getElementById('inpAdminPass').value.trim();
+
+                if(!email || !pass) return alert("Βάλε Email και Κωδικό!");
+
+                signInWithEmailAndPassword(auth, email, pass)
+                    .then((userCredential) => {
+                        const user = userCredential.user;
+                        const adminUser = {
+                            store: user.email.toLowerCase(), // To Email είναι το Store ID
+                            name: "Admin", // Συνήθως το email login δεν έχει displayName, βάζουμε Admin
+                            role: 'admin'
+                        };
+                        App.completeLogin(adminUser);
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        alert("Σφάλμα σύνδεσης: " + error.message);
+                    });
+            },
+
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
                 
                 if(window.AudioEngine) AudioEngine.init();
-                setupNotifications(); // Ξεκινάει η διαδικασία του Token
+                setupNotifications(); 
                 
                 App.finishLoginSequence();
             },
@@ -279,7 +314,7 @@
                 if (socket && socket.connected) return;
 
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
-                window.socket = socket; // Αποθήκευση στο global
+                window.socket = socket; 
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
