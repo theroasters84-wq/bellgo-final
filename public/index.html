@@ -14,7 +14,6 @@
         
         .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
 
-        /* LOGIN SCREEN STYLES */
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
         
@@ -28,7 +27,6 @@
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-        /* MAIN APP STYLES */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
@@ -142,13 +140,12 @@
             measurementId: "G-379ETZJP8H" 
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // 1. SETUP NOTIFICATIONS
+        // 1. SETUP NOTIFICATIONS (ΜΕ ΔΙΟΡΘΩΣΗ)
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
@@ -157,14 +154,24 @@
                     
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
-                        // VAPID KEY
                         const token = await getToken(messaging, { 
                             vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM",
                             serviceWorkerRegistration: registration 
                         });
+                        
                         if (token) {
                             console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
+                            
+                            // --- Η ΔΙΟΡΘΩΣΗ: ΣΤΕΛΝΟΥΜΕ ΤΟ TOKEN ΣΤΟΝ SERVER ΑΜΕΣΩΣ ---
+                            if (window.socket && window.socket.connected) {
+                                console.log("🔄 Sending Token update to server...");
+                                window.socket.emit('update-token', {
+                                    username: userData.name,
+                                    token: token
+                                });
+                            }
+                            // ---------------------------------------------------------
                         }
                     }
                 } catch (err) {
@@ -173,20 +180,18 @@
             }
         }
 
-        // Foreground Message
         onMessage(messaging, (payload) => {
             console.log('📩 Message:', payload);
             if (window.AudioEngine) window.AudioEngine.triggerAlarm();
         });
 
         // 2. APP LOGIC
-        let socket = null;
-        let userData = { store: '', name: '', role: '' };
+        window.socket = null; // Κάνουμε το socket global για να το βλέπει το setupNotifications
+        window.userData = { store: '', name: '', role: '' };
         let ghosts = {}; 
         let knownStaff = [];
         let heartbeatInterval = null;
 
-        // UI HELPERS
         window.UI = {
             showStaffLogin: () => {
                 document.getElementById('btnRoleStaff').classList.add('active');
@@ -203,7 +208,6 @@
         };
 
         window.App = {
-            // LOGIN STAFF
             loginStaff: () => {
                 const storeEmail = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
                 const myName = document.getElementById('inpMyName').value.trim();
@@ -216,13 +220,12 @@
                 App.completeLogin(user);
             },
 
-            // LOGIN ADMIN (GOOGLE)
             loginAdminGoogle: () => {
                 signInWithPopup(auth, provider)
                     .then((result) => {
                         const user = result.user;
                         const adminUser = {
-                            store: user.email.toLowerCase(), // Το Email γίνεται το ID του μαγαζιού
+                            store: user.email.toLowerCase(), 
                             name: user.displayName || "Admin",
                             role: 'admin'
                         };
@@ -238,7 +241,7 @@
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
                 
                 if(window.AudioEngine) AudioEngine.init();
-                setupNotifications(); // Ζητάμε άδεια εδώ
+                setupNotifications(); // Ξεκινάει η διαδικασία του Token
                 
                 App.finishLoginSequence();
             },
@@ -257,15 +260,13 @@
                 App.startHeartbeat();
             },
 
-            // AUTO RECONNECT (Ελέγχουμε στο φόρτωμα)
             checkSession: () => {
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
                     try {
                         userData = JSON.parse(saved);
-                        // Αν υπάρχει session, μπαίνουμε ΑΜΕΣΩΣ χωρίς login screen
                         console.log("🔄 Auto-Reconnecting...");
-                        if(window.AudioEngine) AudioEngine.init(); // Init audio context early
+                        if(window.AudioEngine) AudioEngine.init();
                         setupNotifications();
                         App.finishLoginSequence();
                     } catch (e) {
@@ -278,7 +279,8 @@
                 if (socket && socket.connected) return;
 
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
-                
+                window.socket = socket; // Αποθήκευση στο global
+
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerStore').innerText = "Online";
@@ -286,7 +288,7 @@
                     
                     const fcmToken = localStorage.getItem('fcm_token');
                     socket.emit('join-store', { 
-                        storeName: userData.store, // Το Email είναι το StoreName
+                        storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
                         token: fcmToken 
@@ -415,11 +417,9 @@
             }
         };
 
-        // INIT
         window.onload = function() {
             App.checkSession();
             
-            // Visibility API για επανασύνδεση όταν επιστρέφει από background
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") {
                     console.log("👀 App Visible - Checking connection...");
