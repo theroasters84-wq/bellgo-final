@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <title>Bellgo Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .login-box { background: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .dashboard { display: none; }
+        .user-card { 
+            padding: 15px; margin: 10px 0; border-radius: 8px; color: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+        }
+        .waiter { background-color: #3498db; } /* Μπλε για σερβιτόρους */
+        .driver { background-color: #e67e22; } /* Πορτοκαλί για διανομείς */
+        .status-dot { height: 12px; width: 12px; background-color: #ccc; border-radius: 50%; display: inline-block; }
+        .online { background-color: #2ecc71; }
+        .offline { background-color: #e74c3c; }
+        .calling { animation: pulse 1s infinite; border: 2px solid yellow; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        #chat-section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+        #messages { height: 200px; overflow-y: scroll; background: white; border: 1px solid #ddd; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-section" class="login-box">
+        <h2>Bellgo Admin Login</h2>
+        <button id="google-login">Σύνδεση με Google</button>
+        <br><br>
+        <input type="email" id="email-input" placeholder="Email">
+        <input type="password" id="pass-input" placeholder="Password">
+        <button id="email-login">Σύνδεση</button>
+    </div>
+
+    <div id="dashboard" class="dashboard">
+        <h3>Πίνακας Ελέγχου: <span id="admin-email-display"></span></h3>
+        <div id="download-icon" style="text-align:right;">📥 Download App</div>
+        
+        <h4>Προσωπικό</h4>
+        <div id="staff-list"></div>
+
+        <div id="chat-section">
+            <h4>Chat Δωματίου</h4>
+            <div id="messages"></div>
+            <input type="text" id="chat-input" placeholder="Μήνυμα..." style="width: 70%;">
+            <button id="send-chat">Αποστολή</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { auth, db, ref, onValue, update, sanitizeEmail, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, push } from '../firebase-config.js';
+
+    let currentAdminEmail = "";
+
+    // Login Logic
+    document.getElementById('google-login').addEventListener('click', () => {
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider).then((result) => initDashboard(result.user));
+    });
+
+    document.getElementById('email-login').addEventListener('click', () => {
+        const email = document.getElementById('email-input').value;
+        const pass = document.getElementById('pass-input').value;
+        signInWithEmailAndPassword(auth, email, pass).then((result) => initDashboard(result.user));
+    });
+
+    function initDashboard(user) {
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        currentAdminEmail = sanitizeEmail(user.email);
+        document.getElementById('admin-email-display').innerText = user.email;
+        loadStaff();
+        loadChat();
+    }
+
+    function loadStaff() {
+        const staffRef = ref(db, 'users/' + currentAdminEmail);
+        onValue(staffRef, (snapshot) => {
+            const list = document.getElementById('staff-list');
+            list.innerHTML = '';
+            const data = snapshot.val();
+            
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    const u = data[key];
+                    if (u.role === 'admin') return; // Skip admin entry
+
+                    // Logic για 5 λεπτά offline χωρίς logout
+                    let isLost = false;
+                    const now = Date.now();
+                    if (u.status === 'offline' && u.lastSeen && (now - u.lastSeen > 300000)) { // 5 λεπτά
+                        isLost = true;
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = `user-card ${u.role} ${u.callState === 'ringing' ? 'calling' : ''}`;
+                    div.innerHTML = `
+                        <span>
+                            <span class="status-dot ${u.status === 'online' ? 'online' : 'offline'}"></span>
+                            ${u.name} (${u.role}) ${isLost ? '⚠️ Χάθηκε;' : ''}
+                        </span>
+                        <span>${u.callState === 'accepted' ? '✅ Έρχεται' : (u.callState === 'ringing' ? '🔔 Κλήση...' : '📞 Κάλεσε')}</span>
+                    `;
+                    
+                    // Click to Call
+                    div.addEventListener('click', () => {
+                        update(ref(db, `users/${currentAdminEmail}/${key}`), {
+                            callState: 'ringing',
+                            callTimestamp: Date.now()
+                        });
+                    });
+                    list.appendChild(div);
+                });
+            }
+        });
+    }
+
+    // Chat Logic
+    function loadChat() {
+        const chatRef = ref(db, `chat/${currentAdminEmail}`);
+        onValue(chatRef, (snapshot) => {
+            const msgs = document.getElementById('messages');
+            msgs.innerHTML = '';
+            const data = snapshot.val();
+            if(data) {
+                Object.values(data).forEach(m => {
+                    msgs.innerHTML += `<div><b>${m.sender}:</b> ${m.text}</div>`;
+                });
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+        });
+
+        document.getElementById('send-chat').addEventListener('click', () => {
+            const txt = document.getElementById('chat-input').value;
+            if(txt) {
+                push(ref(db, `chat/${currentAdminEmail}`), {
+                    sender: 'Admin',
+                    text: txt,
+                    time: Date.now()
+                });
+                document.getElementById('chat-input').value = '';
+            }
+        });
+    }
+</script>
+</body>
+</html>
