@@ -1,21 +1,19 @@
-// public/player.js
-
 const AudioEngine = {
     player: null,
     isRinging: false,
     vibrationInterval: null,
+    keepAliveInterval: null, // ΝΕΟ: Για να κρατάει την μπάρα ζωντανή
 
     init() {
-        console.log("🔈 Audio Engine: System Media Mode Initialized");
+        console.log("🔈 Audio Engine: Aggressive Media Mode");
         
         if (!this.player) {
             this.player = document.createElement('audio');
             this.player.id = 'mainAudioPlayer';
             this.player.loop = true; 
             
-            // --- ΤΟ ΑΠΟΛΥΤΟ ΚΟΛΠΟ ΓΙΑ ΤΗΝ ΜΠΑΡΑ ---
-            // Αν το σύστημα κάνει Pause (επειδή πάτησες το κουμπί στην μπάρα),
-            // εμείς το μεταφράζουμε σε ΑΠΟΔΟΧΗ.
+            // Ασφάλεια: Αν το σύστημα σταματήσει τον ήχο (π.χ. πατήσεις Pause στην μπάρα)
+            // το θεωρούμε Αποδοχή Κλήσης.
             this.player.onpause = () => {
                 if (this.isRinging) {
                     console.log("⏸️ System Pause Detected -> ACCEPTING CALL");
@@ -26,10 +24,7 @@ const AudioEngine = {
             document.body.appendChild(this.player);
         }
 
-        // Ρύθμιση κουμπιών
         this.setupMediaSession();
-
-        // Ξεκινάμε με Silence
         this.startSilenceSession();
     },
 
@@ -40,66 +35,73 @@ const AudioEngine = {
                 this.stopAlarm();
             };
 
-            try {
-                // Δηλώνουμε ΟΛΑ τα κουμπιά
-                navigator.mediaSession.setActionHandler('play', acceptCall);
-                navigator.mediaSession.setActionHandler('pause', acceptCall);
-                navigator.mediaSession.setActionHandler('stop', acceptCall);
-                navigator.mediaSession.setActionHandler('previoustrack', acceptCall);
-                navigator.mediaSession.setActionHandler('nexttrack', acceptCall);
-            } catch(e) { console.log("Media Session Error:", e); }
+            // Δηλώνουμε ότι ΟΛΑ τα κουμπιά κάνουν το ίδιο πράγμα (Stop)
+            navigator.mediaSession.setActionHandler('play', acceptCall);
+            navigator.mediaSession.setActionHandler('pause', acceptCall);
+            navigator.mediaSession.setActionHandler('stop', acceptCall);
+            navigator.mediaSession.setActionHandler('previoustrack', acceptCall);
+            navigator.mediaSession.setActionHandler('nexttrack', acceptCall);
         }
     },
 
-    // --- ΛΕΙΤΟΥΡΓΙΑ 1: SILENCE (ONLINE) ---
+    // --- 1. SILENCE MODE (ONLINE) ---
     startSilenceSession() {
         this.isRinging = false; 
+        
+        // Σταματάμε το "σφυροκόπημα" της μπάρας αν τρέχει
+        if(this.keepAliveInterval) clearInterval(this.keepAliveInterval);
 
         this.player.src = 'silence.mp3';
         this.player.volume = 0.1; 
         
-        this.updateMetadata("BellGo Active", "🟢 Συνδεδεμένος", "https://cdn-icons-png.flaticon.com/512/190/190411.png");
+        this.updateMetadata("BellGo Active", "🟢 Online - Αναμονή", "https://cdn-icons-png.flaticon.com/512/190/190411.png");
 
         const playPromise = this.player.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // ΛΕΜΕ ΣΤΟ ΚΙΝΗΤΟ: "ΠΑΙΖΩ ΜΟΥΣΙΚΗ, ΑΝΑΨΕ ΤΑ ΚΟΥΜΠΙΑ"
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-            }).catch(e => console.log("Waiting for click..."));
+            }).catch(e => console.log("Waiting for interaction..."));
         }
     },
 
-    // --- ΛΕΙΤΟΥΡΓΙΑ 2: ALARM (ΚΛΗΣΗ) ---
+    // --- 2. ALARM MODE (ΚΛΗΣΗ) ---
     triggerAlarm() {
         if (this.isRinging) return;
         this.isRinging = true;
         console.log("🔔 TRIGGER ALARM");
 
-        // 1. Εμφάνιση Κόκκινης Οθόνης
+        // UI: Κόκκινη οθόνη
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
-            // Reset Slider (αν υπάρχει)
             const slider = document.getElementById('acceptSlider');
             if (slider) slider.value = 50; 
         }
 
-        // 2. Αλλαγή Ήχου
+        // AUDIO: Αλλαγή σε Σειρήνα
         this.player.src = 'alert.mp3';
-        // Δεν πειράζουμε την ένταση (σέβεται την ένταση του κινητού)
-        
-        // 3. Ενημέρωση Μπάρας
-        this.updateMetadata("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ", "Πάτα ΠΑΥΣΗ για Αποδοχή", "https://cdn-icons-png.flaticon.com/512/564/564619.png");
+        this.player.volume = 1.0; 
         
         this.player.play()
             .then(() => {
-                // ΞΑΝΑ-ΕΝΕΡΓΟΠΟΙΗΣΗ ΚΟΥΜΠΙΩΝ
+                // Μόλις ξεκινήσει ο ήχος, φτιάχνουμε την μπάρα
+                this.updateMetadata("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ", "Πάτα ΠΑΥΣΗ για Αποδοχή", "https://cdn-icons-png.flaticon.com/512/564/564619.png");
+                
+                // FORCE: Λέμε στο Android ότι παίζουμε μουσική
                 if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
-                this.setupMediaSession(); // Ξαναδένουμε τα κουμπιά για σιγουριά
+
+                // EXTRA FORCE: Ξαναστέλνουμε την εντολή κάθε 1.5 δευτερόλεπτο
+                // για να μην εξαφανιστεί η μπάρα
+                if(this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+                this.keepAliveInterval = setInterval(() => {
+                    if(this.isRinging) {
+                        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+                    }
+                }, 1500);
             })
             .catch(e => console.error("❌ Play failed:", e));
 
-        // 4. Δόνηση
+        // VIBRATION
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]); 
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -109,23 +111,23 @@ const AudioEngine = {
         }
     },
 
-    // --- ΛΕΙΤΟΥΡΓΙΑ 3: STOP (ΑΠΟΔΟΧΗ) ---
+    // --- 3. STOP MODE (ΑΠΟΔΟΧΗ) ---
     stopAlarm() {
-        // Έλεγχος: Αν έχει ήδη σταματήσει, μην κάνεις τίποτα (για να μην κάνει loop)
         if (!this.isRinging && this.player.src.includes('silence')) return;
         
-        console.log("🔕 STOP ALARM -> Returning to Silence");
+        console.log("🔕 STOP ALARM -> Back to Silence");
         this.isRinging = false;
 
-        // Κρύψιμο UI
+        // UI Hide
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'none';
 
-        // Stop Δόνησης
+        // Clear Intervals
         if (this.vibrationInterval) clearInterval(this.vibrationInterval);
+        if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
         if (navigator.vibrate) navigator.vibrate(0);
 
-        // ΕΠΙΣΤΡΟΦΗ ΣΤΟ SILENCE (Χωρίς Pause, αλλάζουμε τραγούδι)
+        // Back to Silence (No pause, direct swap)
         this.startSilenceSession();
     },
 
