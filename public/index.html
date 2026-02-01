@@ -13,38 +13,28 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        
         .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
-
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 20px; color: #00E676; font-size: 32px; }
-        
         .input-group { width: 85%; margin-bottom: 12px; }
         input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 18px; text-align: center; -webkit-appearance: none; }
         select { text-align-last: center; } 
-        
         .btn-login { width: 85%; padding: 15px; font-size: 20px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; }
-        
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
-        
         .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
         .user-info { font-size: 14px; color: #ccc; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
-
         .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
         .btn-staff:active { transform: scale(0.98); }
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
         .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
-        
         .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
         .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
-        
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; color: white; }
@@ -55,11 +45,9 @@
         .msg.waiter { background: #1565C0; }
         .msg.driver { background: #E65100; }
         .msg.admin { background: #D32F2F; border: 1px solid yellow; }
-
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; padding-bottom: max(10px, env(safe-area-inset-bottom)); flex-shrink: 0; }
         .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; border: 1px solid #444; background: #333 !important; color: white !important; -webkit-text-fill-color: white !important; caret-color: #00E676; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 45px; color: black; }
-
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
         .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; -webkit-user-select: none; }
@@ -67,7 +55,6 @@
     </style>
 </head>
 <body>
-
     <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk" target="_blank">📲 APP</a>
 
     <div id="loginScreen">
@@ -132,18 +119,16 @@
         let knownStaff = [];
         let heartbeatInterval = null;
 
-        // --- 1. FIREBASE MESSAGING LOGIC ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./firebase-messaging-sw.js')
             .then(function(registration) {
-                console.log('✅ Service Worker Registered');
+                console.log('✅ SW Registered');
                 return Notification.requestPermission();
             })
             .then((permission) => {
                 if (permission === 'granted') {
                     console.log('🔔 Permission Granted');
-                    
-                    // ΕΔΩ ΕΒΑΛΑ ΤΟ VAPID KEY ΠΟΥ ΜΟΥ ΕΣΤΕΙΛΕΣ
+                    // VAPID KEY ΕΔΩ
                     return messaging.getToken({ vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM" }); 
                 }
             })
@@ -151,58 +136,43 @@
                 if (token) {
                     console.log("🔥 TOKEN:", token);
                     localStorage.setItem('fcm_token', token);
-                    
-                    // ΕΜΦΑΝΙΣΗ ΣΤΗΝ ΟΘΟΝΗ (ΓΙΑ ΝΑ ΤΟ ΠΑΡΕΙΣ ΕΥΚΟΛΑ)
-                    window.prompt("Token συσκευής (Αντίγραψέ το):", token);
+                    // ΑΦΑΙΡΕΣΑΜΕ ΤΟ WINDOW.PROMPT ΑΠΟ ΕΔΩ
                 } else {
                     console.log('No token available.');
                 }
             })
-            .catch((err) => {
-                console.log('SW Error:', err);
-            });
+            .catch((err) => console.log('SW Error:', err));
         }
 
-        // --- 2. FOREGROUND MESSAGE ---
         messaging.onMessage((payload) => {
-            console.log('📩 Foreground Message:', payload);
+            console.log('📩 Message:', payload);
             if (window.AudioEngine) window.AudioEngine.triggerAlarm();
         });
 
-        // --- 3. MAIN APP LOGIC ---
         const App = {
             login() {
                 const rawStore = document.getElementById('inpStore').value.trim();
                 const name = document.getElementById('inpName').value.trim();
                 const pass = document.getElementById('inpPass').value.trim();
                 const role = document.getElementById('inpRole').value;
-
                 if (!rawStore || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
-
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-
                 if(window.AudioEngine) AudioEngine.init();
-                
                 this.finishLoginSequence();
             },
-
             finishLoginSequence() {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.querySelector('.btn-apk').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
-
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
-                
                 this.connectSocket();
                 this.startHeartbeat();
-
                 document.addEventListener("visibilitychange", () => {
                     if (document.visibilityState === "visible" && socket && !socket.connected) socket.connect();
                 });
             },
-
             checkSession() {
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
@@ -212,47 +182,29 @@
                         document.getElementById('inpName').value = userData.name;
                         document.getElementById('inpPass').value = userData.pass;
                         document.getElementById('inpRole').value = userData.role;
-                    } catch (e) {
-                        localStorage.removeItem('bellgo_session');
-                    }
+                    } catch (e) { localStorage.removeItem('bellgo_session'); }
                 }
             },
-
             connectSocket() {
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
-                
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
-                    
                     const fcmToken = localStorage.getItem('fcm_token');
-                    socket.emit('join-store', { 
-                        storeName: userData.store, 
-                        username: userData.name, 
-                        role: userData.role, 
-                        pass: userData.pass,
-                        token: fcmToken 
-                    });
+                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, pass: userData.pass, token: fcmToken });
                 });
-
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
                     document.getElementById('staffPanel').classList.add('offline-mode');
                 });
-
                 socket.on('ring-bell', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(false); });
                 socket.on('kitchen-alarm', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(false); });
-                
                 socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
                 socket.on('chat-message', (data) => this.renderChat(data));
             },
-
-            forceReconnect() {
-                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
-            },
-
+            forceReconnect() { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
             startHeartbeat() {
                 if(heartbeatInterval) clearInterval(heartbeatInterval);
                 heartbeatInterval = setInterval(() => {
@@ -262,65 +214,42 @@
                     }
                 }, 2000);
             },
-
             logout() {
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
             },
-
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
-                serverList.forEach(u => {
-                    const uname = u.name || u.username;
-                    if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
-                });
+                serverList.forEach(u => { const uname = u.name || u.username; if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; } });
                 knownStaff.forEach(u => {
                     const uname = u.name || u.username;
                     const isStillOnline = serverList.find(s => (s.name || s.username) === uname);
                     const isAlreadyGhost = ghosts[uname];
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        ghosts[uname] = {
-                            data: u,
-                            timer: setTimeout(() => {
-                                delete ghosts[uname];
-                                App.renderMergedList(lastStaffList);
-                            }, 180000) 
-                        };
+                        ghosts[uname] = { data: u, timer: setTimeout(() => { delete ghosts[uname]; App.renderMergedList(lastStaffList); }, 180000) };
                     }
                 });
                 knownStaff = serverList;
                 this.renderMergedList(serverList);
             },
-
             renderMergedList(serverList) {
                 const mergedList = [...serverList];
                 Object.values(ghosts).forEach(g => mergedList.push(g.data));
                 lastStaffList = mergedList;
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
-                
                 if (userData.role !== 'admin') return;
-
-                if (mergedList.length === 0) {
-                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
-                     return;
-                }
-                
+                if (mergedList.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>'; return; }
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    
                     const uname = u.name || u.username || "Unknown";
                     const isGhost = ghosts[uname] !== undefined;
-                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    
                     btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
                     const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
-                    
                     btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${statusText}</span>`;
-                    
                     if (!isGhost) {
                         btn.onclick = () => {
                             console.log("Calling:", uname);
@@ -335,7 +264,6 @@
                     container.appendChild(btn);
                 });
             },
-
             sendChat() {
                 const inp = document.getElementById('msgInput');
                 const txt = inp.value.trim();
@@ -344,7 +272,6 @@
                 inp.value = '';
                 inp.focus();
             },
-
             renderChat(data) {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
