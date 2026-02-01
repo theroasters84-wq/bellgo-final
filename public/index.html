@@ -2,33 +2,332 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>Bellgo Είσοδος</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo Ultra</title>
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
     <style>
-        body { font-family: sans-serif; background: #222; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { margin-bottom: 40px; }
-        .btn {
-            display: block;
-            width: 200px;
-            padding: 20px;
-            margin: 10px;
-            text-align: center;
-            text-decoration: none;
-            color: white;
-            font-size: 20px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-        .admin { background-color: #e74c3c; } /* Κόκκινο */
-        .user { background-color: #3498db; } /* Μπλε */
+        /* --- GENERAL --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* --- APK BUTTON --- */
+        .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        /* --- LOGIN SCREEN --- */
+        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
+        h1 { margin-bottom: 20px; color: #00E676; font-size: 32px; }
+        
+        .input-group { width: 85%; margin-bottom: 12px; }
+        input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 18px; text-align: center; -webkit-appearance: none; }
+        select { text-align-last: center; } 
+        
+        .btn-login { width: 85%; padding: 15px; font-size: 20px; font-weight: bold; background: #00E676; color: black; border: none; border-radius: 8px; margin-top: 10px; cursor: pointer; }
+        
+        /* --- MAIN APP --- */
+        #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
+        
+        /* Header */
+        .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
+        .user-info { font-size: 14px; color: #ccc; }
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        /* Content Area */
+        .content { flex: 1; display: flex; overflow: hidden; position: relative; }
+        
+        /* Staff List */
+        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
+        .staff-panel.active { display: flex; }
+
+        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
+        .btn-staff:active { transform: scale(0.98); }
+        .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
+        .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
+        .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
+        
+        .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
+        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
+        .btn-staff.ghost span.status { color: #ffab00 !important; font-weight: bold; animation: pulseText 1.5s infinite; }
+        @keyframes pulseText { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        /* Chat Panel */
+        .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+        
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; position: relative; color: white; }
+        .msg .sender-name { font-size: 11px; margin-bottom: 4px; display: block; opacity: 0.8; font-weight: bold; }
+        .msg.me { align-self: flex-end; background: #00E676; color: black; border-bottom-right-radius: 2px; }
+        .msg.me .sender-name { text-align: right; color: #004d26; }
+        .msg.other { align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg.waiter { background: #1565C0; }
+        .msg.driver { background: #E65100; }
+        .msg.admin { background: #D32F2F; border: 1px solid yellow; }
+
+        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; padding-bottom: max(10px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+        .chat-input input { border-radius: 20px; text-align: left; padding-left: 15px; width: 100%; height: 45px; border: 1px solid #444; background: #333 !important; color: white !important; -webkit-text-fill-color: white !important; caret-color: #00E676; }
+        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; cursor: pointer; height: 45px; color: black; }
+
+        /* --- ALARM OVERLAY --- */
+        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
+        @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
+        
+        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; -webkit-user-select: none; }
+        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        #alarmOverlay.test-mode { background: #2962FF !important; animation: none; }
+        #alarmOverlay.test-mode .stop-btn { color: #2962FF; border-color: white; animation: none; }
     </style>
 </head>
 <body>
 
-    <h1>Bellgo System</h1>
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/download/v1.0.0/app-release.apk" class="btn-apk" target="_blank">📲 APP</a>
 
-    <a href="2admin/admin.html" class="btn admin">👨‍💻 ADMIN</a>
-    <a href="3user/xrhsths.html" class="btn user">🍽️ ΧΡΗΣΤΗΣ</a>
+    <div id="loginScreen">
+        <h1>🔔 BellGo Login</h1>
+        <div class="input-group"><input type="text" id="inpStore" placeholder="Όνομα Μαγαζιού (π.χ. Coffee1)"></div>
+        <div class="input-group"><input type="text" id="inpName" placeholder="Το Όνομά σου"></div>
+        <div class="input-group"><input type="password" id="inpPass" placeholder="Κωδικός" inputmode="numeric"></div>
+        <div class="input-group">
+            <select id="inpRole">
+                <option value="waiter">🟦 Σερβιτόρος</option>
+                <option value="driver">🟧 Διανομέας</option>
+                <option value="admin">🟥 ADMIN (Κουζίνα)</option>
+            </select>
+        </div>
+        <button class="btn-login" onclick="App.login()">ΣΥΝΔΕΣΗ</button>
+    </div>
 
+    <div id="mainApp">
+        <div class="header">
+            <div style="display:flex; align-items:center;">
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" title="Reconnect"></span>
+                <span id="headerInfo" class="user-info">...</span>
+            </div>
+            <button class="btn-logout" onclick="App.logout()">EXIT</button>
+        </div>
+        <div class="content">
+            <div id="staffPanel" class="staff-panel"><div id="staffList"></div></div>
+            <div class="chat-panel">
+                <div id="chatBox" class="chat-messages"><div style="text-align:center; opacity:0.5; margin-top:20px;">Chat Started</div></div>
+                <div class="chat-input"><input type="text" id="msgInput" placeholder="Γράψε εδώ..." autocomplete="off"><button onclick="App.sendChat()">➤</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alarmOverlay" onclick="AudioEngine.stopAlarm(true)">
+        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
+        <button id="alarmBtn" class="stop-btn">STOP</button>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button για Αποδοχή)</div>
+    </div>
+
+    <script src="player.js"></script>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", authDomain: "bellgo-5dbe5.firebaseapp.com", projectId: "bellgo-5dbe5", storageBucket: "bellgo-5dbe5.firebasestorage.app", messagingSenderId: "799314495253", appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", measurementId: "G-379ETZJP8H" };
+        try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
+
+        let socket = null;
+        let userData = { store: '', name: '', role: '', pass: '' };
+        let ghosts = {}; 
+        let knownStaff = [];
+        let heartbeatInterval = null;
+
+        // Το App Object (Χωρίς τον Player μέσα)
+        const App = {
+            login() {
+                const rawStore = document.getElementById('inpStore').value.trim();
+                const name = document.getElementById('inpName').value.trim();
+                const pass = document.getElementById('inpPass').value.trim();
+                const role = document.getElementById('inpRole').value;
+
+                if (!rawStore || !name || !pass) return alert("Συμπλήρωσε όλα τα πεδία!");
+
+                userData = { store: rawStore.toLowerCase(), name, role, pass };
+                localStorage.setItem('bellgo_session', JSON.stringify(userData));
+
+                // Initialize Audio Engine (Καλείται από το player.js πλέον)
+                AudioEngine.init();
+                // Trigger Test Alarm immediately to warm up the 'Switching' capability
+                AudioEngine.triggerAlarm(true);
+            },
+
+            finishLoginSequence() {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.querySelector('.btn-apk').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'flex';
+                document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
+
+                if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
+                if (Notification.requestPermission) Notification.requestPermission();
+                
+                try {
+                    const messaging = firebase.messaging();
+                    messaging.getToken({ vapidKey: 'BMc_...' }).then(t => { if(t) console.log("FCM:", t); }).catch(e => {});
+                } catch(e){}
+
+                this.connectSocket();
+                this.startHeartbeat();
+
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible" && socket && !socket.connected) socket.connect();
+                });
+            },
+
+            checkSession() {
+                const saved = localStorage.getItem('bellgo_session');
+                if (saved) {
+                    try {
+                        userData = JSON.parse(saved);
+                        document.getElementById('inpStore').value = userData.store;
+                        document.getElementById('inpName').value = userData.name;
+                        document.getElementById('inpPass').value = userData.pass;
+                        document.getElementById('inpRole').value = userData.role;
+                    } catch (e) {
+                        localStorage.removeItem('bellgo_session');
+                    }
+                }
+            },
+
+            connectSocket() {
+                socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
+                
+                socket.on('connect', () => {
+                    document.getElementById('connDot').style.background = '#00E676';
+                    document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
+                    document.getElementById('staffPanel').classList.remove('offline-mode');
+                    socket.emit('join-store', { 
+                        storeName: userData.store, 
+                        username: userData.name, 
+                        role: userData.role, 
+                        pass: userData.pass 
+                    });
+                });
+
+                socket.on('disconnect', () => {
+                    document.getElementById('connDot').style.background = 'red';
+                    document.getElementById('headerInfo').innerText = `${userData.name} | Offline`;
+                    document.getElementById('staffPanel').classList.add('offline-mode');
+                });
+
+                socket.on('ring-bell', () => AudioEngine.triggerAlarm(false));
+                socket.on('kitchen-alarm', () => AudioEngine.triggerAlarm(false));
+                socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
+                socket.on('chat-message', (data) => this.renderChat(data));
+            },
+
+            forceReconnect() {
+                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
+            },
+
+            startHeartbeat() {
+                if(heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
+                    if (socket && socket.connected) {
+                        socket.emit('heartbeat');
+                        if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
+                    }
+                }, 2000);
+            },
+
+            logout() {
+                if(AudioEngine.player) AudioEngine.player.pause();
+                localStorage.removeItem('bellgo_session');
+                if (socket) socket.disconnect();
+                window.location.reload();
+            },
+
+            processStaffList(serverList) {
+                if (!serverList) serverList = [];
+                serverList.forEach(u => {
+                    if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
+                });
+                knownStaff.forEach(u => {
+                    const isStillOnline = serverList.find(s => s.name === u.name);
+                    const isAlreadyGhost = ghosts[u.name];
+                    if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
+                        ghosts[u.name] = {
+                            data: u,
+                            timer: setTimeout(() => {
+                                delete ghosts[u.name];
+                                App.renderMergedList(lastStaffList);
+                            }, 180000) 
+                        };
+                    }
+                });
+                knownStaff = serverList;
+                this.renderMergedList(serverList);
+            },
+
+            renderMergedList(serverList) {
+                const mergedList = [...serverList];
+                Object.values(ghosts).forEach(g => mergedList.push(g.data));
+                lastStaffList = mergedList;
+                const container = document.getElementById('staffList');
+                container.innerHTML = '';
+                
+                if (userData.role !== 'admin') return;
+
+                if (mergedList.length === 0) {
+                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
+                     return;
+                }
+                
+                mergedList.forEach(u => {
+                    if (String(u.role).toLowerCase() === 'admin') return; 
+                    const btn = document.createElement('button');
+                    const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
+                    const isGhost = ghosts[u.name] !== undefined;
+                    
+                    btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
+                    const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
+                    btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">${statusText}</span>`;
+                    
+                    if (!isGhost) {
+                        btn.onclick = () => {
+                            socket.emit('trigger-alarm', u.name);
+                            const statusSpan = btn.querySelector('.status');
+                            statusSpan.innerText = "📞 CALLING...";
+                            statusSpan.style.color = "yellow";
+                            statusSpan.style.fontWeight = "bold";
+                            setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
+                        };
+                    }
+                    container.appendChild(btn);
+                });
+            },
+
+            sendChat() {
+                const inp = document.getElementById('msgInput');
+                const txt = inp.value.trim();
+                if (!txt) return;
+                socket.emit('chat-message', { text: txt });
+                inp.value = '';
+                inp.focus();
+            },
+
+            renderChat(data) {
+                const box = document.getElementById('chatBox');
+                const div = document.createElement('div');
+                const isMe = data.sender === userData.name;
+                let roleClass = 'waiter';
+                if (data.role) roleClass = data.role.toLowerCase();
+                if (isMe) roleClass = 'me';
+                div.className = `msg ${roleClass}`;
+                if (!isMe) div.classList.add('other');
+                div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
+                box.appendChild(div);
+                box.scrollTop = box.scrollHeight;
+            }
+        };
+
+        window.onload = function() {
+            App.checkSession();
+        };
+    </script>
 </body>
 </html>
