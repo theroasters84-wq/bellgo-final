@@ -3,11 +3,22 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 
+// --- 1. FIREBASE ADMIN SETUP (ΤΟ ΠΡΟΣΘΕΣΑΜΕ) ---
+const admin = require("firebase-admin");
+
+// Βεβαιώσου ότι το αρχείο αυτό υπάρχει δίπλα στο server.js
+// Αν το λένε αλλιώς, άλλαξε το όνομα εδώ.
+const serviceAccount = require("./serviceAccountKey.json"); 
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+// ----------------------------------------------
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Σερβίρουμε τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
@@ -16,7 +27,6 @@ io.on('connection', (socket) => {
     
     // 1. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ
     socket.on('join-store', (data) => {
-        // Εδώ διαβάζουμε είτε 'username' είτε 'name' για να είμαστε σίγουροι
         const rawName = data.username || data.name || "";
         const cleanUser = rawName.trim();
         const cleanStore = data.storeName ? data.storeName.trim().toLowerCase() : "";
@@ -35,10 +45,12 @@ io.on('connection', (socket) => {
             username: cleanUser, 
             role: data.role,
             store: cleanStore,
+            // --- 2. ΑΠΟΘΗΚΕΥΣΗ TOKEN (ΤΟ ΠΡΟΣΘΕΣΑΜΕ) ---
+            fcmToken: data.token, // Εδώ αποθηκεύουμε το διαβατήριο για το Firebase
             lastSeen: Date.now()
         };
 
-        console.log(`👤 Joined: ${cleanUser} (${data.role}) @ ${cleanStore}`);
+        console.log(`👤 Joined: ${cleanUser} (${data.role}) @ ${cleanStore} [Token: ${data.token ? 'YES' : 'NO'}]`);
         updateStore(cleanStore);
     });
 
@@ -50,7 +62,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM
+    // 3. TRIGGER ALARM (ΕΔΩ ΕΙΝΑΙ Η ΜΕΓΑΛΗ ΑΛΛΑΓΗ)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
         
@@ -60,7 +72,35 @@ io.on('connection', (socket) => {
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
+            // Α. Στέλνουμε Socket (Για ανοιχτή εφαρμογή - Ήχος)
             io.to(targetUser.socketId).emit('ring-bell');
+
+            // Β. Στέλνουμε FIREBASE NOTIFICATION (Για κλειστή εφαρμογή - Δόνηση)
+            if (targetUser.fcmToken) {
+                const message = {
+                    token: targetUser.fcmToken,
+                    data: {
+                        title: "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ",
+                        body: "Έλα γρήγορα!",
+                        url: "/",     // Για να ανοίξει το App
+                        type: "alarm" // Για να ξέρει το Service Worker τι να κάνει
+                    },
+                    android: {
+                        priority: "high" // Σημαντικό για να ξυπνήσει το κινητό
+                    }
+                };
+
+                admin.messaging().send(message)
+                    .then((response) => {
+                        console.log('✅ FCM sent successfully:', response);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Error sending FCM:', error);
+                    });
+            } else {
+                console.log("⚠️ User has no Token (App might be closed perfectly or denied permission)");
+            }
+
         } else {
             console.log("❌ User not found");
         }
@@ -79,18 +119,27 @@ io.on('connection', (socket) => {
             }, 5000);
         }
     });
+    
+    // ΝΕΟ: Ενημέρωση Token (αν αλλάξει ενώ είναι συνδεδεμένος)
+    socket.on('update-token', (data) => {
+        if (socket.store && data.username && data.token) {
+             const userKey = `${socket.store}_${data.username}`;
+             if (activeUsers[userKey]) {
+                 activeUsers[userKey].fcmToken = data.token;
+                 console.log(`🔄 Token updated for ${data.username}`);
+             }
+        }
+    });
 }); 
 
-// --- Η ΔΙΟΡΘΩΣΗ ΕΙΝΑΙ ΕΔΩ ---
 function updateStore(storeName) {
     if(!storeName) return;
     
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
     
-    // Στέλνουμε ΚΑΙ name ΚΑΙ username για να μην μπερδεύεται το HTML
     const formattedStaff = staff.map(u => ({
-        name: u.username,      // Για συμβατότητα
-        username: u.username,  // Για σιγουριά
+        name: u.username,      
+        username: u.username,  
         role: u.role
     }));
 
