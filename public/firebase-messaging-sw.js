@@ -1,6 +1,5 @@
 // public/firebase-messaging-sw.js
 
-// Χρησιμοποιούμε την έκδοση 8.10.1 για να ταιριάζει με το index.html
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
@@ -14,37 +13,42 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 1. ΛΗΨΗ ΜΗΝΥΜΑΤΟΣ ΣΤΟ ΠΑΡΑΣΚΗΝΙΟ
+// --- ΕΔΩ ΓΙΝΕΤΑΙ Η ΔΟΝΗΣΗ ---
+// Επειδή ο Server έστειλε μόνο "data", τρέχει αυτή η συνάρτηση:
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[SW] Background Message:', payload);
+  console.log('[SW] Background Alarm Received:', payload);
 
-  const notificationTitle = payload.data.title || payload.notification.title || '🔔 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
+  const notificationTitle = payload.data.title || '🔔 BellGo';
   const notificationOptions = {
-    body: payload.data.body || payload.notification.body || 'Πάτα για αποδοχή',
-    icon: '/icon.png', // Βεβαιώσου ότι υπάρχει icon.png στο public
-    vibrate: [1000, 500, 1000], // Δόνηση από το Service Worker
-    requireInteraction: true,   // Να μένει στην οθόνη
-    data: { url: '/' }          // Για να ξέρουμε πού να πάμε στο κλικ
+    body: payload.data.body || 'Νέα Κλήση',
+    icon: '/icon.png',
+    
+    // ΔΥΝΑΤΗ ΔΟΝΗΣΗ: [Δόνηση, Παύση, Δόνηση, Παύση, Δόνηση...]
+    vibrate: [1000, 500, 1000, 500, 2000], 
+    
+    tag: 'alarm-notification', // Το ίδιο tag για να μην γεμίζει η μπάρα
+    renotify: true,            // Να ξαναχτυπήσει/δονηθεί ακόμα κι αν υπάρχει ήδη ειδοποίηση!
+    requireInteraction: true,  // Να μείνει στην οθόνη μέχρι να το πατήσεις
+    data: { url: '/' }
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 2. ΟΤΑΝ Ο ΧΡΗΣΤΗΣ ΠΑΤΑΕΙ ΤΗΝ ΕΙΔΟΠΟΙΗΣΗ
+// Όταν πατήσεις την ειδοποίηση
 self.addEventListener('notificationclick', function(event) {
-  event.notification.close(); // Κλείσε την ειδοποίηση
-
-  // Άνοιξε την εφαρμογή ή κάνε focus αν είναι ήδη ανοιχτή
+  event.notification.close();
+  
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
-      // Αν υπάρχει ήδη ανοιχτό tab, πήγαινε εκεί
+      // Αν είναι ήδη ανοιχτό, πήγαινε εκεί
       for (var i = 0; i < windowClients.length; i++) {
         var client = windowClients[i];
         if (client.url === '/' && 'focus' in client) {
           return client.focus();
         }
       }
-      // Αν δεν υπάρχει, άνοιξε νέο
+      // Αλλιώς άνοιξε το
       if (clients.openWindow) {
         return clients.openWindow('/');
       }
