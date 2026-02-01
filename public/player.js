@@ -1,35 +1,36 @@
 const AudioEngine = {
     player: null,
     isRinging: false,
-    wakeLock: null,      // Για να μένει ανοιχτή η οθόνη
+    wakeLock: null,      // Κρατάει την οθόνη ανοιχτή (WakeLock API)
     vibrationInterval: null,
-    alarmStartTime: 0,   // Για την ασφάλεια του Volume Button
+    alarmStartTime: 0,   // Χρονόμετρο για ασφάλεια Volume Button
 
     async init() {
-        console.log("🔊 AudioEngine: 19Hz Keep-Alive Mode");
+        console.log("🔊 AudioEngine: 19Hz Unified Player Mode");
 
-        // 1. ΔΗΜΙΟΥΡΓΙΑ PLAYER
+        // 1. ΔΗΜΙΟΥΡΓΙΑ ΤΟΥ ΕΝΟΣ ΚΑΙ ΜΟΝΑΔΙΚΟΥ PLAYER
         if (!this.player) {
             this.player = document.createElement("audio");
             this.player.id = 'mainAudioPlayer';
             this.player.loop = true;
-            this.player.volume = 1.0; // Τέρμα ένταση (για να μην κοιμηθεί το Android)
-            this.player.src = "tone19hz.wav"; // Ο υπόηχος
+            this.player.volume = 1.0; // ΤΕΡΜΑ ΕΝΤΑΣΗ (Για να μην κοιμηθεί το Android)
+            this.player.src = "tone19hz.wav"; // Ξεκινάμε με τον υπόηχο
             
-            // LOGIC: Αν πατηθεί Pause από το σύστημα
+            // --- LOGIC 1: PAUSE BUTTON (Media Session) ---
             this.player.onpause = () => {
                 if (this.isRinging) {
                     console.log("⏸️ System Pause -> ACCEPTING CALL");
                     this.stopAlarm();
                 } else {
-                    // Αν είμαστε σε αναμονή, απαγορεύουμε το Pause
+                    // Αν πατηθεί Pause ενώ είμαστε Online (όχι κλήση), το ξαναξεκινάμε αμέσως!
                     console.log("⚠️ Keep-Alive enforce: Restarting Tone");
                     this.player.play();
                 }
             };
 
-            // LOGIC: Volume Button Hack
+            // --- LOGIC 2: VOLUME BUTTONS ---
             this.player.onvolumechange = () => {
+                // Αν χτυπάει ΚΑΙ έχουν περάσει 2 δευτερόλεπτα (για να μην το κλείσει κατά λάθος στην αρχή)
                 if (this.isRinging && (Date.now() - this.alarmStartTime > 2000)) {
                     console.log("🎚️ Volume Changed -> ACCEPTING CALL");
                     this.stopAlarm();
@@ -58,6 +59,7 @@ const AudioEngine = {
         }
     },
 
+    // Ζητάει από το Android να μην σβήσει την οθόνη
     async requestWakeLock() {
         if ('wakeLock' in navigator) {
             try {
@@ -77,13 +79,13 @@ const AudioEngine = {
             }
         };
 
-        // Όλα τα κουμπιά κάνουν Αποδοχή
+        // Όλα τα κουμπιά (Play, Pause, Next, Prev) κάνουν Αποδοχή
         ["play", "pause", "stop", "nexttrack", "previoustrack"].forEach(action => {
             try { navigator.mediaSession.setActionHandler(action, accept); } catch(e){}
         });
     },
 
-    // 🚨 TRIGGER ALARM
+    // --- 🚨 TRIGGER ALARM (ΚΛΗΣΗ) ---
     async triggerAlarm() {
         if (this.isRinging) return;
 
@@ -91,24 +93,23 @@ const AudioEngine = {
         this.alarmStartTime = Date.now();
         console.log("🚨 ALARM START");
 
-        // UI: Εμφάνιση
+        // 1. UI: Εμφάνιση Κόκκινης Οθόνης
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
             const slider = document.getElementById('acceptSlider');
-            if (slider) slider.value = 50;
+            if (slider) slider.value = 50; // Reset Slider στη μέση
         }
 
-        // AUDIO: Αλλαγή σε Σειρήνα
+        // 2. AUDIO: Αλλαγή src σε ALERT.MP3
         this.player.src = "alert.mp3";
         this.player.loop = true;
-        // Το volume είναι ήδη 1.0 από το init
-
+        
         try {
             await this.player.play();
         } catch (e) { console.error("Play Error", e); }
 
-        // METADATA: Ενημέρωση μπάρας
+        // 3. METADATA: Ενημέρωση μπάρας
         if ("mediaSession" in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
@@ -119,7 +120,7 @@ const AudioEngine = {
             navigator.mediaSession.playbackState = "playing";
         }
 
-        // VIBRATION
+        // 4. VIBRATION
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]);
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -129,18 +130,18 @@ const AudioEngine = {
         this.sendNotification();
     },
 
-    // 🛑 STOP / ACCEPT
+    // --- 🛑 STOP / ACCEPT (ΑΠΟΔΟΧΗ) ---
     async stopAlarm() {
         if (!this.isRinging) return;
 
-        console.log("🛑 ALARM STOP");
+        console.log("🛑 ALARM STOP -> Back to Tone");
         this.isRinging = false;
 
-        // UI: Απόκρυψη
+        // 1. UI: Απόκρυψη
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'none';
 
-        // AUDIO: Επιστροφή στον υπόηχο
+        // 2. AUDIO: Επιστροφή στον υπόηχο (TONE19HZ.WAV)
         this.player.src = "tone19hz.wav";
         this.player.loop = true;
 
@@ -148,7 +149,7 @@ const AudioEngine = {
             await this.player.play();
         } catch (e) {}
 
-        // RESET
+        // 3. RESET
         this.setIdleMetadata();
         if (this.vibrationInterval) clearInterval(this.vibrationInterval);
         if (navigator.vibrate) navigator.vibrate(0);
@@ -183,7 +184,7 @@ const AudioEngine = {
     }
 };
 
-// Physical Buttons Listener (Fully Kiosk / Android)
+// Physical Buttons Listener (Για Fully Kiosk / Android Wrappers)
 window.addEventListener('keydown', (e) => {
     if (AudioEngine.isRinging) {
         // Ασφάλεια 2 δευτερολέπτων
