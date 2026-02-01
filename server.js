@@ -5,15 +5,15 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- ΡΥΘΜΙΣΗ FIREBASE ADMIN ---
-// Το Render θα βρει το αρχείο επειδή το ανέβασες στα Secret Files
 try {
+    // Βεβαιώσου ότι το serviceAccountKey.json είναι στα Secret Files του Render
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
     console.log("✅ Firebase Admin initialized successfully!");
 } catch (error) {
-    console.error("❌ ERROR: Could not load serviceAccountKey.json. Make sure it is in Secret Files!", error);
+    console.error("❌ ERROR: Could not load serviceAccountKey.json", error);
 }
 
 const app = express();
@@ -26,7 +26,7 @@ let activeUsers = {};
 
 io.on('connection', (socket) => {
     
-    // 1. ΣΥΝΔΕΣΗ (JOIN)
+    // 1. ΣΥΝΔΕΣΗ
     socket.on('join-store', (data) => {
         const rawName = data.username || data.name || "";
         const cleanUser = rawName.trim();
@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
             username: cleanUser, 
             role: data.role,
             store: cleanStore,
-            fcmToken: data.token, // ΑΠΟΘΗΚΕΥΣΗ TOKEN
+            fcmToken: data.token, // Το διαβατήριο για ειδοποιήσεις
             lastSeen: Date.now()
         };
 
@@ -62,7 +62,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM (ΗΧΟΣ + ΔΟΝΗΣΗ)
+    // 3. TRIGGER ALARM (Η ΚΡΙΣΙΜΗ ΑΛΛΑΓΗ ΓΙΑ ΤΗ ΔΟΝΗΣΗ)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
         
@@ -72,38 +72,40 @@ io.on('connection', (socket) => {
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            // A. Στέλνουμε SOCKET (Για ανοιχτή εφαρμογή -> Ήχος)
+            // A. SOCKET (Αν η εφαρμογή είναι ανοιχτή -> Ήχος)
             io.to(targetUser.socketId).emit('ring-bell');
 
-            // B. Στέλνουμε FIREBASE (Για κλειστή εφαρμογή -> Δόνηση)
+            // B. FIREBASE (Αν η εφαρμογή είναι κλειστή -> Δόνηση)
             if (targetUser.fcmToken) {
                 const message = {
                     token: targetUser.fcmToken,
+                    // ΣΗΜΑΝΤΙΚΟ: Στέλνουμε ΜΟΝΟ data (όχι notification object)
+                    // Αυτό αναγκάζει το Service Worker να αναλάβει δράση και να δονηθεί.
                     data: {
-                        title: "🚨 ΚΛΗΣΗ",
-                        body: "Σε καλούν από την εφαρμογή!",
+                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                        body: "Πάτα για αποδοχή!",
                         url: "/",
                         type: "alarm"
                     },
-                    android: { priority: "high" }
+                    android: {
+                        priority: "high" // Υψηλή προτεραιότητα για να ξυπνήσει το κινητό
+                    }
                 };
 
                 admin.messaging().send(message)
-                    .then((res) => console.log('✅ Notification Sent:', res))
-                    .catch((err) => console.error('❌ Notification Error:', err));
+                    .then((res) => console.log('✅ FCM (Data Only) Sent:', res))
+                    .catch((err) => console.error('❌ FCM Error:', err));
             } else {
-                console.log("⚠️ No FCM Token found for this user.");
+                console.log("⚠️ No FCM Token for this user.");
             }
         }
     });
 
-    // 4. UPDATE TOKEN (Αν αλλάξει)
+    // 4. UPDATE TOKEN
     socket.on('update-token', (data) => {
         if (socket.store && data.username && data.token) {
              const userKey = `${socket.store}_${data.username}`;
-             if (activeUsers[userKey]) {
-                 activeUsers[userKey].fcmToken = data.token;
-             }
+             if (activeUsers[userKey]) activeUsers[userKey].fcmToken = data.token;
         }
     });
 
