@@ -2,18 +2,19 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
-
-// --- 1. FIREBASE ADMIN SETUP (ΤΟ ΠΡΟΣΘΕΣΑΜΕ) ---
 const admin = require("firebase-admin");
 
-// Βεβαιώσου ότι το αρχείο αυτό υπάρχει δίπλα στο server.js
-// Αν το λένε αλλιώς, άλλαξε το όνομα εδώ.
-const serviceAccount = require("./serviceAccountKey.json"); 
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-// ----------------------------------------------
+// --- ΡΥΘΜΙΣΗ FIREBASE ADMIN ---
+// Το Render θα βρει το αρχείο επειδή το ανέβασες στα Secret Files
+try {
+    const serviceAccount = require("./serviceAccountKey.json");
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("✅ Firebase Admin initialized successfully!");
+} catch (error) {
+    console.error("❌ ERROR: Could not load serviceAccountKey.json. Make sure it is in Secret Files!", error);
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -25,7 +26,7 @@ let activeUsers = {};
 
 io.on('connection', (socket) => {
     
-    // 1. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ
+    // 1. ΣΥΝΔΕΣΗ (JOIN)
     socket.on('join-store', (data) => {
         const rawName = data.username || data.name || "";
         const cleanUser = rawName.trim();
@@ -45,12 +46,11 @@ io.on('connection', (socket) => {
             username: cleanUser, 
             role: data.role,
             store: cleanStore,
-            // --- 2. ΑΠΟΘΗΚΕΥΣΗ TOKEN (ΤΟ ΠΡΟΣΘΕΣΑΜΕ) ---
-            fcmToken: data.token, // Εδώ αποθηκεύουμε το διαβατήριο για το Firebase
+            fcmToken: data.token, // ΑΠΟΘΗΚΕΥΣΗ TOKEN
             lastSeen: Date.now()
         };
 
-        console.log(`👤 Joined: ${cleanUser} (${data.role}) @ ${cleanStore} [Token: ${data.token ? 'YES' : 'NO'}]`);
+        console.log(`👤 Joined: ${cleanUser} | Token: ${data.token ? '✅' : '❌'}`);
         updateStore(cleanStore);
     });
 
@@ -62,51 +62,52 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM (ΕΔΩ ΕΙΝΑΙ Η ΜΕΓΑΛΗ ΑΛΛΑΓΗ)
+    // 3. TRIGGER ALARM (ΗΧΟΣ + ΔΟΝΗΣΗ)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
         
-        console.log(`🔔 Alarm triggered for: ${targetName}`); 
+        console.log(`🔔 Alarm -> ${targetName}`); 
 
         const targetKey = `${socket.store}_${targetName}`;
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            // Α. Στέλνουμε Socket (Για ανοιχτή εφαρμογή - Ήχος)
+            // A. Στέλνουμε SOCKET (Για ανοιχτή εφαρμογή -> Ήχος)
             io.to(targetUser.socketId).emit('ring-bell');
 
-            // Β. Στέλνουμε FIREBASE NOTIFICATION (Για κλειστή εφαρμογή - Δόνηση)
+            // B. Στέλνουμε FIREBASE (Για κλειστή εφαρμογή -> Δόνηση)
             if (targetUser.fcmToken) {
                 const message = {
                     token: targetUser.fcmToken,
                     data: {
-                        title: "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ",
-                        body: "Έλα γρήγορα!",
-                        url: "/",     // Για να ανοίξει το App
-                        type: "alarm" // Για να ξέρει το Service Worker τι να κάνει
+                        title: "🚨 ΚΛΗΣΗ",
+                        body: "Σε καλούν από την εφαρμογή!",
+                        url: "/",
+                        type: "alarm"
                     },
-                    android: {
-                        priority: "high" // Σημαντικό για να ξυπνήσει το κινητό
-                    }
+                    android: { priority: "high" }
                 };
 
                 admin.messaging().send(message)
-                    .then((response) => {
-                        console.log('✅ FCM sent successfully:', response);
-                    })
-                    .catch((error) => {
-                        console.log('❌ Error sending FCM:', error);
-                    });
+                    .then((res) => console.log('✅ Notification Sent:', res))
+                    .catch((err) => console.error('❌ Notification Error:', err));
             } else {
-                console.log("⚠️ User has no Token (App might be closed perfectly or denied permission)");
+                console.log("⚠️ No FCM Token found for this user.");
             }
-
-        } else {
-            console.log("❌ User not found");
         }
     });
 
-    // 4. DISCONNECT
+    // 4. UPDATE TOKEN (Αν αλλάξει)
+    socket.on('update-token', (data) => {
+        if (socket.store && data.username && data.token) {
+             const userKey = `${socket.store}_${data.username}`;
+             if (activeUsers[userKey]) {
+                 activeUsers[userKey].fcmToken = data.token;
+             }
+        }
+    });
+
+    // 5. DISCONNECT
     socket.on('disconnect', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
@@ -119,30 +120,16 @@ io.on('connection', (socket) => {
             }, 5000);
         }
     });
-    
-    // ΝΕΟ: Ενημέρωση Token (αν αλλάξει ενώ είναι συνδεδεμένος)
-    socket.on('update-token', (data) => {
-        if (socket.store && data.username && data.token) {
-             const userKey = `${socket.store}_${data.username}`;
-             if (activeUsers[userKey]) {
-                 activeUsers[userKey].fcmToken = data.token;
-                 console.log(`🔄 Token updated for ${data.username}`);
-             }
-        }
-    });
 }); 
 
 function updateStore(storeName) {
     if(!storeName) return;
-    
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    
     const formattedStaff = staff.map(u => ({
         name: u.username,      
         username: u.username,  
         role: u.role
     }));
-
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
