@@ -4,18 +4,20 @@ const AudioEngine = {
     wakeLock: null,
 
     async init() {
-        console.log("📻 AudioEngine: RADIO MODE (Volume Ducking)");
+        console.log("🌐 AudioEngine: INTERNET STREAMING MODE");
 
         if (!this.player) {
             this.player = document.createElement("audio");
-            this.player.id = 'radioPlayer';
+            this.player.id = 'streamPlayer';
+            this.player.crossOrigin = "anonymous"; // Για να επιτρέπεται από το ίντερνετ
             
-            // Χρησιμοποιούμε ΜΟΝΟ το alert.mp3 για όλα!
-            this.player.src = "alert.mp3"; 
+            // ΦΟΡΤΩΝΟΥΜΕ ΕΝΑ ONLINE ΤΡΑΓΟΥΔΙ (6 λεπτά διάρκεια)
+            // Αυτό ξεγελάει το Android ότι είναι Spotify/Radio
+            this.player.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"; 
+            
             this.player.loop = true; 
             
-            // Ξεκινάμε με ένταση σχεδόν μηδέν (Αθόρυβο)
-            // Το Android νομίζει ότι παίζει μουσική, εσύ δεν ακούς.
+            // Ξεκινάμε με "Σίγαση" (Όχι Pause, απλά χαμηλή ένταση)
             this.player.volume = 0.0001; 
             
             document.body.appendChild(this.player);
@@ -24,34 +26,34 @@ const AudioEngine = {
         this.setupMediaSession();
         this.requestWakeLock();
 
-        // Ξεκινάμε το "Ραδιόφωνο"
+        // Ξεκινάμε το Stream
         try {
             await this.player.play();
             this.updateDisplay("online");
-            console.log("✅ Radio Started (Silent)");
+            console.log("✅ Stream Started (Silent)");
         } catch (e) {
-            console.log("⏳ Waiting for user tap...");
+            console.log("⏳ Waiting for user tap to start stream...");
         }
     },
 
-    // --- ΚΟΥΜΠΙΑ ΜΠΑΡΑΣ (ΑΠΟΔΟΧΗ) ---
+    // --- ΚΟΥΜΠΙΑ ΜΠΑΡΑΣ ---
     setupMediaSession() {
         if (!("mediaSession" in navigator)) return;
 
         const handleUserAction = () => {
-            console.log("⏯️ User Action Detected");
+            console.log("⏯️ User Action on Bar");
             
             if (this.isRinging) {
-                // Αν χτυπάει -> ΑΠΟΔΟΧΗ (Χαμηλώνουμε ένταση)
+                // Αν χτυπάει -> ΑΠΟΔΟΧΗ (Χαμηλώνουμε)
                 this.stopAlarm();
             } else {
-                // Αν δεν χτυπάει -> Δεν αφήνουμε να σταματήσει ποτέ!
+                // Αν είναι Online -> Δεν αφήνουμε να σταματήσει!
                 this.player.play();
                 this.updateDisplay("online");
             }
         };
 
-        // Όλα τα κουμπιά κάνουν το ίδιο: "Χειρισμό Έντασης"
+        // Όλα τα κουμπιά κάνουν το ίδιο
         navigator.mediaSession.setActionHandler('play', handleUserAction);
         navigator.mediaSession.setActionHandler('pause', handleUserAction);
         navigator.mediaSession.setActionHandler('stop', handleUserAction);
@@ -59,17 +61,16 @@ const AudioEngine = {
         navigator.mediaSession.setActionHandler('previoustrack', handleUserAction);
     },
 
-    // --- ΚΛΗΣΗ (ΔΥΝΑΜΩΝΟΥΜΕ ΤΟΝ ΗΧΟ) ---
+    // --- ΚΛΗΣΗ (ΔΥΝΑΜΩΝΟΥΜΕ ΤΟ STREAM) ---
     triggerAlarm() {
         if (this.isRinging) return;
         this.isRinging = true;
 
-        console.log("🚨 VOLUME UP: ALARM");
+        console.log("🚨 ALARM: Volume UP");
 
-        // 1. Αλλαγή εμφάνισης μπάρας
         this.updateDisplay("alarm");
 
-        // 2. UI
+        // Εμφάνιση κόκκινης οθόνης
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
@@ -77,30 +78,27 @@ const AudioEngine = {
             if (slider) slider.value = 50;
         }
 
-        // 3. ΔΥΝΑΜΩΝΟΥΜΕ ΤΟΝ ΗΧΟ (Χωρίς να διακόψουμε το playback)
-        // Επαναφέρουμε το κομμάτι στην αρχή για να ακουστεί η σειρήνα
-        this.player.currentTime = 0; 
+        // Δυναμώνουμε το online τραγούδι
+        // (ΠΡΟΣΟΧΗ: Θα παίζει μουσική, όχι σειρήνα, για το τεστ)
         this.player.volume = 1.0; 
 
         this.vibrate(true);
         this.sendNotification();
     },
 
-    // --- ΑΠΟΔΟΧΗ (ΧΑΜΗΛΩΝΟΥΜΕ ΤΟΝ ΗΧΟ) ---
+    // --- ΑΠΟΔΟΧΗ (ΧΑΜΗΛΩΝΟΥΜΕ ΤΟ STREAM) ---
     stopAlarm() {
         if (!this.isRinging) return;
         this.isRinging = false;
 
-        console.log("🟢 VOLUME DOWN: SILENCE");
+        console.log("🟢 SILENCE: Volume DOWN");
 
-        // 1. Αλλαγή εμφάνισης μπάρας
         this.updateDisplay("online");
 
-        // 2. UI Hide
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'none';
 
-        // 3. ΧΑΜΗΛΩΝΟΥΜΕ ΤΟΝ ΗΧΟ (Δεν κάνουμε Pause!)
+        // Χαμηλώνουμε ξανά (χωρίς Pause)
         this.player.volume = 0.0001; 
 
         this.vibrate(false);
@@ -112,20 +110,20 @@ const AudioEngine = {
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
-                album: "BellGo Alert",
+                artist: "STREAMING MODE",
+                album: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/564/564619.png", sizes: "512x512", type: "image/png" }]
             });
         } else {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
-                artist: "Σύστημα σε Αναμονή",
-                album: "Μην κλείνετε την εφαρμογή",
+                artist: "Live Stream",
+                album: "Connected",
                 artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/190/190411.png", sizes: "512x512", type: "image/png" }]
             });
         }
-
-        // Κρατάμε την κατάσταση ΠΑΝΤΑ σε playing
+        
+        // Λέμε στο Android ότι είναι Live Radio
         navigator.mediaSession.playbackState = "playing";
     },
 
