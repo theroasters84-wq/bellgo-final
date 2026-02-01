@@ -7,28 +7,27 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+// Σερβίρουμε τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
 let pendingAlarms = {}; 
 
-const SHOP_PASSWORDS = {
-    'CoffeeRoom1': '1234',
-    'TestShop': '0000',
-    'the roasters': '1234'
-};
-
 io.on('connection', (socket) => {
     
-    // --- 1. JOIN STORE ---
+    // 1. ΣΥΝΔΕΣΗ ΧΡΗΣΤΗ
     socket.on('join-store', (data) => {
-        const cleanStore = data.storeName ? data.storeName.trim() : "";
+        const cleanStore = data.storeName ? data.storeName.trim().toLowerCase() : "";
         const cleanUser = data.username ? data.username.trim() : "";
+        
+        if (!cleanStore || !cleanUser) return;
+
         const userKey = `${cleanStore}_${cleanUser}`;
         
         socket.join(cleanStore);
         socket.username = cleanUser; 
         socket.store = cleanStore;
+        socket.role = data.role;
 
         activeUsers[userKey] = {
             socketId: socket.id,
@@ -38,14 +37,13 @@ io.on('connection', (socket) => {
             lastSeen: Date.now()
         };
 
-        // Αν υπάρχει εκκρεμής κλήση γι' αυτόν που μόλις μπήκε, χτύπα
-        if (pendingAlarms[userKey]) socket.emit('kitchen-alarm');
+        console.log(`👤 Joined: ${cleanUser} (${data.role}) @ ${cleanStore}`);
         
+        // Ενημερώνουμε αμέσως όλους στο μαγαζί για να φανεί ο νέος χρήστης
         updateStore(cleanStore);
-        console.log(`👤 Joined: ${cleanUser} @ ${cleanStore}`);
     });
 
-    // --- 2. HEARTBEAT ---
+    // 2. HEARTBEAT (Για να μην φαίνεται offline)
     socket.on('heartbeat', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
@@ -53,83 +51,48 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 3. TRIGGER ALARM (Από Admin) ---
+    // 3. O ADMIN KANEI ΚΛΗΣΗ
     socket.on('trigger-alarm', (targetUsername) => {
-        // Αν χάθηκε η σύνδεση του Admin, δεν κάνουμε τίποτα
         if (!socket.store) return;
-
+        
+        // Βρες τον συγκεκριμένο χρήστη
         const targetKey = `${socket.store}_${targetUsername}`;
-        pendingAlarms[targetKey] = true;
-        
-        const target = activeUsers[targetKey];
-        if (target) io.to(target.socketId).emit('kitchen-alarm');
-        
-        updateStore(socket.store);
-    });
+        const targetUser = activeUsers[targetKey];
 
-    // --- 4. ALARM ACK (ΑΠΟΔΟΧΗ - Η ΜΕΓΑΛΗ ΔΙΟΡΘΩΣΗ) ---
-    socket.on('alarm-ack', (data) => {
-        // Προσπαθούμε να βρούμε τα στοιχεία είτε από το μήνυμα (data) είτε από τη μνήμη (socket)
-        // Αυτό λύνει το πρόβλημα όταν το Android χάνει τη σύνδεση στο background
-        const username = data?.name || socket.username;
-        const store = data?.store || socket.store;
-
-        // Αν δεν ξέρουμε ποιος είναι και από πού, δεν μπορούμε να κάνουμε τίποτα
-        if (!username || !store) {
-            console.log("⚠️ ACK received but user unknown. Ignoring.");
-            return;
-        }
-
-        const userKey = `${store}_${username}`;
-        console.log(`✅ ACK processing for: ${username} in ${store}`);
-
-        // A. Σβήνουμε την κλήση από τη μνήμη
-        if (pendingAlarms[userKey]) delete pendingAlarms[userKey];
-
-        // B. Στέλνουμε ΤΟ ΣΗΜΑ ΣΕ ΟΛΟΥΣ (Broadcast) στο συγκεκριμένο μαγαζί
-        // Έτσι το βλέπει ο Admin ακόμα κι αν το socket του Driver είχε αλλάξει ID
-        io.to(store).emit('alarm-receipt', { name: username });
-        
-        // C. Ανανεώνουμε τη λίστα για να φύγει το κίτρινο χρώμα
-        updateStore(store);
-    });
-
-    // --- 5. CHAT ---
-    socket.on('chat-message', (data) => {
-        if (socket.store) {
-            io.to(socket.store).emit('chat-message', {
-                sender: socket.username,
-                role: activeUsers[`${socket.store}_${socket.username}`]?.role || 'user',
-                text: data.text
-            });
+        if (targetUser) {
+            // Στείλε σήμα ΜΟΝΟ σε αυτόν
+            io.to(targetUser.socketId).emit('ring-bell');
+            console.log(`🔔 Calling ${targetUsername}...`);
         }
     });
 
-    // --- 6. DISCONNECT ---
+    // 4. ΑΠΟΣΥΝΔΕΣΗ
     socket.on('disconnect', () => {
-        const userKey = `${socket.store}_${socket.username}`;
-        // Δίνουμε λίγο χρόνο πριν τον διαγράψουμε, μήπως είναι απλά refresh ή μικρο-διακοπή
-        setTimeout(() => {
-            if (activeUsers[userKey] && (Date.now() - activeUsers[userKey].lastSeen > 10000)) {
-                delete activeUsers[userKey];
-                if(socket.store) updateStore(socket.store);
-            }
-        }, 5000);
+        if (socket.store && socket.username) {
+            const userKey = `${socket.store}_${socket.username}`;
+            // Τον σβήνουμε μετά από λίγο για να μην αναβοσβήνει σε μικρο-διακοπές
+            setTimeout(() => {
+                // Έλεγχος αν όντως έφυγε ή ξαναμπήκε
+                const user = activeUsers[userKey];
+                if (user && user.socketId === socket.id) { 
+                    delete activeUsers[userKey];
+                    updateStore(socket.store);
+                }
+            }, 5000);
+        }
     });
 }); 
 
-// Helper function για ενημέρωση λίστας
+// Συνάρτηση που στέλνει τη λίστα προσωπικού στον Admin
 function updateStore(storeName) {
     if(!storeName) return;
+    
+    // Παίρνουμε μόνο όσους είναι στο συγκεκριμένο μαγαζί
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
-    const formattedStaff = staff.map(u => ({
-        name: u.username, 
-        role: u.role,
-        isRinging: !!pendingAlarms[`${storeName}_${u.username}`]
-    }));
-    io.to(storeName).emit('staff-list-update', formattedStaff);
+    
+    // Στέλνουμε τη λίστα σε όλους στο δωμάτιο (το φιλτράρει το front-end ποιος θα τη δει)
+    io.to(storeName).emit('staff-list-update', staff);
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
-
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
