@@ -3,8 +3,10 @@
 const AudioEngine = {
     player: null,
     isRinging: false,
-    vibrationInterval: null, // Για επαναλαμβανόμενη δόνηση
-    ignoreVolumeChanges: false, // Για να μην το κόβει μόνο του στην αρχή
+    vibrationInterval: null,
+    
+    // Αποθηκεύουμε την ώρα που ξεκίνησε το alarm για να αποφύγουμε false triggers
+    alarmStartTime: 0, 
 
     init() {
         console.log("🔈 Audio Engine Initializing...");
@@ -14,17 +16,20 @@ const AudioEngine = {
             this.player = document.createElement('audio');
             this.player.id = 'mainAudioPlayer';
             this.player.loop = true;
-            // Προσθέτουμε ακρόαση για αλλαγή έντασης (Volume Buttons)
+            
+            // --- ΤΟ ΜΥΣΤΙΚΟ ΓΙΑ ΤΑ VOLUME BUTTONS ---
+            // Ακούμε πότε αλλάζει η ένταση. Αν χτυπάει -> Σταμάτα το.
             this.player.onvolumechange = () => this.handleVolumeChange();
+            
             document.body.appendChild(this.player);
         }
 
-        // 2. Ζητάμε άδεια για Notifications με το που πατηθεί το Login
+        // 2. Ζητάμε άδεια για Notifications
         if (Notification.permission !== "granted") {
             Notification.requestPermission();
         }
 
-        // 3. Ρύθμιση Media Session (Κουμπιά Play/Pause από Lock Screen/Ακουστικά)
+        // 3. Media Session (Για Play/Pause από ακουστικά ή Lock Screen)
         if ('mediaSession' in navigator) {
             const stopAction = () => this.stopAlarm();
             navigator.mediaSession.setActionHandler('play', stopAction);
@@ -34,55 +39,53 @@ const AudioEngine = {
             navigator.mediaSession.setActionHandler('nexttrack', stopAction);
         }
 
-        // 4. Παίζουμε Σιωπή ΑΜΕΣΩΣ
+        // 4. Ξεκινάμε τη Σιωπή (Απαραίτητο για να κρατάει τον browser ξύπνιο)
         this.player.src = 'silence.mp3'; 
-        this.player.volume = 0.1;
+        this.player.volume = 0.5; // Το βάζουμε στη μέση για να πιάνει και το Up και το Down
         
+        // Προσπάθεια αυτόματης εκκίνησης
         const playPromise = this.player.play();
         if (playPromise !== undefined) {
-            playPromise
-                .then(() => console.log("✅ Audio Context Unlocked! (Silence playing)"))
-                .catch(error => console.error("❌ Audio Autoplay blocked:", error));
+            playPromise.catch(error => console.log("Waiting for user interaction..."));
         }
     },
 
-    // --- VOLUME BUTTON LOGIC ---
+    // --- ΛΟΓΙΚΗ VOLUME BUTTONS ---
     handleVolumeChange() {
-        // Αν δεν χτυπάει, δεν μας νοιάζει
+        // Αν δεν χτυπάει, αγνόησέ το
         if (!this.isRinging) return;
-        
-        // Αν είμαστε στα πρώτα 2 δευτερόλεπτα της κλήσης, αγνόησέ το
-        // (γιατί εμείς ανεβάζουμε την ένταση προγραμματιστικά και θα το έκοβε)
-        if (this.ignoreVolumeChanges) return;
 
-        console.log("🎚️ Volume Changed -> Accepting Call");
+        // Αν πέρασε λιγότερο από 1 δευτερόλεπτο από την έναρξη, αγνόησέ το
+        // (Γιατί όταν ξεκινάει το alarm, αλλάζουμε την ένταση μόνοι μας στο 100%)
+        if (Date.now() - this.alarmStartTime < 1000) return;
+
+        console.log("🎚️ Volume Changed -> ACCEPTING CALL");
         this.stopAlarm();
     },
 
     triggerAlarm() {
         if (this.isRinging) return;
+        
         this.isRinging = true;
-        console.log("🔔 TRIGGER ALARM: Playing alert.mp3");
+        this.alarmStartTime = Date.now(); // Καταγραφή ώρας έναρξης
+        
+        console.log("🔔 TRIGGER ALARM");
 
-        // Α. Εμφάνιση UI
+        // 1. Εμφάνιση Κόκκινης Οθόνης
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'flex';
 
-        // Β. Αλλαγή σε Σειρήνα & Ένταση στο Τέρμα
+        // 2. Ρύθμιση Ήχου
         this.player.src = 'alert.mp3'; 
         this.player.currentTime = 0;
         
-        // Σηκώνουμε σημαία για να αγνοήσουμε την αλλαγή έντασης που κάνουμε τώρα
-        this.ignoreVolumeChanges = true;
+        // Βάζουμε την ένταση στο 100%
+        // (Αυτό θα ενεργοποιήσει το onvolumechange, αλλά το φίλτρο χρόνου θα το αγνοήσει)
         this.player.volume = 1.0; 
         
-        // Μετά από 2 δευτερόλεπτα, επιτρέπουμε την αποδοχή με volume buttons
-        setTimeout(() => { this.ignoreVolumeChanges = false; }, 2000);
+        this.player.play().catch(e => console.error("❌ Play failed:", e));
 
-        this.player.play().catch(e => console.error("❌ Alarm play failed:", e));
-
-        // Γ. Δόνηση σε Λούπα (Για να μην σταματάει)
-        // (Δονείται 1s, σταματάει 0.5s)
+        // 3. Δόνηση σε Λούπα
         if (navigator.vibrate) {
             navigator.vibrate([1000, 500]); 
             if (this.vibrationInterval) clearInterval(this.vibrationInterval);
@@ -91,22 +94,22 @@ const AudioEngine = {
             }, 1600);
         }
 
-        // Δ. Ενημέρωση Media Session (Για να φαίνεται στην οθόνη κλειδώματος)
+        // 4. Ενημέρωση Lock Screen
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ",
                 artist: "BellGo Alert",
-                album: "Πάτα οποιοδήποτε κουμπί"
+                album: "Πάτα Volume για Αποδοχή"
             });
         }
 
-        // Ε. Στέλνουμε Notification
+        // 5. Ειδοποίηση
         this.sendNotification();
     },
 
     stopAlarm() {
-        if (!this.isRinging) return; // Αν έχει ήδη σταματήσει, φύγε
-        console.log("🔕 STOP ALARM & RESUME SILENCE");
+        if (!this.isRinging) return;
+        console.log("🔕 STOP ALARM");
         
         this.isRinging = false;
 
@@ -118,14 +121,14 @@ const AudioEngine = {
         if (this.vibrationInterval) clearInterval(this.vibrationInterval);
         if (navigator.vibrate) navigator.vibrate(0);
 
-        // Επιστροφή σε σιωπή (ΑΘΑΝΑΤΟ LOOP)
+        // Επιστροφή στο Silence Loop
         this.player.pause();
         this.player.src = 'silence.mp3';
-        this.player.volume = 0.1; 
+        this.player.volume = 0.5; // Επαναφορά στη μέση για την επόμενη φορά
         this.player.loop = true;
-        this.player.play().catch(e => console.log("Silence resume err:", e));
+        this.player.play().catch(() => {});
 
-        // Καθαρισμός Media Session
+        // Καθαρισμός Lock Screen
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Active",
@@ -139,15 +142,16 @@ const AudioEngine = {
             try {
                 const notif = new Notification("🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ!", {
                     body: "Πάτα εδώ για αποδοχή",
-                    icon: "https://cdn-icons-png.flaticon.com/512/3602/3602145.png", // Ένα εικονίδιο καμπάνας
+                    icon: "/icon.png", // Βεβαιώσου ότι υπάρχει, αλλιώς βγάλτο
                     vibrate: [200, 100, 200],
-                    requireInteraction: true // Να μένει στην οθόνη
+                    requireInteraction: true,
+                    tag: 'alarm-tag'
                 });
                 
-                // Αν πατήσει το notification, ανοίγει το app και σταματάει
                 notif.onclick = () => {
                     window.focus();
                     this.stopAlarm();
+                    notif.close();
                 };
             } catch (e) {
                 console.log("Notification error:", e);
@@ -156,9 +160,25 @@ const AudioEngine = {
     }
 };
 
-// Global Listeners (Πληκτρολόγιο PC)
-window.addEventListener('keydown', () => {
-    if (AudioEngine.isRinging) AudioEngine.stopAlarm();
+// --- PHYSICAL BUTTONS LISTENER (ΓΙΑ FULLY KIOSK & ANDROID WEBVIEW) ---
+window.addEventListener('keydown', (e) => {
+    // Αν χτυπάει η καμπάνα
+    if (AudioEngine.isRinging) {
+        console.log("Key Pressed:", e.code, e.keyCode);
+        
+        // 24 = Volume Up, 25 = Volume Down (Android Standard Codes)
+        // 179 = Play/Pause button
+        // "Space" ή "Enter" (αν πατηθεί τυχαία)
+        const validKeys = [24, 25, 179, 32, 13]; 
+        
+        if (validKeys.includes(e.keyCode) || e.key === "VolumeUp" || e.key === "VolumeDown") {
+            // Σταματάμε τη φυσική λειτουργία του κουμπιού (π.χ. να μην αλλάξει η μπάρα έντασης)
+            // αν μας το επιτρέπει ο browser
+            e.preventDefault(); 
+            AudioEngine.stopAlarm();
+        }
+    }
 });
 
+// Κάνουμε το αντικείμενο Global
 window.AudioEngine = AudioEngine;
