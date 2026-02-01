@@ -111,8 +111,22 @@
     <script src="player.js"></script>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", authDomain: "bellgo-5dbe5.firebaseapp.com", projectId: "bellgo-5dbe5", storageBucket: "bellgo-5dbe5.firebasestorage.app", messagingSenderId: "799314495253", appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", measurementId: "G-379ETZJP8H" };
-        try { firebase.initializeApp(firebaseConfig); const messaging = firebase.messaging(); } catch(e) {}
+        // --- 1. FIREBASE CONFIG ---
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
+            authDomain: "bellgo-5dbe5.firebaseapp.com", 
+            projectId: "bellgo-5dbe5", 
+            storageBucket: "bellgo-5dbe5.firebasestorage.app", 
+            messagingSenderId: "799314495253", 
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", 
+            measurementId: "G-379ETZJP8H" 
+        };
+
+        // Αρχικοποίηση
+        try { 
+            firebase.initializeApp(firebaseConfig); 
+            var messaging = firebase.messaging(); 
+        } catch(e) { console.error("Firebase Init Error", e); }
 
         let socket = null;
         let userData = { store: '', name: '', role: '', pass: '' };
@@ -120,6 +134,45 @@
         let knownStaff = [];
         let heartbeatInterval = null;
 
+        // --- 2. FIREBASE NOTIFICATIONS (Service Worker) ---
+        if ('serviceWorker' in navigator) {
+            // Εγγραφή του αρχείου που δονείται στο παρασκήνιο
+            navigator.serviceWorker.register('./firebase-messaging-sw.js')
+            .then(function(registration) {
+                console.log('✅ Service Worker Registered');
+                return Notification.requestPermission();
+            })
+            .then((permission) => {
+                if (permission === 'granted') {
+                    console.log('🔔 Permission Granted');
+                    return messaging.getToken(); // Χωρίς Vapid Key (Default)
+                }
+            })
+            .then((token) => {
+                if (token) {
+                    console.log("🔥 TOKEN:", token);
+                    localStorage.setItem('fcm_token', token);
+                    
+                    // ΕΜΦΑΝΙΣΗ TOKEN ΣΤΗΝ ΟΘΟΝΗ (ΓΙΑ ΝΑ ΤΟ ΑΝΤΙΓΡΑΨΕΙΣ)
+                    window.prompt("Token συσκευής (Αντίγραψέ το):", token);
+                } else {
+                    console.log('No token available.');
+                }
+            })
+            .catch((err) => {
+                console.log('SW Error:', err);
+            });
+        }
+
+        // ΟΤΑΝ Η ΕΦΑΡΜΟΓΗ ΕΙΝΑΙ ΑΝΟΙΧΤΗ (Foreground)
+        messaging.onMessage((payload) => {
+            console.log('📩 Foreground Message:', payload);
+            if (window.AudioEngine) {
+                window.AudioEngine.triggerAlarm();
+            }
+        });
+
+        // --- 3. MAIN APP LOGIC ---
         const App = {
             login() {
                 const rawStore = document.getElementById('inpStore').value.trim();
@@ -132,9 +185,9 @@
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
 
+                // Εκκίνηση Audio Engine (Χρειάζεται user interaction εδώ)
                 if(window.AudioEngine) {
                     AudioEngine.init();
-                    AudioEngine.triggerAlarm(true);
                 }
                 
                 this.finishLoginSequence();
@@ -147,7 +200,6 @@
                 document.getElementById('headerInfo').innerText = `${userData.name} | ${userData.store}`;
 
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
-                if (Notification.requestPermission) Notification.requestPermission();
                 
                 this.connectSocket();
                 this.startHeartbeat();
@@ -179,11 +231,16 @@
                     document.getElementById('connDot').style.background = '#00E676';
                     document.getElementById('headerInfo').innerText = `${userData.name} | Online`;
                     document.getElementById('staffPanel').classList.remove('offline-mode');
+                    
+                    // Στέλνουμε και το FCM Token αν το έχουμε
+                    const fcmToken = localStorage.getItem('fcm_token');
+
                     socket.emit('join-store', { 
                         storeName: userData.store, 
-                        username: userData.name, // Sends as username
+                        username: userData.name, 
                         role: userData.role, 
-                        pass: userData.pass 
+                        pass: userData.pass,
+                        token: fcmToken 
                     });
                 });
 
@@ -215,17 +272,15 @@
             },
 
             logout() {
-                if(window.AudioEngine && AudioEngine.player) AudioEngine.player.pause();
+                // Δεν κάνουμε pause στον player για να μείνει το Keep-Alive αν θέλουμε
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
             },
 
-            // --- UI LOGIC ---
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
                 serverList.forEach(u => {
-                    // Χρησιμοποιούμε ό,τι έρθει: name ή username
                     const uname = u.name || u.username;
                     if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
                 });
@@ -264,7 +319,6 @@
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
                     
-                    // ΔΙΑΒΑΖΟΥΜΕ ΚΑΙ ΤΑ ΔΥΟ ΓΙΑ ΣΙΓΟΥΡΙΑ
                     const uname = u.name || u.username || "Unknown";
                     const isGhost = ghosts[uname] !== undefined;
                     
@@ -280,7 +334,6 @@
                         btn.onclick = () => {
                             console.log("Calling:", uname);
                             socket.emit('trigger-alarm', uname);
-                            
                             const statusSpan = btn.querySelector('.status');
                             statusSpan.innerText = "📞 CALLING...";
                             statusSpan.style.color = "yellow";
@@ -318,50 +371,7 @@
 
         window.onload = function() {
             App.checkSession();
-        };           // ... (μετά τον κώδικα window.onload)
-
-        // --- FIREBASE MESSAGING LOGIC (ΑΥΤΟ ΕΛΕΙΠΕ) ---
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./firebase-messaging-sw.js')
-            .then(function(registration) {
-                console.log('✅ Service Worker Registered:', registration);
-                
-                // Ζητάμε άδεια για ειδοποιήσεις
-                return Notification.requestPermission();
-            })
-            .then((permission) => {
-                if (permission === 'granted') {
-                    console.log('🔔 Notification permission granted.');
-                    // Παίρνουμε το Token
-                    return messaging.getToken({ vapidKey: "BGuKp5...ВАΛΕ_ΤΟ_VAPID_KEY_ΣΟΥ_ΕΔΩ..." }); 
-                    // ΣΗΜΕΙΩΣΗ: Αν δεν έχεις Vapid Key, δοκίμασε σκέτο messaging.getToken() 
-                    // αλλά το Vapid Key είναι καλύτερο για web push.
-                }
-            })
-            .then((currentToken) => {
-                if (currentToken) {
-                    console.log("🔥 FIREBASE TOKEN:", currentToken);
-                    // Εδώ κανονικά στέλνεις το token στη βάση σου (socket.emit)
-                    if(socket && socket.connected) {
-                         socket.emit('update-token', { username: userData.name, token: currentToken });
-                    }
-                } else {
-                    console.log('No Instance ID token available.');
-                }
-            })
-            .catch((err) => {
-                console.log('Service Worker/Firebase Error:', err);
-            });
-        }
-
-        // ΟΤΑΝ Η ΕΦΑΡΜΟΓΗ ΕΙΝΑΙ ΑΝΟΙΧΤΗ (FOREGROUND)
-        messaging.onMessage((payload) => {
-            console.log('📩 Foreground Message:', payload);
-            // Επειδή είμαστε ανοιχτοί, βαράμε κατευθείαν τον Player
-            if (window.AudioEngine) {
-                window.AudioEngine.triggerAlarm();
-            }
-        });
+        };
     </script>
 </body>
 </html>
