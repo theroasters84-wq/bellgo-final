@@ -27,7 +27,11 @@
         
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .divider { text-align: center; color: #555; margin: 5px 0; font-size: 14px; }
+        .btn-register { width: 100%; padding: 15px; background: #333; border: 1px solid #555; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        
+        .divider { text-align: center; color: #555; margin: 15px 0; font-size: 14px; position: relative; }
+        .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #333; }
+        .divider::before { left: 0; } .divider::after { right: 0; }
 
         /* MAIN APP STYLES */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -93,13 +97,17 @@
         </div>
 
         <div id="adminForm" class="login-form" style="display:none;">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:5px;">Διαχειριστής Κουζίνας</p>
+            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:5px;">Διαχείριση Κουζίνας</p>
             
             <input type="email" id="inpAdminEmail" placeholder="Email Διαχειριστή">
-            <input type="password" id="inpAdminPass" placeholder="Κωδικός">
-            <button class="btn-login" onclick="App.loginAdminEmail()">ΣΥΝΔΕΣΗ ME EMAIL</button>
+            <input type="password" id="inpAdminPass" placeholder="Κωδικός (Νέος ή Υπάρχων)">
+            
+            <div style="display:flex; gap:10px;">
+                <button class="btn-login" onclick="App.loginAdminEmail()">ΣΥΝΔΕΣΗ</button>
+                <button class="btn-register" onclick="App.registerAdminEmail()">ΕΓΓΡΑΦΗ</button>
+            </div>
 
-            <div class="divider">--- Ή ---</div>
+            <div class="divider">Ή</div>
 
             <button class="btn-google" onclick="App.loginAdminGoogle()">
                 <span>G</span> Σύνδεση με Google
@@ -137,8 +145,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // ΠΡΟΣΘΕΣΑΜΕ ΤΟ signInWithEmailAndPassword
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // Προσθέσαμε το createUserWithEmailAndPassword για την εγγραφή
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = { 
@@ -156,13 +164,10 @@
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // 1. SETUP NOTIFICATIONS
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    console.log('✅ SW Registered');
-                    
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { 
@@ -174,9 +179,9 @@
                             console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
                             
-                            // Στέλνουμε το Token στον Server αμέσως
+                            // Αν είμαστε ΗΔΗ συνδεδεμένοι στο Socket, το στέλνουμε ΤΩΡΑ
                             if (window.socket && window.socket.connected) {
-                                console.log("🔄 Sending Token update to server...");
+                                console.log("🔄 Sending Token via Setup...");
                                 window.socket.emit('update-token', {
                                     username: userData.name,
                                     token: token
@@ -184,9 +189,7 @@
                             }
                         }
                     }
-                } catch (err) {
-                    console.error('Notification Setup Error:', err);
-                }
+                } catch (err) { console.error(err); }
             }
         }
 
@@ -195,7 +198,6 @@
             if (window.AudioEngine) window.AudioEngine.triggerAlarm();
         });
 
-        // 2. APP LOGIC
         window.socket = null;
         window.userData = { store: '', name: '', role: '' };
         let ghosts = {}; 
@@ -218,66 +220,51 @@
         };
 
         window.App = {
-            // STAFF LOGIN
             loginStaff: () => {
                 const storeEmail = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
                 const myName = document.getElementById('inpMyName').value.trim();
                 const myRole = document.getElementById('inpMyRole').value;
-
                 if (!storeEmail || !myName) return alert("Συμπλήρωσε όλα τα πεδία!");
                 if (!storeEmail.includes('@')) return alert("Βάλε σωστό email επιχείρησης!");
-
-                const user = { store: storeEmail, name: myName, role: myRole };
-                App.completeLogin(user);
+                App.completeLogin({ store: storeEmail, name: myName, role: myRole });
             },
 
-            // ADMIN GOOGLE LOGIN
             loginAdminGoogle: () => {
-                signInWithPopup(auth, provider)
-                    .then((result) => {
-                        const user = result.user;
-                        const adminUser = {
-                            store: user.email.toLowerCase(), 
-                            name: user.displayName || "Admin",
-                            role: 'admin'
-                        };
-                        App.completeLogin(adminUser);
-                    }).catch((error) => {
-                        console.error(error);
-                        alert("Login Failed: " + error.message);
-                    });
+                signInWithPopup(auth, provider).then((result) => {
+                    const user = result.user;
+                    App.completeLogin({ store: user.email.toLowerCase(), name: user.displayName || "Admin", role: 'admin' });
+                }).catch((e) => alert(e.message));
             },
 
-            // ADMIN EMAIL LOGIN (ΝΕΟ)
+            // ΣΥΝΔΕΣΗ ADMIN (EMAIL)
             loginAdminEmail: () => {
                 const email = document.getElementById('inpAdminEmail').value.trim();
                 const pass = document.getElementById('inpAdminPass').value.trim();
-
                 if(!email || !pass) return alert("Βάλε Email και Κωδικό!");
-
                 signInWithEmailAndPassword(auth, email, pass)
-                    .then((userCredential) => {
-                        const user = userCredential.user;
-                        const adminUser = {
-                            store: user.email.toLowerCase(), // To Email είναι το Store ID
-                            name: "Admin", // Συνήθως το email login δεν έχει displayName, βάζουμε Admin
-                            role: 'admin'
-                        };
-                        App.completeLogin(adminUser);
+                    .then((uc) => App.completeLogin({ store: uc.user.email.toLowerCase(), name: "Admin", role: 'admin' }))
+                    .catch((e) => alert("Σφάλμα: " + e.message));
+            },
+
+            // ΕΓΓΡΑΦΗ ADMIN (EMAIL) - Δημιουργεί νέο χρήστη
+            registerAdminEmail: () => {
+                const email = document.getElementById('inpAdminEmail').value.trim();
+                const pass = document.getElementById('inpAdminPass').value.trim();
+                if(!email || !pass) return alert("Βάλε Email και Κωδικό για εγγραφή!");
+                
+                createUserWithEmailAndPassword(auth, email, pass)
+                    .then((uc) => {
+                        alert("Ο λογαριασμός δημιουργήθηκε!");
+                        App.completeLogin({ store: uc.user.email.toLowerCase(), name: "Admin", role: 'admin' });
                     })
-                    .catch((error) => {
-                        console.error(error);
-                        alert("Σφάλμα σύνδεσης: " + error.message);
-                    });
+                    .catch((e) => alert("Σφάλμα εγγραφής: " + e.message));
             },
 
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                
                 if(window.AudioEngine) AudioEngine.init();
                 setupNotifications(); 
-                
                 App.finishLoginSequence();
             },
 
@@ -285,12 +272,9 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.querySelector('.btn-apk').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
-                
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
-                
                 App.connectSocket();
                 App.startHeartbeat();
             },
@@ -304,16 +288,13 @@
                         if(window.AudioEngine) AudioEngine.init();
                         setupNotifications();
                         App.finishLoginSequence();
-                    } catch (e) {
-                        localStorage.removeItem('bellgo_session');
-                    }
+                    } catch (e) { localStorage.removeItem('bellgo_session'); }
                 }
             },
 
             connectSocket: () => {
                 if (socket && socket.connected) return;
-
-                socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
+                socket = io({ transports: ['polling', 'websocket'], reconnection: true });
                 window.socket = socket; 
 
                 socket.on('connect', () => {
@@ -322,12 +303,18 @@
                     document.getElementById('staffPanel').classList.remove('offline-mode');
                     
                     const fcmToken = localStorage.getItem('fcm_token');
+                    // ΣΤΕΛΝΟΥΜΕ ΤΟ TOKEN ΑΜΕΣΩΣ ΜΟΛΙΣ ΣΥΝΔΕΘΕΙ!
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
-                        token: fcmToken 
+                        token: fcmToken // <-- ΕΔΩ ΦΕΥΓΕΙ ΤΟ TOKEN
                     });
+                    
+                    // ΓΙΑ ΣΙΓΟΥΡΙΑ ΣΤΕΛΝΟΥΜΕ ΚΑΙ UPDATE
+                    if(fcmToken) {
+                        socket.emit('update-token', { username: userData.name, token: fcmToken });
+                    }
                 });
 
                 socket.on('disconnect', () => {
@@ -341,10 +328,8 @@
                 socket.on('chat-message', (data) => App.renderChat(data));
             },
 
-            forceReconnect: () => {
-                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
-            },
-
+            forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
+            
             startHeartbeat: () => {
                 if(heartbeatInterval) clearInterval(heartbeatInterval);
                 heartbeatInterval = setInterval(() => {
@@ -363,22 +348,13 @@
 
             processStaffList: (serverList) => {
                 if (!serverList) serverList = [];
-                serverList.forEach(u => {
-                    const uname = u.name || u.username;
-                    if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
-                });
+                serverList.forEach(u => { const uname = u.name || u.username; if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; } });
                 knownStaff.forEach(u => {
                     const uname = u.name || u.username;
                     const isStillOnline = serverList.find(s => (s.name || s.username) === uname);
                     const isAlreadyGhost = ghosts[uname];
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        ghosts[uname] = {
-                            data: u,
-                            timer: setTimeout(() => {
-                                delete ghosts[uname];
-                                App.renderMergedList(knownStaff); 
-                            }, 180000) 
-                        };
+                        ghosts[uname] = { data: u, timer: setTimeout(() => { delete ghosts[uname]; App.renderMergedList(knownStaff); }, 180000) };
                     }
                 });
                 knownStaff = serverList;
@@ -388,31 +364,19 @@
             renderMergedList: (serverList) => {
                 const mergedList = [...serverList];
                 Object.values(ghosts).forEach(g => mergedList.push(g.data));
-                
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
-                
                 if (userData.role !== 'admin') return;
-
-                if (mergedList.length === 0) {
-                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
-                     return;
-                }
-                
+                if (mergedList.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>'; return; }
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    
                     const uname = u.name || u.username || "Unknown";
                     const isGhost = ghosts[uname] !== undefined;
-                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    
                     btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
                     const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
-                    
                     btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${statusText}</span>`;
-                    
                     if (!isGhost) {
                         btn.onclick = () => {
                             console.log("Calling:", uname);
@@ -454,13 +418,10 @@
 
         window.onload = function() {
             App.checkSession();
-            
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") {
                     console.log("👀 App Visible - Checking connection...");
-                    if(userData.store && (!socket || !socket.connected)) {
-                        App.connectSocket();
-                    }
+                    if(userData.store && (!socket || !socket.connected)) App.connectSocket();
                 }
             });
         };
