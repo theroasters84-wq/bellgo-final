@@ -132,12 +132,9 @@
                 userData = { store: rawStore.toLowerCase(), name, role, pass };
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
 
-                // ΑΡΧΙΚΟΠΟΙΗΣΗ ΗΧΟΥ - ΠΑΙΖΕΙ ΑΜΕΣΩΣ ΛΟΓΩ USER INTERACTION
                 if(window.AudioEngine) {
                     AudioEngine.init();
-                    AudioEngine.triggerAlarm(true); // Δοκιμαστική κλήση
-                } else {
-                    alert("ΣΦΑΛΜΑ: Ο Player δεν φορτώθηκε!");
+                    AudioEngine.triggerAlarm(true);
                 }
                 
                 this.finishLoginSequence();
@@ -184,7 +181,7 @@
                     document.getElementById('staffPanel').classList.remove('offline-mode');
                     socket.emit('join-store', { 
                         storeName: userData.store, 
-                        username: userData.name, 
+                        username: userData.name, // Sends as username
                         role: userData.role, 
                         pass: userData.pass 
                     });
@@ -196,15 +193,8 @@
                     document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
-                // --- EVENTS ΓΙΑ ΗΧΟ ΜΕ LOGS ---
-                socket.on('ring-bell', () => { 
-                    console.log("🔥 ΣΗΜΑ ΑΠΟ SERVER: RING-BELL");
-                    if(window.AudioEngine) AudioEngine.triggerAlarm(false); 
-                });
-                socket.on('kitchen-alarm', () => { 
-                    console.log("🔥 ΣΗΜΑ ΑΠΟ SERVER: KITCHEN-ALARM");
-                    if(window.AudioEngine) AudioEngine.triggerAlarm(false); 
-                });
+                socket.on('ring-bell', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(false); });
+                socket.on('kitchen-alarm', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(false); });
                 
                 socket.on('staff-list-update', (serverList) => this.processStaffList(serverList));
                 socket.on('chat-message', (data) => this.renderChat(data));
@@ -235,16 +225,19 @@
             processStaffList(serverList) {
                 if (!serverList) serverList = [];
                 serverList.forEach(u => {
-                    if (ghosts[u.name]) { clearTimeout(ghosts[u.name].timer); delete ghosts[u.name]; }
+                    // Χρησιμοποιούμε ό,τι έρθει: name ή username
+                    const uname = u.name || u.username;
+                    if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
                 });
                 knownStaff.forEach(u => {
-                    const isStillOnline = serverList.find(s => s.name === u.name);
-                    const isAlreadyGhost = ghosts[u.name];
+                    const uname = u.name || u.username;
+                    const isStillOnline = serverList.find(s => (s.name || s.username) === uname);
+                    const isAlreadyGhost = ghosts[uname];
                     if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        ghosts[u.name] = {
+                        ghosts[uname] = {
                             data: u,
                             timer: setTimeout(() => {
-                                delete ghosts[u.name];
+                                delete ghosts[uname];
                                 App.renderMergedList(lastStaffList);
                             }, 180000) 
                         };
@@ -270,17 +263,24 @@
                 
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
+                    
+                    // ΔΙΑΒΑΖΟΥΜΕ ΚΑΙ ΤΑ ΔΥΟ ΓΙΑ ΣΙΓΟΥΡΙΑ
+                    const uname = u.name || u.username || "Unknown";
+                    const isGhost = ghosts[uname] !== undefined;
+                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    const isGhost = ghosts[u.name] !== undefined;
                     
                     btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
                     const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
-                    btn.innerHTML = `<span>${u.name}</span><span class="status" id="status-${u.name}">${statusText}</span>`;
+                    
+                    btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${statusText}</span>`;
                     
                     if (!isGhost) {
                         btn.onclick = () => {
-                            socket.emit('trigger-alarm', u.name);
+                            console.log("Calling:", uname);
+                            socket.emit('trigger-alarm', uname);
+                            
                             const statusSpan = btn.querySelector('.status');
                             statusSpan.innerText = "📞 CALLING...";
                             statusSpan.style.color = "yellow";
