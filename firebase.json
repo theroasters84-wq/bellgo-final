@@ -1,8 +1,8 @@
 {
-  "to": "ΤΟ_TOKEN_ΤΗΣ_ΣΥΣΚΕΥΗΣ",
+  "to": "ΤΟ_TOKEN_ΠΟΥ_ΑΝΤΙΓΡΑΨΕΣ",
   "data": {
-    "title": "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-    "body": "Τραπέζι 5",
+    "title": "TEST",
+    "body": "ΔΟΝΗΣΗ!",
     "type": "alarm"
   },
   "priority": "high"
