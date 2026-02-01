@@ -27,11 +27,6 @@
         
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-register { width: 100%; padding: 15px; background: #333; border: 1px solid #555; color: white; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
-        
-        .divider { text-align: center; color: #555; margin: 15px 0; font-size: 14px; position: relative; }
-        .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #333; }
-        .divider::before { left: 0; } .divider::after { right: 0; }
 
         /* MAIN APP STYLES */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -97,18 +92,7 @@
         </div>
 
         <div id="adminForm" class="login-form" style="display:none;">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:5px;">Διαχείριση Κουζίνας</p>
-            
-            <input type="email" id="inpAdminEmail" placeholder="Email Διαχειριστή">
-            <input type="password" id="inpAdminPass" placeholder="Κωδικός (Νέος ή Υπάρχων)">
-            
-            <div style="display:flex; gap:10px;">
-                <button class="btn-login" onclick="App.loginAdminEmail()">ΣΥΝΔΕΣΗ</button>
-                <button class="btn-register" onclick="App.registerAdminEmail()">ΕΓΓΡΑΦΗ</button>
-            </div>
-
-            <div class="divider">Ή</div>
-
+            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής Κουζίνας</p>
             <button class="btn-google" onclick="App.loginAdminGoogle()">
                 <span>G</span> Σύνδεση με Google
             </button>
@@ -145,8 +129,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // Προσθέσαμε το createUserWithEmailAndPassword για την εγγραφή
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = { 
@@ -179,7 +162,6 @@
                             console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
                             
-                            // Αν είμαστε ΗΔΗ συνδεδεμένοι στο Socket, το στέλνουμε ΤΩΡΑ
                             if (window.socket && window.socket.connected) {
                                 console.log("🔄 Sending Token via Setup...");
                                 window.socket.emit('update-token', {
@@ -236,30 +218,6 @@
                 }).catch((e) => alert(e.message));
             },
 
-            // ΣΥΝΔΕΣΗ ADMIN (EMAIL)
-            loginAdminEmail: () => {
-                const email = document.getElementById('inpAdminEmail').value.trim();
-                const pass = document.getElementById('inpAdminPass').value.trim();
-                if(!email || !pass) return alert("Βάλε Email και Κωδικό!");
-                signInWithEmailAndPassword(auth, email, pass)
-                    .then((uc) => App.completeLogin({ store: uc.user.email.toLowerCase(), name: "Admin", role: 'admin' }))
-                    .catch((e) => alert("Σφάλμα: " + e.message));
-            },
-
-            // ΕΓΓΡΑΦΗ ADMIN (EMAIL) - Δημιουργεί νέο χρήστη
-            registerAdminEmail: () => {
-                const email = document.getElementById('inpAdminEmail').value.trim();
-                const pass = document.getElementById('inpAdminPass').value.trim();
-                if(!email || !pass) return alert("Βάλε Email και Κωδικό για εγγραφή!");
-                
-                createUserWithEmailAndPassword(auth, email, pass)
-                    .then((uc) => {
-                        alert("Ο λογαριασμός δημιουργήθηκε!");
-                        App.completeLogin({ store: uc.user.email.toLowerCase(), name: "Admin", role: 'admin' });
-                    })
-                    .catch((e) => alert("Σφάλμα εγγραφής: " + e.message));
-            },
-
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
@@ -303,15 +261,13 @@
                     document.getElementById('staffPanel').classList.remove('offline-mode');
                     
                     const fcmToken = localStorage.getItem('fcm_token');
-                    // ΣΤΕΛΝΟΥΜΕ ΤΟ TOKEN ΑΜΕΣΩΣ ΜΟΛΙΣ ΣΥΝΔΕΘΕΙ!
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
-                        token: fcmToken // <-- ΕΔΩ ΦΕΥΓΕΙ ΤΟ TOKEN
+                        token: fcmToken 
                     });
                     
-                    // ΓΙΑ ΣΙΓΟΥΡΙΑ ΣΤΕΛΝΟΥΜΕ ΚΑΙ UPDATE
                     if(fcmToken) {
                         socket.emit('update-token', { username: userData.name, token: fcmToken });
                     }
