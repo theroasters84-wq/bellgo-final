@@ -151,8 +151,6 @@
             if ('serviceWorker' in navigator) {
                 try {
                     const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    console.log('✅ SW Registered');
-                    
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { 
@@ -164,8 +162,7 @@
                             console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
                             
-                            // --- Η ΔΙΟΡΘΩΣΗ ΓΙΑ ΝΑ ΣΚΑΝΕ ΟΙ ΕΙΔΟΠΟΙΗΣΕΙΣ ---
-                            // Στέλνουμε το token στον Server μόλις το πάρουμε
+                            // Στέλνουμε το token μόλις το πάρουμε (Race Condition Fix)
                             if (window.socket && window.socket.connected) {
                                 console.log("🔄 Sending Token via Setup...");
                                 window.socket.emit('update-token', {
@@ -173,7 +170,6 @@
                                     token: token
                                 });
                             }
-                            // ------------------------------------------------
                         }
                     }
                 } catch (err) { console.error('Notification Setup Error:', err); }
@@ -237,10 +233,8 @@
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                
                 if(window.AudioEngine) AudioEngine.init();
-                setupNotifications(); // Ζητάμε άδεια και στέλνουμε token
-                
+                setupNotifications(); 
                 App.finishLoginSequence();
             },
 
@@ -248,12 +242,9 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.querySelector('.btn-apk').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
-                
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
-                
                 App.connectSocket();
                 App.startHeartbeat();
             },
@@ -267,9 +258,7 @@
                         if(window.AudioEngine) AudioEngine.init();
                         setupNotifications();
                         App.finishLoginSequence();
-                    } catch (e) {
-                        localStorage.removeItem('bellgo_session');
-                    }
+                    } catch (e) { localStorage.removeItem('bellgo_session'); }
                 }
             },
 
@@ -277,7 +266,7 @@
                 if (socket && socket.connected) return;
 
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
-                window.socket = socket; // Κάνουμε το socket global
+                window.socket = socket; 
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
@@ -286,7 +275,6 @@
                     
                     const fcmToken = localStorage.getItem('fcm_token');
                     
-                    // JOIN STORE ΜΕ ΤΟ TOKEN
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -294,7 +282,6 @@
                         token: fcmToken 
                     });
 
-                    // ΕΠΙΠΛΕΟΝ UPDATE ΓΙΑ ΣΙΓΟΥΡΙΑ
                     if(fcmToken) {
                         socket.emit('update-token', { username: userData.name, token: fcmToken });
                     }
@@ -358,31 +345,19 @@
             renderMergedList: (serverList) => {
                 const mergedList = [...serverList];
                 Object.values(ghosts).forEach(g => mergedList.push(g.data));
-                
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
-                
                 if (userData.role !== 'admin') return;
-
-                if (mergedList.length === 0) {
-                     container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>';
-                     return;
-                }
-                
+                if (mergedList.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>'; return; }
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    
                     const uname = u.name || u.username || "Unknown";
                     const isGhost = ghosts[uname] !== undefined;
-                    
                     const btn = document.createElement('button');
                     const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    
                     btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
                     const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
-                    
                     btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${statusText}</span>`;
-                    
                     if (!isGhost) {
                         btn.onclick = () => {
                             console.log("Calling:", uname);
@@ -424,7 +399,6 @@
 
         window.onload = function() {
             App.checkSession();
-            
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible") {
                     console.log("👀 App Visible - Checking connection...");
