@@ -4,7 +4,6 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 
-// --- ΡΥΘΜΙΣΗ FIREBASE ADMIN ---
 try {
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
@@ -25,7 +24,6 @@ let activeUsers = {};
 
 io.on('connection', (socket) => {
     
-    // 1. ΣΥΝΔΕΣΗ
     socket.on('join-store', (data) => {
         const cleanUser = (data.username || data.name || "").trim();
         const cleanStore = (data.storeName || "").trim().toLowerCase();
@@ -35,7 +33,6 @@ io.on('connection', (socket) => {
         const userKey = `${cleanStore}_${cleanUser}`;
         
         socket.join(cleanStore);
-        // Αποθηκεύουμε τα στοιχεία στο socket για να τα βλέπει το Chat
         socket.username = cleanUser; 
         socket.store = cleanStore;
         socket.role = data.role;
@@ -49,14 +46,12 @@ io.on('connection', (socket) => {
             lastSeen: Date.now()
         };
 
-        // Ελέγχουμε αν είναι Native App ή Browser για το log
         const tokenLog = (data.token && data.token.includes("NATIVE")) ? "📱 NATIVE APP" : (data.token ? "✅ WEB TOKEN" : "❌ NO TOKEN");
         console.log(`👤 Joined: ${cleanUser} | ${tokenLog}`);
         
         updateStore(cleanStore);
     });
 
-    // 2. HEARTBEAT
     socket.on('heartbeat', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
@@ -64,21 +59,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM (ΔΙΟΡΘΩΜΕΝΟ ΓΙΑ NATIVE APP)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
-        
         console.log(`🔔 Alarm -> ${targetName}`); 
 
         const targetKey = `${socket.store}_${targetName}`;
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            // A. SOCKET: Στέλνουμε ΠΑΝΤΑ εντολή Socket (Για να χτυπήσει το Native App & το Web όταν είναι ανοιχτό)
-            io.to(targetUser.socketId).emit('ring-bell');
+            io.to(targetUser.socketId).emit('ring-bell', { from: socket.username });
 
-            // B. FIREBASE: Στέλνουμε ΜΟΝΟ αν ΔΕΝ είναι Native App
-            // Ελέγχουμε αν το token υπάρχει ΚΑΙ δεν περιέχει τη λέξη "NATIVE"
             if (targetUser.fcmToken && !targetUser.fcmToken.includes("NATIVE")) {
                 const message = {
                     token: targetUser.fcmToken,
@@ -90,31 +80,22 @@ io.on('connection', (socket) => {
                     },
                     android: { priority: "high" }
                 };
-
-                admin.messaging().send(message)
-                    .then((res) => console.log('✅ FCM Sent:', res))
-                    .catch((err) => console.error('❌ FCM Error:', err));
-            } else {
-                console.log("ℹ️ Skipping FCM for Native App (Socket Only)");
+                admin.messaging().send(message).catch((err) => console.error('❌ FCM Error:', err));
             }
         }
     });
 
-    // 4. UPDATE TOKEN
-    socket.on('update-token', (data) => {
-        if (socket.store && data.username && data.token) {
-             const userKey = `${socket.store}_${data.username}`;
-             if (activeUsers[userKey]) {
-                 activeUsers[userKey].fcmToken = data.token;
-                 console.log(`🔄 Token updated for ${data.username}`);
-             }
+    // --- ΝΕΟ: ΑΠΟΔΟΧΗ ΚΛΗΣΗΣ ---
+    socket.on('alarm-accepted', (data) => {
+        if (socket.store && socket.username) {
+            console.log(`✅ Accepted by: ${socket.username}`);
+            // Ενημερώνουμε όλους στο κατάστημα (κυρίως τον Admin)
+            io.to(socket.store).emit('staff-accepted-alarm', { username: socket.username });
         }
     });
 
-    // 5. CHAT MESSAGE
     socket.on('chat-message', (msgData) => {
         if (socket.store && socket.username) {
-            // Στέλνουμε το μήνυμα σε ΟΛΟΥΣ στο δωμάτιο (store)
             io.to(socket.store).emit('chat-message', {
                 sender: socket.username,
                 role: socket.role,
@@ -123,13 +104,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 6. DISCONNECT
     socket.on('disconnect', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
             setTimeout(() => {
                 const user = activeUsers[userKey];
-                // Αν ο χρήστης δεν έχει ξανασυνδεθεί με νέο socketId, τον διαγράφουμε
                 if (user && user.socketId === socket.id) { 
                     delete activeUsers[userKey];
                     updateStore(socket.store);
