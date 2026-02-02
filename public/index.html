@@ -12,7 +12,8 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        .btn-apk { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
+        /* Κουμπί APK στην αρχική */
+        .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
 
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
@@ -28,48 +29,49 @@
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
-        .header { height: 55px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
-        .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; transition: background 0.3s; cursor: pointer; border: 2px solid white; }
-        .user-info { font-size: 13px; color: #ccc; display: flex; flex-direction: column; }
-        .user-info small { font-size: 10px; opacity: 0.7; }
-        .btn-logout { background: #D32F2F; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; }
+        
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
 
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
-        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; position: relative; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; background: #333; }
-        .btn-staff span.status { font-size: 12px; opacity: 0.9; font-weight: bold; }
-        .btn-staff.ghost { opacity: 0.7; border: 1px dashed #777; }
+        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; }
+        .btn-staff.ghost { opacity: 0.6; border: 1px dashed #777; }
+        .status { font-size: 12px; font-weight: bold; }
 
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 16px; word-wrap: break-word; color: white; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; }
         .msg.me { align-self: flex-end; background: #00E676; color: black; }
-        .msg.other { align-self: flex-start; }
+        .msg.other { align-self: flex-start; background: #333; }
 
-        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
-        .chat-input input { border-radius: 20px; width: 100%; height: 45px; background: #333; color: white; border: 1px solid #444; padding-left: 15px; }
-        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; height: 45px; color: black; }
+        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; }
+        .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
+        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; }
 
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
-        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
+        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; animation: pulseBtn 0.8s infinite; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk" target="_blank">📲 APP</a>
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" id="apkLanding" class="btn-apk-landing" target="_blank">📲 APP</a>
 
     <div id="loginScreen">
-        <h1>🔔 BellGo Login</h1>
+        <h1>🔔 BellGo</h1>
         <div class="role-switch">
             <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
             <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
         </div>
         <div id="staffForm" class="login-form">
-            <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
+            <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης">
             <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
             <select id="inpMyRole">
                 <option value="waiter">🟦 Σερβιτόρος</option>
@@ -78,34 +80,37 @@
             <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
         </div>
         <div id="adminForm" class="login-form" style="display:none;">
-            <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
+            <button class="btn-google" onclick="App.loginAdminGoogle()">Σύνδεση με Google</button>
         </div>
     </div>
 
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
+                <span id="connDot" class="status-dot"></span>
                 <div class="user-info">
-                    <span id="headerName">...</span>
-                    <small id="headerStore">...</small>
+                    <span id="headerName" style="font-weight:bold;">...</span>
+                    <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
                 </div>
             </div>
-            <button class="btn-logout" onclick="App.logout()">EXIT</button>
+            <div class="header-actions">
+                <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk-header">📲 APP</a>
+                <button class="btn-logout" onclick="App.logout()">EXIT</button>
+            </div>
         </div>
         <div class="content">
             <div id="staffPanel" class="staff-panel"><div id="staffList"></div></div>
             <div class="chat-panel">
                 <div id="chatBox" class="chat-messages"></div>
-                <div class="chat-input"><input type="text" id="msgInput" placeholder="Γράψε εδώ..."><button onclick="App.sendChat()">➤</button></div>
+                <div class="chat-input"><input type="text" id="msgInput" placeholder="Chat..."><button onclick="App.sendChat()">➤</button></div>
             </div>
         </div>
     </div>
 
     <div id="alarmOverlay">
-        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
-        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
-        <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
+        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold;">🚨 ΚΛΗΣΗ!</div>
+        <button class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
+        <div id="alarmSubText" style="margin-top:20px; color:white;">(Πάτα STOP για Αποδοχή)</div>
     </div>
 
     <script src="player.js"></script>
@@ -121,8 +126,7 @@
             projectId: "bellgo-5dbe5", 
             storageBucket: "bellgo-5dbe5.firebasestorage.app", 
             messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c", 
-            measurementId: "G-379ETZJP8H" 
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -132,26 +136,16 @@
 
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
-                try {
-                    const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    const permission = await Notification.requestPermission();
-                    if (permission === 'granted') {
-                        const token = await getToken(messaging, { 
-                            vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM",
-                            serviceWorkerRegistration: registration 
-                        });
-                        if (token) {
-                            localStorage.setItem('fcm_token', token);
-                            if (window.socket) window.socket.emit('update-token', { username: userData.name, token: token });
-                        }
-                    }
-                } catch (err) { console.error('FCM Error:', err); }
+                const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
+                    if (token) localStorage.setItem('fcm_token', token);
+                }
             }
         }
 
-        onMessage(messaging, (payload) => {
-            App.triggerAlarmScreen();
-        });
+        onMessage(messaging, () => App.triggerAlarmScreen());
 
         window.socket = null;
         window.userData = { store: '', name: '', role: '' };
@@ -182,8 +176,8 @@
             },
 
             loginAdminGoogle: () => {
-                signInWithPopup(auth, provider).then((result) => {
-                    App.completeLogin({ store: result.user.email.toLowerCase(), name: result.user.displayName || "Admin", role: 'admin' });
+                signInWithPopup(auth, provider).then((res) => {
+                    App.completeLogin({ store: res.user.email.toLowerCase(), name: res.user.displayName || "Admin", role: 'admin' });
                 });
             },
 
@@ -196,6 +190,7 @@
 
             finishLoginSequence: () => {
                 document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('apkLanding').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
@@ -211,10 +206,9 @@
             },
 
             triggerFakeAlarm: () => {
-                const overlay = document.getElementById('alarmOverlay');
                 document.getElementById('alarmText').innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
-                document.getElementById('alarmSubText').innerText = "Πάτα STOP για ενεργοποίηση ήχου";
-                overlay.style.display = 'flex';
+                document.getElementById('alarmSubText').innerText = "Πατήστε STOP για ενεργοποίηση ήχου";
+                document.getElementById('alarmOverlay').style.display = 'flex';
             },
 
             triggerAlarmScreen: () => {
@@ -230,7 +224,6 @@
                     userData = JSON.parse(saved);
                     setupNotifications();
                     App.finishLoginSequence();
-                    // Έλεγχος αν ήρθαμε από notification
                     if (window.location.search.includes('type=alarm')) {
                         setTimeout(() => App.triggerAlarmScreen(), 1500);
                     }
@@ -258,35 +251,29 @@
                 socket.on('chat-message', (data) => App.renderChat(data));
                 
                 socket.on('staff-accepted-alarm', (data) => {
-                    const statusSpan = document.getElementById(`status-${data.username}`);
-                    if (statusSpan) {
-                        statusSpan.innerText = "✅ ΕΡΧΕΤΑΙ";
-                        statusSpan.style.color = "#00E676";
-                        setTimeout(() => {
-                             statusSpan.innerText = "IDLE";
-                             statusSpan.style.color = "white";
-                        }, 8000);
+                    const span = document.getElementById(`status-${data.username}`);
+                    if (span) {
+                        span.innerText = "✅ ΕΡΧΕΤΑΙ";
+                        span.style.color = "#00E676";
+                        setTimeout(() => { span.innerText = "IDLE"; span.style.color = "white"; }, 8000);
                     }
                 });
             },
 
             acceptAlarm: () => {
-                if(window.AudioEngine) {
-                    AudioEngine.init();
-                    AudioEngine.stopAlarm(true);
-                }
+                if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
                 document.getElementById('alarmOverlay').style.display = 'none';
                 if (socket && socket.connected) socket.emit('alarm-accepted');
             },
 
             startHeartbeat: () => {
-                setInterval(() => {
-                    if (socket && socket.connected) socket.emit('heartbeat');
-                }, 3000);
+                setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000);
             },
 
             logout: () => {
-                if (socket) socket.emit('manual-logout');
+                if (socket && socket.connected) {
+                    socket.emit('manual-logout'); // Σημαντικό: Ενημερώνει τον server να σε σβήσει
+                }
                 localStorage.removeItem('bellgo_session');
                 window.location.reload();
             },
@@ -307,9 +294,7 @@
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
-                        const span = document.getElementById(`status-${u.username}`);
-                        span.innerText = "📞 ΚΛΗΣΗ...";
-                        span.style.color = "yellow";
+                        document.getElementById(`status-${u.username}`).innerText = "📞 ΚΛΗΣΗ...";
                     };
                     container.appendChild(btn);
                 });
