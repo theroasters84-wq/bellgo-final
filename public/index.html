@@ -41,14 +41,20 @@
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
+        /* --- ΛΙΣΤΑ ΠΡΟΣΩΠΙΚΟΥ & ΧΡΩΜΑΤΑ --- */
         .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
         .btn-staff:active { transform: scale(0.98); }
 
+        /* Σερβιτόρος: ΜΠΛΕ (#1565C0) */
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
+        
+        /* Διανομέας: ΚΟΚΚΙΝΟΣ (#C62828) */
         .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
+
         .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 1px dashed #777; background: #222 !important; }
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
 
+        /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
@@ -59,6 +65,7 @@
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
 
+        /* Alarm Screen */
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
         .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
@@ -130,13 +137,15 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
+        // --- ΕΔΩ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ ΠΟΥ ΖΗΤΗΣΕΣ ---
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
             projectId: "bellgo-5dbe5", 
             storageBucket: "bellgo-5dbe5.firebasestorage.app", 
             messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
+            measurementId: "G-379ETZJP8H"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -325,12 +334,11 @@
                     let stTxt = isAway ? "❓ BACKGROUND" : "IDLE";
                     let stCol = isAway ? "#ff9800" : "white";
 
-                    // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
+                    // ΔΙΟΡΘΩΜΕΝΟ: Υπάρχουν τα backticks (`)
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
                     
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
-                        // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
                         const span = document.getElementById(`status-${u.username}`);
                         if(span) {
                             span.innerText = "📞 ΚΛΗΣΗ...";
@@ -351,7 +359,7 @@
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
-                // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
+                // ΔΙΟΡΘΩΜΕΝΟ: Υπάρχουν τα backticks (`)
                 div.className = `msg ${data.sender === userData.name ? 'me' : 'other'} ${data.role}`;
                 div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
                 box.appendChild(div);
