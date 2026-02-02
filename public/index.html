@@ -12,10 +12,8 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* Κουμπί APK στην αρχική σελίδα (Login) */
         .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
 
-        /* Login Screen */
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
         
@@ -29,7 +27,6 @@
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
 
-        /* Main App Interface */
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; transition: background 0.3s; }
@@ -44,20 +41,14 @@
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
-        /* --- ΛΙΣΤΑ ΠΡΟΣΩΠΙΚΟΥ & ΧΡΩΜΑΤΑ --- */
         .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
         .btn-staff:active { transform: scale(0.98); }
 
-        /* Σερβιτόρος: ΜΠΛΕ (#1976D2) */
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
-        
-        /* Διανομέας: ΚΟΚΚΙΝΟΣ (#D32F2F) */
         .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
-
         .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 1px dashed #777; background: #222 !important; }
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
 
-        /* Chat Panel */
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
@@ -68,7 +59,6 @@
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
 
-        /* Alarm Screen */
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
         .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
@@ -140,7 +130,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // ΡΥΘΜΙΣΕΙΣ FIREBASE
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -204,7 +193,6 @@
             },
 
             loginAdminGoogle: () => {
-                // Redirect Login για συμβατότητα με Android/WebViews
                 signInWithRedirect(auth, provider);
             },
 
@@ -228,7 +216,6 @@
                 App.connectSocket();
                 App.startHeartbeat();
 
-                // "Ψεύτικη" κλήση για ξεκλείδωμα ήχου (μόνο για Staff)
                 if(userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
                     setTimeout(() => App.triggerFakeAlarm(), 800);
@@ -249,18 +236,15 @@
             },
 
             checkSession: () => {
-                // ΕΛΕΓΧΟΣ 1: Επιστροφή από Google Redirect
                 getRedirectResult(auth).then((result) => {
                     if (result && result.user) {
                         App.completeLogin({ store: result.user.email.toLowerCase(), name: result.user.displayName || "Admin", role: 'admin' });
                     } else {
-                        // ΕΛΕΓΧΟΣ 2: LocalStorage
                         const saved = localStorage.getItem('bellgo_session');
                         if (saved) {
                             userData = JSON.parse(saved);
                             setupNotifications();
                             App.finishLoginSequence();
-                            // Αν το link έχει ?type=alarm, άνοιξε σειρήνα
                             if (window.location.search.includes('type=alarm')) {
                                 setTimeout(() => App.triggerAlarmScreen(), 1500);
                             }
@@ -292,13 +276,11 @@
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
                 
-                // --- ΕΔΩ ΓΙΝΕΤΑΙ Η ΑΛΛΑΓΗ ΣΕ "ΕΡΧΕΤΑΙ" ---
                 socket.on('staff-accepted-alarm', (data) => {
                     const span = document.getElementById(`status-${data.username}`);
                     if (span) {
                         span.innerText = "✅ ΕΡΧΕΤΑΙ";
-                        span.style.color = "#00E676"; // Πράσινο
-                        // Μετά από 8 δευτερόλεπτα -> IDLE
+                        span.style.color = "#00E676";
                         setTimeout(() => { 
                             span.innerText = "IDLE"; 
                             span.style.color = "white"; 
@@ -310,11 +292,7 @@
             acceptAlarm: () => {
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
                 document.getElementById('alarmOverlay').style.display = 'none';
-                
-                // Επαναφορά κειμένου
                 document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
-                
-                // Στέλνουμε στο Server ότι το αποδεχτήκαμε
                 if (socket && socket.connected) socket.emit('alarm-accepted');
             },
 
@@ -325,11 +303,7 @@
             },
 
             logout: () => {
-                if (socket) {
-                    // Στέλνουμε το manual-logout για να καθαρίσει από τον Admin
-                    socket.emit('manual-logout');
-                }
-                // Μικρή καθυστέρηση για να προλάβει να φύγει το πακέτο δικτύου
+                if (socket) socket.emit('manual-logout');
                 setTimeout(() => {
                     localStorage.removeItem('bellgo_session');
                     window.location.reload();
@@ -346,16 +320,17 @@
                     const isAway = u.status === 'away';
                     
                     const btn = document.createElement('button');
-                    // Εδώ εφαρμόζεται το Μπλε/Κόκκινο χρώμα ανάλογα με τον ρόλο
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
                     
                     let stTxt = isAway ? "❓ BACKGROUND" : "IDLE";
                     let stCol = isAway ? "#ff9800" : "white";
 
+                    // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
                     
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
+                        // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
                         const span = document.getElementById(`status-${u.username}`);
                         if(span) {
                             span.innerText = "📞 ΚΛΗΣΗ...";
@@ -376,6 +351,7 @@
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
+                // ΔΙΟΡΘΩΜΕΝΟ: Προστέθηκαν τα backticks (`)
                 div.className = `msg ${data.sender === userData.name ? 'me' : 'other'} ${data.role}`;
                 div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
                 box.appendChild(div);
