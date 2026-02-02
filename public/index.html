@@ -44,9 +44,8 @@
         .btn-staff:active { transform: scale(0.98); }
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #E65100; border-left: 5px solid #FFB74D; }
-        .btn-staff span.status { font-size: 12px; opacity: 0.7; font-weight: normal; }
-        .offline-mode .btn-staff { opacity: 0.5; filter: grayscale(80%); pointer-events: none; }
-        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 2px dashed #666; background: #222; }
+        .btn-staff span.status { font-size: 12px; opacity: 0.8; font-weight: bold; }
+        .btn-staff.ghost { opacity: 0.7; filter: grayscale(50%); border: 1px dashed #777; }
 
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
@@ -122,7 +121,7 @@
     <div id="alarmOverlay">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
+        <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
     </div>
 
     <script src="player.js"></script>
@@ -157,14 +156,10 @@
                             vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM",
                             serviceWorkerRegistration: registration 
                         });
-                        
                         if (token) {
                             localStorage.setItem('fcm_token', token);
                             if (window.socket && window.socket.connected) {
-                                window.socket.emit('update-token', {
-                                    username: userData.name,
-                                    token: token
-                                });
+                                window.socket.emit('update-token', { username: userData.name, token: token });
                             }
                         }
                     }
@@ -178,9 +173,7 @@
 
         window.socket = null;
         window.userData = { store: '', name: '', role: '' };
-        let ghosts = {}; 
-        let knownStaff = [];
-        let heartbeatInterval = null;
+        let isFirstLogin = true;
 
         window.UI = {
             showStaffLogin: () => {
@@ -216,7 +209,6 @@
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                if(window.AudioEngine) AudioEngine.init();
                 setupNotifications(); 
                 App.finishLoginSequence();
             },
@@ -228,15 +220,30 @@
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
+                
                 App.connectSocket();
                 App.startHeartbeat();
+
+                // ΨΕΥΤΙΚΗ ΚΛΗΣΗ ΓΙΑ ΞΕΚΛΕΙΔΩΜΑ ΗΧΟΥ (Μόνο για Staff)
+                if(userData.role !== 'admin' && isFirstLogin) {
+                    isFirstLogin = false;
+                    setTimeout(() => App.triggerFakeAlarm(), 1000);
+                }
+            },
+
+            triggerFakeAlarm: () => {
+                const overlay = document.getElementById('alarmOverlay');
+                const text = document.getElementById('alarmText');
+                const sub = document.getElementById('alarmSubText');
+                text.innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
+                sub.innerText = "Πατήστε STOP για ενεργοποίηση ήχου";
+                overlay.style.display = 'flex';
             },
 
             checkSession: () => {
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
                     userData = JSON.parse(saved);
-                    if(window.AudioEngine) AudioEngine.init();
                     setupNotifications();
                     App.finishLoginSequence();
                 }
@@ -258,40 +265,39 @@
                 });
 
                 socket.on('ring-bell', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(); });
-                socket.on('staff-list-update', (list) => App.processStaffList(list));
+                socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
                 
-                // --- ΝΕΟ: Listener για τον Admin για εμφάνιση του "ΕΡΧΕΤΑΙ" ---
                 socket.on('staff-accepted-alarm', (data) => {
                     const statusSpan = document.getElementById(`status-${data.username}`);
                     if (statusSpan) {
                         statusSpan.innerText = "✅ ΕΡΧΕΤΑΙ";
                         statusSpan.style.color = "#00E676";
-                        statusSpan.style.fontWeight = "bold";
-                        // Μετά από 10 δευτερόλεπτα επιστρέφει σε IDLE
                         setTimeout(() => {
-                            statusSpan.innerText = "IDLE";
-                            statusSpan.style.color = "white";
-                            statusSpan.style.fontWeight = "normal";
-                        }, 10000);
+                             statusSpan.innerText = "IDLE";
+                             statusSpan.style.color = "white";
+                        }, 7000);
                     }
                 });
             },
 
-            // --- ΝΕΟ: Λειτουργία αποδοχής όταν ο υπάλληλος πατάει STOP ---
             acceptAlarm: () => {
                 if(window.AudioEngine) {
+                    AudioEngine.init(); // Ξεκλειδώνει τον ήχο
                     AudioEngine.stopAlarm(true);
-                    if (socket && socket.connected) {
-                        socket.emit('alarm-accepted');
-                    }
                 }
+                document.getElementById('alarmOverlay').style.display = 'none';
+                // Επαναφορά κειμένων για επόμενη (πραγματική) κλήση
+                document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
+                document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
+                
+                if (socket && socket.connected) socket.emit('alarm-accepted');
             },
 
             forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
 
             startHeartbeat: () => {
-                heartbeatInterval = setInterval(() => {
+                setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
                         if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(e=>{});
@@ -300,60 +306,36 @@
             },
 
             logout: () => {
+                if (socket) socket.emit('manual-logout');
                 localStorage.removeItem('bellgo_session');
                 if (socket) socket.disconnect();
                 window.location.reload();
             },
 
-            processStaffList: (serverList) => {
-                serverList.forEach(u => {
-                    const uname = u.name || u.username;
-                    if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
-                });
-                knownStaff.forEach(u => {
-                    const uname = u.name || u.username;
-                    const isStillOnline = serverList.find(s => (s.name || s.username) === uname);
-                    if (!isStillOnline && !ghosts[uname] && u.role !== 'admin') {
-                        ghosts[uname] = { data: u, timer: setTimeout(() => { delete ghosts[uname]; App.renderMergedList(knownStaff); }, 180000) };
-                    }
-                });
-                knownStaff = serverList;
-                App.renderMergedList(serverList);
-            },
-
-            renderMergedList: (serverList) => {
-                const mergedList = [...serverList];
-                Object.values(ghosts).forEach(g => mergedList.push(g.data));
+            renderStaffList: (serverList) => {
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 if (userData.role !== 'admin') return;
-                mergedList.forEach(u => {
+
+                serverList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    const uname = u.name || u.username;
-                    const isGhost = ghosts[uname] !== undefined;
+                    const uname = u.username;
+                    const isAway = u.status === 'away';
+                    
                     const btn = document.createElement('button');
-                    btn.className = `btn-staff ${u.role} ${isGhost ? 'ghost' : ''}`;
-                    btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${isGhost ? "📡 Ψάχνει..." : "IDLE"}</span>`;
-                    if (!isGhost) {
-                        btn.onclick = () => {
-                            socket.emit('trigger-alarm', uname);
-                            const statusSpan = btn.querySelector('.status');
-                            // ΑΛΛΑΓΗ: Μένει ΚΛΗΣΗ... μέχρι να έρθει το σήμα αποδοχής
-                            statusSpan.innerText = "📞 ΚΛΗΣΗ...";
-                            statusSpan.style.color = "yellow";
-                            statusSpan.style.fontWeight = "bold";
-                            
-                            // Αφαιρέθηκε το αυτόματο reset των 5 δευτερολέπτων
-                            // Έβαλα ένα μεγάλο fallback (60s) για ασφάλεια
-                            setTimeout(() => {
-                                if(statusSpan.innerText === "📞 ΚΛΗΣΗ...") {
-                                    statusSpan.innerText = "IDLE";
-                                    statusSpan.style.color = "white";
-                                    statusSpan.style.fontWeight = "normal";
-                                }
-                            }, 60000);
-                        };
-                    }
+                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
+                    
+                    let statusTxt = isAway ? "❓ BACKGROUND" : "IDLE";
+                    let statusCol = isAway ? "#ff9800" : "white";
+
+                    btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}" style="color:${statusCol}">${statusTxt}</span>`;
+                    
+                    btn.onclick = () => {
+                        socket.emit('trigger-alarm', uname);
+                        const span = document.getElementById(`status-${uname}`);
+                        span.innerText = "📞 ΚΛΗΣΗ...";
+                        span.style.color = "yellow";
+                    };
                     container.appendChild(btn);
                 });
             },
