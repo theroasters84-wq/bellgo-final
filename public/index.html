@@ -268,6 +268,7 @@
                         statusSpan.innerText = "✅ ΕΡΧΕΤΑΙ";
                         statusSpan.style.color = "#00E676";
                         statusSpan.style.fontWeight = "bold";
+                        // Μετά από 10 δευτερόλεπτα επιστρέφει σε IDLE
                         setTimeout(() => {
                             statusSpan.innerText = "IDLE";
                             statusSpan.style.color = "white";
@@ -337,9 +338,20 @@
                         btn.onclick = () => {
                             socket.emit('trigger-alarm', uname);
                             const statusSpan = btn.querySelector('.status');
-                            statusSpan.innerText = "📞 CALLING...";
+                            // ΑΛΛΑΓΗ: Μένει ΚΛΗΣΗ... μέχρι να έρθει το σήμα αποδοχής
+                            statusSpan.innerText = "📞 ΚΛΗΣΗ...";
                             statusSpan.style.color = "yellow";
-                            setTimeout(() => { if(statusSpan.innerText === "📞 CALLING...") statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; }, 5000);
+                            statusSpan.style.fontWeight = "bold";
+                            
+                            // Αφαιρέθηκε το αυτόματο reset των 5 δευτερολέπτων
+                            // Έβαλα ένα μεγάλο fallback (60s) για ασφάλεια
+                            setTimeout(() => {
+                                if(statusSpan.innerText === "📞 ΚΛΗΣΗ...") {
+                                    statusSpan.innerText = "IDLE";
+                                    statusSpan.style.color = "white";
+                                    statusSpan.style.fontWeight = "normal";
+                                }
+                            }, 60000);
                         };
                     }
                     container.appendChild(btn);
