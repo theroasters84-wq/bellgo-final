@@ -49,7 +49,10 @@ io.on('connection', (socket) => {
             lastSeen: Date.now()
         };
 
-        console.log(`👤 Joined: ${cleanUser} | Token: ${data.token ? '✅' : '❌'}`);
+        // Ελέγχουμε αν είναι Native App ή Browser για το log
+        const tokenLog = (data.token && data.token.includes("NATIVE")) ? "📱 NATIVE APP" : (data.token ? "✅ WEB TOKEN" : "❌ NO TOKEN");
+        console.log(`👤 Joined: ${cleanUser} | ${tokenLog}`);
+        
         updateStore(cleanStore);
     });
 
@@ -61,7 +64,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 3. TRIGGER ALARM (ΔΟΝΗΣΗ)
+    // 3. TRIGGER ALARM (ΔΙΟΡΘΩΜΕΝΟ ΓΙΑ NATIVE APP)
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
         
@@ -71,10 +74,12 @@ io.on('connection', (socket) => {
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            io.to(targetUser.socketId).emit('ring-bell'); // Ήχος (Ανοιχτό)
+            // A. SOCKET: Στέλνουμε ΠΑΝΤΑ εντολή Socket (Για να χτυπήσει το Native App & το Web όταν είναι ανοιχτό)
+            io.to(targetUser.socketId).emit('ring-bell');
 
-            // Firebase Data Message (Κλειστό -> Δόνηση)
-            if (targetUser.fcmToken) {
+            // B. FIREBASE: Στέλνουμε ΜΟΝΟ αν ΔΕΝ είναι Native App
+            // Ελέγχουμε αν το token υπάρχει ΚΑΙ δεν περιέχει τη λέξη "NATIVE"
+            if (targetUser.fcmToken && !targetUser.fcmToken.includes("NATIVE")) {
                 const message = {
                     token: targetUser.fcmToken,
                     data: {
@@ -89,6 +94,8 @@ io.on('connection', (socket) => {
                 admin.messaging().send(message)
                     .then((res) => console.log('✅ FCM Sent:', res))
                     .catch((err) => console.error('❌ FCM Error:', err));
+            } else {
+                console.log("ℹ️ Skipping FCM for Native App (Socket Only)");
             }
         }
     });
@@ -104,7 +111,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. CHAT MESSAGE (ΑΥΤΟ ΕΛΕΙΠΕ!)
+    // 5. CHAT MESSAGE
     socket.on('chat-message', (msgData) => {
         if (socket.store && socket.username) {
             // Στέλνουμε το μήνυμα σε ΟΛΟΥΣ στο δωμάτιο (store)
@@ -122,6 +129,7 @@ io.on('connection', (socket) => {
             const userKey = `${socket.store}_${socket.username}`;
             setTimeout(() => {
                 const user = activeUsers[userKey];
+                // Αν ο χρήστης δεν έχει ξανασυνδεθεί με νέο socketId, τον διαγράφουμε
                 if (user && user.socketId === socket.id) { 
                     delete activeUsers[userKey];
                     updateStore(socket.store);
