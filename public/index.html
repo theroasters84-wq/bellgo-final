@@ -40,8 +40,16 @@
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
+        /* --- ΧΡΩΜΑΤΑ ΠΡΟΣΩΠΙΚΟΥ --- */
         .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; }
-        .btn-staff.ghost { opacity: 0.6; border: 1px dashed #777; }
+        
+        /* Σερβιτόρος: ΜΠΛΕ */
+        .btn-staff.waiter { background: #1976D2; border-left: 5px solid #64B5F6; }
+        
+        /* Διανομέας: ΚΟΚΚΙΝΟΣ */
+        .btn-staff.driver { background: #D32F2F; border-left: 5px solid #FF5252; }
+
+        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 1px dashed #777; background: #222 !important; }
         .status { font-size: 12px; font-weight: bold; }
 
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
@@ -49,6 +57,10 @@
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; }
         .msg.me { align-self: flex-end; background: #00E676; color: black; }
         .msg.other { align-self: flex-start; background: #333; }
+        
+        /* Χρώματα στο Chat */
+        .msg.waiter { border-left: 3px solid #64B5F6; }
+        .msg.driver { border-left: 3px solid #FF5252; }
 
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; }
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
@@ -75,7 +87,7 @@
             <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
             <select id="inpMyRole">
                 <option value="waiter">🟦 Σερβιτόρος</option>
-                <option value="driver">🟧 Διανομέας</option>
+                <option value="driver">🟥 Διανομέας</option>
             </select>
             <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
         </div>
@@ -89,7 +101,7 @@
             <div style="display:flex; align-items:center;">
                 <span id="connDot" class="status-dot"></span>
                 <div class="user-info">
-                    <span id="headerName" style="font-weight:bold;">...</span>
+                    <span id="headerName" style="font-weight:bold; font-size:14px;">...</span>
                     <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
                 </div>
             </div>
@@ -117,7 +129,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = { 
@@ -136,12 +148,14 @@
 
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
-                const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
-                    if (token) localStorage.setItem('fcm_token', token);
-                }
+                try {
+                    const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
+                        if (token) localStorage.setItem('fcm_token', token);
+                    }
+                } catch(e) { console.log(e); }
             }
         }
 
@@ -176,9 +190,8 @@
             },
 
             loginAdminGoogle: () => {
-                signInWithPopup(auth, provider).then((res) => {
-                    App.completeLogin({ store: res.user.email.toLowerCase(), name: res.user.displayName || "Admin", role: 'admin' });
-                });
+                // Χρήση Redirect για καλύτερη συμβατότητα με κινητά
+                signInWithRedirect(auth, provider);
             },
 
             completeLogin: (user) => {
@@ -219,6 +232,13 @@
             },
 
             checkSession: () => {
+                // Έλεγχος για επιστροφή από Google Redirect
+                getRedirectResult(auth).then((result) => {
+                    if (result && result.user) {
+                         App.completeLogin({ store: result.user.email.toLowerCase(), name: result.user.displayName || "Admin", role: 'admin' });
+                    }
+                }).catch((error) => console.log(error));
+
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
                     userData = JSON.parse(saved);
@@ -250,12 +270,17 @@
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
                 
+                // ΕΔΩ ΕΙΝΑΙ Η ΛΟΓΙΚΗ ΓΙΑ ΤΟ "ΕΡΧΕΤΑΙ"
                 socket.on('staff-accepted-alarm', (data) => {
                     const span = document.getElementById(`status-${data.username}`);
                     if (span) {
                         span.innerText = "✅ ΕΡΧΕΤΑΙ";
-                        span.style.color = "#00E676";
-                        setTimeout(() => { span.innerText = "IDLE"; span.style.color = "white"; }, 8000);
+                        span.style.color = "#00E676"; // Πράσινο
+                        // Μετά από 8 δευτερόλεπτα ξαναγίνεται IDLE
+                        setTimeout(() => { 
+                            span.innerText = "IDLE"; 
+                            span.style.color = "white"; 
+                        }, 8000);
                     }
                 });
             },
@@ -271,11 +296,15 @@
             },
 
             logout: () => {
-                if (socket && socket.connected) {
-                    socket.emit('manual-logout'); // Σημαντικό: Ενημερώνει τον server να σε σβήσει
+                if (socket) {
+                    // Στέλνουμε το σήμα για άμεση διαγραφή
+                    socket.emit('manual-logout');
                 }
-                localStorage.removeItem('bellgo_session');
-                window.location.reload();
+                // Μικρή καθυστέρηση για να προλάβει να φύγει το σήμα στο Native App
+                setTimeout(() => {
+                    localStorage.removeItem('bellgo_session');
+                    window.location.reload();
+                }, 100);
             },
 
             renderStaffList: (serverList) => {
@@ -286,15 +315,24 @@
                 serverList.forEach(u => {
                     if (u.role === 'admin') return;
                     const isAway = u.status === 'away';
+                    
                     const btn = document.createElement('button');
+                    // Προσθέτουμε την κλάση ρόλου (waiter/driver) και ghost αν λείπει
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
+                    
                     let stTxt = isAway ? "❓ BACKGROUND" : "IDLE";
                     let stCol = isAway ? "#ff9800" : "white";
 
+                    // Δημιουργία του Status Span με ID για να αλλάζει σε "ΕΡΧΕΤΑΙ"
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
+                    
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
-                        document.getElementById(`status-${u.username}`).innerText = "📞 ΚΛΗΣΗ...";
+                        const span = document.getElementById(`status-${u.username}`);
+                        if(span) {
+                            span.innerText = "📞 ΚΛΗΣΗ...";
+                            span.style.color = "yellow";
+                        }
                     };
                     container.appendChild(btn);
                 });
@@ -310,7 +348,7 @@
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
-                div.className = `msg ${data.sender === userData.name ? 'me' : 'other'}`;
+                div.className = `msg ${data.sender === userData.name ? 'me' : 'other'} ${data.role}`;
                 div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
                 box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
