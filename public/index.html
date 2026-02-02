@@ -1,8 +1,146 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo Ultra</title>
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* Κουμπί APK στην αρχική σελίδα (Login) */
+        .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
+
+        /* Login Screen */
+        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
+        h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
+        
+        .role-switch { display: flex; gap: 10px; margin-bottom: 20px; }
+        .role-btn { padding: 10px 20px; border: 1px solid #444; background: #222; color: white; border-radius: 20px; cursor: pointer; }
+        .role-btn.active { background: #00E676; color: black; font-weight: bold; border-color: #00E676; }
+
+        .login-form { width: 85%; display: flex; flex-direction: column; gap: 12px; }
+        input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; text-align: center; }
+        
+        .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+        /* Main App Interface */
+        #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; transition: background 0.3s; }
+        
+        .user-info { display: flex; flex-direction: column; }
+        
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+
+        .content { flex: 1; display: flex; overflow: hidden; position: relative; }
+        .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
+        .staff-panel.active { display: flex; }
+
+        /* --- ΛΙΣΤΑ ΠΡΟΣΩΠΙΚΟΥ & ΧΡΩΜΑΤΑ --- */
+        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
+        .btn-staff:active { transform: scale(0.98); }
+
+        /* Σερβιτόρος: ΜΠΛΕ (#1976D2) */
+        .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
+        
+        /* Διανομέας: ΚΟΚΚΙΝΟΣ (#D32F2F) */
+        .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
+
+        .btn-staff.ghost { opacity: 0.6; filter: grayscale(100%); border: 1px dashed #777; background: #222 !important; }
+        .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
+
+        /* Chat Panel */
+        .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
+        .msg.me { align-self: flex-end; background: #00E676; color: black; }
+        .msg.other { align-self: flex-start; background: #333; }
+        
+        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
+        .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
+
+        /* Alarm Screen */
+        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
+        @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
+        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
+        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" id="apkLanding" class="btn-apk-landing" target="_blank">📲 APP</a>
+
+    <div id="loginScreen">
+        <h1>🔔 BellGo</h1>
+        <div class="role-switch">
+            <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
+            <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
+        </div>
+
+        <div id="staffForm" class="login-form">
+            <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
+            <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
+            <select id="inpMyRole">
+                <option value="waiter">🟦 Σερβιτόρος</option>
+                <option value="driver">🟥 Διανομέας</option>
+            </select>
+            <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
+        </div>
+
+        <div id="adminForm" class="login-form" style="display:none;">
+            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής Κουζίνας</p>
+            <button class="btn-google" onclick="App.loginAdminGoogle()">
+                <span>G</span> Σύνδεση με Google
+            </button>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <div class="header">
+            <div style="display:flex; align-items:center;">
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" title="Reconnect"></span>
+                <div class="user-info">
+                    <span id="headerName" style="font-weight:bold; font-size:14px;">...</span>
+                    <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk-header" target="_blank">📲 APP</a>
+                <button class="btn-logout" onclick="App.logout()">EXIT</button>
+            </div>
+        </div>
+        <div class="content">
+            <div id="staffPanel" class="staff-panel"><div id="staffList"></div></div>
+            <div class="chat-panel">
+                <div id="chatBox" class="chat-messages"><div style="text-align:center; opacity:0.5; margin-top:20px;">Chat Started</div></div>
+                <div class="chat-input"><input type="text" id="msgInput" placeholder="Γράψε εδώ..." autocomplete="off"><button onclick="App.sendChat()">➤</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="alarmOverlay">
+        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
+        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
+        <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
+    </div>
+
+    <script src="player.js"></script>
+
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
+        // ΡΥΘΜΙΣΕΙΣ FIREBASE
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -24,9 +162,14 @@
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
-                        if (token) localStorage.setItem('fcm_token', token);
+                        if (token) {
+                            localStorage.setItem('fcm_token', token);
+                            if (window.socket && window.socket.connected) {
+                                window.socket.emit('update-token', { username: userData.name, token: token });
+                            }
+                        }
                     }
-                } catch(e) { console.log(e); }
+                } catch(e) { console.log("FCM Error:", e); }
             }
         }
 
@@ -61,10 +204,8 @@
             },
 
             loginAdminGoogle: () => {
-                // Χρησιμοποιούμε Redirect για να δουλεύει παντού (Mobile/Web)
-                signInWithRedirect(auth, provider).catch(error => {
-                    alert("Σφάλμα έναρξης Google: " + error.message);
-                });
+                // Redirect Login για συμβατότητα με Android/WebViews
+                signInWithRedirect(auth, provider);
             },
 
             completeLogin: (user) => {
@@ -77,8 +218,8 @@
             finishLoginSequence: () => {
                 document.getElementById('loginScreen').style.display = 'none';
                 if(document.getElementById('apkLanding')) document.getElementById('apkLanding').style.display = 'none';
-                
                 document.getElementById('mainApp').style.display = 'flex';
+                
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
@@ -87,7 +228,7 @@
                 App.connectSocket();
                 App.startHeartbeat();
 
-                // Fake alarm μόνο για Staff
+                // "Ψεύτικη" κλήση για ξεκλείδωμα ήχου (μόνο για Staff)
                 if(userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
                     setTimeout(() => App.triggerFakeAlarm(), 800);
@@ -108,34 +249,27 @@
             },
 
             checkSession: () => {
-                // 1. ΠΡΩΤΑ ΕΛΕΓΧΟΥΜΕ ΑΝ ΓΥΡΙΣΑΜΕ ΑΠΟ GOOGLE REDIRECT
-                getRedirectResult(auth)
-                    .then((result) => {
-                        if (result && result.user) {
-                            // Επιτυχία από Google!
-                            App.completeLogin({ 
-                                store: result.user.email.toLowerCase(), 
-                                name: result.user.displayName || "Admin", 
-                                role: 'admin' 
-                            });
-                        } else {
-                            // Αν δεν υπάρχει Google Redirect, ελέγχουμε το LocalStorage
-                            const saved = localStorage.getItem('bellgo_session');
-                            if (saved) {
-                                userData = JSON.parse(saved);
-                                setupNotifications();
-                                App.finishLoginSequence();
-                                // Έλεγχος notification click
-                                if (window.location.search.includes('type=alarm')) {
-                                    setTimeout(() => App.triggerAlarmScreen(), 1500);
-                                }
+                // ΕΛΕΓΧΟΣ 1: Επιστροφή από Google Redirect
+                getRedirectResult(auth).then((result) => {
+                    if (result && result.user) {
+                        App.completeLogin({ store: result.user.email.toLowerCase(), name: result.user.displayName || "Admin", role: 'admin' });
+                    } else {
+                        // ΕΛΕΓΧΟΣ 2: LocalStorage
+                        const saved = localStorage.getItem('bellgo_session');
+                        if (saved) {
+                            userData = JSON.parse(saved);
+                            setupNotifications();
+                            App.finishLoginSequence();
+                            // Αν το link έχει ?type=alarm, άνοιξε σειρήνα
+                            if (window.location.search.includes('type=alarm')) {
+                                setTimeout(() => App.triggerAlarmScreen(), 1500);
                             }
                         }
-                    })
-                    .catch((error) => {
-                        console.error("Google Auth Error:", error);
-                        alert("Σφάλμα Google: " + error.message);
-                    });
+                    }
+                }).catch((error) => {
+                    console.error("Google Login Error:", error);
+                    alert("Σφάλμα Google Login: " + error.message);
+                });
             },
 
             connectSocket: () => {
@@ -158,12 +292,17 @@
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
                 
+                // --- ΕΔΩ ΓΙΝΕΤΑΙ Η ΑΛΛΑΓΗ ΣΕ "ΕΡΧΕΤΑΙ" ---
                 socket.on('staff-accepted-alarm', (data) => {
                     const span = document.getElementById(`status-${data.username}`);
                     if (span) {
                         span.innerText = "✅ ΕΡΧΕΤΑΙ";
-                        span.style.color = "#00E676";
-                        setTimeout(() => { span.innerText = "IDLE"; span.style.color = "white"; }, 8000);
+                        span.style.color = "#00E676"; // Πράσινο
+                        // Μετά από 8 δευτερόλεπτα -> IDLE
+                        setTimeout(() => { 
+                            span.innerText = "IDLE"; 
+                            span.style.color = "white"; 
+                        }, 8000);
                     }
                 });
             },
@@ -171,16 +310,26 @@
             acceptAlarm: () => {
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
                 document.getElementById('alarmOverlay').style.display = 'none';
+                
+                // Επαναφορά κειμένου
+                document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
+                
+                // Στέλνουμε στο Server ότι το αποδεχτήκαμε
                 if (socket && socket.connected) socket.emit('alarm-accepted');
             },
+
+            forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
 
             startHeartbeat: () => {
                 setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000);
             },
 
             logout: () => {
-                if (socket) socket.emit('manual-logout');
-                // Μικρή καθυστέρηση για να προλάβει να φύγει το σήμα στον server
+                if (socket) {
+                    // Στέλνουμε το manual-logout για να καθαρίσει από τον Admin
+                    socket.emit('manual-logout');
+                }
+                // Μικρή καθυστέρηση για να προλάβει να φύγει το πακέτο δικτύου
                 setTimeout(() => {
                     localStorage.removeItem('bellgo_session');
                     window.location.reload();
@@ -197,7 +346,7 @@
                     const isAway = u.status === 'away';
                     
                     const btn = document.createElement('button');
-                    // Χρωματισμός ρόλων και ghost
+                    // Εδώ εφαρμόζεται το Μπλε/Κόκκινο χρώμα ανάλογα με τον ρόλο
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
                     
                     let stTxt = isAway ? "❓ BACKGROUND" : "IDLE";
@@ -208,7 +357,10 @@
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
                         const span = document.getElementById(`status-${u.username}`);
-                        if(span) { span.innerText = "📞 ΚΛΗΣΗ..."; span.style.color = "yellow"; }
+                        if(span) {
+                            span.innerText = "📞 ΚΛΗΣΗ...";
+                            span.style.color = "yellow";
+                        }
                     };
                     container.appendChild(btn);
                 });
@@ -224,7 +376,6 @@
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
-                // Προσθήκη κλάσης ρόλου για το χρώμα της κάθετης γραμμής
                 div.className = `msg ${data.sender === userData.name ? 'me' : 'other'} ${data.role}`;
                 div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
                 box.appendChild(div);
@@ -234,3 +385,5 @@
 
         window.onload = () => App.checkSession();
     </script>
+</body>
+</html>
