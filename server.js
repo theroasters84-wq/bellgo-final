@@ -37,85 +37,84 @@ io.on('connection', (socket) => {
         socket.store = cleanStore;
         socket.role = data.role;
 
+        // Αποθήκευση/Ενημέρωση χρήστη
         activeUsers[userKey] = {
             socketId: socket.id,
             username: cleanUser, 
             role: data.role,
             store: cleanStore,
             fcmToken: data.token, 
-            lastSeen: Date.now()
+            lastSeen: Date.now(),
+            status: "online" // Νέο status
         };
 
-        const tokenLog = (data.token && data.token.includes("NATIVE")) ? "📱 NATIVE APP" : (data.token ? "✅ WEB TOKEN" : "❌ NO TOKEN");
-        console.log(`👤 Joined: ${cleanUser} | ${tokenLog}`);
-        
+        console.log(`👤 Joined: ${cleanUser} | Status: Online`);
         updateStore(cleanStore);
-    });
-
-    socket.on('heartbeat', () => {
-        if (socket.store && socket.username) {
-            const userKey = `${socket.store}_${socket.username}`;
-            if (activeUsers[userKey]) activeUsers[userKey].lastSeen = Date.now();
-        }
     });
 
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
-        console.log(`🔔 Alarm -> ${targetName}`); 
 
         const targetKey = `${socket.store}_${targetName}`;
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            io.to(targetUser.socketId).emit('ring-bell', { from: socket.username });
+            // 1. Προσπάθεια μέσω Socket (αν είναι online)
+            if (targetUser.socketId) {
+                io.to(targetUser.socketId).emit('ring-bell', { from: socket.username });
+            }
 
-            if (targetUser.fcmToken && !targetUser.fcmToken.includes("NATIVE")) {
+            // 2. Πάντα στέλνουμε FCM αν υπάρχει Token (για το YouTube/Background)
+            if (targetUser.fcmToken) {
                 const message = {
                     token: targetUser.fcmToken,
-                    data: {
+                    // Προσθήκη notification για να "ξυπνήσει" το iOS/Android
+                    notification: {
                         title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                        body: "Πάτα για αποδοχή!",
+                        body: "Σε χρειάζονται αμέσως! Πάτα για άνοιγμα."
+                    },
+                    data: {
                         url: "/",
                         type: "alarm"
                     },
-                    android: { priority: "high" }
+                    android: { priority: "high" },
+                    apns: {
+                        payload: {
+                            aps: { sound: "default", badge: 1 }
+                        }
+                    }
                 };
                 admin.messaging().send(message).catch((err) => console.error('❌ FCM Error:', err));
             }
         }
     });
 
-    // --- ΝΕΟ: ΑΠΟΔΟΧΗ ΚΛΗΣΗΣ ---
-    socket.on('alarm-accepted', (data) => {
+    // Χειροκίνητο Logout (Όταν πατάει το κουμπί EXIT)
+    socket.on('manual-logout', () => {
         if (socket.store && socket.username) {
-            console.log(`✅ Accepted by: ${socket.username}`);
-            // Ενημερώνουμε όλους στο κατάστημα (κυρίως τον Admin)
-            io.to(socket.store).emit('staff-accepted-alarm', { username: socket.username });
-        }
-    });
-
-    socket.on('chat-message', (msgData) => {
-        if (socket.store && socket.username) {
-            io.to(socket.store).emit('chat-message', {
-                sender: socket.username,
-                role: socket.role,
-                text: msgData.text
-            });
+            const userKey = `${socket.store}_${socket.username}`;
+            console.log(`🚪 Manual Logout: ${socket.username}`);
+            delete activeUsers[userKey];
+            updateStore(socket.store);
         }
     });
 
     socket.on('disconnect', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
-            setTimeout(() => {
-                const user = activeUsers[userKey];
-                if (user && user.socketId === socket.id) { 
-                    delete activeUsers[userKey];
-                    updateStore(socket.store);
-                }
-            }, 5000);
+            const user = activeUsers[userKey];
+            
+            if (user && user.socketId === socket.id) {
+                console.log(`📡 Background: ${socket.username} (Socket Closed)`);
+                // ΔΕΝ τον διαγράφουμε, απλά του αφαιρούμε το socketId
+                user.socketId = null;
+                user.status = "away"; 
+                updateStore(socket.store);
+            }
         }
     });
+
+    // ... υπόλοιπα events (heartbeat, chat, alarm-accepted)
 }); 
 
 function updateStore(storeName) {
@@ -124,7 +123,8 @@ function updateStore(storeName) {
     const formattedStaff = staff.map(u => ({
         name: u.username,      
         username: u.username,  
-        role: u.role
+        role: u.role,
+        status: u.status // Στέλνουμε το status για να ξέρει ο Admin
     }));
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
