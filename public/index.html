@@ -119,10 +119,10 @@
         </div>
     </div>
 
-    <div id="alarmOverlay" onclick="if(window.AudioEngine) AudioEngine.stopAlarm(true)">
+    <div id="alarmOverlay">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
-        <button id="alarmBtn" class="stop-btn">STOP</button>
-        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα Volume Button για Αποδοχή)</div>
+        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
+        <div style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
     </div>
 
     <script src="player.js"></script>
@@ -159,12 +159,8 @@
                         });
                         
                         if (token) {
-                            console.log("🔥 TOKEN:", token);
                             localStorage.setItem('fcm_token', token);
-                            
-                            // Στέλνουμε το token μόλις το πάρουμε (Race Condition Fix)
                             if (window.socket && window.socket.connected) {
-                                console.log("🔄 Sending Token via Setup...");
                                 window.socket.emit('update-token', {
                                     username: userData.name,
                                     token: token
@@ -172,12 +168,11 @@
                             }
                         }
                     }
-                } catch (err) { console.error('Notification Setup Error:', err); }
+                } catch (err) { console.error('Notification Error:', err); }
             }
         }
 
         onMessage(messaging, (payload) => {
-            console.log('📩 Message:', payload);
             if (window.AudioEngine) window.AudioEngine.triggerAlarm();
         });
 
@@ -207,27 +202,15 @@
                 const storeEmail = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
                 const myName = document.getElementById('inpMyName').value.trim();
                 const myRole = document.getElementById('inpMyRole').value;
-
-                if (!storeEmail || !myName) return alert("Συμπλήρωσε όλα τα πεδία!");
-                if (!storeEmail.includes('@')) return alert("Βάλε σωστό email επιχείρησης!");
-
-                const user = { store: storeEmail, name: myName, role: myRole };
-                App.completeLogin(user);
+                if (!storeEmail || !myName) return alert("Συμπλήρωσε τα πεδία!");
+                App.completeLogin({ store: storeEmail, name: myName, role: myRole });
             },
 
             loginAdminGoogle: () => {
                 signInWithPopup(auth, provider).then((result) => {
                     const user = result.user;
-                    const adminUser = {
-                        store: user.email.toLowerCase(), 
-                        name: user.displayName || "Admin",
-                        role: 'admin'
-                    };
-                    App.completeLogin(adminUser);
-                }).catch((error) => {
-                    console.error(error);
-                    alert("Login Failed: " + error.message);
-                });
+                    App.completeLogin({ store: user.email.toLowerCase(), name: user.displayName || "Admin", role: 'admin' });
+                }).catch(err => alert("Login Failed: " + err.message));
             },
 
             completeLogin: (user) => {
@@ -252,58 +235,61 @@
             checkSession: () => {
                 const saved = localStorage.getItem('bellgo_session');
                 if (saved) {
-                    try {
-                        userData = JSON.parse(saved);
-                        console.log("🔄 Auto-Reconnecting...");
-                        if(window.AudioEngine) AudioEngine.init();
-                        setupNotifications();
-                        App.finishLoginSequence();
-                    } catch (e) { localStorage.removeItem('bellgo_session'); }
+                    userData = JSON.parse(saved);
+                    if(window.AudioEngine) AudioEngine.init();
+                    setupNotifications();
+                    App.finishLoginSequence();
                 }
             },
 
             connectSocket: () => {
                 if (socket && socket.connected) return;
-
-                socket = io({ transports: ['polling', 'websocket'], reconnection: true, reconnectionDelay: 500 });
+                socket = io({ transports: ['polling', 'websocket'], reconnection: true });
                 window.socket = socket; 
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    document.getElementById('headerStore').innerText = "Online";
-                    document.getElementById('staffPanel').classList.remove('offline-mode');
-                    
                     const fcmToken = localStorage.getItem('fcm_token');
-                    
-                    socket.emit('join-store', { 
-                        storeName: userData.store, 
-                        username: userData.name, 
-                        role: userData.role, 
-                        token: fcmToken 
-                    });
-
-                    if(fcmToken) {
-                        socket.emit('update-token', { username: userData.name, token: fcmToken });
-                    }
+                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: fcmToken });
                 });
 
                 socket.on('disconnect', () => {
                     document.getElementById('connDot').style.background = 'red';
-                    document.getElementById('headerStore').innerText = "Offline";
-                    document.getElementById('staffPanel').classList.add('offline-mode');
                 });
 
                 socket.on('ring-bell', () => { if(window.AudioEngine) AudioEngine.triggerAlarm(); });
                 socket.on('staff-list-update', (list) => App.processStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
+                
+                // --- ΝΕΟ: Listener για τον Admin για εμφάνιση του "ΕΡΧΕΤΑΙ" ---
+                socket.on('staff-accepted-alarm', (data) => {
+                    const statusSpan = document.getElementById(`status-${data.username}`);
+                    if (statusSpan) {
+                        statusSpan.innerText = "✅ ΕΡΧΕΤΑΙ";
+                        statusSpan.style.color = "#00E676";
+                        statusSpan.style.fontWeight = "bold";
+                        setTimeout(() => {
+                            statusSpan.innerText = "IDLE";
+                            statusSpan.style.color = "white";
+                            statusSpan.style.fontWeight = "normal";
+                        }, 10000);
+                    }
+                });
             },
 
-            forceReconnect: () => {
-                if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); }
+            // --- ΝΕΟ: Λειτουργία αποδοχής όταν ο υπάλληλος πατάει STOP ---
+            acceptAlarm: () => {
+                if(window.AudioEngine) {
+                    AudioEngine.stopAlarm(true);
+                    if (socket && socket.connected) {
+                        socket.emit('alarm-accepted');
+                    }
+                }
             },
+
+            forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
 
             startHeartbeat: () => {
-                if(heartbeatInterval) clearInterval(heartbeatInterval);
                 heartbeatInterval = setInterval(() => {
                     if (socket && socket.connected) {
                         socket.emit('heartbeat');
@@ -319,7 +305,6 @@
             },
 
             processStaffList: (serverList) => {
-                if (!serverList) serverList = [];
                 serverList.forEach(u => {
                     const uname = u.name || u.username;
                     if (ghosts[uname]) { clearTimeout(ghosts[uname].timer); delete ghosts[uname]; }
@@ -327,15 +312,8 @@
                 knownStaff.forEach(u => {
                     const uname = u.name || u.username;
                     const isStillOnline = serverList.find(s => (s.name || s.username) === uname);
-                    const isAlreadyGhost = ghosts[uname];
-                    if (!isStillOnline && !isAlreadyGhost && u.role !== 'admin') {
-                        ghosts[uname] = {
-                            data: u,
-                            timer: setTimeout(() => {
-                                delete ghosts[uname];
-                                App.renderMergedList(knownStaff); 
-                            }, 180000) 
-                        };
+                    if (!isStillOnline && !ghosts[uname] && u.role !== 'admin') {
+                        ghosts[uname] = { data: u, timer: setTimeout(() => { delete ghosts[uname]; App.renderMergedList(knownStaff); }, 180000) };
                     }
                 });
                 knownStaff = serverList;
@@ -348,25 +326,20 @@
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 if (userData.role !== 'admin') return;
-                if (mergedList.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#555;">Αναμονή για προσωπικό...</div>'; return; }
                 mergedList.forEach(u => {
                     if (String(u.role).toLowerCase() === 'admin') return; 
-                    const uname = u.name || u.username || "Unknown";
+                    const uname = u.name || u.username;
                     const isGhost = ghosts[uname] !== undefined;
                     const btn = document.createElement('button');
-                    const safeRole = (u.role === 'driver' || u.role === 'waiter') ? u.role : 'waiter';
-                    btn.className = `btn-staff ${safeRole} ${isGhost ? 'ghost' : ''}`;
-                    const statusText = isGhost ? "📡 Ψάχνει..." : "IDLE";
-                    btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${statusText}</span>`;
+                    btn.className = `btn-staff ${u.role} ${isGhost ? 'ghost' : ''}`;
+                    btn.innerHTML = `<span>${uname}</span><span class="status" id="status-${uname}">${isGhost ? "📡 Ψάχνει..." : "IDLE"}</span>`;
                     if (!isGhost) {
                         btn.onclick = () => {
-                            console.log("Calling:", uname);
                             socket.emit('trigger-alarm', uname);
                             const statusSpan = btn.querySelector('.status');
                             statusSpan.innerText = "📞 CALLING...";
                             statusSpan.style.color = "yellow";
-                            statusSpan.style.fontWeight = "bold";
-                            setTimeout(() => { statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; statusSpan.style.fontWeight = "normal"; }, 5000);
+                            setTimeout(() => { if(statusSpan.innerText === "📞 CALLING...") statusSpan.innerText = "IDLE"; statusSpan.style.color = "white"; }, 5000);
                         };
                     }
                     container.appendChild(btn);
@@ -379,17 +352,13 @@
                 if (!txt) return;
                 socket.emit('chat-message', { text: txt });
                 inp.value = '';
-                inp.focus();
             },
 
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
                 const div = document.createElement('div');
                 const isMe = data.sender === userData.name;
-                let roleClass = 'waiter';
-                if (data.role) roleClass = data.role.toLowerCase();
-                if (isMe) roleClass = 'me';
-                div.className = `msg ${roleClass}`;
+                div.className = `msg ${isMe ? 'me' : (data.role || 'waiter').toLowerCase()}`;
                 if (!isMe) div.classList.add('other');
                 div.innerHTML = `<span class="sender-name">${isMe ? 'Εγώ' : data.sender}</span>${data.text}`;
                 box.appendChild(div);
@@ -397,17 +366,7 @@
             }
         };
 
-        window.onload = function() {
-            App.checkSession();
-            document.addEventListener("visibilitychange", () => {
-                if (document.visibilityState === "visible") {
-                    console.log("👀 App Visible - Checking connection...");
-                    if(userData.store && (!socket || !socket.connected)) {
-                        App.connectSocket();
-                    }
-                }
-            });
-        };
+        window.onload = () => App.checkSession();
     </script>
 </body>
 </html>
