@@ -4,7 +4,9 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 
+// --- FIREBASE INIT ---
 try {
+    // Στο Render πρέπει να έχεις ανεβάσει αυτό το αρχείο στα Secret Files
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
@@ -20,10 +22,12 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Εδώ αποθηκεύουμε τους χρήστες
 let activeUsers = {}; 
 
 io.on('connection', (socket) => {
     
+    // --- 1. ΕΙΣΟΔΟΣ ΧΡΗΣΤΗ ---
     socket.on('join-store', (data) => {
         const cleanUser = (data.username || data.name || "").trim();
         const cleanStore = (data.storeName || "").trim().toLowerCase();
@@ -45,13 +49,42 @@ io.on('connection', (socket) => {
             store: cleanStore,
             fcmToken: data.token, 
             lastSeen: Date.now(),
-            status: "online" // Νέο status
+            status: "online" // Αρχικό status
         };
 
         console.log(`👤 Joined: ${cleanUser} | Status: Online`);
         updateStore(cleanStore);
     });
 
+    // --- 2. ΕΝΗΜΕΡΩΣΗ TOKEN (Για Native Apps) ---
+    socket.on('update-token', (data) => {
+        if (socket.store && socket.username) {
+            const userKey = `${socket.store}_${socket.username}`;
+            if (activeUsers[userKey]) {
+                activeUsers[userKey].fcmToken = data.token;
+                console.log(`🔑 Token updated for: ${socket.username}`);
+            }
+        }
+    });
+
+    // --- 3. HEARTBEAT (Κρατάει τον χρήστη ζωντανό) ---
+    socket.on('heartbeat', () => {
+        if (socket.store && socket.username) {
+            const userKey = `${socket.store}_${socket.username}`;
+            if (activeUsers[userKey]) {
+                activeUsers[userKey].lastSeen = Date.now();
+                // Αν ήταν away, τον ξανακάνουμε online
+                if (activeUsers[userKey].status === 'away') {
+                    activeUsers[userKey].status = 'online';
+                    // Επανασύνδεση socketId αν είχε χαθεί
+                    activeUsers[userKey].socketId = socket.id;
+                    updateStore(socket.store);
+                }
+            }
+        }
+    });
+
+    // --- 4. ΚΛΗΣΗ (ALARM) ---
     socket.on('trigger-alarm', (targetName) => {
         if (!socket.store || !targetName) return;
 
@@ -59,22 +92,23 @@ io.on('connection', (socket) => {
         const targetUser = activeUsers[targetKey];
 
         if (targetUser) {
-            // 1. Προσπάθεια μέσω Socket (αν είναι online)
+            console.log(`🔔 Alarm sent to: ${targetName}`);
+
+            // A. Προσπάθεια μέσω Socket (αν είναι online)
             if (targetUser.socketId) {
                 io.to(targetUser.socketId).emit('ring-bell', { from: socket.username });
             }
 
-            // 2. Πάντα στέλνουμε FCM αν υπάρχει Token (για το YouTube/Background)
+            // B. Πάντα στέλνουμε FCM (Notification)
             if (targetUser.fcmToken) {
                 const message = {
                     token: targetUser.fcmToken,
-                    // Προσθήκη notification για να "ξυπνήσει" το iOS/Android
                     notification: {
                         title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
                         body: "Σε χρειάζονται αμέσως! Πάτα για άνοιγμα."
                     },
                     data: {
-                        url: "/",
+                        url: "/?type=alarm", // Παράμετρος για να ανοίγει κατευθείαν σειρήνα
                         type: "alarm"
                     },
                     android: { priority: "high" },
@@ -89,16 +123,36 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Χειροκίνητο Logout (Όταν πατάει το κουμπί EXIT)
+    // --- 5. ΑΠΟΔΟΧΗ ΚΛΗΣΗΣ (ΕΡΧΕΤΑΙ) ---
+    socket.on('alarm-accepted', () => {
+        if (socket.store && socket.username) {
+            console.log(`✅ Accepted by: ${socket.username}`);
+            io.to(socket.store).emit('staff-accepted-alarm', { username: socket.username });
+        }
+    });
+
+    // --- 6. CHAT ---
+    socket.on('chat-message', (msgData) => {
+        if (socket.store && socket.username) {
+            io.to(socket.store).emit('chat-message', {
+                sender: socket.username,
+                role: socket.role,
+                text: msgData.text
+            });
+        }
+    });
+
+    // --- 7. ΧΕΙΡΟΚΙΝΗΤΟ LOGOUT (EXIT) ---
     socket.on('manual-logout', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
             console.log(`🚪 Manual Logout: ${socket.username}`);
-            delete activeUsers[userKey];
+            delete activeUsers[userKey]; // Εδώ διαγράφουμε τελείως
             updateStore(socket.store);
         }
     });
 
+    // --- 8. ΑΠΟΣΥΝΔΕΣΗ (BACKGROUND MODE) ---
     socket.on('disconnect', () => {
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
@@ -106,17 +160,31 @@ io.on('connection', (socket) => {
             
             if (user && user.socketId === socket.id) {
                 console.log(`📡 Background: ${socket.username} (Socket Closed)`);
-                // ΔΕΝ τον διαγράφουμε, απλά του αφαιρούμε το socketId
-                user.socketId = null;
-                user.status = "away"; 
+                user.socketId = null; // Χάσαμε τη σύνδεση
+                user.status = "away"; // Τον βάζουμε σε "Background"
                 updateStore(socket.store);
             }
         }
     });
+});
 
-    // ... υπόλοιπα events (heartbeat, chat, alarm-accepted)
-}); 
+// --- ΑΥΤΟΜΑΤΟΣ ΚΑΘΑΡΙΣΜΟΣ (CLEANUP) ---
+// Τρέχει κάθε 60 δευτερόλεπτα
+setInterval(() => {
+    const now = Date.now();
+    for (const key in activeUsers) {
+        const user = activeUsers[key];
+        // Αν έχουν περάσει 15 λεπτά (900000 ms) από το τελευταίο heartbeat
+        if (now - user.lastSeen > 15 * 60 * 1000) { 
+            console.log(`🧹 Cleanup: Removing inactive user ${user.username}`);
+            const storeToUpdate = user.store;
+            delete activeUsers[key];
+            updateStore(storeToUpdate);
+        }
+    }
+}, 60000);
 
+// Συνάρτηση ενημέρωσης λίστας Admin
 function updateStore(storeName) {
     if(!storeName) return;
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
@@ -124,10 +192,11 @@ function updateStore(storeName) {
         name: u.username,      
         username: u.username,  
         role: u.role,
-        status: u.status // Στέλνουμε το status για να ξέρει ο Admin
+        status: u.status 
     }));
     io.to(storeName).emit('staff-list-update', formattedStaff);
 }
 
+// Εκκίνηση Server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
