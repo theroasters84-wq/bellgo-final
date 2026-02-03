@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v32</title>
+    <title>BellGo Ultra v33</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -205,13 +205,20 @@
             }
         });
 
-        // --- MEDIA SESSION HANDLER (Κουμπιά Ακουστικών/Lock Screen) ---
+        // --- MEDIA SESSION HANDLER (ΔΙΟΡΘΩΜΕΝΟ) ---
         if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', () => { if(isAlarmActive) App.acceptAlarm(); });
-            navigator.mediaSession.setActionHandler('pause', () => { if(isAlarmActive) App.acceptAlarm(); });
-            navigator.mediaSession.setActionHandler('stop', () => { if(isAlarmActive) App.acceptAlarm(); });
-            navigator.mediaSession.setActionHandler('nexttrack', () => { if(isAlarmActive) App.acceptAlarm(); });
-            navigator.mediaSession.setActionHandler('previoustrack', () => { if(isAlarmActive) App.acceptAlarm(); });
+            const handleMediaAction = () => {
+                if(isAlarmActive) {
+                    // Δίνουμε δόνηση για επιβεβαίωση
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    App.acceptAlarm();
+                }
+            };
+            navigator.mediaSession.setActionHandler('play', handleMediaAction);
+            navigator.mediaSession.setActionHandler('pause', handleMediaAction);
+            navigator.mediaSession.setActionHandler('stop', handleMediaAction);
+            navigator.mediaSession.setActionHandler('nexttrack', handleMediaAction);
+            navigator.mediaSession.setActionHandler('previoustrack', handleMediaAction);
         }
 
         keepAliveAudio.addEventListener('pause', () => {
@@ -257,7 +264,6 @@
             }
         }
 
-        // ΟΤΑΝ ΕΡΧΕΤΑΙ ΤΟ ΜΗΝΥΜΑ (FOREGROUND)
         onMessage(messaging, () => App.triggerAlarmScreen());
 
         window.socket = null;
@@ -316,19 +322,15 @@
                 App.connectSocket();
                 App.startHeartbeat();
 
-                // Αν μόλις μπήκαμε και είμαστε Staff, δείξε ψεύτικο alarm για οδηγίες
                 if(userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
                     setTimeout(() => App.triggerFakeAlarm(), 800);
                 }
 
-                // ΕΛΕΓΧΟΣ: Μήπως ήρθαμε από κλικ σε Notification;
-                // Αν το URL έχει ?type=alarm, άνοιξε κατευθείαν το Alarm Screen
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
                      console.log("🚀 Opened via Notification! Triggering Alarm...");
                      setTimeout(() => App.triggerAlarmScreen(), 1000);
-                     // Καθαρίζουμε το URL για να μην ξαναχτυπήσει σε refresh
                      window.history.replaceState({}, document.title, "/");
                 }
             },
@@ -356,7 +358,6 @@
                 document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
                 document.getElementById('alarmOverlay').style.display = 'flex';
                 
-                // Ενημερώνουμε και το Media Session για να εμφανιστεί στη Lock Screen
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ',
@@ -372,7 +373,7 @@
                 if (saved) {
                     userData = JSON.parse(saved);
                     setupNotifications();
-                    App.finishLoginSequence(); // Αυτό θα ελέγξει και το URL για ?type=alarm
+                    App.finishLoginSequence(); 
                     if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
                 }
             },
@@ -411,15 +412,18 @@
                 // 3. Κλείνουμε την οθόνη Alarm
                 document.getElementById('alarmOverlay').style.display = 'none';
                 
-                // 4. Στέλνουμε το σήμα "ΕΡΧΟΜΑΙ" στον Server
-                if (socket && socket.connected) {
-                    console.log("✅ Sending 'alarm-accepted' to server...");
+                // 4. ΣΗΜΑΝΤΙΚΟ: Αποστολή σήματος με Force Connect αν χρειαστεί
+                const sendAccept = () => {
+                    console.log("✅ Socket ready. Sending accept...");
                     socket.emit('alarm-accepted');
+                };
+
+                if (socket && socket.connected) {
+                    sendAccept();
                 } else {
-                    // Αν δεν έχουμε socket (π.χ. από lock screen), προσπαθούμε να συνδεθούμε και να στείλουμε
-                    console.log("⚠️ Socket Disconnected - Reconnecting to send accept...");
-                    if(socket) socket.connect();
-                    setTimeout(() => socket.emit('alarm-accepted'), 1000);
+                    console.log("⚠️ Background Disconnect detected. Reconnecting...");
+                    socket.connect(); // Force wake up
+                    socket.once('connect', sendAccept); // Περιμένουμε να συνδεθεί και στέλνουμε αμέσως
                 }
             },
 
