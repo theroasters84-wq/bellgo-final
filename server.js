@@ -165,12 +165,30 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- 7. MANUAL LOGOUT ---
-    socket.on('manual-logout', () => {
+    // --- 7. MANUAL LOGOUT (ΕΝΗΜΕΡΩΜΕΝΟ ΓΙΑ ΤΟ "Χ") ---
+    socket.on('manual-logout', (data) => {
+        // Ελέγχουμε αν μας έστειλαν δεδομένα ΚΑΙ αν υπάρχει targetUser (Περίπτωση Admin 'X')
+        if (data && data.targetUser) {
+            // Πρέπει αυτός που στέλνει την εντολή να είναι συνδεδεμένος σε κατάστημα
+            if (!socket.store) return;
+
+            const cleanTarget = data.targetUser.trim();
+            const targetKey = `${socket.store}_${cleanTarget}`;
+            
+            // Αν ο χρήστης υπάρχει στη μνήμη, τον διαγράφουμε
+            if (activeUsers[targetKey]) {
+                console.log(`👮 Admin removed user: ${cleanTarget}`);
+                delete activeUsers[targetKey];
+                updateStore(socket.store); // Ενημερώνουμε τη λίστα για να φύγει το όνομα
+            }
+            return; // Σταματάμε εδώ
+        }
+
+        // Αλλιώς, αν δεν έχει targetUser, είναι απλό Logout του εαυτού μας
         if (socket.store && socket.username) {
             const userKey = `${socket.store}_${socket.username}`;
             console.log(`🚪 Logout: ${socket.username}`);
-            delete activeUsers[userKey]; // Εδώ διαγράφουμε ΜΟΝΟ αν πατήσει EXIT
+            delete activeUsers[userKey];
             updateStore(socket.store);
         }
     });
@@ -184,7 +202,7 @@ io.on('connection', (socket) => {
             if (user && user.socketId === socket.id) {
                 console.log(`zzz Background: ${socket.username}`);
                 user.socketId = null;
-                user.status = "away"; // Τον βάζουμε σε Background (Πορτοκαλί)
+                user.status = "away"; // Τον βάζουμε σε Background (Πορτοκαλί/Γκρι)
                 updateStore(socket.store);
             }
         }
@@ -223,7 +241,7 @@ function updateStore(storeName) {
     if(!storeName) return;
     const staff = Object.values(activeUsers).filter(u => u.store === storeName);
     const formattedStaff = staff.map(u => ({
-        name: u.username,       
+        name: u.username,        
         username: u.username,  
         role: u.role,
         status: u.status 
