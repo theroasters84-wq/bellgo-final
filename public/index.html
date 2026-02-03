@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v29</title>
+    <title>BellGo Ultra v30</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -47,8 +47,14 @@
 
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
-        /* Ghost style για Background Users */
-        .btn-staff.ghost { opacity: 0.7; border: 1px dashed #FF9800; background: #222 !important; }
+        
+        /* GHOST STYLE (BACKGROUND) */
+        .btn-staff.ghost { 
+            opacity: 0.8; 
+            border: 1px solid #FF9800; /* Πορτοκαλί περίγραμμα */
+            background: #222 !important; 
+            color: #ccc;
+        }
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
 
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
@@ -177,6 +183,7 @@
 
         let isAlarmActive = false; 
 
+        // --- AUTOMATIC ACCEPT ON SCREEN OFF ---
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
                 console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
@@ -184,6 +191,7 @@
             }
         });
 
+        // --- AGGRESSIVE KEEPER (Only for Staff) ---
         keepAliveAudio.addEventListener('pause', () => {
             if (window.userData && window.userData.role === 'admin') return;
             if (!isAlarmActive) { 
@@ -341,6 +349,7 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 
+                // IMPORTANT: ΑΜΕΣΗ ΕΝΗΜΕΡΩΣΗ ΑΝ ΧΤΥΠΑΕΙ ΗΔΗ
                 socket.on('ring-bell', () => App.triggerAlarmScreen());
                 
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
@@ -376,12 +385,13 @@
                     if (u.role === 'admin') return;
                     const btn = document.createElement('button');
                     // GHOST MODE: Αν είναι Background (away), γίνεται αχνό με πορτοκαλί περίγραμμα
-                    btn.className = `btn-staff ${u.role} ${u.status === 'away' ? 'ghost' : ''}`;
-                    let stTxt = u.status === 'away' ? "❓ BACKGROUND" : "IDLE";
-                    let stCol = u.status === 'away' ? "#ff9800" : "white";
+                    const isAway = u.status === 'away';
+                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
+                    let stTxt = isAway ? "⚠️ BACKGROUND (PUSH)" : "IDLE"; // <-- ΔΙΟΡΘΩΣΗ ΕΔΩ
+                    let stCol = isAway ? "#FF9800" : "white";
+
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
                     
-                    // ΚΛΗΣΗ: Δουλεύει ΚΑΝΟΝΙΚΑ και για Online και για Background
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
                         const span = document.getElementById(`status-${u.username}`);
