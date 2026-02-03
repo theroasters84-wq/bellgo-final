@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v25</title>
+    <title>BellGo Ultra v26</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -36,7 +36,6 @@
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        /* ΝΕΟ ΚΟΥΜΠΙ INFO */
         .btn-info { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-family: monospace; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 5px; }
 
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -164,16 +163,14 @@
         const provider = new GoogleAuthProvider();
 
         // --- SILENT KEEPER VARS ---
-        // Base64 WAV (1 sec silence)
         const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
         let keepAliveAudio = document.getElementById('snd-silent');
         keepAliveAudio.src = SILENT_WAV;
-        keepAliveAudio.volume = 0.01; // Ελάχιστος ήχος για να μην ενοχλεί αλλά να πιάνει πόρο
+        keepAliveAudio.volume = 0.01; 
 
-        let isAlarmActive = false; // Κλειδί για να μην μπερδεύουμε το loop με την κλήση
+        let isAlarmActive = false; 
 
         // --- VISIBILITY / SCREEN OFF DETECTION ---
-        // Αν κλείσει η οθόνη (hidden) ΚΑΙ βαράει συναγερμός -> ΑΠΟΔΟΧΗ
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
                 console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
@@ -182,9 +179,11 @@
         });
 
         // --- AGGRESSIVE AUDIO KEEPER ("Ο Φύλακας") ---
-        // Αν το σύστημα προσπαθήσει να το σταματήσει, αυτό ξαναπαίρνει μπρος
         keepAliveAudio.addEventListener('pause', () => {
-            if (!isAlarmActive) { // Μόνο αν δεν βαράει ο κανονικός συναγερμός (μην κόψουμε τον ήχο κλήσης)
+            // ⚠️ ΕΛΕΓΧΟΣ: ΑΝ ΕΙΝΑΙ ADMIN, ΜΗΝ ΚΑΝΕΙΣ ΤΙΠΟΤΑ
+            if (window.userData && window.userData.role === 'admin') return;
+
+            if (!isAlarmActive) { 
                 console.log("♻️ Audio Keeper Interrupted - Restarting Forcefully...");
                 keepAliveAudio.play().catch(e => console.log("Keeper Play Err:", e));
             }
@@ -258,8 +257,12 @@
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
                 
-                // ΕΚΚΙΝΗΣΗ ΦΥΛΑΚΑ (Aggressive Loop)
-                keepAliveAudio.play().then(() => console.log("✅ Keeper Active")).catch(e => console.log("⚠️ Keeper blocked until interaction"));
+                // ⚠️ ΕΚΚΙΝΗΣΗ ΦΥΛΑΚΑ (ΜΟΝΟ ΑΝ ΔΕΝ ΕΙΝΑΙ ADMIN)
+                if (userData.role !== 'admin') {
+                    keepAliveAudio.play().then(() => console.log("✅ Keeper Active")).catch(e => console.log("⚠️ Keeper blocked"));
+                } else {
+                    console.log("ℹ️ Admin Mode: Keeper Disabled (Relaxed)");
+                }
 
                 setupNotifications(); 
                 App.finishLoginSequence();
@@ -276,7 +279,6 @@
                 if (userData.role === 'admin') {
                     document.getElementById('staffPanel').classList.add('active');
                 } else {
-                    // Εμφάνιση κουμπιού οδηγιών ΜΟΝΟ σε προσωπικό
                     document.getElementById('infoBtn').style.display = 'flex';
                 }
                 
@@ -296,9 +298,9 @@
             },
 
             triggerAlarmScreen: () => {
-                isAlarmActive = true; // Σημαία: Τώρα χτυπάει
-                // Σταματάμε προσωρινά τον φύλακα για να ακουστεί το Alert
-                keepAliveAudio.pause();
+                isAlarmActive = true; 
+                // Σταματάμε προσωρινά τον φύλακα (αν παίζει)
+                if (userData.role !== 'admin') keepAliveAudio.pause();
                 
                 if (window.AudioEngine) window.AudioEngine.triggerAlarm();
                 
@@ -313,8 +315,11 @@
                     userData = JSON.parse(saved);
                     setupNotifications();
                     App.finishLoginSequence();
-                    // Προσπάθεια εκκίνησης φύλακα στο reload (ίσως μπλοκαριστεί από browser policy, αλλά δοκιμάζουμε)
-                    keepAliveAudio.play().catch(()=>{}); 
+                    
+                    // Επανεκκίνηση φύλακα στο reload (Μόνο για προσωπικό)
+                    if (userData.role !== 'admin') {
+                        keepAliveAudio.play().catch(()=>{}); 
+                    }
                     
                     if (window.location.search.includes('type=alarm')) {
                         setTimeout(() => App.triggerAlarmScreen(), 1500);
@@ -356,11 +361,13 @@
             },
 
             acceptAlarm: () => {
-                isAlarmActive = false; // Σημαία: Τέλος κλήσης
+                isAlarmActive = false;
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
                 
-                // Επανεκκίνηση του Φύλακα (Loop)
-                keepAliveAudio.play().catch(e => console.log("Keeper restart err:", e));
+                // Επανεκκίνηση του Φύλακα (Μόνο για προσωπικό)
+                if (userData.role !== 'admin') {
+                    keepAliveAudio.play().catch(e => console.log("Keeper restart err:", e));
+                }
 
                 document.getElementById('alarmOverlay').style.display = 'none';
                 document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
