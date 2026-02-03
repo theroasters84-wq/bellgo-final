@@ -43,22 +43,26 @@ const AudioEngine = {
     setupMediaSession() {
         if (!("mediaSession" in navigator)) return;
 
-        // ΑΥΤΗ Η ΣΥΝΑΡΤΗΣΗ ΕΙΝΑΙ ΤΟ ΚΛΕΙΔΙ
+        // --- ΑΥΤΗ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ ---
+        // Όταν πατάς κουμπί στην μπάρα (Play/Pause/Next), δεν σταματάμε απλά τον ήχο.
+        // Φωνάζουμε την App.acceptAlarm() στο index.html για να το μάθει και ο Server!
         const handleNotificationClick = () => {
             console.log("👆 Notification Button Clicked");
             
             if (this.isRinging) {
-                // Αν χτυπάει -> ΣΤΑΜΑΤΑΜΕ ΤΟΝ ΘΟΡΥΒΟ (Player 2)
-                // ΑΛΛΑ ΔΕΝ ΠΕΙΡΑΖΟΥΜΕ ΤΟΝ PLAYER 1 (Μπάρα)
-                this.stopAlarm();
+                // ΣΗΜΑΝΤΙΚΟ: Καλουμε την Global συνάρτηση του App
+                if (window.App && window.App.acceptAlarm) {
+                    window.App.acceptAlarm(); 
+                } else {
+                    this.stopAlarm(); // Fallback αν κάτι πάει στραβά
+                }
             } else {
                 // Αν δεν χτυπάει, απλά σιγουρεύουμε ότι ο Player 1 παίζει
                 this.keepAlivePlayer.play();
             }
         };
 
-        // Όλα τα κουμπιά καλούν την παραπάνω συνάρτηση
-        // ΧΩΡΙΣ να σταματήσουν τον ήχο του συστήματος!
+        // Συνδέουμε όλα τα κουμπιά με την παραπάνω λογική
         navigator.mediaSession.setActionHandler('play', handleNotificationClick);
         navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
         navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
@@ -86,20 +90,18 @@ const AudioEngine = {
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) {
             overlay.style.display = 'flex';
-            const slider = document.getElementById('acceptSlider');
-            if (slider) slider.value = 50;
         }
 
         this.vibrate(true);
         this.sendNotification();
     },
 
-    // --- ΑΠΟΔΟΧΗ ---
-    stopAlarm() {
-        if (!this.isRinging) return;
+    // --- ΑΠΟΔΟΧΗ (Καλείται από το App.acceptAlarm) ---
+    stopAlarm(fullyStop = false) {
+        if (!this.isRinging && !fullyStop) return; // Ασφάλεια
         this.isRinging = false;
 
-        console.log("✅ ALARM STOPPED (Notification stays open)");
+        console.log("✅ ALARM STOPPED (Audio Engine)");
 
         // 1. Σταματάμε ΜΟΝΟ τον θόρυβο (Player 2)
         this.alarmPlayer.pause();
@@ -123,14 +125,14 @@ const AudioEngine = {
                 title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
                 artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 album: "BellGo Alert",
-                artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/564/564619.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
         } else {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
                 artist: "Σύστημα Ενεργό",
                 album: "Αναμονή...",
-                artwork: [{ src: "https://cdn-icons-png.flaticon.com/512/190/190411.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
         }
 
@@ -160,17 +162,36 @@ const AudioEngine = {
     sendNotification() {
         if (Notification.permission === "granted") {
             try {
-                const notif = new Notification("🚨 ΚΛΗΣΗ!", { icon: "/icon.png", tag: 'alarm-tag' });
-                notif.onclick = () => { window.focus(); this.stopAlarm(); notif.close(); };
+                // Το 'requireInteraction: true' κρατάει το notification ανοιχτό
+                const notif = new Notification("🚨 ΚΛΗΣΗ!", { 
+                    icon: "/icon.png", 
+                    tag: 'alarm-tag',
+                    requireInteraction: true 
+                });
+                
+                // Αν πατήσει το notification, ανοίγει το παράθυρο και κάνει αποδοχή
+                notif.onclick = () => { 
+                    window.focus(); 
+                    if (window.App && window.App.acceptAlarm) {
+                        window.App.acceptAlarm();
+                    }
+                    notif.close(); 
+                };
             } catch (e) {}
         }
     }
 };
 
-// Volume Buttons (Accept)
+// Volume Buttons (Accept Logic)
 window.addEventListener('keydown', (e) => {
+    // 24 = Volume Up, 25 = Volume Down
     if (AudioEngine.isRinging && (e.keyCode === 24 || e.keyCode === 25)) { 
-        AudioEngine.stopAlarm();
+        // ΔΙΟΡΘΩΣΗ: Καλούμε το App.acceptAlarm()
+        if (window.App && window.App.acceptAlarm) {
+            window.App.acceptAlarm();
+        } else {
+            AudioEngine.stopAlarm();
+        }
     }
 });
 
