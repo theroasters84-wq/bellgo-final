@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v27</title>
+    <title>BellGo Ultra v28</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -62,8 +62,11 @@
 
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
-        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; }
+        
+        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .time-badge { background: black; color: yellow; padding: 5px 15px; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; border: 2px solid yellow; }
 
         /* INFO MODAL */
         #infoModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
@@ -125,8 +128,12 @@
     </div>
 
     <div id="alarmOverlay">
-        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:20px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
-        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">STOP</button>
+        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:10px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
+        <div id="alarmTimeBadge" class="time-badge">--:--</div>
+        
+        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">
+            <span>STOP</span>
+        </button>
         <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
     </div>
 
@@ -162,7 +169,6 @@
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // --- SILENT KEEPER VARS ---
         const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
         let keepAliveAudio = document.getElementById('snd-silent');
         keepAliveAudio.src = SILENT_WAV;
@@ -170,7 +176,7 @@
 
         let isAlarmActive = false; 
 
-        // --- VISIBILITY / SCREEN OFF DETECTION ---
+        // --- AUTOMATIC ACCEPT ON SCREEN OFF ---
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
                 console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
@@ -178,14 +184,12 @@
             }
         });
 
-        // --- AGGRESSIVE AUDIO KEEPER ("Ο Φύλακας") ---
+        // --- AGGRESSIVE KEEPER (Only for Staff) ---
         keepAliveAudio.addEventListener('pause', () => {
-            // ⚠️ ΕΛΕΓΧΟΣ: ΑΝ ΕΙΝΑΙ ADMIN, ΜΗΝ ΚΑΝΕΙΣ ΤΙΠΟΤΑ
             if (window.userData && window.userData.role === 'admin') return;
-
             if (!isAlarmActive) { 
-                console.log("♻️ Audio Keeper Interrupted - Restarting Forcefully...");
-                keepAliveAudio.play().catch(e => console.log("Keeper Play Err:", e));
+                console.log("♻️ Keeper Interrupted -> Restarting...");
+                keepAliveAudio.play().catch(e => {});
             }
         });
 
@@ -193,22 +197,20 @@
             if ('serviceWorker' in navigator) {
                 try {
                     const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    // 1. ΔΗΜΙΟΥΡΓΙΑ AGGRESSIVE CHANNEL (Για να πετάγεται πάνω από Youtube)
                     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
                         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
                         await PushNotifications.createChannel({
                             id: 'fcm_default_channel',
                             name: 'BellGo Urgent',
-                            importance: 5, // MAX IMPORTANCE (Heads-up)
-                            visibility: 1, // PUBLIC (Lock screen)
-                            sound: 'alert_sound', // Αν έχεις custom ήχο, αλλιώς default
+                            importance: 5, 
+                            visibility: 1, 
+                            sound: 'alert_sound',
                             vibration: true
                         });
                         
-                        // 2. EVENT: OTAN PATAEI TIN EIDOPOIHSH NA ANOIGEI KOKKINI OTHONI
-                        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-                            console.log('🔔 Notification Tapped! Forcing Alarm Screen...');
-                            App.triggerAlarmScreen(); // <--- Η ΛΥΣΗ ΓΙΑ ΤΟ ΠΡΟΒΛΗΜΑ 2
+                        PushNotifications.addListener('pushNotificationActionPerformed', () => {
+                            console.log('🔔 Notification Tapped! Forcing Alarm...');
+                            App.triggerAlarmScreen(); 
                         });
                     }
 
@@ -257,32 +259,16 @@
             },
 
             loginAdminGoogle: () => {
-                signInWithPopup(auth, provider)
-                    .then((result) => {
-                        const user = result.user;
-                        App.completeLogin({ 
-                            store: user.email.toLowerCase(), 
-                            name: user.displayName || "Admin", 
-                            role: 'admin' 
-                        });
-                    })
-                    .catch((error) => {
-                        console.error("Login Error:", error);
-                        alert("Αποτυχία σύνδεσης: " + error.message);
-                    });
+                signInWithPopup(auth, provider).then((result) => {
+                    const user = result.user;
+                    App.completeLogin({ store: user.email.toLowerCase(), name: user.displayName || "Admin", role: 'admin' });
+                }).catch((error) => alert("Error: " + error.message));
             },
 
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                
-                // ⚠️ ΕΚΚΙΝΗΣΗ ΦΥΛΑΚΑ (ΜΟΝΟ ΑΝ ΔΕΝ ΕΙΝΑΙ ADMIN)
-                if (userData.role !== 'admin') {
-                    keepAliveAudio.play().then(() => console.log("✅ Keeper Active")).catch(e => console.log("⚠️ Keeper blocked"));
-                } else {
-                    console.log("ℹ️ Admin Mode: Keeper Disabled (Relaxed)");
-                }
-
+                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
                 setupNotifications(); 
                 App.finishLoginSequence();
             },
@@ -291,15 +277,11 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 if(document.getElementById('apkLanding')) document.getElementById('apkLanding').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
-                
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
-                if (userData.role === 'admin') {
-                    document.getElementById('staffPanel').classList.add('active');
-                } else {
-                    document.getElementById('infoBtn').style.display = 'flex';
-                }
+                if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
+                else document.getElementById('infoBtn').style.display = 'flex';
                 
                 App.connectSocket();
                 App.startHeartbeat();
@@ -311,6 +293,9 @@
             },
 
             triggerFakeAlarm: () => {
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('alarmTimeBadge').innerText = timeStr;
                 document.getElementById('alarmText').innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
                 document.getElementById('alarmSubText').innerText = "Πατήστε STOP για ενεργοποίηση ήχου";
                 document.getElementById('alarmOverlay').style.display = 'flex';
@@ -318,11 +303,15 @@
 
             triggerAlarmScreen: () => {
                 isAlarmActive = true; 
-                // Σταματάμε προσωρινά τον φύλακα (αν παίζει)
                 if (userData.role !== 'admin') keepAliveAudio.pause();
                 
                 if (window.AudioEngine) window.AudioEngine.triggerAlarm();
                 
+                // ΥΠΟΛΟΓΙΣΜΟΣ ΩΡΑΣ
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                
+                document.getElementById('alarmTimeBadge').innerText = "Ώρα: " + timeStr;
                 document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
                 document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
                 document.getElementById('alarmOverlay').style.display = 'flex';
@@ -334,11 +323,7 @@
                     userData = JSON.parse(saved);
                     setupNotifications();
                     App.finishLoginSequence();
-                    
-                    // Επανεκκίνηση φύλακα στο reload (Μόνο για προσωπικό)
-                    if (userData.role !== 'admin') {
-                        keepAliveAudio.play().catch(()=>{}); 
-                    }
+                    if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
                     
                     if (window.location.search.includes('type=alarm')) {
                         setTimeout(() => App.triggerAlarmScreen(), 1500);
@@ -353,84 +338,54 @@
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    socket.emit('join-store', { 
-                        storeName: userData.store, 
-                        username: userData.name, 
-                        role: userData.role, 
-                        token: localStorage.getItem('fcm_token') 
-                    });
+                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token') });
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
+                
+                // IMPORTANT: ΑΜΕΣΗ ΕΝΗΜΕΡΩΣΗ ΑΝ ΧΤΥΠΑΕΙ ΗΔΗ
                 socket.on('ring-bell', () => App.triggerAlarmScreen());
+                
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
-                
                 socket.on('staff-accepted-alarm', (data) => {
                     const span = document.getElementById(`status-${data.username}`);
-                    if (span) {
-                        span.innerText = "✅ ΕΡΧΕΤΑΙ";
-                        span.style.color = "#00E676";
-                        setTimeout(() => { 
-                            span.innerText = "IDLE"; 
-                            span.style.color = "white"; 
-                        }, 8000);
-                    }
+                    if (span) { span.innerText = "✅ ΕΡΧΕΤΑΙ"; span.style.color = "#00E676"; setTimeout(() => { span.innerText = "IDLE"; span.style.color = "white"; }, 8000); }
                 });
             },
 
             acceptAlarm: () => {
                 isAlarmActive = false;
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
-                
-                // Επανεκκίνηση του Φύλακα (Μόνο για προσωπικό)
-                if (userData.role !== 'admin') {
-                    keepAliveAudio.play().catch(e => console.log("Keeper restart err:", e));
-                }
+                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
 
                 document.getElementById('alarmOverlay').style.display = 'none';
-                document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
                 if (socket && socket.connected) socket.emit('alarm-accepted');
             },
 
             forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
-
-            startHeartbeat: () => {
-                setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000);
-            },
-
+            startHeartbeat: () => { setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000); },
+            
             logout: () => {
                 if (socket) socket.emit('manual-logout');
-                setTimeout(() => {
-                    localStorage.removeItem('bellgo_session');
-                    window.location.reload();
-                }, 150);
+                setTimeout(() => { localStorage.removeItem('bellgo_session'); window.location.reload(); }, 150);
             },
 
             renderStaffList: (serverList) => {
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 if (userData.role !== 'admin') return;
-
                 serverList.forEach(u => {
                     if (u.role === 'admin') return;
-                    const isAway = u.status === 'away';
-                    
                     const btn = document.createElement('button');
-                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    
-                    let stTxt = isAway ? "❓ BACKGROUND" : "IDLE";
-                    let stCol = isAway ? "#ff9800" : "white";
-
+                    btn.className = `btn-staff ${u.role} ${u.status === 'away' ? 'ghost' : ''}`;
+                    let stTxt = u.status === 'away' ? "❓ BACKGROUND" : "IDLE";
+                    let stCol = u.status === 'away' ? "#ff9800" : "white";
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
-                    
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
                         const span = document.getElementById(`status-${u.username}`);
-                        if(span) {
-                            span.innerText = "📞 ΚΛΗΣΗ...";
-                            span.style.color = "yellow";
-                        }
+                        if(span) { span.innerText = "📞 ΚΛΗΣΗ..."; span.style.color = "yellow"; }
                     };
                     container.appendChild(btn);
                 });
