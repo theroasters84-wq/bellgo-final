@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v30</title>
+    <title>BellGo Ultra v31</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -42,19 +42,37 @@
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
 
-        .btn-staff { width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
+        /* ΝΕΑ CSS ΓΙΑ ΤΟ ROW ΚΑΙ ΤΟ ΚΟΥΜΠΙ ΔΙΑΓΡΑΦΗΣ */
+        .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
+        
+        .btn-staff { flex: 1; padding: 15px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; cursor: pointer; }
         .btn-staff:active { transform: scale(0.98); }
 
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
         
-        /* GHOST STYLE (BACKGROUND) */
+        /* GHOST STYLE */
         .btn-staff.ghost { 
             opacity: 0.8; 
-            border: 1px solid #FF9800; /* Πορτοκαλί περίγραμμα */
+            border: 1px solid #757575; /* Γκρι περίγραμμα */
             background: #222 !important; 
             color: #ccc;
         }
+
+        .btn-delete {
+            width: 50px;
+            background: #D32F2F;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
 
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
@@ -75,7 +93,6 @@
 
         .time-badge { background: black; color: yellow; padding: 5px 15px; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; border: 2px solid yellow; }
 
-        /* INFO MODAL */
         #infoModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
         .info-box { background:#222; border:1px solid #444; padding:25px; border-radius:15px; max-width:90%; }
         .info-close { margin-top:20px; padding:10px 30px; background:#00E676; color:black; font-weight:bold; border:none; border-radius:20px; cursor:pointer; }
@@ -183,7 +200,6 @@
 
         let isAlarmActive = false; 
 
-        // --- AUTOMATIC ACCEPT ON SCREEN OFF ---
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
                 console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
@@ -191,7 +207,6 @@
             }
         });
 
-        // --- AGGRESSIVE KEEPER (Only for Staff) ---
         keepAliveAudio.addEventListener('pause', () => {
             if (window.userData && window.userData.role === 'admin') return;
             if (!isAlarmActive) { 
@@ -349,7 +364,6 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 
-                // IMPORTANT: ΑΜΕΣΗ ΕΝΗΜΕΡΩΣΗ ΑΝ ΧΤΥΠΑΕΙ ΗΔΗ
                 socket.on('ring-bell', () => App.triggerAlarmScreen());
                 
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
@@ -381,13 +395,20 @@
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 if (userData.role !== 'admin') return;
+                
                 serverList.forEach(u => {
                     if (u.role === 'admin') return;
+                    
+                    // Δημιουργία γραμμής (row)
+                    const row = document.createElement('div');
+                    row.className = 'staff-row';
+
+                    // Το κύριο κουμπί κλήσης
                     const btn = document.createElement('button');
-                    // GHOST MODE: Αν είναι Background (away), γίνεται αχνό με πορτοκαλί περίγραμμα
                     const isAway = u.status === 'away';
+                    
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    let stTxt = isAway ? "⚠️ BACKGROUND (PUSH)" : "IDLE"; // <-- ΔΙΟΡΘΩΣΗ ΕΔΩ
+                    let stTxt = isAway ? "⚠️ BACKGROUND (PUSH)" : "IDLE";
                     let stCol = isAway ? "#FF9800" : "white";
 
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
@@ -397,7 +418,24 @@
                         const span = document.getElementById(`status-${u.username}`);
                         if(span) { span.innerText = "📞 ΚΛΗΣΗ..."; span.style.color = "yellow"; }
                     };
-                    container.appendChild(btn);
+                    
+                    row.appendChild(btn);
+
+                    // ΠΡΟΣΘΗΚΗ: ΚΟΥΜΠΙ ΔΙΑΓΡΑΦΗΣ (X)
+                    // Εμφανίζεται ΜΟΝΟ αν ο χρήστης είναι AWAY
+                    if (isAway) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'btn-delete';
+                        delBtn.innerText = 'X';
+                        delBtn.onclick = () => {
+                            if (confirm(`Διαγραφή του ${u.username} από τη λίστα;`)) {
+                                socket.emit('manual-logout', { targetUser: u.username });
+                            }
+                        };
+                        row.appendChild(delBtn);
+                    }
+
+                    container.appendChild(row);
                 });
             },
 
