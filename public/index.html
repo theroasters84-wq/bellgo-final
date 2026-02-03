@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v26</title>
+    <title>BellGo Ultra v27</title>
     <link rel="manifest" href="manifest.json">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -193,6 +193,25 @@
             if ('serviceWorker' in navigator) {
                 try {
                     const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    // 1. ΔΗΜΙΟΥΡΓΙΑ AGGRESSIVE CHANNEL (Για να πετάγεται πάνω από Youtube)
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+                        const PushNotifications = window.Capacitor.Plugins.PushNotifications;
+                        await PushNotifications.createChannel({
+                            id: 'fcm_default_channel',
+                            name: 'BellGo Urgent',
+                            importance: 5, // MAX IMPORTANCE (Heads-up)
+                            visibility: 1, // PUBLIC (Lock screen)
+                            sound: 'alert_sound', // Αν έχεις custom ήχο, αλλιώς default
+                            vibration: true
+                        });
+                        
+                        // 2. EVENT: OTAN PATAEI TIN EIDOPOIHSH NA ANOIGEI KOKKINI OTHONI
+                        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                            console.log('🔔 Notification Tapped! Forcing Alarm Screen...');
+                            App.triggerAlarmScreen(); // <--- Η ΛΥΣΗ ΓΙΑ ΤΟ ΠΡΟΒΛΗΜΑ 2
+                        });
+                    }
+
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
