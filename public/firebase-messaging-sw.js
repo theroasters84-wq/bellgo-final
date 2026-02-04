@@ -11,65 +11,43 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// --- Map με ενεργά alarms για επαναλαμβανόμενα notifications ---
-const activeAlarms = {};
-
 /**
- * BACKGROUND MESSAGE (DATA ή NOTIFICATION)
+ * BACKGROUND MESSAGE
+ * Εμφανίζει την ειδοποίηση όταν η εφαρμογή είναι κλειστή/στο background.
  */
 messaging.setBackgroundMessageHandler(function(payload) {
-  const alarmId = payload.data?.alarmId || Date.now().toString();
   const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
-  const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
+  const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ';
 
-  // Αν δεν υπάρχει ήδη ενεργό alarm, ξεκινάμε επαναλαμβανόμενη ειδοποίηση
-  if (!activeAlarms[alarmId]) {
-
-    const showNotif = () => {
-      self.registration.showNotification(title, {
-        body,
-        icon: '/icon.png',
-        badge: '/badge.png',
-        vibrate: [1000, 500, 1000, 500, 2000, 500, 2000],
-        tag: 'bellgo-alarm',
-        renotify: true,
-        requireInteraction: true,
-        data: { url: '/', alarmId }
-      });
-    };
-
-    // Εμφάνιση άμεσα
-    showNotif();
-
-    // Επαναλαμβανόμενη εμφάνιση κάθε 3 δευτ.
-    const interval = setInterval(showNotif, 3000);
-    activeAlarms[alarmId] = interval;
-  }
+  return self.registration.showNotification(title, {
+    body: body,
+    icon: '/icon.png',
+    badge: '/badge.png', // Βεβαιώσου ότι υπάρχει ή αφαίρεσέ το
+    vibrate: [1000, 500, 1000],
+    tag: 'bellgo-alarm', // Το ίδιο tag για να αντικαθιστά την προηγούμενη και να μην γεμίζει η μπάρα
+    renotify: true, // Να ξαναχτυπάει/δονείται κάθε φορά που έρχεται νέο μήνυμα (από το server loop)
+    requireInteraction: true,
+    data: { url: '/' }
+  });
 });
 
 /**
  * CLICK ΣΤΟ NOTIFICATION
+ * Ανοίγει την εφαρμογή και εστιάζει.
  */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const alarmId = event.notification.data?.alarmId;
-
-  // Σταματάμε το επαναλαμβανόμενο alarm
-  if (alarmId && activeAlarms[alarmId]) {
-    clearInterval(activeAlarms[alarmId]);
-    delete activeAlarms[alarmId];
-  }
-
-  // Προσπαθούμε να φέρουμε σε focus ήδη ανοιχτό tab ή ανοίγουμε νέο
+  // Προσπάθεια να ανοίξει ή να εστιάσει το παράθυρο
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
+      // Αν υπάρχει ήδη ανοιχτό tab, πήγαινε σε αυτό
       for (const client of clientsArr) {
-        if ('focus' in client) {
-          client.postMessage({ type: 'ALARM_CLICK', alarmId });
+        if (client.url.includes('bellgo') || client.url === '/' || 'focus' in client) {
           return client.focus();
         }
       }
+      // Αν όχι, άνοιξε νέο
       return clients.openWindow('/');
     })
   );
