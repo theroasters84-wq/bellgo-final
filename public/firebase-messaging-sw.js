@@ -10,19 +10,22 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+
+// --- Map με ενεργά alarms για επαναλαμβανόμενα notifications ---
 const activeAlarms = {};
 
 /**
- * BACKGROUND MESSAGE (DATA)
+ * BACKGROUND MESSAGE (DATA ή NOTIFICATION)
  */
 messaging.setBackgroundMessageHandler(function(payload) {
   const alarmId = payload.data?.alarmId || Date.now().toString();
   const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
   const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
 
+  // Αν δεν υπάρχει ήδη ενεργό alarm, ξεκινάμε επαναλαμβανόμενη ειδοποίηση
   if (!activeAlarms[alarmId]) {
+
     const showNotif = () => {
-      console.log('[SW] Show alarm notification', alarmId);
       self.registration.showNotification(title, {
         body,
         icon: '/icon.png',
@@ -35,10 +38,10 @@ messaging.setBackgroundMessageHandler(function(payload) {
       });
     };
 
-    // Άμεση εμφάνιση
+    // Εμφάνιση άμεσα
     showNotif();
 
-    // Επαναλαμβανόμενη ειδοποίηση ΚΑΘΕ 3 δευτ.
+    // Επαναλαμβανόμενη εμφάνιση κάθε 3 δευτ.
     const interval = setInterval(showNotif, 3000);
     activeAlarms[alarmId] = interval;
   }
@@ -52,12 +55,13 @@ self.addEventListener('notificationclick', function(event) {
 
   const alarmId = event.notification.data?.alarmId;
 
+  // Σταματάμε το επαναλαμβανόμενο alarm
   if (alarmId && activeAlarms[alarmId]) {
     clearInterval(activeAlarms[alarmId]);
     delete activeAlarms[alarmId];
-    console.log('[SW] Alarm cleared', alarmId);
   }
 
+  // Προσπαθούμε να φέρουμε σε focus ήδη ανοιχτό tab ή ανοίγουμε νέο
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
       for (const client of clientsArr) {
