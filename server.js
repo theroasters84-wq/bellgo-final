@@ -31,7 +31,7 @@ let activeUsers = {};
 /* ---------------- SOCKET ---------------- */
 io.on('connection', (socket) => {
 
-  /* ---------- JOIN ---------- */
+  /* ---------- JOIN STORE ---------- */
   socket.on('join-store', (data) => {
     const store = (data.storeName || '').toLowerCase().trim();
     const username = (data.username || '').trim();
@@ -46,8 +46,8 @@ io.on('connection', (socket) => {
     socket.join(store);
 
     const key = `${store}_${username}`;
-    
-    // Ανάκτηση κατάστασης (αν υπήρχε)
+
+    // Ανάκτηση κατάστασης (αν υπήρχε πριν από refresh/reconnect)
     const existingInterval = activeUsers[key] ? activeUsers[key].alarmInterval : null;
     const existingRinging = activeUsers[key] ? activeUsers[key].isRinging : false;
 
@@ -75,7 +75,10 @@ io.on('connection', (socket) => {
   /* ---------- UPDATE TOKEN ---------- */
   socket.on('update-token', (data) => {
     const key = `${socket.store}_${socket.username}`;
-    if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
+    if (activeUsers[key]) {
+        activeUsers[key].fcmToken = data.token;
+        console.log(`🔑 TOKEN UPDATE: ${socket.username}`);
+    }
   });
 
   /* ---------- HEARTBEAT ---------- */
@@ -91,24 +94,24 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- TRIGGER ALARM (AGGRESSIVE LOOP) ---------- */
+  /* ---------- TRIGGER ALARM (FULL AGGRESSIVE LOOP) ---------- */
   socket.on('trigger-alarm', (targetName) => {
     const key = `${socket.store}_${targetName}`;
     const target = activeUsers[key];
     
     if (!target) return;
-    if (target.isRinging) return; // Αν χτυπάει ήδη, stop
+    if (target.isRinging) return; // Αν χτυπάει ήδη, δεν κάνουμε τίποτα
 
     console.log(`🔔 ALARM START -> ${targetName}`);
     target.isRinging = true;
     updateStore(socket.store); 
 
-    // 1. Socket Signal (Άμεσα)
+    // 1. Socket Signal (Άμεσα αν είναι ανοιχτό)
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // 2. FCM Loop Function (MAX AGGRESSION)
+    // 2. FCM Loop Function (To "Πυρηνικό" Όπλο για iPhone)
     const sendPush = () => {
-        // Έλεγχος ασφαλείας: Αν ο χρήστης διαγράφηκε ή σταμάτησε το alarm
+        // Έλεγχος ασφαλείας: Αν διαγράφηκε ή σταμάτησε
         if (!activeUsers[key] || !activeUsers[key].isRinging) {
             if (activeUsers[key] && activeUsers[key].alarmInterval) {
                 clearInterval(activeUsers[key].alarmInterval);
@@ -178,13 +181,13 @@ io.on('connection', (socket) => {
 
     // Στείλε το πρώτο άμεσα
     sendPush();
-    // Ξεκίνα το loop κάθε 4 δευτερόλεπτα (Πιο επιθετικό)
+    // Ξεκίνα το loop κάθε 4 δευτερόλεπτα (Πιο γρήγορα = Πιο aggressive)
     target.alarmInterval = setInterval(sendPush, 4000);
   });
 
   /* ---------- ACCEPT ALARM ---------- */
   socket.on('alarm-accepted', (data) => {
-    // Παίρνουμε τα δεδομένα ΡΗΤΑ για ασφάλεια
+    // Παίρνουμε τα δεδομένα ΡΗΤΑ για ασφάλεια (ώστε να βρούμε το σωστό timer)
     const sName = socket.store || (data ? data.store : null);
     const uName = socket.username || (data ? data.username : null);
 
@@ -194,8 +197,9 @@ io.on('connection', (socket) => {
     const user = activeUsers[key];
 
     if (user && user.isRinging) {
-        console.log(`✅ STOP ALARM: ${uName}`);
+        console.log(`✅ STOP ALARM LOOP: ${uName}`);
         
+        // Σκοτώνουμε το Interval
         if (user.alarmInterval) {
             clearInterval(user.alarmInterval);
             user.alarmInterval = null;
@@ -212,7 +216,7 @@ io.on('connection', (socket) => {
     io.to(socket.store).emit('chat-message', { sender: socket.username, role: socket.role, text: msg.text });
   });
 
-  /* ---------- LOGOUT ---------- */
+  /* ---------- MANUAL LOGOUT ---------- */
   socket.on('manual-logout', (data) => {
     if (data && data.targetUser) { 
         const key = `${socket.store}_${data.targetUser}`;
@@ -231,25 +235,29 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- DISCONNECT ---------- */
+  /* ---------- DISCONNECT (BACKGROUND HANDLING) ---------- */
   socket.on('disconnect', () => {
     const key = `${socket.store}_${socket.username}`;
     const user = activeUsers[key];
 
     if (user && user.socketId === socket.id) {
         user.socketId = null;
-        user.status = 'away';
+        user.status = 'away'; // Φαίνεται Γκρι
         console.log(`😴 BACKGROUND: ${user.username}`);
-        // ΔΕΝ σταματάμε το Loop εδώ! Πρέπει να συνεχίσει να βαράει.
+        
+        // ΣΗΜΑΝΤΙΚΟ: ΔΕΝ σταματάμε το Loop εδώ! 
+        // Αν χτυπούσε, συνεχίζει να χτυπάει notifications μέχρι να μπει και να πατήσει STOP.
         updateStore(socket.store);
     }
   });
 });
 
+/* ---------------- CLEANUP ---------------- */
 setInterval(() => {
   const now = Date.now();
   for (const key in activeUsers) {
     const u = activeUsers[key];
+    // Αν είναι away πάνω από 12 ώρες -> Διαγραφή
     if (u.status === 'away' && now - u.lastSeen > 12 * 3600000) {
       if (u.alarmInterval) clearInterval(u.alarmInterval);
       delete activeUsers[key];
@@ -258,6 +266,7 @@ setInterval(() => {
   }
 }, 30000);
 
+/* ---------------- UPDATE STORE ---------------- */
 function updateStore(store) {
   if(!store) return;
   const list = Object.values(activeUsers)
@@ -266,10 +275,11 @@ function updateStore(store) {
         username: u.username, 
         role: u.role, 
         status: u.status,
-        isRinging: u.isRinging
+        isRinging: u.isRinging // Στέλνουμε το isRinging για να δείχνει "ΚΛΗΣΗ" ακόμα κι αν είναι offline
     }));
   io.to(store).emit('staff-list-update', list);
 }
 
+/* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server running on ${PORT}`));
