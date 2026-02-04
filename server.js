@@ -5,6 +5,7 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 /* ---------------- FIREBASE ADMIN ---------------- */
+// Βεβαιώσου ότι το serviceAccountKey.json είναι στον ίδιο φάκελο
 const serviceAccount = require("./serviceAccountKey.json");
 
 admin.initializeApp({
@@ -48,18 +49,31 @@ io.on('connection', (socket) => {
 
     const key = `${store}_${username}`;
 
+    // Αν υπήρχε ήδη ο χρήστης, κρατάμε το status του, αλλιώς "online"
+    const existingStatus = activeUsers[key] ? activeUsers[key].status : "online";
+    const existingRinging = activeUsers[key] ? activeUsers[key].isRinging : false;
+    const existingInterval = activeUsers[key] ? activeUsers[key].alarmInterval : null;
+
     activeUsers[key] = {
       store,
       username,
       role,
       socketId: socket.id,
       fcmToken: token,
-      status: "online",
-      lastSeen: Date.now()
+      status: existingStatus,
+      lastSeen: Date.now(),
+      isRinging: existingRinging, // Θυμόμαστε αν χτυπάει
+      alarmInterval: existingInterval // Θυμόμαστε το Loop ειδοποιήσεων
     };
 
     console.log(`👤 JOIN: ${username} @ ${store} (${role})`);
     updateStore(store);
+
+    // ΕΛΕΓΧΟΣ ΚΑΤΑ ΤΗ ΣΥΝΔΕΣΗ (REFRESH): Αν χτυπούσε, ξαναστείλε εντολή!
+    if (activeUsers[key].isRinging) {
+        console.log(`♻️ RE-SENDING ALARM to refreshed user: ${username}`);
+        socket.emit('ring-bell'); 
+    }
   });
 
   /* ---------- UPDATE TOKEN ---------- */
@@ -84,60 +98,89 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- TRIGGER ALARM ---------- */
+  /* ---------- TRIGGER ALARM (LOOP LOGIC) ---------- */
   socket.on('trigger-alarm', (targetName) => {
     const key = `${socket.store}_${targetName}`;
     const target = activeUsers[key];
     if (!target) return;
 
-    console.log(`🔔 ALARM -> ${targetName}`);
+    // Αν χτυπάει ήδη, μην ξανακάνεις τίποτα
+    if (target.isRinging) return;
 
-    // SOCKET (αν είναι online)
+    console.log(`🔔 ALARM START -> ${targetName}`);
+    target.isRinging = true;
+    updateStore(socket.store); // Ενημέρωσε το UI του Admin ότι χτυπάει (προαιρετικό)
+
+    // 1. Στέλνουμε ΆΜΕΣΑ Socket εντολή
     if (target.socketId) {
       io.to(target.socketId).emit('ring-bell');
     }
 
-    // FCM (ΠΑΝΤΑ)
-    if (target.fcmToken) {
-      const message = {
-        token: target.fcmToken,
-        data: {
-          type: "alarm"
-        },
-        android: {
-          priority: "high",
-          notification: {
-            channelId: "fcm_default_channel",
-            priority: "max",
-            visibility: "public",
-            sound: "default",
-            defaultVibrateTimings: true,
-            title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-            body: "ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ"
-          }
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: "default",
-              badge: 1
+    // 2. Ξεκινάμε LOOP για FCM notifications (κάθε 5 δευτερόλεπτα)
+    // Αυτό λύνει το πρόβλημα αν το iPhone κοιμηθεί. Ο Server θα συνεχίσει να στέλνει.
+    const sendPush = () => {
+        if (!target.fcmToken) return;
+        
+        const message = {
+            token: target.fcmToken,
+            data: { type: "alarm", alarmId: Date.now().toString() },
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: "fcm_default_channel",
+                    priority: "max",
+                    visibility: "public",
+                    sound: "default",
+                    defaultVibrateTimings: true,
+                    title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!",
+                    body: "ΠΑΤΑ ΤΩΡΑ ΓΙΑ ΑΠΟΔΟΧΗ"
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: "default",
+                        badge: 1,
+                        alert: {
+                            title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!",
+                            body: "ΠΑΤΑ ΤΩΡΑ ΓΙΑ ΑΠΟΔΟΧΗ"
+                        }
+                    }
+                }
             }
-          }
-        }
-      };
+        };
 
-      admin.messaging().send(message)
-        .then(() => console.log("✅ FCM SENT"))
-        .catch(err => console.error("❌ FCM ERROR", err));
-    }
+        admin.messaging().send(message)
+            .then(() => console.log(`📲 FCM Sent to ${targetName}`))
+            .catch(err => console.error("❌ FCM ERROR", err));
+    };
+
+    // Στείλε το πρώτο και ξεκίνα το loop
+    sendPush();
+    target.alarmInterval = setInterval(sendPush, 5000); // Κάθε 5 δευτερόλεπτα
   });
 
   /* ---------- ACCEPT ALARM ---------- */
   socket.on('alarm-accepted', () => {
-    console.log(`✅ ACCEPT: ${socket.username}`);
-    io.to(socket.store).emit('staff-accepted-alarm', {
-      username: socket.username
-    });
+    const key = `${socket.store}_${socket.username}`;
+    const user = activeUsers[key];
+
+    if (user && user.isRinging) {
+        console.log(`✅ ACCEPT STOP: ${socket.username}`);
+        
+        // Σταματάμε το Loop ειδοποιήσεων
+        if (user.alarmInterval) {
+            clearInterval(user.alarmInterval);
+            user.alarmInterval = null;
+        }
+        
+        user.isRinging = false;
+        
+        // Ειδοποιούμε τον Admin
+        io.to(socket.store).emit('staff-accepted-alarm', {
+            username: socket.username
+        });
+    }
   });
 
   /* ---------- CHAT ---------- */
@@ -149,14 +192,14 @@ io.on('connection', (socket) => {
     });
   });
 
-  /* ---------- MANUAL LOGOUT / ADMIN DELETE ---------- */
+  /* ---------- MANUAL LOGOUT ---------- */
   socket.on('manual-logout', (data) => {
-
     // ADMIN DELETE
     if (data && data.targetUser) {
       const key = `${socket.store}_${data.targetUser}`;
       if (activeUsers[key]) {
-        console.log(`🗑️ ADMIN DELETE: ${data.targetUser}`);
+        // Καθαρισμός αν χτυπάει
+        if (activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
         delete activeUsers[key];
         updateStore(socket.store);
       }
@@ -165,7 +208,10 @@ io.on('connection', (socket) => {
 
     // SELF LOGOUT
     const key = `${socket.store}_${socket.username}`;
-    delete activeUsers[key];
+    if (activeUsers[key]) {
+        if (activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
+        delete activeUsers[key];
+    }
     updateStore(socket.store);
   });
 
@@ -177,6 +223,7 @@ io.on('connection', (socket) => {
     if (user && user.socketId === socket.id) {
       user.socketId = null;
       user.status = 'away';
+      // ΔΕΝ σταματάμε το alarmInterval εδώ! Θέλουμε να χτυπάει ακόμα κι αν βγει offline.
       console.log(`😴 BACKGROUND: ${user.username}`);
       updateStore(socket.store);
     }
@@ -186,20 +233,11 @@ io.on('connection', (socket) => {
 /* ---------------- CLEANUP ---------------- */
 setInterval(() => {
   const now = Date.now();
-
   for (const key in activeUsers) {
     const u = activeUsers[key];
-
-    // online -> away (2 λεπτά)
-    if (u.status === 'online' && now - u.lastSeen > 2 * 60 * 1000) {
-      u.status = 'away';
-      u.socketId = null;
-      updateStore(u.store);
-    }
-
-    // away -> delete (12 ώρες)
+    // Αν είναι away πάνω από 12 ώρες, διέγραψέ τον
     if (u.status === 'away' && now - u.lastSeen > 12 * 60 * 60 * 1000) {
-      console.log(`🗑️ CLEANUP: ${u.username}`);
+      if (u.alarmInterval) clearInterval(u.alarmInterval); // Stop alarm
       delete activeUsers[key];
       updateStore(u.store);
     }
@@ -209,7 +247,6 @@ setInterval(() => {
 /* ---------------- UPDATE STORE ---------------- */
 function updateStore(store) {
   if (!store) return;
-
   const staff = Object.values(activeUsers)
     .filter(u => u.store === store)
     .map(u => ({
@@ -217,7 +254,6 @@ function updateStore(store) {
       role: u.role,
       status: u.status
     }));
-
   io.to(store).emit('staff-list-update', staff);
 }
 
