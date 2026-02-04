@@ -11,44 +11,35 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-/**
- * BACKGROUND MESSAGE
- * Εμφανίζει την ειδοποίηση όταν η εφαρμογή είναι κλειστή/στο background.
- */
 messaging.setBackgroundMessageHandler(function(payload) {
-  const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
-  const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ';
+  const title = payload.data.title || '🚨 ΚΛΗΣΗ!';
+  const body = payload.data.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
 
   return self.registration.showNotification(title, {
     body: body,
     icon: '/icon.png',
-    badge: '/badge.png', // Βεβαιώσου ότι υπάρχει ή αφαίρεσέ το
-    vibrate: [1000, 500, 1000],
-    tag: 'bellgo-alarm', // Το ίδιο tag για να αντικαθιστά την προηγούμενη και να μην γεμίζει η μπάρα
-    renotify: true, // Να ξαναχτυπάει/δονείται κάθε φορά που έρχεται νέο μήνυμα (από το server loop)
+    
+    // --- Aggressive Settings ---
+    tag: 'bellgo-alarm', // Χρησιμοποιούμε το ίδιο tag για να μην γεμίζει η μπάρα
+    renotify: true,      // 🔴 ΑΝΑΓΚΑΖΕΙ ΤΟ ΚΙΝΗΤΟ ΝΑ ΞΑΝΑΧΤΥΠΗΣΕΙ/ΔΟΝΗΘΕΙ
     requireInteraction: true,
-    data: { url: '/' }
+    
+    vibrate: [500, 200, 500, 200, 500],
+    
+    data: { url: '/?type=alarm' }
   });
 });
 
-/**
- * CLICK ΣΤΟ NOTIFICATION
- * Ανοίγει την εφαρμογή και εστιάζει.
- */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-
-  // Προσπάθεια να ανοίξει ή να εστιάσει το παράθυρο
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // Αν υπάρχει ήδη ανοιχτό tab, πήγαινε σε αυτό
       for (const client of clientsArr) {
-        if (client.url.includes('bellgo') || client.url === '/' || 'focus' in client) {
-          return client.focus();
+        if (client.url.includes('bellgo') || 'focus' in client) {
+            return client.focus();
         }
       }
-      // Αν όχι, άνοιξε νέο
-      return clients.openWindow('/');
+      return clients.openWindow('/?type=alarm');
     })
   );
 });
