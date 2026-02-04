@@ -1,5 +1,3 @@
-// public/firebase-messaging-sw.js
-
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
@@ -13,45 +11,51 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// --- ΕΔΩ ΓΙΝΕΤΑΙ Η ΔΟΝΗΣΗ ---
-// Επειδή ο Server έστειλε μόνο "data", τρέχει αυτή η συνάρτηση:
+/**
+ * BACKGROUND PUSH (DATA ή NOTIFICATION)
+ */
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[SW] Background Alarm Received:', payload);
+  console.log('[SW] Background message:', payload);
 
-  const notificationTitle = payload.data.title || '🔔 BellGo';
-  const notificationOptions = {
-    body: payload.data.body || 'Νέα Κλήση',
+  const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
+  const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
+
+  return self.registration.showNotification(title, {
+    body,
     icon: '/icon.png',
-    
-    // ΔΥΝΑΤΗ ΔΟΝΗΣΗ: [Δόνηση, Παύση, Δόνηση, Παύση, Δόνηση...]
-    vibrate: [1000, 500, 1000, 500, 2000], 
-    
-    tag: 'alarm-notification', // Το ίδιο tag για να μην γεμίζει η μπάρα
-    renotify: true,            // Να ξαναχτυπήσει/δονηθεί ακόμα κι αν υπάρχει ήδη ειδοποίηση!
-    requireInteraction: true,  // Να μείνει στην οθόνη μέχρι να το πατήσεις
-    data: { url: '/' }
-  };
+    badge: '/badge.png',
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+    vibrate: [1000, 500, 1000, 500, 2000, 500, 2000],
+
+    tag: 'bellgo-alarm',
+    renotify: true,
+    requireInteraction: true,
+
+    data: {
+      url: '/',
+      alarmId: payload.data?.alarmId || null
+    }
+  });
 });
 
-// Όταν πατήσεις την ειδοποίηση
+/**
+ * CLICK ΣΤΟ NOTIFICATION
+ */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
-      // Αν είναι ήδη ανοιχτό, πήγαινε εκεί
-      for (var i = 0; i < windowClients.length; i++) {
-        var client = windowClients[i];
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
+      for (const client of clientsArr) {
         if (client.url === '/' && 'focus' in client) {
+          client.postMessage({
+            type: 'ALARM_CLICK',
+            alarmId: event.notification.data?.alarmId
+          });
           return client.focus();
         }
       }
-      // Αλλιώς άνοιξε το
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
+      return clients.openWindow('/');
     })
   );
 });
