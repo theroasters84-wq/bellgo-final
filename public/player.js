@@ -3,34 +3,28 @@ const AudioEngine = {
     alarmPlayer: null,     // Player 2: Κάνει τον θόρυβο (alert)
     isRinging: false,
     wakeLock: null,
-    initialized: false,
 
     async init() {
-        if (this.initialized) return;
-        
-        console.log("🔊 AudioEngine: Starting Engine (Dual Mode)...");
+        console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
 
-        // --- 1. SETUP PLAYER 1 (KEEP ALIVE) ---
-        // Χρησιμοποιούμε 19Hz tone για να μην το κόβει το iOS ως "silence"
+        // --- 1. SETUP PLAYER 1 (KEEP ALIVE / BAR OWNER) ---
         if (!this.keepAlivePlayer) {
-            this.keepAlivePlayer = new Audio("tone19hz.wav"); // ΣΗΜΑΝΤΙΚΟ: Θέλει αυτό το αρχείο
+            this.keepAlivePlayer = document.createElement("audio");
+            this.keepAlivePlayer.id = 'keepAlive';
+            this.keepAlivePlayer.src = "tone19hz.wav"; // Βεβαιώσου ότι υπάρχει!
             this.keepAlivePlayer.loop = true;
-            this.keepAlivePlayer.volume = 1.0; 
-            
-            // Watchdog: Αν το iOS το κάνει pause μόνο του, το ξαναβάζουμε μπρος
-            this.keepAlivePlayer.addEventListener('pause', () => {
-                if (!this.isRinging) {
-                    console.log("⚠️ KeepAlive Paused by System -> Force Play");
-                    this.keepAlivePlayer.play().catch(e => console.log("Replay fail:", e));
-                }
-            });
+            this.keepAlivePlayer.volume = 1.0; // Τέρμα ένταση για να μείνει η μπάρα
+            document.body.appendChild(this.keepAlivePlayer);
         }
 
         // --- 2. SETUP PLAYER 2 (ALARM SOUND) ---
         if (!this.alarmPlayer) {
-            this.alarmPlayer = new Audio("alert.mp3");
+            this.alarmPlayer = document.createElement("audio");
+            this.alarmPlayer.id = 'alarmSound';
+            this.alarmPlayer.src = "alert.mp3"; // Βεβαιώσου ότι υπάρχει!
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
+            document.body.appendChild(this.alarmPlayer);
         }
 
         this.requestWakeLock();
@@ -39,45 +33,41 @@ const AudioEngine = {
         // Ξεκινάμε το "Χαλί"
         try {
             await this.keepAlivePlayer.play();
-            this.initialized = true;
             this.updateDisplay("online");
             console.log("✅ Keep-Alive Running");
         } catch (e) {
-            console.log("⏳ Waiting for interaction to start AudioEngine...");
-        }
-    },
-
-    // Καλείται αν η εφαρμογή βγει από background
-    ensureKeepAlive() {
-        if (this.keepAlivePlayer && this.keepAlivePlayer.paused && !this.isRinging) {
-            this.keepAlivePlayer.play().catch(()=>{});
+            console.log("⏳ Waiting for interaction...");
         }
     },
 
     setupMediaSession() {
         if (!("mediaSession" in navigator)) return;
 
+        // --- ΑΥΤΗ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ ---
+        // Όταν πατάς κουμπί στην μπάρα (Play/Pause/Next), δεν σταματάμε απλά τον ήχο.
+        // Φωνάζουμε την App.acceptAlarm() στο index.html για να το μάθει και ο Server!
         const handleNotificationClick = () => {
-            console.log("👆 Media Button Clicked");
+            console.log("👆 Notification Button Clicked");
             
             if (this.isRinging) {
-                // Αν χτυπάει, το κουμπί κάνει ΑΠΟΔΟΧΗ
+                // ΣΗΜΑΝΤΙΚΟ: Καλουμε την Global συνάρτηση του App
                 if (window.App && window.App.acceptAlarm) {
                     window.App.acceptAlarm(); 
+                } else {
+                    this.stopAlarm(); // Fallback αν κάτι πάει στραβά
                 }
             } else {
                 // Αν δεν χτυπάει, απλά σιγουρεύουμε ότι ο Player 1 παίζει
-                this.keepAlivePlayer.play().catch(()=>{});
+                this.keepAlivePlayer.play();
             }
         };
 
-        // Συνδέουμε όλα τα κουμπιά
-        const actions = ['play', 'pause', 'stop', 'previoustrack', 'nexttrack'];
-        actions.forEach(action => {
-             try {
-                 navigator.mediaSession.setActionHandler(action, handleNotificationClick);
-             } catch(e) {}
-        });
+        // Συνδέουμε όλα τα κουμπιά με την παραπάνω λογική
+        navigator.mediaSession.setActionHandler('play', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
     },
 
     // --- ΚΛΗΣΗ ---
@@ -87,36 +77,43 @@ const AudioEngine = {
 
         console.log("🚨 ALARM TRIGGERED");
 
-        // 1. Παύση του KeepAlive για να μην μπλέκονται
-        this.keepAlivePlayer.pause();
+        // 1. Αλλάζουμε τα γράμματα στην μπάρα (Ο Player 1 συνεχίζει να παίζει)
+        this.updateDisplay("alarm");
 
-        // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
+        // 2. Ξεκινάμε τον ΘΟΡΥΒΟ (Player 2)
         this.alarmPlayer.currentTime = 0;
         try {
             await this.alarmPlayer.play();
-        } catch(e) { console.error("Alarm Play Error:", e); }
+        } catch(e) { console.error(e); }
 
-        this.updateDisplay("alarm");
+        // 3. UI
+        const overlay = document.getElementById('alarmOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+
         this.vibrate(true);
         this.sendNotification();
     },
 
-    // --- ΑΠΟΔΟΧΗ ---
-    stopAlarm() {
-        if (!this.isRinging) return;
+    // --- ΑΠΟΔΟΧΗ (Καλείται από το App.acceptAlarm) ---
+    stopAlarm(fullyStop = false) {
+        if (!this.isRinging && !fullyStop) return; // Ασφάλεια
         this.isRinging = false;
 
-        console.log("✅ ALARM STOPPED");
+        console.log("✅ ALARM STOPPED (Audio Engine)");
 
-        // 1. Σταματάμε τον θόρυβο
+        // 1. Σταματάμε ΜΟΝΟ τον θόρυβο (Player 2)
         this.alarmPlayer.pause();
         this.alarmPlayer.currentTime = 0;
 
-        // 2. Ξαναβάζουμε το KeepAlive
-        this.keepAlivePlayer.play().catch(()=>{});
-
-        // 3. Επαναφέρουμε τα γράμματα
+        // 2. Επαναφέρουμε τα γράμματα (Ο Player 1 δεν σταμάτησε ποτέ!)
         this.updateDisplay("online");
+
+        // 3. UI Hide
+        const overlay = document.getElementById('alarmOverlay');
+        if (overlay) overlay.style.display = 'none';
+
         this.vibrate(false);
     },
 
@@ -126,7 +123,7 @@ const AudioEngine = {
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                artist: "Πάτα ΕΔΩ για Αποδοχή",
+                artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 album: "BellGo Alert",
                 artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
@@ -134,11 +131,13 @@ const AudioEngine = {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
                 artist: "Σύστημα Ενεργό",
-                album: "Μην κλείνετε την εφαρμογή",
+                album: "Αναμονή...",
                 artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
         }
 
+        // Λέμε στο σύστημα "Είμαι σε Playing State"
+        // Αυτό κρατάει το κουμπί Pause ενεργό
         navigator.mediaSession.playbackState = "playing";
     },
 
@@ -156,26 +155,21 @@ const AudioEngine = {
 
     async requestWakeLock() {
         if ('wakeLock' in navigator) {
-            try { 
-                this.wakeLock = await navigator.wakeLock.request("screen"); 
-                document.addEventListener('visibilitychange', async () => {
-                    if (this.wakeLock !== null && document.visibilityState === 'visible') {
-                        this.wakeLock = await navigator.wakeLock.request("screen");
-                    }
-                });
-            } catch (e) {}
+            try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
         }
     },
 
     sendNotification() {
         if (Notification.permission === "granted") {
             try {
+                // Το 'requireInteraction: true' κρατάει το notification ανοιχτό
                 const notif = new Notification("🚨 ΚΛΗΣΗ!", { 
                     icon: "/icon.png", 
                     tag: 'alarm-tag',
                     requireInteraction: true 
                 });
                 
+                // Αν πατήσει το notification, ανοίγει το παράθυρο και κάνει αποδοχή
                 notif.onclick = () => { 
                     window.focus(); 
                     if (window.App && window.App.acceptAlarm) {
@@ -188,12 +182,15 @@ const AudioEngine = {
     }
 };
 
-// Volume Buttons (Accept Logic via Keydown)
+// Volume Buttons (Accept Logic)
 window.addEventListener('keydown', (e) => {
-    // 24 = Volume Up, 25 = Volume Down (Android/Keyboard only)
+    // 24 = Volume Up, 25 = Volume Down
     if (AudioEngine.isRinging && (e.keyCode === 24 || e.keyCode === 25)) { 
+        // ΔΙΟΡΘΩΣΗ: Καλούμε το App.acceptAlarm()
         if (window.App && window.App.acceptAlarm) {
             window.App.acceptAlarm();
+        } else {
+            AudioEngine.stopAlarm();
         }
     }
 });
