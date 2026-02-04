@@ -31,7 +31,7 @@ let activeUsers = {};
 /* ---------------- SOCKET ---------------- */
 io.on('connection', (socket) => {
 
-  /* ---------- JOIN STORE ---------- */
+  // --- JOIN ---
   socket.on('join-store', (data) => {
     const store = (data.storeName || '').toLowerCase().trim();
     const username = (data.username || '').trim();
@@ -46,8 +46,8 @@ io.on('connection', (socket) => {
     socket.join(store);
 
     const key = `${store}_${username}`;
-
-    // Ανάκτηση κατάστασης (αν υπήρχε πριν από refresh/reconnect)
+    
+    // Ανάκτηση προηγούμενης κατάστασης
     const existingInterval = activeUsers[key] ? activeUsers[key].alarmInterval : null;
     const existingRinging = activeUsers[key] ? activeUsers[key].isRinging : false;
 
@@ -66,22 +66,19 @@ io.on('connection', (socket) => {
     console.log(`👤 JOIN: ${username} @ ${store}`);
     updateStore(store);
 
-    // Αν χτυπούσε ήδη, στείλε εντολή να ανοίξει η οθόνη αμέσως
+    // Αν χτυπούσε πριν, ξαναστείλε εντολή να ανοίξει η οθόνη
     if (activeUsers[key].isRinging) {
         socket.emit('ring-bell');
     }
   });
 
-  /* ---------- UPDATE TOKEN ---------- */
+  // --- UPDATE TOKEN ---
   socket.on('update-token', (data) => {
     const key = `${socket.store}_${socket.username}`;
-    if (activeUsers[key]) {
-        activeUsers[key].fcmToken = data.token;
-        console.log(`🔑 TOKEN UPDATE: ${socket.username}`);
-    }
+    if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
   });
 
-  /* ---------- HEARTBEAT ---------- */
+  // --- HEARTBEAT ---
   socket.on('heartbeat', () => {
     const key = `${socket.store}_${socket.username}`;
     if (activeUsers[key]) {
@@ -94,24 +91,24 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- TRIGGER ALARM (FULL AGGRESSIVE LOOP) ---------- */
+  // --- TRIGGER ALARM (FULL AGGRESSIVE LOOP) ---
   socket.on('trigger-alarm', (targetName) => {
     const key = `${socket.store}_${targetName}`;
     const target = activeUsers[key];
     
     if (!target) return;
-    if (target.isRinging) return; // Αν χτυπάει ήδη, δεν κάνουμε τίποτα
+    if (target.isRinging) return; 
 
     console.log(`🔔 ALARM START -> ${targetName}`);
     target.isRinging = true;
     updateStore(socket.store); 
 
-    // 1. Socket Signal (Άμεσα αν είναι ανοιχτό)
+    // 1. Socket Signal (Άμεσα)
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // 2. FCM Loop Function (To "Πυρηνικό" Όπλο για iPhone)
+    // 2. FCM Loop Function (ΤΟ ΠΥΡΗΝΙΚΟ ΟΠΛΟ ΓΙΑ IPHONE)
     const sendPush = () => {
-        // Έλεγχος ασφαλείας: Αν διαγράφηκε ή σταμάτησε
+        // Αν σταμάτησε το alarm ή διαγράφηκε ο χρήστης
         if (!activeUsers[key] || !activeUsers[key].isRinging) {
             if (activeUsers[key] && activeUsers[key].alarmInterval) {
                 clearInterval(activeUsers[key].alarmInterval);
@@ -127,10 +124,10 @@ io.on('connection', (socket) => {
                     alarmId: Date.now().toString() 
                 },
                 
-                // --- Ρυθμίσεις Android ---
+                // --- ANDROID ---
                 android: {
                     priority: "high",
-                    ttl: 0, // Μην το κρατάς καθόλου, παράδωσε τώρα
+                    ttl: 0, 
                     notification: {
                         channelId: "fcm_default_channel",
                         priority: "max",
@@ -142,21 +139,22 @@ io.on('connection', (socket) => {
                     }
                 },
 
-                // --- Ρυθμίσεις Web Push (ΚΡΙΣΙΜΟ ΓΙΑ IPHONE PWA) ---
+                // --- WEB PUSH (ΓΙΑ IPHONE PWA) ---
+                // Αυτά τα headers είναι που κάνουν το iPhone να ξυπνάει
                 webpush: {
                     headers: {
-                        "Urgency": "high",  // 🔴 ΑΥΤΟ ΞΥΠΝΑΕΙ ΤΟ IPHONE WEB APP
-                        "TTL": "0"          // Παράδοση Real-time
+                        "Urgency": "high",  
+                        "TTL": "0"          
                     },
                     fcm_options: {
                         link: "/?type=alarm"
                     }
                 },
 
-                // --- Ρυθμίσεις Native iOS (Backup) ---
+                // --- NATIVE IOS (Backup) ---
                 apns: {
                     headers: {
-                        "apns-priority": "10", // Υψηλότερη προτεραιότητα
+                        "apns-priority": "10",
                         "apns-expiration": "0"
                     },
                     payload: {
@@ -179,15 +177,14 @@ io.on('connection', (socket) => {
         }
     };
 
-    // Στείλε το πρώτο άμεσα
+    // Στείλε το πρώτο
     sendPush();
-    // Ξεκίνα το loop κάθε 4 δευτερόλεπτα (Πιο γρήγορα = Πιο aggressive)
-    target.alarmInterval = setInterval(sendPush, 4000);
+    // Ξεκίνα το loop κάθε 3 δευτερόλεπτα (Πιο γρήγορα = Πιο συνεχόμενο)
+    target.alarmInterval = setInterval(sendPush, 3000);
   });
 
-  /* ---------- ACCEPT ALARM ---------- */
+  // --- ACCEPT ALARM (STOP LOOP) ---
   socket.on('alarm-accepted', (data) => {
-    // Παίρνουμε τα δεδομένα ΡΗΤΑ για ασφάλεια (ώστε να βρούμε το σωστό timer)
     const sName = socket.store || (data ? data.store : null);
     const uName = socket.username || (data ? data.username : null);
 
@@ -199,7 +196,6 @@ io.on('connection', (socket) => {
     if (user && user.isRinging) {
         console.log(`✅ STOP ALARM LOOP: ${uName}`);
         
-        // Σκοτώνουμε το Interval
         if (user.alarmInterval) {
             clearInterval(user.alarmInterval);
             user.alarmInterval = null;
@@ -211,12 +207,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- CHAT ---------- */
+  // --- CHAT ---
   socket.on('chat-message', (msg) => {
     io.to(socket.store).emit('chat-message', { sender: socket.username, role: socket.role, text: msg.text });
   });
 
-  /* ---------- MANUAL LOGOUT ---------- */
+  // --- LOGOUT ---
   socket.on('manual-logout', (data) => {
     if (data && data.targetUser) { 
         const key = `${socket.store}_${data.targetUser}`;
@@ -235,29 +231,25 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* ---------- DISCONNECT (BACKGROUND HANDLING) ---------- */
+  // --- DISCONNECT ---
   socket.on('disconnect', () => {
     const key = `${socket.store}_${socket.username}`;
     const user = activeUsers[key];
 
     if (user && user.socketId === socket.id) {
         user.socketId = null;
-        user.status = 'away'; // Φαίνεται Γκρι
+        user.status = 'away'; // Γίνεται Γκρι
         console.log(`😴 BACKGROUND: ${user.username}`);
-        
-        // ΣΗΜΑΝΤΙΚΟ: ΔΕΝ σταματάμε το Loop εδώ! 
-        // Αν χτυπούσε, συνεχίζει να χτυπάει notifications μέχρι να μπει και να πατήσει STOP.
+        // Συνεχίζουμε το Loop notifications κανονικά!
         updateStore(socket.store);
     }
   });
 });
 
-/* ---------------- CLEANUP ---------------- */
 setInterval(() => {
   const now = Date.now();
   for (const key in activeUsers) {
     const u = activeUsers[key];
-    // Αν είναι away πάνω από 12 ώρες -> Διαγραφή
     if (u.status === 'away' && now - u.lastSeen > 12 * 3600000) {
       if (u.alarmInterval) clearInterval(u.alarmInterval);
       delete activeUsers[key];
@@ -266,7 +258,6 @@ setInterval(() => {
   }
 }, 30000);
 
-/* ---------------- UPDATE STORE ---------------- */
 function updateStore(store) {
   if(!store) return;
   const list = Object.values(activeUsers)
@@ -275,11 +266,10 @@ function updateStore(store) {
         username: u.username, 
         role: u.role, 
         status: u.status,
-        isRinging: u.isRinging // Στέλνουμε το isRinging για να δείχνει "ΚΛΗΣΗ" ακόμα κι αν είναι offline
+        isRinging: u.isRinging // Στέλνουμε το isRinging για να φαίνεται "ΚΛΗΣΗ" ακόμα και σε background
     }));
   io.to(store).emit('staff-list-update', list);
 }
 
-/* ---------------- START ---------------- */
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server running on ${PORT}`));
