@@ -3,101 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v36</title>
+    <title>BellGo Ultra v38</title>
     <link rel="manifest" href="manifest.json">
-    
     <script src="/socket.io/socket.io.js"></script>
-
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
         .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
-
         #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
         h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
-        
         .role-switch { display: flex; gap: 10px; margin-bottom: 20px; }
         .role-btn { padding: 10px 20px; border: 1px solid #444; background: #222; color: white; border-radius: 20px; cursor: pointer; }
         .role-btn.active { background: #00E676; color: black; font-weight: bold; border-color: #00E676; }
-
         .login-form { width: 85%; display: flex; flex-direction: column; gap: 12px; }
         input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; text-align: center; }
-        
         .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-
         #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; transition: background 0.3s; }
-        
         .user-info { display: flex; flex-direction: column; }
-        
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-info { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-family: monospace; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 5px; }
-
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
-
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
-        
         .btn-staff { flex: 1; padding: 15px; border: none; border-radius: 8px; font-size: 18px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; cursor: pointer; }
         .btn-staff:active { transform: scale(0.98); }
-
         .btn-staff.waiter { background: #1565C0; border-left: 5px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 5px solid #FF5252; }
-        
-        .btn-staff.ghost { 
-            opacity: 0.8; 
-            border: 1px solid #757575; 
-            background: #222 !important; 
-            color: #ccc;
-        }
-
-        .btn-delete {
-            width: 50px;
-            background: #D32F2F;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
+        .btn-staff.ghost { opacity: 0.8; border: 1px solid #757575; background: #222 !important; color: #ccc; }
+        .btn-delete { width: 50px; background: #D32F2F; color: white; border: none; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
-
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: #00E676; color: black; }
         .msg.other { align-self: flex-start; background: #333; }
-        
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
-
         #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
         @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
-        
         .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
         .time-badge { background: black; color: yellow; padding: 5px 15px; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; border: 2px solid yellow; }
-
         #infoModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
         .info-box { background:#222; border:1px solid #444; padding:25px; border-radius:15px; max-width:90%; }
         .info-close { margin-top:20px; padding:10px 30px; background:#00E676; color:black; font-weight:bold; border:none; border-radius:20px; cursor:pointer; }
     </style>
 </head>
 <body>
-
     <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" id="apkLanding" class="btn-apk-landing" target="_blank">📲 APP</a>
 
     <div id="loginScreen">
@@ -106,7 +66,6 @@
             <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
             <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
         </div>
-
         <div id="staffForm" class="login-form">
             <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
             <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
@@ -116,12 +75,9 @@
             </select>
             <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
         </div>
-
         <div id="adminForm" class="login-form" style="display:none;">
             <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής Κουζίνας</p>
-            <button class="btn-google" onclick="App.loginAdminGoogle()">
-                <span>G</span> Σύνδεση με Google
-            </button>
+            <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
         </div>
     </div>
 
@@ -152,18 +108,14 @@
     <div id="alarmOverlay">
         <div id="alarmText" style="color:white; font-size:30px; margin-bottom:10px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
         <div id="alarmTimeBadge" class="time-badge">--:--</div>
-        
-        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()">
-            <span>STOP</span>
-        </button>
+        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()"><span>STOP</span></button>
         <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
     </div>
 
     <div id="infoModal">
         <div class="info-box">
-            <h2 style="color:#00E676; margin-top:0;">ℹ️ ΟΔΗΓΙΕΣ ΛΕΙΤΟΥΡΓΙΑΣ</h2>
-            <p style="font-size:16px; line-height:1.5;">Για την καλύτερη και απρόσκοπτη λειτουργία της εφαρμογής, <strong>αποφύγετε</strong> τη χρήση άλλων εφαρμογών που απαιτούν χρήση <strong>Music Player</strong> (π.χ. Spotify, YouTube).</p>
-            <p style="font-size:14px; color:#aaa;">Η εφαρμογή χρησιμοποιεί ειδικό ήχο στο παρασκήνιο για να μένει ενεργή.</p>
+            <h2 style="color:#00E676; margin-top:0;">ℹ️ ΟΔΗΓΙΕΣ</h2>
+            <p>Αποφύγετε άλλες εφαρμογές μουσικής.</p>
             <button class="info-close" onclick="document.getElementById('infoModal').style.display='none'">ΕΝΤΑΞΕΙ</button>
         </div>
     </div>
@@ -190,23 +142,16 @@
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // --- Audio Dummy Setup (Just for compatibility, Engine handles real audio) ---
-        const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
-        let keepAliveAudio = document.createElement('audio'); 
-        keepAliveAudio.src = SILENT_WAV;
-        keepAliveAudio.volume = 0.01; 
-
         let isAlarmActive = false; 
 
         // Visibility Safety Check
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
-                console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
-                App.acceptAlarm();
+                console.log("⚠️ Screen turned off while Ringing");
             }
         });
 
-        // --- MEDIA SESSION HANDLER (Fixed) ---
+        // --- MEDIA SESSION HANDLER ---
         if ('mediaSession' in navigator) {
             const handleMediaAction = () => {
                 if(isAlarmActive) {
@@ -214,11 +159,7 @@
                     App.acceptAlarm();
                 }
             };
-            navigator.mediaSession.setActionHandler('play', handleMediaAction);
-            navigator.mediaSession.setActionHandler('pause', handleMediaAction);
-            navigator.mediaSession.setActionHandler('stop', handleMediaAction);
-            navigator.mediaSession.setActionHandler('nexttrack', handleMediaAction);
-            navigator.mediaSession.setActionHandler('previoustrack', handleMediaAction);
+            ['play', 'pause', 'stop', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handleMediaAction));
         }
 
         async function setupNotifications() {
@@ -237,7 +178,6 @@
                         });
                         
                         PushNotifications.addListener('pushNotificationActionPerformed', () => {
-                            console.log('🔔 Notification Tapped! Forcing Alarm...');
                             App.triggerAlarmScreen(); 
                         });
                     }
@@ -256,7 +196,13 @@
             }
         }
 
-        onMessage(messaging, () => App.triggerAlarmScreen());
+        // --- FOREGROUND MESSAGE HANDLER ---
+        onMessage(messaging, (payload) => {
+            console.log("📩 FCM received in foreground");
+            if (!isAlarmActive) {
+                App.triggerAlarmScreen();
+            }
+        });
 
         window.socket = null;
         window.userData = { store: '', name: '', role: '' };
@@ -297,7 +243,7 @@
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
                 
-                // ΕΚΚΙΝΗΣΗ ΗΧΟΥ ΕΔΩ ΜΟΝΟ!
+                // Init Audio Engine
                 if (userData.role !== 'admin' && window.AudioEngine) {
                     window.AudioEngine.init(); 
                 }
@@ -318,14 +264,13 @@
                 
                 App.connectSocket();
                 App.startHeartbeat();
-                App.startLocationTracking(); // <--- GPS START
+                App.startLocationTracking();
 
                 if(userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
                     setTimeout(() => App.triggerFakeAlarm(), 800);
                 }
 
-                // Check if opened via notification click
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
                       setTimeout(() => App.triggerAlarmScreen(), 1000);
@@ -333,13 +278,11 @@
                 }
             },
 
-            // --- GPS TRACKING (KEEP ALIVE) ---
             startLocationTracking: () => {
                 if ('geolocation' in navigator && (userData.role === 'waiter' || userData.role === 'driver')) {
-                    console.log("📍 GPS Tracking Started (Keep-Alive)");
                     navigator.geolocation.watchPosition(
-                        (pos) => { console.log("GPS ping"); }, 
-                        (err) => { console.log("GPS error", err); },
+                        (pos) => { console.log("GPS KeepAlive"); }, 
+                        (err) => {},
                         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
                     );
                 }
@@ -356,21 +299,17 @@
 
             triggerAlarmScreen: () => {
                 isAlarmActive = true; 
-                
                 if (window.AudioEngine) window.AudioEngine.triggerAlarm();
                 
                 const now = new Date();
                 const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
                 document.getElementById('alarmTimeBadge').innerText = "Ώρα: " + timeStr;
-                document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
-                document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
                 document.getElementById('alarmOverlay').style.display = 'flex';
                 
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ',
                         artist: 'BellGo Alert',
-                        album: 'Πατήστε Pause/Next για Αποδοχή',
                         artwork: [{ src: 'icon.png', sizes: '512x512', type: 'image/png' }]
                     });
                 }
@@ -382,7 +321,6 @@
                     userData = JSON.parse(saved);
                     setupNotifications();
                     App.finishLoginSequence(); 
-                    // Init Engine on first click
                     document.body.addEventListener('click', () => {
                          if (userData.role !== 'admin' && window.AudioEngine) window.AudioEngine.init();
                     }, { once: true });
@@ -411,14 +349,10 @@
 
             acceptAlarm: () => {
                 isAlarmActive = false;
-                
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
-                
                 document.getElementById('alarmOverlay').style.display = 'none';
                 
-                // ΔΙΟΡΘΩΣΗ: Στέλνουμε ΡΗΤΑ τα δεδομένα για να βρει ο Server το Loop
                 const payload = { store: userData.store, username: userData.name };
-                
                 if (socket && socket.connected) {
                     console.log("✅ Socket ready. Sending accept...");
                     socket.emit('alarm-accepted', payload);
@@ -437,6 +371,7 @@
                 setTimeout(() => { localStorage.removeItem('bellgo_session'); window.location.reload(); }, 150);
             },
 
+            // --- RENDER LOGIC (PRIORITY: RINGING > BACKGROUND > ONLINE) ---
             renderStaffList: (serverList) => {
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
@@ -449,19 +384,33 @@
                     const btn = document.createElement('button');
                     const isAway = u.status === 'away';
                     
-                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    let stTxt = isAway ? "⚠️ BACKGROUND" : "IDLE";
-                    let stCol = isAway ? "#FF9800" : "white";
+                    let btnClass = `btn-staff ${u.role}`;
+                    let stTxt = "IDLE";
+                    let stCol = "white";
 
+                    // ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Αν χτυπάει, δείχνει ΚΛΗΣΗ άσχετα με το background
+                    if (u.isRinging) {
+                        stTxt = "📞 ΚΛΗΣΗ...";
+                        stCol = "yellow";
+                    } else if (isAway) {
+                        stTxt = "⚠️ BACKGROUND";
+                        stCol = "#FF9800";
+                        btnClass += " ghost";
+                    }
+
+                    btn.className = btnClass;
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
+                    
                     btn.onclick = () => {
                         socket.emit('trigger-alarm', u.username);
+                        // Το UI θα ενημερωθεί από το server update, αλλά βάζουμε κι εδώ για άμεση απόκριση
                         const span = document.getElementById(`status-${u.username}`);
                         if(span) { span.innerText = "📞 ΚΛΗΣΗ..."; span.style.color = "yellow"; }
                     };
                     row.appendChild(btn);
 
-                    if (isAway) {
+                    // Κουμπί διαγραφής μόνο αν δεν χτυπάει
+                    if (isAway && !u.isRinging) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete';
                         delBtn.innerText = 'X';
