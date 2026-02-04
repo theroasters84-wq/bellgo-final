@@ -18,14 +18,9 @@ messaging.setBackgroundMessageHandler(function(payload) {
   return self.registration.showNotification(title, {
     body: body,
     icon: '/icon.png',
-    
-    // --- Aggressive Settings ---
-    tag: 'bellgo-alarm', // Χρησιμοποιούμε το ίδιο tag για να μην γεμίζει η μπάρα
-    renotify: true,      // 🔴 ΑΝΑΓΚΑΖΕΙ ΤΟ ΚΙΝΗΤΟ ΝΑ ΞΑΝΑΧΤΥΠΗΣΕΙ/ΔΟΝΗΘΕΙ
+    tag: 'bellgo-alarm', // Ίδιο tag για να μην γεμίζει η μπάρα
+    renotify: true,      // 🔴 ΑΝΑΓΚΑΖΕΙ ΤΗ ΣΥΣΚΕΥΗ ΝΑ ΞΑΝΑΧΤΥΠΗΣΕΙ
     requireInteraction: true,
-    
-    vibrate: [500, 200, 500, 200, 500],
-    
     data: { url: '/?type=alarm' }
   });
 });
