@@ -10,8 +10,6 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-
-// Κρατάμε map με ενεργά alarms για να μην σπαμάρουμε notifications
 const activeAlarms = {};
 
 /**
@@ -22,9 +20,9 @@ messaging.setBackgroundMessageHandler(function(payload) {
   const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
   const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
 
-  // Αν δεν υπάρχει ήδη active interval, δημιουργούμε
   if (!activeAlarms[alarmId]) {
     const showNotif = () => {
+      console.log('[SW] Show alarm notification', alarmId);
       self.registration.showNotification(title, {
         body,
         icon: '/icon.png',
@@ -37,12 +35,11 @@ messaging.setBackgroundMessageHandler(function(payload) {
       });
     };
 
-    // Εμφάνιση άμεσα
+    // Άμεση εμφάνιση
     showNotif();
 
-    // Επαναλαμβανόμενη ειδοποίηση κάθε 15 δευτ.
-    const interval = setInterval(showNotif, 15000);
-
+    // Επαναλαμβανόμενη ειδοποίηση ΚΑΘΕ 3 δευτ.
+    const interval = setInterval(showNotif, 3000);
     activeAlarms[alarmId] = interval;
   }
 });
@@ -55,10 +52,10 @@ self.addEventListener('notificationclick', function(event) {
 
   const alarmId = event.notification.data?.alarmId;
 
-  // Σταματάμε το επαναλαμβανόμενο alarm
   if (alarmId && activeAlarms[alarmId]) {
     clearInterval(activeAlarms[alarmId]);
     delete activeAlarms[alarmId];
+    console.log('[SW] Alarm cleared', alarmId);
   }
 
   event.waitUntil(
