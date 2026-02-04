@@ -11,31 +11,40 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Κρατάμε map με ενεργά alarms για να μην σπαμάρουμε notifications
+const activeAlarms = {};
+
 /**
- * BACKGROUND PUSH (DATA ή NOTIFICATION)
+ * BACKGROUND MESSAGE (DATA)
  */
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[SW] Background message:', payload);
-
+  const alarmId = payload.data?.alarmId || Date.now().toString();
   const title = payload.data?.title || '🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ';
   const body  = payload.data?.body  || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
 
-  return self.registration.showNotification(title, {
-    body,
-    icon: '/icon.png',
-    badge: '/badge.png',
+  // Αν δεν υπάρχει ήδη active interval, δημιουργούμε
+  if (!activeAlarms[alarmId]) {
+    const showNotif = () => {
+      self.registration.showNotification(title, {
+        body,
+        icon: '/icon.png',
+        badge: '/badge.png',
+        vibrate: [1000, 500, 1000, 500, 2000, 500, 2000],
+        tag: 'bellgo-alarm',
+        renotify: true,
+        requireInteraction: true,
+        data: { url: '/', alarmId }
+      });
+    };
 
-    vibrate: [1000, 500, 1000, 500, 2000, 500, 2000],
+    // Εμφάνιση άμεσα
+    showNotif();
 
-    tag: 'bellgo-alarm',
-    renotify: true,
-    requireInteraction: true,
+    // Επαναλαμβανόμενη ειδοποίηση κάθε 15 δευτ.
+    const interval = setInterval(showNotif, 15000);
 
-    data: {
-      url: '/',
-      alarmId: payload.data?.alarmId || null
-    }
-  });
+    activeAlarms[alarmId] = interval;
+  }
 });
 
 /**
@@ -44,14 +53,19 @@ messaging.setBackgroundMessageHandler(function(payload) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
+  const alarmId = event.notification.data?.alarmId;
+
+  // Σταματάμε το επαναλαμβανόμενο alarm
+  if (alarmId && activeAlarms[alarmId]) {
+    clearInterval(activeAlarms[alarmId]);
+    delete activeAlarms[alarmId];
+  }
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
       for (const client of clientsArr) {
-        if (client.url === '/' && 'focus' in client) {
-          client.postMessage({
-            type: 'ALARM_CLICK',
-            alarmId: event.notification.data?.alarmId
-          });
+        if ('focus' in client) {
+          client.postMessage({ type: 'ALARM_CLICK', alarmId });
           return client.focus();
         }
       }
