@@ -162,13 +162,14 @@
     <div id="infoModal">
         <div class="info-box">
             <h2 style="color:#00E676; margin-top:0;">ℹ️ ΟΔΗΓΙΕΣ ΛΕΙΤΟΥΡΓΙΑΣ</h2>
-            <p style="font-size:16px; line-height:1.5;">Για την καλύτερη λειτουργία σε iPhone/Android, η εφαρμογή χρησιμοποιεί GPS και ήχο στο παρασκήνιο.</p>
-            <p style="font-size:14px; color:#aaa;">Μην κλείνετε την εφαρμογή από το App Switcher. Απλά πατήστε Home.</p>
+            <p style="font-size:16px; line-height:1.5;">Για την καλύτερη και απρόσκοπτη λειτουργία της εφαρμογής, <strong>αποφύγετε</strong> τη χρήση άλλων εφαρμογών που απαιτούν χρήση <strong>Music Player</strong> (π.χ. Spotify, YouTube).</p>
+            <p style="font-size:14px; color:#aaa;">Η εφαρμογή χρησιμοποιεί ειδικό ήχο στο παρασκήνιο για να μένει ενεργή.</p>
             <button class="info-close" onclick="document.getElementById('infoModal').style.display='none'">ΕΝΤΑΞΕΙ</button>
         </div>
     </div>
 
     <script src="player.js"></script>
+    <audio id="snd-silent" loop preload="auto"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -190,12 +191,41 @@
         const messaging = getMessaging(app);
         const provider = new GoogleAuthProvider();
 
-        // Visibility Safety Check
+        const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
+        let keepAliveAudio = document.getElementById('snd-silent');
+        keepAliveAudio.src = SILENT_WAV;
+        keepAliveAudio.volume = 0.01; 
+
+        let isAlarmActive = false; 
+
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && window.AudioEngine && !window.AudioEngine.isRinging) {
-                if (window.userData && window.userData.role !== 'admin') {
-                    window.AudioEngine.ensureKeepAlive();
+            if (document.hidden && isAlarmActive) {
+                console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
+                App.acceptAlarm();
+            }
+        });
+
+        // --- MEDIA SESSION HANDLER (ΔΙΟΡΘΩΜΕΝΟ) ---
+        if ('mediaSession' in navigator) {
+            const handleMediaAction = () => {
+                if(isAlarmActive) {
+                    // Δίνουμε δόνηση για επιβεβαίωση
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    App.acceptAlarm();
                 }
+            };
+            navigator.mediaSession.setActionHandler('play', handleMediaAction);
+            navigator.mediaSession.setActionHandler('pause', handleMediaAction);
+            navigator.mediaSession.setActionHandler('stop', handleMediaAction);
+            navigator.mediaSession.setActionHandler('nexttrack', handleMediaAction);
+            navigator.mediaSession.setActionHandler('previoustrack', handleMediaAction);
+        }
+
+        keepAliveAudio.addEventListener('pause', () => {
+            if (window.userData && window.userData.role === 'admin') return;
+            if (!isAlarmActive) { 
+                console.log("♻️ Keeper Interrupted -> Restarting...");
+                keepAliveAudio.play().catch(e => {});
             }
         });
 
@@ -274,12 +304,7 @@
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                
-                // Audio Engine Init
-                if (userData.role !== 'admin' && window.AudioEngine) {
-                    window.AudioEngine.init(); 
-                }
-                
+                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
                 setupNotifications(); 
                 App.finishLoginSequence();
             },
@@ -296,7 +321,7 @@
                 
                 App.connectSocket();
                 App.startHeartbeat();
-                App.startLocationTracking(); // <--- ΝΕΟ: Ενεργοποίηση GPS για Drivers/Waiters
+                App.startLocationTracking(); // <--- ΠΡΟΣΘΗΚΗ: Εκκίνηση GPS
 
                 if(userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
@@ -305,38 +330,24 @@
 
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
+                      console.log("🚀 Opened via Notification! Triggering Alarm...");
                       setTimeout(() => App.triggerAlarmScreen(), 1000);
                       window.history.replaceState({}, document.title, "/");
                 }
             },
 
-            // --- GPS TRACKING (Για να μένει ξύπιο το κινητό) ---
+            // --- ΝΕΑ ΣΥΝΑΡΤΗΣΗ: GPS KEEP ALIVE ---
             startLocationTracking: () => {
-                if (!('geolocation' in navigator)) return;
-                
-                // Ενεργοποίηση ΜΟΝΟ για Διανομείς και Σερβιτόρους
-                if (userData.role === 'driver' || userData.role === 'waiter') {
-                    console.log("📍 Starting GPS Tracking (Keep-Alive)...");
-                    
-                    navigator.geolocation.watchPosition(
-                        (position) => {
-                            // Στέλνουμε συντεταγμένες (αν θες να τις βλέπει ο Admin αργότερα)
-                            // Αλλά κυρίως αυτό κρατάει το App ανοιχτό.
-                            if (socket && socket.connected) {
-                                socket.emit('update-location', {
-                                    username: userData.name,
-                                    lat: position.coords.latitude,
-                                    lon: position.coords.longitude
-                                });
-                            }
-                        },
-                        (error) => console.warn("GPS Error:", error),
-                        {
-                            enableHighAccuracy: true, // Σημαντικό για iOS background
-                            maximumAge: 0,
-                            timeout: 10000
-                        }
-                    );
+                if ('geolocation' in navigator) {
+                    // Μόνο για Waiter και Driver
+                    if (userData.role === 'waiter' || userData.role === 'driver') {
+                        console.log("📍 GPS Keep-Alive Started");
+                        navigator.geolocation.watchPosition(
+                            (pos) => { console.log("GPS Ping:", pos.coords.latitude); }, 
+                            (err) => { console.log("GPS Error:", err); },
+                            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                        );
+                    }
                 }
             },
 
@@ -350,6 +361,9 @@
             },
 
             triggerAlarmScreen: () => {
+                isAlarmActive = true; 
+                if (userData.role !== 'admin') keepAliveAudio.pause();
+                
                 if (window.AudioEngine) window.AudioEngine.triggerAlarm();
                 
                 const now = new Date();
@@ -359,6 +373,15 @@
                 document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
                 document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
                 document.getElementById('alarmOverlay').style.display = 'flex';
+                
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ',
+                        artist: 'BellGo Alert',
+                        album: 'Πατήστε Pause/Next για Αποδοχή',
+                        artwork: [{ src: 'icon.png', sizes: '512x512', type: 'image/png' }]
+                    });
+                }
             },
 
             checkSession: () => {
@@ -367,10 +390,7 @@
                     userData = JSON.parse(saved);
                     setupNotifications();
                     App.finishLoginSequence(); 
-                    // Init Engine on first click
-                    document.body.addEventListener('click', () => {
-                         if (userData.role !== 'admin' && window.AudioEngine) window.AudioEngine.init();
-                    }, { once: true });
+                    if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
                 }
             },
 
@@ -397,27 +417,34 @@
             },
 
             acceptAlarm: () => {
-                if(window.AudioEngine) { window.AudioEngine.stopAlarm(); }
+                isAlarmActive = false;
+                
+                // 1. Σταματάμε τον ήχο
+                if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
+                
+                // 2. Επανεκκίνηση του Keeper Sound (σιωπηλό)
+                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
+
+                // 3. Κλείνουμε την οθόνη Alarm
                 document.getElementById('alarmOverlay').style.display = 'none';
                 
-                const sendAccept = () => { socket.emit('alarm-accepted'); };
+                // 4. ΣΗΜΑΝΤΙΚΟ: Αποστολή σήματος με Force Connect αν χρειαστεί
+                const sendAccept = () => {
+                    console.log("✅ Socket ready. Sending accept...");
+                    socket.emit('alarm-accepted');
+                };
 
                 if (socket && socket.connected) {
                     sendAccept();
                 } else {
-                    socket.connect(); 
-                    socket.once('connect', sendAccept);
+                    console.log("⚠️ Background Disconnect detected. Reconnecting...");
+                    socket.connect(); // Force wake up
+                    socket.once('connect', sendAccept); // Περιμένουμε να συνδεθεί και στέλνουμε αμέσως
                 }
             },
 
             forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
-            
-            // --- HEARTBEAT 15 ΔΕΥΤΕΡΟΛΕΠΤΑ ---
-            startHeartbeat: () => { 
-                setInterval(() => { 
-                    if (socket && socket.connected) socket.emit('heartbeat'); 
-                }, 15000); 
-            },
+            startHeartbeat: () => { setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000); },
             
             logout: () => {
                 if (socket) socket.emit('manual-logout');
@@ -439,7 +466,7 @@
                     const isAway = u.status === 'away';
                     
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    let stTxt = isAway ? "⚠️ BACKGROUND" : "IDLE";
+                    let stTxt = isAway ? "⚠️ BACKGROUND (PUSH)" : "IDLE";
                     let stCol = isAway ? "#FF9800" : "white";
 
                     btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
