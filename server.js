@@ -5,7 +5,6 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- STRIPE SETUP ---
-// Χρησιμοποιώ τα κλειδιά που μου έδωσες
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -21,7 +20,6 @@ try {
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
-// ΑΠΑΡΑΙΤΗΤΟ για να διαβάζει τα δεδομένα από το Login
 app.use(express.json()); 
 
 const server = http.createServer(app);
@@ -39,13 +37,12 @@ let activeUsers = {};
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
 
-// 1. Έλεγχος αν υπάρχει ενεργή συνδρομή
+// 1. Έλεγχος Συνδρομής
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     try {
         if (!email) return res.json({ active: false });
 
-        // Ψάχνουμε τον πελάτη στο Stripe
         const customers = await stripe.customers.list({ 
             email: email.toLowerCase().trim(), 
             limit: 1 
@@ -53,7 +50,6 @@ app.post('/check-subscription', async (req, res) => {
 
         if (customers.data.length === 0) return res.json({ active: false });
 
-        // Ψάχνουμε αν έχει ενεργή συνδρομή
         const subscriptions = await stripe.subscriptions.list({
             customer: customers.data[0].id,
             status: 'active',
@@ -75,15 +71,14 @@ app.post('/create-checkout-session', async (req, res) => {
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            customer_email: email, // Συνδέουμε το email του πελάτη
+            customer_email: email,
             line_items: [{
-                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', // Το Price ID σου
+                // --- ΕΔΩ ΜΠΗΚΕ ΤΟ ID ΠΟΥ ΕΔΩΣΕΣ ---
+                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
                 quantity: 1,
             }],
             mode: 'subscription',
-            // Επιτυχία -> Πάει στο index.html
             success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`,
-            // Ακύρωση -> Πάει πίσω στο login.html
             cancel_url: `${req.headers.origin}/login.html?payment=cancel`,
         });
         res.json({ id: session.id });
@@ -174,7 +169,6 @@ io.on('connection', (socket) => {
 
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // NATIVE ANDROID (1 Push Only)
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
@@ -187,7 +181,6 @@ io.on('connection', (socket) => {
         return; 
     }
 
-    // WEB & iOS (Loop Push)
     const sendPush = () => {
         const currentTarget = activeUsers[key];
         if (!currentTarget || !currentTarget.isRinging) {
@@ -203,7 +196,6 @@ io.on('connection', (socket) => {
                     headers: { "Urgency": "high" }, 
                     fcm_options: { link: "/index.html?type=alarm" } 
                 },
-                // iOS APNs for Vibration
                 apns: { 
                     payload: { 
                         aps: { 
