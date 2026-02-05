@@ -15,13 +15,14 @@
         .login-form { width: 85%; display: flex; flex-direction: column; gap: 12px; }
         input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; text-align: center; }
         .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+        .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
     </style>
 </head>
 <body>
     <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk-landing" target="_blank">📲 APP</a>
 
     <h1>🔔 BellGo</h1>
+
     <div class="role-switch">
         <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
         <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
@@ -38,10 +39,7 @@
     </div>
 
     <div id="adminForm" class="login-form" style="display:none;">
-        <p style="text-align:center; color:#ccc; font-size:14px;">Είσοδος Διαχειριστή</p>
-        <input type="email" id="inpAdminManualEmail" placeholder="Email Επιχείρησης">
-        <button class="btn-login" onclick="App.loginAdminManual()">ΕΙΣΟΔΟΣ (MANUAL)</button>
-        <div style="text-align:center; margin:10px 0; color:#444;">ή</div>
+        <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής</p>
         <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
     </div>
 
@@ -79,28 +77,29 @@
 
         window.App = {
             saveAndRedirect: (user) => {
+                // Καθαρισμός email για αποφυγή προβλημάτων
+                user.store = user.store.toLowerCase().trim();
                 localStorage.setItem('bellgo_session', JSON.stringify(user));
-                window.location.href = "index.html";
+                window.location.href = "index.html"; // Μετάβαση στο Main App
             },
+
             loginStaff: () => {
-                const store = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
-                const name = document.getElementById('inpMyName').value.trim();
+                const store = document.getElementById('inpStoreEmail').value;
+                const name = document.getElementById('inpMyName').value;
                 const role = document.getElementById('inpMyRole').value;
                 if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
                 App.saveAndRedirect({ store, name, role });
             },
-            loginAdminManual: () => {
-                const email = document.getElementById('inpAdminManualEmail').value.trim().toLowerCase();
-                if (!email) return alert("Βάλε σωστό email");
-                App.saveAndRedirect({ store: email, name: "Admin", role: 'admin' });
-            },
+
             loginAdminGoogle: () => {
                 signInWithPopup(auth, provider).then((result) => {
-                    App.saveAndRedirect({ store: result.user.email.toLowerCase(), name: "Admin", role: 'admin' });
+                    const user = result.user;
+                    App.saveAndRedirect({ store: user.email, name: "Admin", role: 'admin' });
                 }).catch((error) => alert("Error: " + error.message));
             }
         };
 
+        // Αν είναι ήδη συνδεδεμένος, πάει κατευθείαν στο index
         if (localStorage.getItem('bellgo_session')) {
             window.location.href = "index.html";
         }
