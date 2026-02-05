@@ -5,39 +5,26 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- STRIPE SETUP (TEST MODE) ---
-// Το Secret Key σου από τη φωτογραφία
+// Το Secret Key σου (sk_test...)
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
 
-/* ---------------- FIREBASE ADMIN SETUP (SECURE) ---------------- */
-let serviceAccount;
-
-// 1. Προσπάθεια ανάγνωσης από Environment Variable (Για τον Render Server)
-if (process.env.GOOGLE_CREDENTIALS) {
-    try {
-        serviceAccount = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-        console.log("✅ Loaded Firebase Credentials from Environment");
-    } catch (e) {
-        console.error("❌ Failed to parse GOOGLE_CREDENTIALS env var", e);
-    }
-} 
-// 2. Fallback: Προσπάθεια ανάγνωσης τοπικού αρχείου (Για το PC σου)
-else {
-    try {
-        serviceAccount = require("./serviceAccountKey.json");
-        console.log("✅ Loaded Firebase Credentials from local file");
-    } catch (e) {
-        console.error("❌ CRITICAL: No Google Credentials found (Env or File). Server will crash.");
-    }
+/* ---------------- FIREBASE ADMIN SETUP ---------------- */
+// Διαβάζουμε απευθείας το αρχείο που ανέβασες στο GitHub
+try {
+    const serviceAccount = require("./serviceAccountKey.json");
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("✅ Firebase Admin Initialized successfully");
+} catch (e) {
+    console.error("❌ ERROR loading serviceAccountKey.json. Βεβαιώσου ότι το αρχείο υπάρχει.", e.message);
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
 
-app.use(express.json()); // Απαραίτητο για το Stripe
+// ΑΠΑΡΑΙΤΗΤΟ: Επιτρέπει στον server να διαβάζει JSON δεδομένα (για το Stripe)
+app.use(express.json()); 
 
 const server = http.createServer(app);
 
@@ -53,18 +40,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {};
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
+
+// 1. Δημιουργία Συνδέσμου Πληρωμής
 app.post('/create-checkout-session', async (req, res) => {
     const { email } = req.body;
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            customer_email: email,
+            customer_email: email, // Συνδέουμε το email του πελάτη
             line_items: [{
                 price: 'price_1Sx9PFJcEtNSGviLteieJCwj', // Το Price ID σου
                 quantity: 1,
             }],
             mode: 'subscription',
-            success_url: `${req.headers.origin}/?payment=success`,
+            // Όταν πετύχει, επιστρέφει στην εφαρμογή με ένδειξη success
+            success_url: `${req.headers.origin}/?payment=success&email=${email}`,
             cancel_url: `${req.headers.origin}/?payment=cancel`,
         });
         res.json({ id: session.id });
@@ -74,8 +64,12 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
+// 2. Έλεγχος αν υπάρχει ενεργή συνδρομή
 async function hasActiveSubscription(email) {
     try {
+        if (!email) return false;
+        
+        // Ψάχνουμε τον πελάτη
         const customers = await stripe.customers.list({
             email: email.toLowerCase().trim(),
             limit: 1
@@ -83,6 +77,7 @@ async function hasActiveSubscription(email) {
 
         if (customers.data.length === 0) return false;
 
+        // Ψάχνουμε τις συνδρομές του
         const subscriptions = await stripe.subscriptions.list({
             customer: customers.data[0].id,
             status: 'active',
@@ -102,8 +97,8 @@ function updateStore(store) {
   const list = Object.values(activeUsers)
     .filter(u => u.store === store)
     .map(u => ({ 
-      name: u.username,      // Android App compatibility
-      username: u.username,  // Web compatibility
+      name: u.username,      // Για Android Native App
+      username: u.username,  // Για Web App
       role: u.role, 
       status: u.status,
       isRinging: u.isRinging 
@@ -131,7 +126,7 @@ io.on('connection', (socket) => {
         if (!isPaid) {
             console.log(`❌ Unpaid login attempt: ${store}`);
             socket.emit('subscription-required', { email: store });
-            return;
+            return; // Διακοπή σύνδεσης
         }
         console.log(`✅ Subscription verified for: ${store}`);
     }
@@ -163,6 +158,7 @@ io.on('connection', (socket) => {
     console.log(`👤 JOIN: ${username} @ ${store} [Native: ${isNative}]`);
     updateStore(store);
 
+    // Αν χτυπούσε πριν, συνεχίζει να χτυπάει
     if (activeUsers[key].isRinging) {
         socket.emit('ring-bell');
     }
@@ -193,7 +189,7 @@ io.on('connection', (socket) => {
 
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // NATIVE (No Loop)
+    // === NATIVE APP (ΜΟΝΟ ΕΝΑ PUSH - ΟΧΙ LOOP) ===
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
@@ -208,12 +204,12 @@ io.on('connection', (socket) => {
                     } 
                 }
             };
-            admin.messaging().send(msg).catch(e => console.log("Native FCM Error"));
+            admin.messaging().send(msg).catch(e => {});
         }
         return; 
     }
 
-    // WEB/iOS (Loop)
+    // === WEB/iOS (LOOP PUSH) ===
     const sendPush = () => {
         if (!activeUsers[key] || !activeUsers[key].isRinging) {
             if (activeUsers[key] && activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
