@@ -51,8 +51,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // Stripe Public Key
-        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLK0x04p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiP0ay');
+        // ΕΔΩ ΜΠΗΚΕ ΤΟ ΝΕΟ PUBLISHABLE KEY ΣΟΥ
+        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLKOxO4p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiPOay');
 
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
@@ -100,10 +100,8 @@
                     const data = await res.json();
 
                     if (data.active) {
-                        // Πληρωμένο -> Μπαίνει
                         App.saveAndRedirect({ store: email, name, role });
                     } else {
-                        // Απλήρωτο -> Stripe
                         const proceed = confirm("⚠️ Δεν βρέθηκε ενεργή συνδρομή.\nΘέλετε να πληρώσετε τώρα;");
                         if (proceed) {
                             const stripeRes = await fetch('/create-checkout-session', {
