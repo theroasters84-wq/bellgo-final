@@ -5,11 +5,9 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- STRIPE SETUP (TEST MODE) ---
-// Το Secret Key σου (sk_test...)
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
-// Διαβάζουμε απευθείας το αρχείο που ανέβασες στο GitHub
 try {
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
@@ -17,15 +15,12 @@ try {
     });
     console.log("✅ Firebase Admin Initialized successfully");
 } catch (e) {
-    console.error("❌ ERROR loading serviceAccountKey.json. Βεβαιώσου ότι το αρχείο υπάρχει.", e.message);
+    console.error("❌ ERROR loading serviceAccountKey.json", e.message);
 }
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
-
-// ΑΠΑΡΑΙΤΗΤΟ: Επιτρέπει στον server να διαβάζει JSON δεδομένα (για το Stripe)
 app.use(express.json()); 
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -40,22 +35,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {};
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
-
-// 1. Δημιουργία Συνδέσμου Πληρωμής
 app.post('/create-checkout-session', async (req, res) => {
     const { email } = req.body;
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
-            customer_email: email, // Συνδέουμε το email του πελάτη
+            customer_email: email,
             line_items: [{
-                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', // Το Price ID σου
+                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
                 quantity: 1,
             }],
             mode: 'subscription',
-            // Όταν πετύχει, επιστρέφει στην εφαρμογή με ένδειξη success
-            success_url: `${req.headers.origin}/?payment=success&email=${email}`,
-            cancel_url: `${req.headers.origin}/?payment=cancel`,
+            success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`, // Redirect στο index.html
+            cancel_url: `${req.headers.origin}/index.html?payment=cancel`,
         });
         res.json({ id: session.id });
     } catch (e) {
@@ -64,25 +56,15 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
-// 2. Έλεγχος αν υπάρχει ενεργή συνδρομή
 async function hasActiveSubscription(email) {
     try {
         if (!email) return false;
-        
-        // Ψάχνουμε τον πελάτη
-        const customers = await stripe.customers.list({
-            email: email.toLowerCase().trim(),
-            limit: 1
-        });
-
+        const customers = await stripe.customers.list({ email: email.toLowerCase().trim(), limit: 1 });
         if (customers.data.length === 0) return false;
-
-        // Ψάχνουμε τις συνδρομές του
         const subscriptions = await stripe.subscriptions.list({
             customer: customers.data[0].id,
             status: 'active',
         });
-
         return subscriptions.data.length > 0;
     } catch (e) {
         console.error("Subscription Check Error:", e.message);
@@ -93,17 +75,9 @@ async function hasActiveSubscription(email) {
 /* ---------------- HELPER FUNCTIONS ---------------- */
 function updateStore(store) {
   if (!store) return;
-
-  const list = Object.values(activeUsers)
-    .filter(u => u.store === store)
-    .map(u => ({ 
-      name: u.username,      // Για Android Native App
-      username: u.username,  // Για Web App
-      role: u.role, 
-      status: u.status,
-      isRinging: u.isRinging 
-    }));
-
+  const list = Object.values(activeUsers).filter(u => u.store === store).map(u => ({ 
+      name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
+  }));
   io.to(store).emit('staff-list-update', list);
 }
 
@@ -119,16 +93,15 @@ io.on('connection', (socket) => {
 
     if (!store) return;
 
-    // === ΕΛΕΓΧΟΣ ΠΛΗΡΩΜΗΣ (ΜΟΝΟ ΓΙΑ ADMIN) ===
+    // === PAYWALL CHECK ===
     if (role === 'admin') {
         const isPaid = await hasActiveSubscription(store);
-        
         if (!isPaid) {
             console.log(`❌ Unpaid login attempt: ${store}`);
             socket.emit('subscription-required', { email: store });
-            return; // Διακοπή σύνδεσης
+            return; 
         }
-        console.log(`✅ Subscription verified for: ${store}`);
+        console.log(`✅ Subscription verified: ${store}`);
     }
 
     if (!username) return;
@@ -139,29 +112,16 @@ io.on('connection', (socket) => {
     socket.join(store);
 
     const key = `${store}_${username}`;
-    const existingRinging = activeUsers[key] ? activeUsers[key].isRinging : false;
-    const existingInterval = activeUsers[key] ? activeUsers[key].alarmInterval : null;
-
     activeUsers[key] = {
-      store,
-      username,
-      role,
-      socketId: socket.id,
-      fcmToken: token,
-      status: "online",
-      lastSeen: Date.now(),
-      isRinging: existingRinging,
-      alarmInterval: existingInterval,
-      isNative: isNative
+      store, username, role, socketId: socket.id, fcmToken: token,
+      status: "online", lastSeen: Date.now(), isNative: isNative,
+      isRinging: activeUsers[key] ? activeUsers[key].isRinging : false
     };
 
     console.log(`👤 JOIN: ${username} @ ${store} [Native: ${isNative}]`);
     updateStore(store);
 
-    // Αν χτυπούσε πριν, συνεχίζει να χτυπάει
-    if (activeUsers[key].isRinging) {
-        socket.emit('ring-bell');
-    }
+    if (activeUsers[key].isRinging) socket.emit('ring-bell');
   });
 
   socket.on('heartbeat', () => {
@@ -183,44 +143,35 @@ io.on('connection', (socket) => {
     if (!target) return;
     if (target.isRinging) return;
 
-    console.log(`🔔 ALARM START -> ${targetName} @ ${socket.store}`);
+    console.log(`🔔 ALARM -> ${targetName}`);
     target.isRinging = true;
     updateStore(socket.store); 
-
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // === NATIVE APP (ΜΟΝΟ ΕΝΑ PUSH - ΟΧΙ LOOP) ===
+    // NATIVE APP FIX (1 Push Only)
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
                 token: target.fcmToken,
                 data: { type: "alarm" },
-                android: { 
-                    priority: "high", 
-                    notification: { 
-                        channelId: "fcm_default_channel", 
-                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", 
-                        body: "Πάτα για αποδοχή" 
-                    } 
-                }
+                android: { priority: "high", notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ!", body: "Πάτα για αποδοχή" } }
             };
             admin.messaging().send(msg).catch(e => {});
         }
         return; 
     }
 
-    // === WEB/iOS (LOOP PUSH) ===
+    // WEB LOOP PUSH
     const sendPush = () => {
         if (!activeUsers[key] || !activeUsers[key].isRinging) {
             if (activeUsers[key] && activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
             return;
         }
-
         if (target.fcmToken) {
             const message = {
                 token: target.fcmToken,
                 data: { type: "alarm" },
-                webpush: { headers: { "Urgency": "high" }, fcm_options: { link: "/?type=alarm" } }
+                webpush: { headers: { "Urgency": "high" }, fcm_options: { link: "/index.html?type=alarm" } }
             };
             admin.messaging().send(message).catch(err => {});
         }
@@ -232,7 +183,6 @@ io.on('connection', (socket) => {
   socket.on('alarm-accepted', (data) => {
     const sName = socket.store || (data ? data.store : null);
     const uName = socket.username || (data ? data.username : null);
-
     if (!sName || !uName) return;
 
     const key = `${sName}_${uName}`;
@@ -248,9 +198,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat-message', (msg) => {
-    if (socket.store) {
-        io.to(socket.store).emit('chat-message', { sender: socket.username, text: msg.text });
-    }
+    if (socket.store) io.to(socket.store).emit('chat-message', { sender: socket.username, text: msg.text });
   });
 
   socket.on('manual-logout', (data) => {
