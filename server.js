@@ -12,7 +12,7 @@ try {
     });
     console.log("✅ Firebase Admin Initialized");
 } catch (e) {
-    console.log("⚠️ Firebase Warning: serviceAccountKey.json not found or invalid.");
+    console.log("⚠️ Firebase Warning: serviceAccountKey.json not found.");
 }
 
 /* ---------------- SERVER SETUP ---------------- */
@@ -37,8 +37,8 @@ function updateStore(store) {
   const list = Object.values(activeUsers)
     .filter(u => u.store === store)
     .map(u => ({ 
-      name: u.username,      // Android Native Compatibility
-      username: u.username,  // Web Compatibility
+      name: u.username,      
+      username: u.username,  
       role: u.role, 
       status: u.status, 
       isRinging: u.isRinging 
@@ -65,8 +65,6 @@ io.on('connection', (socket) => {
     socket.join(store);
 
     const key = `${store}_${username}`;
-    
-    // Κρατάμε την κατάσταση αν χτυπούσε ήδη
     const existingRinging = activeUsers[key] ? activeUsers[key].isRinging : false;
 
     activeUsers[key] = {
@@ -82,7 +80,6 @@ io.on('connection', (socket) => {
     console.log(`👤 JOIN: ${username} @ ${store} [Native: ${isNative}]`);
     updateStore(store);
 
-    // Αν χτυπούσε πριν αποσυνδεθεί, ξαναστέλνουμε την εντολή να χτυπήσει
     if (activeUsers[key].isRinging) {
         socket.emit('ring-bell');
     }
@@ -112,25 +109,29 @@ io.on('connection', (socket) => {
     target.isRinging = true;
     updateStore(socket.store); 
 
-    // 1. Socket
+    // 1. Socket (Άμεση ειδοποίηση αν είναι ανοιχτό)
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // 2. Native App (One-time Push)
+    // 2. Native App (Android - Μία φορά για να μην κολλάει)
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
                 token: target.fcmToken,
                 data: { type: "alarm" },
-                android: { priority: "high", notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } }
+                android: { 
+                    priority: "high", 
+                    notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } 
+                }
             };
             admin.messaging().send(msg).catch(e => {});
         }
         return; 
     }
 
-    // 3. Web App (Loop Push)
+    // 3. Web App & iOS (Loop Push - Επαναλαμβανόμενο)
     const sendPush = () => {
         const currentTarget = activeUsers[key];
+        // Αν σταμάτησε να χτυπάει, σταματάμε το loop
         if (!currentTarget || !currentTarget.isRinging) {
             if (currentTarget && currentTarget.alarmInterval) clearInterval(currentTarget.alarmInterval);
             return;
@@ -139,17 +140,33 @@ io.on('connection', (socket) => {
         if (currentTarget.fcmToken) {
             const message = {
                 token: currentTarget.fcmToken,
-                data: { type: "alarm" },
-                webpush: { headers: { "Urgency": "high" }, fcm_options: { link: "/index.html?type=alarm" } } // Σημαντικό: Link στο index.html
+                // Data για το Web
+                data: { type: "alarm", time: Date.now().toString() },
+                // WebPush Headers
+                webpush: { 
+                    headers: { "Urgency": "high" }, 
+                    fcm_options: { link: "/index.html?type=alarm" } 
+                },
+                // --- ΠΡΟΣΘΗΚΗ ΓΙΑ iOS (APNs) ---
+                // Αυτό κάνει το iPhone να δονείται και να χτυπάει
+                apns: { 
+                    payload: { 
+                        aps: { 
+                            alert: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "ΠΑΤΑ ΤΩΡΑ" }, 
+                            sound: "default" 
+                        } 
+                    } 
+                }
             };
             admin.messaging().send(message).catch(err => {});
         }
     };
+    
+    // Ξεκινάμε το Loop
     sendPush();
-    target.alarmInterval = setInterval(sendPush, 4000);
+    target.alarmInterval = setInterval(sendPush, 4000); // Κάθε 4 δευτερόλεπτα
   });
 
-  // --- ACCEPT ALARM ---
   socket.on('alarm-accepted', (data) => {
     const sName = socket.store || (data ? data.store : null);
     const uName = socket.username || (data ? data.username : null);
