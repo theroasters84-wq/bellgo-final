@@ -3,31 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v40</title>
-    <link rel="manifest" href="manifest.json">
+    <title>BellGo Ultra v42</title>
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        /* Τα ίδια CSS με πριν για το Main App */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
-        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #121212; z-index: 100; position: absolute; top: 0; left: 0; }
-        h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
-        .role-switch { display: flex; gap: 10px; margin-bottom: 20px; }
-        .role-btn { padding: 10px 20px; border: 1px solid #444; background: #222; color: white; border-radius: 20px; cursor: pointer; }
-        .role-btn.active { background: #00E676; color: black; font-weight: bold; border-color: #00E676; }
-        .login-form { width: 85%; display: flex; flex-direction: column; gap: 12px; }
-        input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; text-align: center; }
-        .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn-login { width: 100%; padding: 15px; background: #00E676; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        #mainApp { display: none; flex-direction: column; height: 100%; width: 100%; }
+        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; transition: background 0.3s; }
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
-        .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .btn-info { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-family: monospace; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 5px; }
+        .btn-info { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 5px; }
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
@@ -52,42 +41,14 @@
         .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; display:flex; flex-direction:column; align-items:center; justify-content:center; }
         @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
         .time-badge { background: black; color: yellow; padding: 5px 15px; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; border: 2px solid yellow; }
+        #successMsg { display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#00E676; color:black; padding:10px 20px; border-radius:20px; font-weight:bold; z-index:10001; }
         #infoModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
         .info-box { background:#222; border:1px solid #444; padding:25px; border-radius:15px; max-width:90%; }
         .info-close { margin-top:20px; padding:10px 30px; background:#00E676; color:black; font-weight:bold; border:none; border-radius:20px; cursor:pointer; }
     </style>
 </head>
 <body>
-    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" id="apkLanding" class="btn-apk-landing" target="_blank">📲 APP</a>
-
-    <div id="loginScreen">
-        <h1>🔔 BellGo</h1>
-        <div class="role-switch">
-            <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
-            <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
-        </div>
-        
-        <div id="staffForm" class="login-form">
-            <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
-            <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
-            <select id="inpMyRole">
-                <option value="waiter">🟦 Σερβιτόρος</option>
-                <option value="driver">🟥 Διανομέας</option>
-            </select>
-            <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
-        </div>
-
-        <div id="adminForm" class="login-form" style="display:none;">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Είσοδος Διαχειριστή</p>
-            
-            <input type="email" id="inpAdminManualEmail" placeholder="Email Επιχείρησης (π.χ. info@cafe.gr)">
-            <button class="btn-login" onclick="App.loginAdminManual()">ΕΙΣΟΔΟΣ (MANUAL)</button>
-            
-            <div style="margin: 15px 0; text-align: center; color: #444;">ή</div>
-            
-            <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
-        </div>
-    </div>
+    <div id="successMsg">✅ Η συνδρομή ενεργοποιήθηκε!</div>
 
     <div id="mainApp">
         <div class="header">
@@ -100,7 +61,6 @@
             </div>
             <div class="header-actions">
                 <button id="infoBtn" class="btn-info" onclick="document.getElementById('infoModal').style.display='flex'" style="display:none;">i</button>
-                <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk-header" target="_blank">📲 APP</a>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
@@ -123,7 +83,7 @@
     <div id="infoModal">
         <div class="info-box">
             <h2 style="color:#00E676; margin-top:0;">ℹ️ ΟΔΗΓΙΕΣ</h2>
-            <p>Αποφύγετε άλλες εφαρμογές μουσικής.</p>
+            <p>Κρατήστε την εφαρμογή ανοιχτή.</p>
             <button class="info-close" onclick="document.getElementById('infoModal').style.display='none'">ΕΝΤΑΞΕΙ</button>
         </div>
     </div>
@@ -132,8 +92,17 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+        // --- AUTH GUARD (Αν δεν έχεις κάνει login, πήγαινε στο login.html) ---
+        const saved = localStorage.getItem('bellgo_session');
+        if (!saved) {
+            window.location.href = "login.html";
+        }
+        const userData = JSON.parse(saved || '{}');
+
+        // --- STRIPE INIT ---
+        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLK0x04p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiP0ay');
 
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
@@ -141,30 +110,22 @@
             projectId: "bellgo-5dbe5", 
             storageBucket: "bellgo-5dbe5.firebasestorage.app", 
             messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c",
-            measurementId: "G-379ETZJP8H"
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const messaging = getMessaging(app);
-        const provider = new GoogleAuthProvider();
-
-        let isAlarmActive = false; 
-
-        // --- STRIPE INIT (TEST KEY ΑΠΟ ΦΩΤΟΓΡΑΦΙΑ) ---
-        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLK0x04p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiP0ay');
+        let isAlarmActive = false;
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                console.log("👁️ App Woke Up (Foreground)");
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
                     App.triggerAlarmScreen();
-                    window.history.replaceState({}, document.title, "/");
+                    window.history.replaceState({}, document.title, "/index.html");
                 }
-                if (socket && socket.connected) {
-                    socket.emit('join-store', { 
+                if (window.socket && window.socket.connected) {
+                    window.socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
@@ -176,42 +137,22 @@
             }
         });
 
-        if ('mediaSession' in navigator) {
-            const handleMediaAction = () => {
-                if(isAlarmActive) {
-                    if(navigator.vibrate) navigator.vibrate(50);
-                    App.acceptAlarm();
-                }
-            };
-            ['play', 'pause', 'stop', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handleMediaAction));
-        }
-
+        // --- PWA / Native Push Setup ---
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
                     const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
                         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
-                        await PushNotifications.createChannel({
-                            id: 'fcm_default_channel',
-                            name: 'BellGo Urgent',
-                            importance: 5, 
-                            visibility: 1, 
-                            sound: 'alert_sound',
-                            vibration: true
-                        });
-                        PushNotifications.addListener('pushNotificationActionPerformed', () => {
-                            App.triggerAlarmScreen(); 
-                        });
+                        await PushNotifications.createChannel({ id: 'fcm_default_channel', name: 'BellGo Urgent', importance: 5, visibility: 1, sound: 'alert_sound', vibration: true });
+                        PushNotifications.addListener('pushNotificationActionPerformed', () => { App.triggerAlarmScreen(); });
                     }
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
                         if (token) {
                             localStorage.setItem('fcm_token', token);
-                            if (window.socket && window.socket.connected) {
-                                window.socket.emit('update-token', { username: userData.name, token: token });
-                            }
+                            if (window.socket && window.socket.connected) window.socket.emit('update-token', { username: userData.name, token: token });
                         }
                     }
                 } catch(e) { console.log("FCM Error:", e); }
@@ -219,146 +160,45 @@
         }
 
         onMessage(messaging, (payload) => {
-            console.log("📩 FCM received in foreground");
-            if (!isAlarmActive) {
-                App.triggerAlarmScreen();
-            }
+            if (!isAlarmActive) App.triggerAlarmScreen();
         });
 
         window.socket = null;
-        window.userData = { store: '', name: '', role: '' };
         let isFirstLogin = true;
 
-        window.UI = {
-            showStaffLogin: () => {
-                document.getElementById('btnRoleStaff').classList.add('active');
-                document.getElementById('btnRoleAdmin').classList.remove('active');
-                document.getElementById('staffForm').style.display = 'flex';
-                document.getElementById('adminForm').style.display = 'none';
-            },
-            showAdminLogin: () => {
-                document.getElementById('btnRoleStaff').classList.remove('active');
-                document.getElementById('btnRoleAdmin').classList.add('active');
-                document.getElementById('staffForm').style.display = 'none';
-                document.getElementById('adminForm').style.display = 'flex';
-            }
-        };
-
         window.App = {
-            loginStaff: () => {
-                const store = document.getElementById('inpStoreEmail').value.trim().toLowerCase();
-                const name = document.getElementById('inpMyName').value.trim();
-                const role = document.getElementById('inpMyRole').value;
-                if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
-                App.completeLogin({ store, name, role });
-            },
-
-            loginAdminGoogle: () => {
-                signInWithPopup(auth, provider).then((result) => {
-                    const user = result.user;
-                    App.completeLogin({ store: user.email.toLowerCase(), name: "Admin", role: 'admin' });
-                }).catch((error) => alert("Error: " + error.message));
-            },
-
-            // ΝΕΟ: Χειροκίνητο Login
-            loginAdminManual: () => {
-                const email = document.getElementById('inpAdminManualEmail').value.trim().toLowerCase();
-                if (!email || !email.includes('@')) return alert("Παρακαλώ εισάγετε έγκυρο Email Επιχείρησης");
-
-                App.completeLogin({ store: email, name: "Admin", role: 'admin' });
-            },
-
-            completeLogin: (user) => {
-                userData = user;
-                localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                App.finishLoginSequence();
-            },
-
-            finishLoginSequence: () => {
-                document.getElementById('loginScreen').style.display = 'none';
-                if(document.getElementById('apkLanding')) document.getElementById('apkLanding').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'flex';
+            init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
                 if (userData.role === 'admin') document.getElementById('staffPanel').classList.add('active');
                 else document.getElementById('infoBtn').style.display = 'flex';
-                
-                App.connectSocket();
-                App.startHeartbeat();
-                App.startLocationTracking();
 
-                if(userData.role !== 'admin' && isFirstLogin) {
+                // Check for payment success URL param
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('payment') === 'success') {
+                    document.getElementById('successMsg').style.display = 'block';
+                    setTimeout(() => document.getElementById('successMsg').style.display = 'none', 3000);
+                    window.history.replaceState({}, document.title, "index.html");
+                }
+
+                App.connectSocket();
+                setupNotifications();
+                
+                if (userData.role !== 'admin' && isFirstLogin) {
                     isFirstLogin = false;
                     setTimeout(() => App.triggerFakeAlarm(), 800);
-                }
-
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('type') === 'alarm') {
-                      setTimeout(() => App.triggerAlarmScreen(), 1000);
-                      window.history.replaceState({}, document.title, "/");
-                }
-            },
-
-            startLocationTracking: () => {
-                if ('geolocation' in navigator && (userData.role === 'waiter' || userData.role === 'driver')) {
-                    navigator.geolocation.watchPosition(
-                        (pos) => { console.log("GPS KeepAlive"); }, 
-                        (err) => {},
-                        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-                    );
-                }
-            },
-
-            triggerFakeAlarm: () => {
-                const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('alarmTimeBadge').innerText = timeStr;
-                document.getElementById('alarmText').innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
-                document.getElementById('alarmSubText').innerText = "Πατήστε STOP για ενεργοποίηση ήχου";
-                document.getElementById('alarmOverlay').style.display = 'flex';
-            },
-
-            triggerAlarmScreen: () => {
-                isAlarmActive = true; 
-                if (window.AudioEngine) window.AudioEngine.triggerAlarm();
-                
-                const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('alarmTimeBadge').innerText = "Ώρα: " + timeStr;
-                document.getElementById('alarmOverlay').style.display = 'flex';
-                
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ',
-                        artist: 'BellGo Alert',
-                        artwork: [{ src: 'icon.png', sizes: '512x512', type: 'image/png' }]
-                    });
-                }
-            },
-
-            checkSession: () => {
-                const saved = localStorage.getItem('bellgo_session');
-                if (saved) {
-                    userData = JSON.parse(saved);
-                    setupNotifications();
-                    App.finishLoginSequence(); 
-                    document.body.addEventListener('click', () => {
-                          if (userData.role !== 'admin' && window.AudioEngine) window.AudioEngine.init();
-                    }, { once: true });
                 }
             },
 
             connectSocket: () => {
                 if (socket && socket.connected) return;
                 socket = io({ transports: ['polling', 'websocket'], reconnection: true });
-                window.socket = socket; 
+                window.socket = socket;
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    
-                    const isNativeApp = !!window.Capacitor; 
-
+                    const isNativeApp = !!window.Capacitor;
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -368,9 +208,13 @@
                     });
                 });
 
-                // --- ΕΛΕΓΧΟΣ ΣΥΝΔΡΟΜΗΣ (LISTENER) ---
+                // --- PAYWALL CHECK ---
                 socket.on('subscription-required', (data) => {
-                    App.handleSubscriptionError(data);
+                    if (confirm(`⚠️ Το email ${data.email} δεν έχει ενεργή συνδρομή.\n\nΠατήστε ΟΚ για πληρωμή.`)) {
+                        App.redirectToStripe(data.email);
+                    } else {
+                        App.logout();
+                    }
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
@@ -383,15 +227,6 @@
                 });
             },
 
-            handleSubscriptionError: (data) => {
-                const proceed = confirm(`⚠️ Το email ${data.email} δεν έχει ενεργή συνδρομή.\n\nΘέλετε να πληρώσετε τώρα (Test Mode - 10€);`);
-                if (proceed) {
-                    App.redirectToStripe(data.email);
-                } else {
-                    App.logout();
-                }
-            },
-
             redirectToStripe: async (email) => {
                 try {
                     const response = await fetch('/create-checkout-session', {
@@ -400,81 +235,59 @@
                         body: JSON.stringify({ email: email })
                     });
                     const session = await response.json();
-                    if (session.id) {
-                        const result = await stripe.redirectToCheckout({ sessionId: session.id });
-                        if (result.error) alert(result.error.message);
-                    } else {
-                        alert("Σφάλμα πληρωμής.");
-                    }
-                } catch (e) { alert("Σφάλμα σύνδεσης με Stripe."); }
+                    if (session.id) stripe.redirectToCheckout({ sessionId: session.id });
+                } catch (e) { alert("Σφάλμα σύνδεσης Stripe"); }
+            },
+
+            triggerAlarmScreen: () => {
+                isAlarmActive = true;
+                if (window.AudioEngine) window.AudioEngine.triggerAlarm();
+                document.getElementById('alarmOverlay').style.display = 'flex';
+                const now = new Date();
+                document.getElementById('alarmTimeBadge').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
+            },
+            
+            triggerFakeAlarm: () => {
+                document.getElementById('alarmText').innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
+                document.getElementById('alarmSubText').innerText = "Πατήστε STOP";
+                document.getElementById('alarmOverlay').style.display = 'flex';
             },
 
             acceptAlarm: () => {
                 isAlarmActive = false;
-                if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
+                if(window.AudioEngine) window.AudioEngine.stopAlarm(true);
                 document.getElementById('alarmOverlay').style.display = 'none';
-                
-                const payload = { store: userData.store, username: userData.name };
-                if (socket && socket.connected) {
-                    socket.emit('alarm-accepted', payload);
-                } else {
-                    socket.connect(); 
-                    socket.once('connect', () => socket.emit('alarm-accepted', payload));
-                }
+                socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
             },
 
-            forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },
-            startHeartbeat: () => { setInterval(() => { if (socket && socket.connected) socket.emit('heartbeat'); }, 3000); },
-            
             logout: () => {
                 if (socket) socket.emit('manual-logout');
-                setTimeout(() => { localStorage.removeItem('bellgo_session'); window.location.reload(); }, 150);
+                localStorage.removeItem('bellgo_session');
+                window.location.href = "login.html";
             },
 
-            renderStaffList: (serverList) => {
+            renderStaffList: (list) => {
                 const container = document.getElementById('staffList');
                 container.innerHTML = '';
                 if (userData.role !== 'admin') return;
-                
-                serverList.forEach(u => {
+                list.forEach(u => {
                     if (u.role === 'admin') return;
                     const row = document.createElement('div');
                     row.className = 'staff-row';
-                    const btn = document.createElement('button');
-                    const isAway = u.status === 'away';
-                    
                     let btnClass = `btn-staff ${u.role}`;
-                    let stTxt = "IDLE";
-                    let stCol = "white";
-
-                    if (u.isRinging) {
-                        stTxt = "📞 ΚΛΗΣΗ...";
-                        stCol = "yellow";
-                    } else if (isAway) {
-                        stTxt = "⚠️ BACKGROUND";
-                        stCol = "#FF9800";
-                        btnClass += " ghost";
-                    }
-
-                    btn.className = btnClass;
-                    btn.innerHTML = `<span>${u.username}</span><span class="status" id="status-${u.username}" style="color:${stCol}">${stTxt}</span>`;
+                    let stTxt = "IDLE", stCol = "white";
+                    if (u.isRinging) { stTxt = "📞 ΚΛΗΣΗ..."; stCol = "yellow"; }
+                    else if (u.status === 'away') { stTxt = "⚠️ AWAY"; stCol = "#FF9800"; btnClass += " ghost"; }
                     
-                    btn.onclick = () => {
-                        socket.emit('trigger-alarm', u.username);
-                        const span = document.getElementById(`status-${u.username}`);
-                        if(span) { span.innerText = "📞 ΚΛΗΣΗ..."; span.style.color = "yellow"; }
-                    };
-                    row.appendChild(btn);
-
-                    if (isAway && !u.isRinging) {
+                    row.innerHTML = `<button class="${btnClass}" onclick="socket.emit('trigger-alarm', '${u.name}')">
+                        <span>${u.name}</span><span id="status-${u.name}" style="color:${stCol}">${stTxt}</span>
+                    </button>`;
+                    
+                    if (u.status === 'away' && !u.isRinging) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete';
                         delBtn.innerText = 'X';
-                        delBtn.onclick = () => {
-                            if (confirm(`Διαγραφή του ${u.username} από τη λίστα;`)) {
-                                socket.emit('manual-logout', { targetUser: u.username });
-                            }
-                        };
+                        delBtn.onclick = () => { if(confirm("Διαγραφή;")) socket.emit('manual-logout', { targetUser: u.name }); };
                         row.appendChild(delBtn);
                     }
                     container.appendChild(row);
@@ -483,22 +296,19 @@
 
             sendChat: () => {
                 const inp = document.getElementById('msgInput');
-                if (!inp.value.trim()) return;
-                socket.emit('chat-message', { text: inp.value });
-                inp.value = '';
+                if (inp.value) { socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
             },
 
             renderChat: (data) => {
                 const box = document.getElementById('chatBox');
-                const div = document.createElement('div');
-                div.className = `msg ${data.sender === userData.name ? 'me' : 'other'} ${data.role}`;
-                div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
-                box.appendChild(div);
+                box.innerHTML += `<div class="msg ${data.sender === userData.name ? 'me' : 'other'}"><strong>${data.sender}:</strong> ${data.text}</div>`;
                 box.scrollTop = box.scrollHeight;
-            }
+            },
+
+            forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 500); } }
         };
 
-        window.onload = () => App.checkSession();
+        window.onload = App.init;
     </script>
 </body>
 </html>
