@@ -4,6 +4,10 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 
+// --- STRIPE SETUP (TEST MODE) ---
+// Το Secret Key από τη φωτογραφία σου
+const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
+
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 const serviceAccount = require("./serviceAccountKey.json");
 
@@ -15,6 +19,10 @@ console.log("✅ Firebase Admin Initialized");
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
+
+// ΑΠΑΡΑΙΤΗΤΟ για να διαβάζει JSON δεδομένα από το Stripe request
+app.use(express.json()); 
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -27,6 +35,55 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /* ---------------- MEMORY STORE ---------------- */
 let activeUsers = {};
+
+/* ---------------- STRIPE FUNCTIONS ---------------- */
+
+// 1. Δημιουργία Checkout Session (Πληρωμή)
+app.post('/create-checkout-session', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            customer_email: email, // Συνδέουμε το email με την πληρωμή
+            line_items: [{
+                // Το Price ID από τη φωτογραφία σου
+                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
+                quantity: 1,
+            }],
+            mode: 'subscription',
+            success_url: `${req.headers.origin}/?payment=success`,
+            cancel_url: `${req.headers.origin}/?payment=cancel`,
+        });
+        res.json({ id: session.id });
+    } catch (e) {
+        console.error("Stripe Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Έλεγχος Συνδρομής
+async function hasActiveSubscription(email) {
+    try {
+        // Ψάχνουμε τον πελάτη με βάση το email
+        const customers = await stripe.customers.list({
+            email: email.toLowerCase().trim(),
+            limit: 1
+        });
+
+        if (customers.data.length === 0) return false;
+
+        // Ελέγχουμε αν έχει ενεργή συνδρομή
+        const subscriptions = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: 'active',
+        });
+
+        return subscriptions.data.length > 0;
+    } catch (e) {
+        console.error("Subscription Check Error:", e.message);
+        return false;
+    }
+}
 
 /* ---------------- HELPER FUNCTIONS ---------------- */
 
@@ -49,7 +106,8 @@ function updateStore(store) {
 /* ---------------- SOCKET.IO LOGIC ---------------- */
 io.on('connection', (socket) => {
 
-  socket.on('join-store', (data) => {
+  // --- JOIN STORE ---
+  socket.on('join-store', async (data) => {
     const store = (data.storeName || '').toLowerCase().trim();
     const username = (data.username || '').trim();
     const role = data.role || 'waiter';
@@ -58,7 +116,22 @@ io.on('connection', (socket) => {
     // ΕΔΩ: Έλεγχος αν είναι Native
     const isNative = data.isNative === true || data.deviceType === "AndroidNative";
 
-    if (!store || !username) return;
+    if (!store) return;
+
+    // === ΝΕΟ: ΕΛΕΓΧΟΣ ΠΛΗΡΩΜΗΣ (ΜΟΝΟ ΓΙΑ ADMIN) ===
+    if (role === 'admin') {
+        const isPaid = await hasActiveSubscription(store);
+        
+        // Αν δεν έχει πληρώσει, στέλνουμε μήνυμα λάθους και διακόπτουμε
+        if (!isPaid) {
+            console.log(`❌ Unpaid login attempt: ${store}`);
+            socket.emit('subscription-required', { email: store });
+            return; // STOP HERE
+        }
+        console.log(`✅ Subscription verified for: ${store}`);
+    }
+
+    if (!username) return;
 
     socket.store = store;
     socket.username = username;
