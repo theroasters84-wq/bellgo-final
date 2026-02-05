@@ -4,6 +4,10 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 
+// --- STRIPE SETUP ---
+// Χρησιμοποιώ τα κλειδιά που μου έδωσες
+const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
+
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 try {
     const serviceAccount = require("./serviceAccountKey.json");
@@ -17,6 +21,9 @@ try {
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
+// ΑΠΑΡΑΙΤΗΤΟ για να διαβάζει τα δεδομένα από το Login
+app.use(express.json()); 
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -29,6 +36,62 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /* ---------------- MEMORY STORE ---------------- */
 let activeUsers = {};
+
+/* ---------------- STRIPE FUNCTIONS ---------------- */
+
+// 1. Έλεγχος αν υπάρχει ενεργή συνδρομή
+app.post('/check-subscription', async (req, res) => {
+    const { email } = req.body;
+    try {
+        if (!email) return res.json({ active: false });
+
+        // Ψάχνουμε τον πελάτη στο Stripe
+        const customers = await stripe.customers.list({ 
+            email: email.toLowerCase().trim(), 
+            limit: 1 
+        });
+
+        if (customers.data.length === 0) return res.json({ active: false });
+
+        // Ψάχνουμε αν έχει ενεργή συνδρομή
+        const subscriptions = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: 'active',
+        });
+
+        const isActive = subscriptions.data.length > 0;
+        console.log(`🔍 Payment Check [${email}]: ${isActive ? '✅ PAID' : '❌ UNPAID'}`);
+        res.json({ active: isActive });
+
+    } catch (e) {
+        console.error("Stripe Check Error:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Δημιουργία Link Πληρωμής
+app.post('/create-checkout-session', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            customer_email: email, // Συνδέουμε το email του πελάτη
+            line_items: [{
+                price: 'price_1Sx9PFJcEtNSGviLteieJCwj', // Το Price ID σου
+                quantity: 1,
+            }],
+            mode: 'subscription',
+            // Επιτυχία -> Πάει στο index.html
+            success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`,
+            // Ακύρωση -> Πάει πίσω στο login.html
+            cancel_url: `${req.headers.origin}/login.html?payment=cancel`,
+        });
+        res.json({ id: session.id });
+    } catch (e) {
+        console.error("Checkout Error:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
 
 /* ---------------- HELPER FUNCTIONS ---------------- */
 function updateStore(store) {
@@ -109,29 +172,24 @@ io.on('connection', (socket) => {
     target.isRinging = true;
     updateStore(socket.store); 
 
-    // 1. Socket (Άμεση ειδοποίηση αν είναι ανοιχτό)
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // 2. Native App (Android - Μία φορά για να μην κολλάει)
+    // NATIVE ANDROID (1 Push Only)
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
                 token: target.fcmToken,
                 data: { type: "alarm" },
-                android: { 
-                    priority: "high", 
-                    notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } 
-                }
+                android: { priority: "high", notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } }
             };
             admin.messaging().send(msg).catch(e => {});
         }
         return; 
     }
 
-    // 3. Web App & iOS (Loop Push - Επαναλαμβανόμενο)
+    // WEB & iOS (Loop Push)
     const sendPush = () => {
         const currentTarget = activeUsers[key];
-        // Αν σταμάτησε να χτυπάει, σταματάμε το loop
         if (!currentTarget || !currentTarget.isRinging) {
             if (currentTarget && currentTarget.alarmInterval) clearInterval(currentTarget.alarmInterval);
             return;
@@ -140,15 +198,12 @@ io.on('connection', (socket) => {
         if (currentTarget.fcmToken) {
             const message = {
                 token: currentTarget.fcmToken,
-                // Data για το Web
                 data: { type: "alarm", time: Date.now().toString() },
-                // WebPush Headers
                 webpush: { 
                     headers: { "Urgency": "high" }, 
                     fcm_options: { link: "/index.html?type=alarm" } 
                 },
-                // --- ΠΡΟΣΘΗΚΗ ΓΙΑ iOS (APNs) ---
-                // Αυτό κάνει το iPhone να δονείται και να χτυπάει
+                // iOS APNs for Vibration
                 apns: { 
                     payload: { 
                         aps: { 
@@ -161,10 +216,8 @@ io.on('connection', (socket) => {
             admin.messaging().send(message).catch(err => {});
         }
     };
-    
-    // Ξεκινάμε το Loop
     sendPush();
-    target.alarmInterval = setInterval(sendPush, 4000); // Κάθε 4 δευτερόλεπτα
+    target.alarmInterval = setInterval(sendPush, 4000);
   });
 
   socket.on('alarm-accepted', (data) => {
