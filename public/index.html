@@ -36,7 +36,18 @@
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: #00E676; color: black; }
         .msg.other { align-self: flex-start; background: #333; }
-        .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        
+        /* --- CHAT BAR FIX --- */
+        .chat-input { 
+            display: flex; 
+            padding: 10px; 
+            background: #1e1e1e; 
+            border-top: 1px solid #333; 
+            flex-shrink: 0; 
+            /* Αλλαγές για να σηκωθεί η μπάρα */
+            padding-bottom: 30px; 
+            margin-bottom: 5px;
+        }
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
 
@@ -99,14 +110,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // --- AUTH GUARD (Αν δεν έχει κάνει login, πίσω στο login.html) ---
+        // AUTH GUARD: Αν δεν έχει κάνει login, πίσω στο login.html
         const saved = localStorage.getItem('bellgo_session');
         if (!saved) {
             window.location.href = "login.html";
         }
         const userData = JSON.parse(saved || '{}');
 
-        // --- FIREBASE CONFIG ---
+        // FIREBASE CONFIG
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -118,7 +129,7 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // --- AUDIO SETUP ---
+        // AUDIO SETUP
         const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
         let keepAliveAudio = document.getElementById('snd-silent');
         keepAliveAudio.src = SILENT_WAV;
@@ -127,19 +138,14 @@
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && isAlarmActive) {
-                console.log("⚠️ Screen turned off while Ringing -> Auto Accept!");
+                console.log("⚠️ Screen off -> Auto Accept!");
                 App.acceptAlarm();
             }
         });
 
         if ('mediaSession' in navigator) {
-            const handleMediaAction = () => {
-                if(isAlarmActive) {
-                    if(navigator.vibrate) navigator.vibrate(50);
-                    App.acceptAlarm();
-                }
-            };
-            ['play', 'pause', 'stop', 'nexttrack'].forEach(act => navigator.mediaSession.setActionHandler(act, handleMediaAction));
+            const handler = () => { if(isAlarmActive) { if(navigator.vibrate) navigator.vibrate(50); App.acceptAlarm(); } };
+            ['play', 'pause', 'stop', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
         }
 
         keepAliveAudio.addEventListener('pause', () => {
@@ -147,7 +153,7 @@
             if (!isAlarmActive) keepAliveAudio.play().catch(e => {});
         });
 
-        // --- FCM ---
+        // FCM
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
@@ -170,7 +176,7 @@
         }
         onMessage(messaging, () => App.triggerAlarmScreen());
 
-        // --- APP LOGIC ---
+        // APP LOGIC
         window.socket = null;
         let isFirstLogin = true;
 
@@ -186,7 +192,6 @@
                 App.startHeartbeat();
                 setupNotifications();
 
-                // Non-admin auto audio
                 if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
 
                 if(userData.role !== 'admin' && isFirstLogin) {
@@ -194,7 +199,6 @@
                     setTimeout(() => App.triggerFakeAlarm(), 800);
                 }
 
-                // Check URL for alarm param (from notification)
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
                       setTimeout(() => App.triggerAlarmScreen(), 1000);
