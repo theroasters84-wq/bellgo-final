@@ -111,8 +111,14 @@
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify({ email })
                             });
+                            
                             const session = await stripeRes.json();
-                            if (session.id) stripe.redirectToCheckout({ sessionId: session.id });
+                            
+                            if (session.id) {
+                                stripe.redirectToCheckout({ sessionId: session.id });
+                            } else {
+                                alert("Σφάλμα πληρωμής: " + (session.error || "Άγνωστο"));
+                            }
                         }
                     }
                 } catch (e) {
@@ -125,8 +131,6 @@
                 const name = document.getElementById('inpMyName').value;
                 const role = document.getElementById('inpMyRole').value;
                 if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
-                // Προσωπικό -> Μπαίνει χωρίς έλεγχο (ή ελέγχουμε το store του Admin αν θέλουμε)
-                // Εδώ το αφήνω ελεύθερο όπως ζήτησες για το προσωπικό
                 App.saveAndRedirect({ store, name, role });
             },
 
