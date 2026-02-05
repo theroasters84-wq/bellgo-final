@@ -5,7 +5,8 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- STRIPE SETUP ---
-const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuiz0xhMPil00dIoebxMx');
+// ΕΔΩ ΜΠΗΚΕ ΤΟ ΝΕΟ ΜΥΣΤΙΚΟ ΚΛΕΙΔΙ ΣΟΥ (χωρίς κενά)
+const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 try {
@@ -73,7 +74,7 @@ app.post('/create-checkout-session', async (req, res) => {
             payment_method_types: ['card'],
             customer_email: email,
             line_items: [{
-                // --- ΕΔΩ ΜΠΗΚΕ ΤΟ ID ΠΟΥ ΕΔΩΣΕΣ ---
+                // ΤΟ ID ΤΟΥ ΠΡΟΪΟΝΤΟΣ ΣΟΥ
                 price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
                 quantity: 1,
             }],
