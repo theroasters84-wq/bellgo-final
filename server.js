@@ -46,7 +46,8 @@ app.post('/create-checkout-session', async (req, res) => {
                 quantity: 1,
             }],
             mode: 'subscription',
-            success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`, // Redirect στο index.html
+            // Σημαντικό: Redirect στο index.html μετά την πληρωμή
+            success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`,
             cancel_url: `${req.headers.origin}/index.html?payment=cancel`,
         });
         res.json({ id: session.id });
@@ -75,8 +76,14 @@ async function hasActiveSubscription(email) {
 /* ---------------- HELPER FUNCTIONS ---------------- */
 function updateStore(store) {
   if (!store) return;
-  const list = Object.values(activeUsers).filter(u => u.store === store).map(u => ({ 
-      name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
+  const list = Object.values(activeUsers)
+    .filter(u => u.store === store)
+    .map(u => ({ 
+      name: u.username,      // Android Native Compatibility
+      username: u.username,  // Web Compatibility
+      role: u.role, 
+      status: u.status, 
+      isRinging: u.isRinging 
   }));
   io.to(store).emit('staff-list-update', list);
 }
@@ -93,7 +100,7 @@ io.on('connection', (socket) => {
 
     if (!store) return;
 
-    // === PAYWALL CHECK ===
+    // === PAYWALL CHECK (ADMIN ONLY) ===
     if (role === 'admin') {
         const isPaid = await hasActiveSubscription(store);
         if (!isPaid) {
@@ -148,7 +155,7 @@ io.on('connection', (socket) => {
     updateStore(socket.store); 
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // NATIVE APP FIX (1 Push Only)
+    // NATIVE FIX
     if (target.isNative) {
         if (target.fcmToken) {
             const msg = {
@@ -161,7 +168,7 @@ io.on('connection', (socket) => {
         return; 
     }
 
-    // WEB LOOP PUSH
+    // WEB FIX
     const sendPush = () => {
         if (!activeUsers[key] || !activeUsers[key].isRinging) {
             if (activeUsers[key] && activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
