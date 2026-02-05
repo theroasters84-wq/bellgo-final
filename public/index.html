@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Ultra v39</title>
+    <title>BellGo Ultra v40</title>
     <link rel="manifest" href="manifest.json">
+    <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -65,6 +66,7 @@
             <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
             <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
         </div>
+        
         <div id="staffForm" class="login-form">
             <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
             <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
@@ -74,8 +76,15 @@
             </select>
             <button class="btn-login" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
         </div>
+
         <div id="adminForm" class="login-form" style="display:none;">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Σύνδεση ως Διαχειριστής Κουζίνας</p>
+            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:10px;">Είσοδος Διαχειριστή</p>
+            
+            <input type="email" id="inpAdminManualEmail" placeholder="Email Επιχείρησης (π.χ. info@cafe.gr)">
+            <button class="btn-login" onclick="App.loginAdminManual()">ΕΙΣΟΔΟΣ (MANUAL)</button>
+            
+            <div style="margin: 15px 0; text-align: center; color: #444;">ή</div>
+            
             <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
         </div>
     </div>
@@ -143,21 +152,17 @@
 
         let isAlarmActive = false; 
 
-        // --- ΕΛΕΓΧΟΣ ΟΡΑΤΟΤΗΤΑΣ (ΤΟ ΚΛΕΙΔΙ ΓΙΑ ΤΟ IPHONE PWA) ---
-        // Αυτό τρέχει όταν ο χρήστης ανοίγει την εφαρμογή από background
+        // --- STRIPE INIT (TEST KEY ΑΠΟ ΦΩΤΟΓΡΑΦΙΑ) ---
+        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLK0x04p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiP0ay');
+
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 console.log("👁️ App Woke Up (Foreground)");
-                
-                // 1. Έλεγχος αν το URL έχει την παράμετρο alarm (από το notification)
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('type') === 'alarm') {
                     App.triggerAlarmScreen();
-                    // Καθαρίζουμε το URL για να μην ξαναχτυπήσει σε refresh
                     window.history.replaceState({}, document.title, "/");
                 }
-
-                // 2. Ρωτάμε τον server: "Χτυπάω;" (Γιατί μπορεί να χάθηκε η σύνδεση)
                 if (socket && socket.connected) {
                     socket.emit('join-store', { 
                         storeName: userData.store, 
@@ -195,12 +200,10 @@
                             sound: 'alert_sound',
                             vibration: true
                         });
-                        
                         PushNotifications.addListener('pushNotificationActionPerformed', () => {
                             App.triggerAlarmScreen(); 
                         });
                     }
-
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
                         const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
@@ -215,7 +218,6 @@
             }
         }
 
-        // --- FOREGROUND MESSAGE HANDLER ---
         onMessage(messaging, (payload) => {
             console.log("📩 FCM received in foreground");
             if (!isAlarmActive) {
@@ -254,20 +256,21 @@
             loginAdminGoogle: () => {
                 signInWithPopup(auth, provider).then((result) => {
                     const user = result.user;
-                    App.completeLogin({ store: user.email.toLowerCase(), name: user.displayName || "Admin", role: 'admin' });
+                    App.completeLogin({ store: user.email.toLowerCase(), name: "Admin", role: 'admin' });
                 }).catch((error) => alert("Error: " + error.message));
+            },
+
+            // ΝΕΟ: Χειροκίνητο Login
+            loginAdminManual: () => {
+                const email = document.getElementById('inpAdminManualEmail').value.trim().toLowerCase();
+                if (!email || !email.includes('@')) return alert("Παρακαλώ εισάγετε έγκυρο Email Επιχείρησης");
+
+                App.completeLogin({ store: email, name: "Admin", role: 'admin' });
             },
 
             completeLogin: (user) => {
                 userData = user;
                 localStorage.setItem('bellgo_session', JSON.stringify(userData));
-                
-                // Init Audio Engine
-                if (userData.role !== 'admin' && window.AudioEngine) {
-                    window.AudioEngine.init(); 
-                }
-                
-                setupNotifications(); 
                 App.finishLoginSequence();
             },
 
@@ -341,7 +344,7 @@
                     setupNotifications();
                     App.finishLoginSequence(); 
                     document.body.addEventListener('click', () => {
-                         if (userData.role !== 'admin' && window.AudioEngine) window.AudioEngine.init();
+                          if (userData.role !== 'admin' && window.AudioEngine) window.AudioEngine.init();
                     }, { once: true });
                 }
             },
@@ -353,7 +356,21 @@
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token') });
+                    
+                    const isNativeApp = !!window.Capacitor; 
+
+                    socket.emit('join-store', { 
+                        storeName: userData.store, 
+                        username: userData.name, 
+                        role: userData.role, 
+                        token: localStorage.getItem('fcm_token'),
+                        isNative: isNativeApp
+                    });
+                });
+
+                // --- ΕΛΕΓΧΟΣ ΣΥΝΔΡΟΜΗΣ (LISTENER) ---
+                socket.on('subscription-required', (data) => {
+                    App.handleSubscriptionError(data);
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
@@ -366,6 +383,32 @@
                 });
             },
 
+            handleSubscriptionError: (data) => {
+                const proceed = confirm(`⚠️ Το email ${data.email} δεν έχει ενεργή συνδρομή.\n\nΘέλετε να πληρώσετε τώρα (Test Mode - 10€);`);
+                if (proceed) {
+                    App.redirectToStripe(data.email);
+                } else {
+                    App.logout();
+                }
+            },
+
+            redirectToStripe: async (email) => {
+                try {
+                    const response = await fetch('/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    const session = await response.json();
+                    if (session.id) {
+                        const result = await stripe.redirectToCheckout({ sessionId: session.id });
+                        if (result.error) alert(result.error.message);
+                    } else {
+                        alert("Σφάλμα πληρωμής.");
+                    }
+                } catch (e) { alert("Σφάλμα σύνδεσης με Stripe."); }
+            },
+
             acceptAlarm: () => {
                 isAlarmActive = false;
                 if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
@@ -373,10 +416,8 @@
                 
                 const payload = { store: userData.store, username: userData.name };
                 if (socket && socket.connected) {
-                    console.log("✅ Socket ready. Sending accept...");
                     socket.emit('alarm-accepted', payload);
                 } else {
-                    console.log("⚠️ Reconnecting to accept...");
                     socket.connect(); 
                     socket.once('connect', () => socket.emit('alarm-accepted', payload));
                 }
@@ -406,7 +447,6 @@
                     let stTxt = "IDLE";
                     let stCol = "white";
 
-                    // ΠΡΟΤΕΡΑΙΟΤΗΤΑ: Αν χτυπάει, δείχνει ΚΛΗΣΗ άσχετα με το background
                     if (u.isRinging) {
                         stTxt = "📞 ΚΛΗΣΗ...";
                         stCol = "yellow";
