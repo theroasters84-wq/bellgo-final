@@ -10,6 +10,7 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; }
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; }
         .status-dot { width: 14px; height: 14px; background: red; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px red; border: 2px solid white; transition: background 0.3s; }
@@ -18,6 +19,7 @@
         .btn-apk-header { text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-info { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; font-family: monospace; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 5px; }
+
         .content { flex: 1; display: flex; overflow: hidden; position: relative; }
         .staff-panel { flex: 1; background: #121212; overflow-y: auto; border-right: 1px solid #333; padding: 10px; display: none; flex-direction: column; }
         .staff-panel.active { display: flex; }
@@ -29,6 +31,7 @@
         .btn-staff.ghost { opacity: 0.8; border: 1px solid #757575; background: #222 !important; color: #ccc; }
         .btn-delete { width: 50px; background: #D32F2F; color: white; border: none; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .status { font-size: 12px; font-weight: bold; text-transform: uppercase; }
+
         .chat-panel { flex: 1.5; display: flex; flex-direction: column; background: #0a0a0a; height: 100%; overflow: hidden; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px; border-radius: 12px; color: white; font-size: 15px; word-wrap: break-word; }
@@ -121,8 +124,8 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // STRIPE KEY
-        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLK0x04p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiP0ay');
+        // ΕΔΩ ΜΠΗΚΕ ΤΟ ΝΕΟ PUBLISHABLE KEY ΣΟΥ
+        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLKOxO4p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiPOay');
 
         // AUDIO & STATE
         const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
@@ -187,7 +190,7 @@
                 App.startHeartbeat();
                 setupNotifications();
 
-                // Payment Success Handler
+                // Payment Handler
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('payment') === 'success') {
                     document.getElementById('successMsg').style.display = 'block';
@@ -222,6 +225,12 @@
                     document.getElementById('connDot').style.background = '#00E676';
                     const isNative = !!window.Capacitor;
                     socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: isNative });
+                });
+
+                socket.on('subscription-required', (data) => {
+                    const proceed = confirm(`⚠️ Το email ${data.email} δεν έχει ενεργή συνδρομή.\n\nΘέλετε να πληρώσετε τώρα;`);
+                    if (proceed) App.redirectToStripe(data.email);
+                    else App.logout();
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
