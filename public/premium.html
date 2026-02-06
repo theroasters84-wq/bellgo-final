@@ -73,12 +73,12 @@
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
 
-        /* Order Window (Floating) - HUGE SIZE */
+        /* Order Window (Floating) - SAFE SIZE */
         .order-window { 
             position: absolute; 
-            width: 850px;  /* ΠΟΛΥ ΜΕΓΑΛΥΤΕΡΟ */
-            height: 650px; /* ΠΟΛΥ ΜΕΓΑΛΥΤΕΡΟ */
-            max-width: 95%; /* Για να μην βγει εκτός σε μικρά laptop */
+            width: 550px;  /* SAFE SIZE FOR LAPTOPS */
+            height: 500px; /* SAFE SIZE FOR LAPTOPS */
+            max-width: 95%; 
             max-height: 90%; 
             background: #2b2b2b; 
             border: 2px solid #555; 
@@ -89,21 +89,21 @@
             z-index: 200; 
             pointer-events: auto; 
         }
-        .win-header { background: #444; padding: 15px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        .win-header { background: #444; padding: 12px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
         
-        /* HUGE FONT SIZE */
+        /* Font size */
         .win-body { 
-            padding: 25px; 
+            padding: 20px; 
             overflow-y: auto; 
             flex: 1; 
-            font-size: 24px; /* ΤΕΡΑΣΤΙΑ ΓΡΑΜΜΑΤΑ */
+            font-size: 22px; 
             font-weight: bold;
-            line-height: 1.5; 
+            line-height: 1.4; 
             color: #fff; 
             white-space: pre-wrap; 
         }
-        .win-footer { padding: 15px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; }
-        .btn-win-action { flex: 1; padding: 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 20px; }
+        .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; }
+        .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 18px; }
 
         /* Admin Fullscreen Chat */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
@@ -119,18 +119,26 @@
         .tab-content.active { display: flex; }
 
         /* Waiter Order Form - FIXED LAYOUT */
-        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 15px; height: 100%; }
+        .order-form { 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            height: 100%; 
+            overflow: hidden; /* Prevents scroll on container, textarea handles it */
+        }
         .form-row { display: flex; gap: 10px; flex-shrink: 0; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
         .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
         
         textarea.order-text { 
-            flex-grow: 1; 
+            flex: 1; /* Αυτόματα πιάνει όλο τον χώρο */
             width: 100%; 
             padding: 15px; 
             background: #333; border: 1px solid #444; border-radius: 8px; 
             color: white; font-size: 18px; resize: none; 
+            min-height: 100px;
         }
         
         /* Sticky Send Button */
@@ -145,7 +153,7 @@
             font-weight: bold; 
             cursor: pointer; 
             flex-shrink: 0; 
-            margin-top: auto; 
+            margin-top: 5px;
         }
 
         /* Chat UI */
@@ -423,8 +431,8 @@
                     win.className = 'order-window';
                     win.id = `win-${order.id}`;
                     
-                    // Center-ish but low enough
-                    win.style.top = '150px'; 
+                    // SAFE CENTER POS
+                    win.style.top = '100px'; 
                     win.style.left = '50px';
 
                     document.getElementById('windowsContainer').appendChild(win);
