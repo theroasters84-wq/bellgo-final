@@ -126,13 +126,20 @@
             // --- Αποθήκευση & Redirect ---
             saveAndRedirect: (user, forceUrl) => {
                 user.store = user.store.toLowerCase().trim();
+                
+                // Καθαρίζουμε το 'premium' suffix αν υπάρχει στο όνομα καταστήματος, 
+                // ώστε να φαίνεται καθαρό μέσα στην εφαρμογή
+                if (user.store.endsWith('premium')) {
+                    user.store = user.store.replace('premium', '');
+                }
+
                 localStorage.setItem('bellgo_session', JSON.stringify(user));
                 
-                // Αν δεν δοθεί URL, πηγαίνουμε στο index.html (για προσωπικό)
+                // Αν δεν δοθεί URL, πηγαίνουμε στο index.html (fallback)
                 window.location.href = forceUrl || "index.html";
             },
 
-            // --- ΛΟΓΙΚΗ ΕΛΕΓΧΟΥ ΠΛΗΡΩΜΗΣ & VERSION ---
+            // --- ΛΟΓΙΚΗ ΕΛΕΓΧΟΥ ΠΛΗΡΩΜΗΣ (ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ ΚΑΙ ΑΠΟ ADMIN ΚΑΙ ΑΠΟ STAFF) ---
             checkSubscriptionAndProceed: async (email, name, role) => {
                 try {
                     const res = await fetch('/check-subscription', {
@@ -146,23 +153,28 @@
                         // ΕΝΕΡΓΗ ΣΥΝΔΡΟΜΗ -> ΕΛΕΓΧΟΣ ΠΑΚΕΤΟΥ
                         const user = { store: email, name, role, plan: data.plan };
                         
+                        // Εδώ γίνεται η μαγεία: Είτε Admin είτε Waiter, αν το πλάνο είναι Premium -> Πάει στο premium.html
                         if (data.plan === 'premium') {
-                            // Αν είναι premium -> Πήγαινε στο Super App
                             App.saveAndRedirect(user, "premium.html");
                         } else {
-                            // Αν είναι basic -> Πήγαινε στο Κλασικό App
                             App.saveAndRedirect(user, "index.html");
                         }
                     } else {
-                        // ΑΝΕΝΕΡΓΗ -> ΕΜΦΑΝΙΣΗ ΕΠΙΛΟΓΩΝ
-                        UI.showPaymentOptions(email);
+                        // ΑΝΕΝΕΡΓΗ
+                        if (role === 'admin') {
+                            // Στον Admin δείχνουμε επιλογές πληρωμής
+                            UI.showPaymentOptions(email);
+                        } else {
+                            // Στο προσωπικό απλά λέμε ότι το κατάστημα δεν έχει συνδρομή
+                            alert("⚠️ Το κατάστημα δεν έχει ενεργή συνδρομή.\nΕπικοινωνήστε με τον Admin.");
+                        }
                     }
                 } catch (e) {
                     alert("Σφάλμα σύνδεσης με τον server. Δοκιμάστε ξανά.");
                 }
             },
 
-            // --- ΠΛΗΡΩΜΗ ΜΕ ΕΠΙΛΟΓΗ ---
+            // --- ΠΛΗΡΩΜΗ ΜΕ ΕΠΙΛΟΓΗ (ΜΟΝΟ ADMIN) ---
             pay: async (planType) => {
                 if (!currentEmail) return alert("Σφάλμα Email");
                 
@@ -170,7 +182,6 @@
                     const stripeRes = await fetch('/create-checkout-session', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        // Στέλνουμε το email και το planType (αν και το PriceID είναι ίδιο προς το παρόν)
                         body: JSON.stringify({ email: currentEmail, planType: planType })
                     });
                     
@@ -186,28 +197,27 @@
                 }
             },
 
-            // Για το μωβ κουμπί (Direct Default Payment)
             redirectToStripe: () => {
                 const email = document.getElementById('inpAdminManualEmail').value.trim();
                 if (!email || !email.includes('@')) {
                     return alert("Παρακαλώ συμπληρώστε το Email επιχείρησης.");
                 }
                 currentEmail = email;
-                App.pay('basic'); // Default basic
+                App.pay('basic'); 
             },
 
-            // Login Προσωπικού (Πάντα πάει στο Index - Basic View)
-            // ΣΗΜΕΙΩΣΗ: Αν ο Admin είναι Premium, το προσωπικό θα δει το Premium Index
-            // αν αλλάξουμε το index.html αργότερα. Προς το παρόν πάει στο απλό.
+            // Login Προσωπικού - ΤΩΡΑ ΕΙΝΑΙ ΕΞΥΠΝΟ!
             loginStaff: () => {
-                const store = document.getElementById('inpStoreEmail').value;
-                const name = document.getElementById('inpMyName').value;
+                const store = document.getElementById('inpStoreEmail').value.trim();
+                const name = document.getElementById('inpMyName').value.trim();
                 const role = document.getElementById('inpMyRole').value;
+
                 if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
                 
-                // Το προσωπικό πάει πάντα στο index.html προς το παρόν
-                // Εκτός αν θέλουμε να τσεκάρουμε το store plan και για αυτούς.
-                App.saveAndRedirect({ store, name, role }, "index.html");
+                // Καλεί τον server για να δει τι πακέτο έχει το κατάστημα
+                // Αν γράψεις π.χ. 'magazi@gmail.compremium', ο server θα επιστρέψει plan: 'premium'
+                // και το checkSubscriptionAndProceed θα σε στείλει στο premium.html
+                App.checkSubscriptionAndProceed(store, name, role);
             },
 
             // Login Admin Manual
@@ -227,8 +237,8 @@
             }
         };
 
+        // Auto Login Check
         if (localStorage.getItem('bellgo_session')) {
-            // Αν υπάρχει ήδη session, έλεγξε πού πρέπει να πάει
             const saved = JSON.parse(localStorage.getItem('bellgo_session'));
             if (saved.plan === 'premium') {
                 window.location.href = "premium.html";
