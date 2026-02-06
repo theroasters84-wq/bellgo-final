@@ -38,16 +38,56 @@
         .msg.me { align-self: flex-end; background: #00E676; color: black; }
         .msg.other { align-self: flex-start; background: #333; }
         
-        /* CHAT BAR FIX */
         .chat-input { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; padding-bottom: 25px; margin-bottom: 0; }
         .chat-input input { flex: 1; height: 45px; background: #333; color: white; border: 1px solid #444; border-radius: 20px; padding: 0 15px; }
         .chat-input button { width: 50px; margin-left: 10px; border-radius: 50%; background: #00E676; border: none; font-size: 20px; color: black; height: 45px; cursor: pointer; }
 
-        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: red; animation: flashBg 0.5s infinite; }
-        @keyframes flashBg { 0% { background: #D50000; } 50% { background: #000000; } 100% { background: #D50000; } }
-        .stop-btn { width: 220px; height: 220px; border-radius: 50%; background: white; color: red; font-size: 40px; font-weight: 900; border: 8px solid yellow; box-shadow: 0 0 60px rgba(255,255,255,0.8); cursor: pointer; animation: pulseBtn 0.8s infinite; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        .time-badge { background: black; color: yellow; padding: 5px 15px; border-radius: 10px; font-size: 24px; font-weight: bold; margin-bottom: 20px; border: 2px solid yellow; }
+        /* --- ΝΕΟ STYLE ΓΙΑ ALARM (ΙΔΙΟ ΜΕ ANDROID) --- */
+        #alarmOverlay { 
+            display: none; 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 9999; 
+            flex-direction: column; align-items: center; justify-content: center; 
+            background: rgba(0,0,0,0.9); /* Dark backdrop */
+            backdrop-filter: blur(5px);
+        }
+
+        /* Ο Πράσινος Κύκλος */
+        .alarm-circle-btn {
+            width: 70vw; height: 70vw; /* Responsive Circle */
+            max-width: 350px; max-height: 350px;
+            border-radius: 50%;
+            background: #00E676;
+            border: 6px solid white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 50px #00E676;
+            cursor: pointer;
+            animation: pulseGreen 1s infinite alternate ease-in-out;
+            user-select: none;
+            text-align: center;
+            color: white;
+        }
+
+        @keyframes pulseGreen {
+            0% { transform: scale(1); background-color: #00E676; box-shadow: 0 0 20px #00E676; }
+            100% { transform: scale(1.05); background-color: #00C853; box-shadow: 0 0 60px #00E676; }
+        }
+
+        .check-icon {
+            width: 80px; height: 80px;
+            fill: white;
+            margin-bottom: 10px;
+        }
+
+        .time-badge { 
+            margin-top: 15px;
+            background: rgba(0,0,0,0.3); 
+            color: white; 
+            padding: 4px 12px; 
+            border-radius: 10px; 
+            font-size: 18px; 
+            font-weight: bold; 
+        }
 
         #successMsg { display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#00E676; color:black; padding:10px 20px; border-radius:20px; font-weight:bold; z-index:10001; }
         #infoModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; }
@@ -84,10 +124,17 @@
     </div>
 
     <div id="alarmOverlay">
-        <div id="alarmText" style="color:white; font-size:30px; margin-bottom:10px; font-weight:bold; text-align:center;">🚨 ΚΛΗΣΗ!</div>
-        <div id="alarmTimeBadge" class="time-badge">--:--</div>
-        <button id="alarmBtn" class="stop-btn" onclick="App.acceptAlarm()"><span>STOP</span></button>
-        <div id="alarmSubText" style="margin-top:20px; color:white; font-size:14px; text-align:center;">(Πάτα STOP για Αποδοχή)</div>
+        <div class="alarm-circle-btn" onclick="App.acceptAlarm()">
+            <svg class="check-icon" viewBox="0 0 24 24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+            
+            <div style="font-size: 28px; font-weight: 800;">BellGo</div>
+            <div style="font-size: 16px; font-weight: bold; opacity: 0.9;">ΚΛΗΣΗ!</div>
+            
+            <div id="alarmTimeBadge" class="time-badge">--:--</div>
+        </div>
+        <div style="margin-top:20px; color:#aaa; font-size:14px;">(Πάτα τον κύκλο για αποδοχή)</div>
     </div>
 
     <div id="infoModal">
@@ -124,7 +171,7 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // ΕΔΩ ΜΠΗΚΕ ΤΟ ΝΕΟ PUBLISHABLE KEY ΣΟΥ
+        // STRIPE KEY
         const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLKOxO4p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiPOay');
 
         // AUDIO & STATE
@@ -269,9 +316,8 @@
             },
 
             triggerFakeAlarm: () => {
-                document.getElementById('alarmText').innerText = "🔔 ΣΥΝΔΕΘΗΚΕ!";
-                document.getElementById('alarmSubText').innerText = "Πατήστε STOP";
-                document.getElementById('alarmOverlay').style.display = 'flex';
+                // Fake alarm shows normal text, no special handling needed for visual difference now
+                App.triggerAlarmScreen(); 
             },
 
             triggerAlarmScreen: () => {
@@ -283,8 +329,6 @@
                 
                 const now = new Date();
                 document.getElementById('alarmTimeBadge').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
-                document.getElementById('alarmText').innerText = "🚨 ΚΛΗΣΗ!";
-                document.getElementById('alarmSubText').innerText = "(Πάτα STOP για Αποδοχή)";
                 document.getElementById('alarmOverlay').style.display = 'flex';
                 
                 if ('mediaSession' in navigator) {
