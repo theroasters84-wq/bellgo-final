@@ -3,9 +3,9 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
+const fs = require('fs'); // ΝΕΟ: Για αποθήκευση του μενού
 
-// --- ΣΗΜΑΝΤΙΚΗ ΔΙΟΡΘΩΣΗ: ΤΟ DOMAIN ΣΟΥ ---
-// Χωρίς αυτό, το Android βγάζει "Invalid URL" επειδή δεν στέλνει origin header
+// --- TO DOMAIN ΣΟΥ ---
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
 // --- STRIPE SETUP ---
@@ -36,16 +36,43 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* ---------------- MEMORY STORE ---------------- */
+/* ---------------- DATA STORE (MEMORY) ---------------- */
 let activeUsers = {};
+let activeOrders = []; // ΝΕΟ: Λίστα ενεργών παραγγελιών
+
+// --- MENU SYSTEM (PERSISTENCE) ---
+const MENU_FILE = path.join(__dirname, 'saved_menu.json');
+let defaultMenu = "1. Καφές\n2. Τοστ\n3. Νερό";
+let liveMenu = defaultMenu;
+
+// Φόρτωση μενού από δίσκο κατά την εκκίνηση
+try {
+    if (fs.existsSync(MENU_FILE)) {
+        liveMenu = fs.readFileSync(MENU_FILE, 'utf8');
+        console.log("📜 Menu loaded from disk.");
+    } else {
+        // Αν δεν υπάρχει, δημιουργούμε το αρχικό
+        fs.writeFileSync(MENU_FILE, defaultMenu, 'utf8');
+    }
+} catch (e) { console.error("Menu Load Error:", e); }
+
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
 
-// 1. Έλεγχος Συνδρομής
+// 1. Έλεγχος Συνδρομής (Τροποποιημένο για Premium Suffix)
 app.post('/check-subscription', async (req, res) => {
-    const { email } = req.body;
+    let { email } = req.body;
+    let requestPlan = 'basic'; // Default
+
     try {
         if (!email) return res.json({ active: false });
+
+        // --- ΕΛΕΓΧΟΣ ΓΙΑ PREMIUM SUFFIX ---
+        // Αν το email τελειώνει σε "premium" (π.χ. "user@gmail.compremium")
+        if (email.endsWith('premium')) {
+            requestPlan = 'premium';
+            email = email.replace('premium', ''); // Καθαρίζουμε το email για το Stripe
+        }
 
         const customers = await stripe.customers.list({ 
             email: email.toLowerCase().trim(), 
@@ -60,8 +87,14 @@ app.post('/check-subscription', async (req, res) => {
         });
 
         const isActive = subscriptions.data.length > 0;
-        console.log(`🔍 Payment Check [${email}]: ${isActive ? '✅ PAID' : '❌ UNPAID'}`);
-        res.json({ active: isActive });
+        
+        // Αν είναι Active, επιστρέφουμε και το Plan που ζητήθηκε (hacky way)
+        console.log(`🔍 Payment Check [${email}]: ${isActive ? '✅ PAID' : '❌ UNPAID'} (Mode: ${requestPlan})`);
+        
+        res.json({ 
+            active: isActive, 
+            plan: isActive ? requestPlan : null // Επιστρέφει 'premium' ή 'basic'
+        });
 
     } catch (e) {
         console.error("Stripe Check Error:", e.message);
@@ -71,26 +104,28 @@ app.post('/check-subscription', async (req, res) => {
 
 // 2. Δημιουργία Link Πληρωμής
 app.post('/create-checkout-session', async (req, res) => {
-    const { email } = req.body;
+    let { email } = req.body;
+    
+    // Καθαρίζουμε το email αν κατά λάθος έστειλε το premium suffix στην πληρωμή
+    if (email && email.endsWith('premium')) {
+        email = email.replace('premium', '');
+    }
+
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             customer_email: email,
             line_items: [{
-                // ΤΟ ID ΤΟΥ ΠΡΟΪΟΝΤΟΣ ΣΟΥ
+                // Χρησιμοποιούμε το ίδιο Price ID που είχες (4€)
+                // Εφόσον το premium είναι "κόλπο" στο email, δεν αλλάζουμε το Stripe Product ακόμα
                 price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
                 quantity: 1,
             }],
             mode: 'subscription',
-            
-            // --- ΔΙΟΡΘΩΣΗ ΕΔΩ ---
-            // Χρησιμοποιούμε το YOUR_DOMAIN αντί για req.headers.origin
-            // Αυτό λύνει το πρόβλημα "Invalid URL" στο Android
-            success_url: `${YOUR_DOMAIN}/index.html?payment=success&email=${email}`,
+            success_url: `${YOUR_DOMAIN}/login.html?payment=success&email=${email}`,
             cancel_url: `${YOUR_DOMAIN}/login.html?payment=cancel`,
         });
 
-        // Στέλνουμε ΚΑΙ το url για να το ανοίξει το Android
         res.json({ id: session.id, url: session.url }); 
 
     } catch (e) {
@@ -106,7 +141,7 @@ function updateStore(store) {
   const list = Object.values(activeUsers)
     .filter(u => u.store === store)
     .map(u => ({ 
-      name: u.username,      
+      name: u.username,       
       username: u.username,  
       role: u.role, 
       status: u.status, 
@@ -114,13 +149,37 @@ function updateStore(store) {
     }));
 
   io.to(store).emit('staff-list-update', list);
+
+  // --- ΝΕΟ: Ενημέρωση Παραγγελιών ---
+  const storeOrders = activeOrders.filter(o => o.store === store);
+  io.to(store).emit('orders-update', storeOrders);
+
+  // --- ΝΕΟ: Ενημέρωση Μενού ---
+  io.to(store).emit('menu-update', liveMenu);
+}
+
+// Helper για Push Notification (επαναχρησιμοποίηση)
+function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
+    if (target && target.fcmToken) {
+        const msg = {
+            token: target.fcmToken,
+            data: dataPayload,
+            android: { priority: "high", notification: { channelId: "fcm_default_channel", title: title, body: body } },
+            webpush: { headers: { "Urgency": "high" } } // Για web pwa
+        };
+        admin.messaging().send(msg).catch(e => console.log("FCM Error:", e.message));
+    }
 }
 
 /* ---------------- SOCKET.IO LOGIC ---------------- */
 io.on('connection', (socket) => {
 
   socket.on('join-store', (data) => {
-    const store = (data.storeName || '').toLowerCase().trim();
+    // Αν είναι premium email στο join, καθαρίζουμε το όνομα του Store
+    let rawStore = data.storeName || '';
+    if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');
+
+    const store = rawStore.toLowerCase().trim();
     const username = (data.username || '').trim();
     const role = data.role || 'waiter';
     const token = data.token || null;
@@ -146,8 +205,11 @@ io.on('connection', (socket) => {
       isNative: isNative
     };
 
-    console.log(`👤 JOIN: ${username} @ ${store} [Native: ${isNative}]`);
+    console.log(`👤 JOIN: ${username} @ ${store} (${role})`);
     updateStore(store);
+
+    // Στέλνουμε το τρέχον μενού στον χρήστη που μόλις μπήκε
+    socket.emit('menu-update', liveMenu);
 
     if (activeUsers[key].isRinging) {
         socket.emit('ring-bell');
@@ -174,7 +236,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- TRIGGER ALARM ---
+  /* --- ALARM LOGIC (ΥΠΑΡΧΟΥΣΑ) --- */
   socket.on('trigger-alarm', (targetName) => {
     const key = `${socket.store}_${targetName}`;
     const target = activeUsers[key];
@@ -188,25 +250,20 @@ io.on('connection', (socket) => {
 
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
+    // Logic για Native App Push
     if (target.isNative) {
-        if (target.fcmToken) {
-            const msg = {
-                token: target.fcmToken,
-                data: { type: "alarm" },
-                android: { priority: "high", notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } }
-            };
-            admin.messaging().send(msg).catch(e => console.log("FCM Error:", e.message));
-        }
+        sendPushNotification(target, "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", "Πάτα για αποδοχή");
         return; 
     }
 
-    const sendPush = () => {
+    // Logic για Web Push Loop
+    const sendPushLoop = () => {
         const currentTarget = activeUsers[key];
         if (!currentTarget || !currentTarget.isRinging) {
             if (currentTarget && currentTarget.alarmInterval) clearInterval(currentTarget.alarmInterval);
             return;
         }
-
+        // Χρησιμοποιούμε την ίδια λογική με πριν για Web Push
         if (currentTarget.fcmToken) {
             const message = {
                 token: currentTarget.fcmToken,
@@ -214,21 +271,13 @@ io.on('connection', (socket) => {
                 webpush: { 
                     headers: { "Urgency": "high" }, 
                     fcm_options: { link: "/index.html?type=alarm" } 
-                },
-                apns: { 
-                    payload: { 
-                        aps: { 
-                            alert: { title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "ΠΑΤΑ ΤΩΡΑ" }, 
-                            sound: "default" 
-                        } 
-                    } 
                 }
             };
             admin.messaging().send(message).catch(err => {});
         }
     };
-    sendPush();
-    target.alarmInterval = setInterval(sendPush, 4000);
+    sendPushLoop();
+    target.alarmInterval = setInterval(sendPushLoop, 4000);
   });
 
   socket.on('alarm-accepted', (data) => {
@@ -248,6 +297,82 @@ io.on('connection', (socket) => {
         updateStore(sName);
     }
   });
+
+  /* --- ΝΕΑ PREMIUM LOGIC: MENU & ORDERS --- */
+
+  // 1. Αποθήκευση Μενού (Save)
+  socket.on('save-menu', (newText) => {
+      // Μόνο admin ή εξουσιοδοτημένοι
+      liveMenu = newText;
+      fs.writeFileSync(MENU_FILE, liveMenu, 'utf8'); // Γράψιμο στο δίσκο
+      io.to(socket.store).emit('menu-update', liveMenu); // Ενημέρωση όλων
+  });
+
+  // 2. Live Update Μενού (χωρίς Save)
+  socket.on('live-menu-type', (newText) => {
+      liveMenu = newText;
+      io.to(socket.store).emit('menu-update', liveMenu);
+  });
+
+  // 3. Νέα Παραγγελία (Από Πελάτη ή Σερβιτόρο)
+  socket.on('new-order', (orderText) => {
+      if (!socket.store) return;
+      
+      const newOrder = {
+          id: Date.now(),
+          text: orderText,
+          from: socket.username,
+          status: 'pending', // pending -> cooking -> ready
+          store: socket.store
+      };
+      
+      activeOrders.push(newOrder);
+      updateStore(socket.store);
+
+      // Ειδοποίηση στον ADMIN ότι ήρθε παραγγελία
+      const adminKey = `${socket.store}_Admin`;
+      const adminUser = Object.values(activeUsers).find(u => u.store === socket.store && u.role === 'admin');
+      
+      if (adminUser) {
+          if (adminUser.socketId) io.to(adminUser.socketId).emit('ring-bell'); // Χτυπάει το PC
+          sendPushNotification(adminUser, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ", `Από: ${socket.username}`);
+      }
+  });
+
+  // 4. Admin: Αποδοχή Παραγγελίας (Μπαίνει σε ετοιμασία)
+  socket.on('accept-order', (orderId) => {
+      const order = activeOrders.find(o => o.id === orderId);
+      if (order) {
+          order.status = 'cooking';
+          updateStore(socket.store);
+      }
+  });
+
+  // 5. Admin: Έτοιμη Παραγγελία (Ειδοποιεί πελάτη/σερβιτόρο)
+  socket.on('ready-order', (orderId) => {
+      const order = activeOrders.find(o => o.id === orderId);
+      if (order) {
+          order.status = 'ready';
+          updateStore(socket.store);
+
+          // Βρες ποιος το παρήγγειλε και χτύπα του
+          const targetKey = `${socket.store}_${order.from}`;
+          const targetUser = activeUsers[targetKey];
+          
+          if (targetUser) {
+              if (targetUser.socketId) io.to(targetUser.socketId).emit('ring-bell');
+              sendPushNotification(targetUser, "Η ΠΑΡΑΓΓΕΛΙΑ ΣΟΥ ΕΙΝΑΙ ΕΤΟΙΜΗ!", "Έλα να παραλάβεις");
+          }
+      }
+  });
+
+  // 6. Κλείσιμο Παραγγελίας (Διαγραφή)
+  socket.on('close-order', (orderId) => {
+      activeOrders = activeOrders.filter(o => o.id !== orderId);
+      updateStore(socket.store);
+  });
+
+  /* --- CHAT & LOGOUT --- */
 
   socket.on('chat-message', (msg) => {
     if (socket.store) {
