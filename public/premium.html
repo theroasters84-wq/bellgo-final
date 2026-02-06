@@ -10,13 +10,13 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* ΒΑΣΙΚΟ LAYOUT (Όπως στο index.html για να πιάνει όλη την οθόνη) */
+        /* ΒΑΣΙΚΟ LAYOUT */
         body { 
             background-color: #121212; 
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100dvh; /* Dynamic Height για κινητά */
+            height: 100dvh; 
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -31,7 +31,7 @@
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .btn-icon:active { background: #333; }
 
-        /* BADGE SCRIPT */
+        /* BADGE */
         .pending-badge {
             position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none;
         }
@@ -68,8 +68,13 @@
         .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
         #staffList { flex: 1; overflow-y: auto; padding: 10px; }
 
-        /* WINDOWS LAYER */
-        #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+        /* WINDOWS LAYER (FULL SCREEN OVERLAY) */
+        #windowsContainer { 
+            position: absolute; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; /* Επιτρέπει κλικ από κάτω όταν δεν υπάρχει παράθυρο */
+            z-index: 2000; /* Πάνω από όλα (μενού, sidebar) */
+        }
 
         /* FOLDER ICON */
         .order-folder { width: 90px; height: 110px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; margin-bottom: 10px; }
@@ -85,12 +90,16 @@
         .order-window { 
             position: absolute; 
             width: 600px; height: 500px; 
-            max-width: 95vw; max-height: 85vh; 
+            max-width: 95vw; max-height: 90vh; /* Ασφάλεια */
             background: #2b2b2b; border: 2px solid #555; border-radius: 8px; 
-            box-shadow: 0 15px 50px rgba(0,0,0,0.95); 
-            display: none; flex-direction: column; z-index: 200; pointer-events: auto; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.95); 
+            display: none; flex-direction: column; 
+            pointer-events: auto; /* Επαναφέρει τα κλικ */
         }
         .win-header { background: #444; padding: 12px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        .win-controls { display: flex; gap: 8px; }
+        .win-btn-top { border: none; width: 30px; height: 30px; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
+        
         .win-body { padding: 20px; overflow-y: auto; flex: 1; font-size: 22px; font-weight: bold; line-height: 1.4; color: #fff; white-space: pre-wrap; }
         .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; }
         .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 18px; }
@@ -177,12 +186,13 @@
 
                 <div class="admin-main-area">
                     <div id="desktopArea"></div>
-                    <div id="windowsContainer"></div>
                     <div id="adminStaffSidebar">
                         <div class="sidebar-title">ΠΡΟΣΩΠΙΚΟ (ONLINE)</div>
                         <div id="staffList"></div>
                     </div>
                 </div>
+
+                <div id="windowsContainer"></div>
 
                 <div id="adminChatOverlay">
                     <div class="overlay-header">
@@ -282,6 +292,7 @@
         keepAliveAudio.volume = 0.01;
         let isAlarmActive = false;
         
+        // LOOPING ALERT SOUND FOR ORDERS
         let orderAlertSound = new Audio('alert.mp3');
         orderAlertSound.loop = true; 
 
@@ -340,6 +351,7 @@
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
+                
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
 
                 socket.on('orders-update', (orders) => {
@@ -352,11 +364,11 @@
                 });
                 
                 socket.on('ring-bell', () => {
-                    // ΠΑΙΖΕΙ ΠΑΝΤΑ ΤΟ ALERT.MP3 (loop)
-                    orderAlertSound.currentTime = 0;
-                    orderAlertSound.play().catch(e => console.log("Audio error", e));
-                    
                     if (userData.role === 'admin') {
+                        // START LOOP
+                        orderAlertSound.currentTime = 0;
+                        orderAlertSound.play().catch(e => console.log("Audio play error", e));
+                        
                         if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     } else {
                         App.triggerAlarmScreen();
@@ -384,7 +396,7 @@
             },
 
             openOrderWindow: (order) => {
-                // STOP SOUND ONLY WHEN OPENING FOLDER
+                // STOP LOOP SOUND
                 orderAlertSound.pause();
                 orderAlertSound.currentTime = 0;
 
@@ -394,7 +406,8 @@
                     win.className = 'order-window';
                     win.id = `win-${order.id}`;
                     
-                    win.style.top = '100px'; 
+                    // OPEN CENTERED
+                    win.style.top = '50px'; 
                     win.style.left = '50px';
 
                     document.getElementById('windowsContainer').appendChild(win);
@@ -417,7 +430,6 @@
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else {
-                    // Αν είναι ήδη accepted (cooking)
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
                     borderCol = '#2196F3';
                 }
@@ -426,7 +438,10 @@
                 win.innerHTML = `
                     <div class="win-header">
                         <span style="font-weight:bold; color:white;">${order.from}</span>
-                        <button onclick="document.getElementById('win-${order.id}').style.display='none'" style="background:#D32F2F; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">X</button>
+                        <div class="win-controls">
+                            <button class="win-btn-top" style="background:#FF9800; color:black;" onclick="App.minimizeOrder('${order.id}')">_</button>
+                            <button class="win-btn-top" style="background:#D32F2F;" onclick="App.minimizeOrder('${order.id}')">X</button>
+                        </div>
                     </div>
                     <div class="win-body">${displayTxt}</div>
                     <div class="win-footer">${actions}</div>
@@ -434,17 +449,24 @@
                 win.style.display = 'flex';
             },
 
+            // --- MINIMIZE (HIDE) ---
+            minimizeOrder: (id) => {
+                const win = document.getElementById(`win-${id}`);
+                if(win) win.style.display = 'none';
+            },
+
             acceptOrder: (id) => {
-                // STOP SOUND (Just in case)
+                // 1. STOP AUDIO
+                if(window.AudioEngine) window.AudioEngine.stopAlarm(true);
                 orderAlertSound.pause();
                 orderAlertSound.currentTime = 0;
-                
-                // NOTIFY SERVER
+
+                // 2. NETWORK SYNC
                 window.socket.emit('accept-order', Number(id));
 
-                // UPDATE UI INSTANTLY
+                // 3. INSTANT UI UPDATE
                 const win = document.getElementById(`win-${id}`);
-                if(win) {
+                if (win) {
                     const footer = win.querySelector('.win-footer');
                     footer.innerHTML = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
                     win.style.border = "2px solid #2196F3"; 
@@ -452,9 +474,11 @@
             },
 
             completeOrder: (id) => {
-                window.socket.emit('close-order', Number(id));
-                const win = document.getElementById(`win-${id}`);
-                if(win) win.remove();
+                if(confirm("Κλείσιμο παραγγελίας;")) {
+                    window.socket.emit('close-order', Number(id));
+                    const win = document.getElementById(`win-${id}`);
+                    if(win) win.remove();
+                }
             },
 
             // --- STAFF LIST ---
@@ -483,6 +507,7 @@
                         const span = document.getElementById(`status-${u.username}`);
                         if(span) { span.innerText = "📞 ..."; span.style.color = "yellow"; }
                     };
+                    
                     row.appendChild(btn);
 
                     if (userData.role === 'admin' && isAway && !u.isRinging) {
@@ -535,22 +560,8 @@
             // --- SYSTEM ---
             logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
-            
-            triggerAlarmScreen: () => { 
-                isAlarmActive=true; 
-                document.getElementById('alarmOverlay').style.display='flex'; 
-                // PLAY ALERT MP3 FOR STAFF TOO
-                orderAlertSound.currentTime = 0;
-                orderAlertSound.play().catch(e=>{});
-            },
-            
-            acceptAlarm: () => { 
-                isAlarmActive=false; 
-                document.getElementById('alarmOverlay').style.display='none'; 
-                orderAlertSound.pause(); // STOP SOUND
-                window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name }); 
-            },
-            
+            triggerAlarmScreen: () => { isAlarmActive=true; document.getElementById('alarmOverlay').style.display='flex'; if(window.AudioEngine) window.AudioEngine.triggerAlarm(); },
+            acceptAlarm: () => { isAlarmActive=false; document.getElementById('alarmOverlay').style.display='none'; if(window.AudioEngine) window.AudioEngine.stopAlarm(true); window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name }); },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
