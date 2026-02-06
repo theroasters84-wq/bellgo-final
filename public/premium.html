@@ -27,7 +27,7 @@
 
         /* --- ADMIN UI --- */
         #adminPanel { display: none; flex-direction: column; height: 100%; position: relative; }
-        .menu-section { height: 120px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .menu-section { height: 130px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         .menu-content { flex: 1; width: 100%; background: #000; color: #ccc; border: 1px solid #333; border-radius: 5px; padding: 8px; font-size: 14px; resize: none; overflow-y: auto; white-space: pre-wrap; }
         
         /* Desktop Area & Icons */
@@ -50,16 +50,16 @@
 
         /* Order Window (Floating) */
         .order-window {
-            position: absolute; width: 300px; height: 350px;
+            position: absolute; width: 320px; height: 400px;
             background: #2b2b2b; border: 1px solid #555; border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             display: none; flex-direction: column; z-index: 100;
-            top: 50px; left: 50px; /* Default pos */
+            /* Η αρχική θέση ορίζεται στο JS για να είναι χαμηλά */
         }
         .win-header { background: #444; padding: 10px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
-        .win-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 16px; line-height: 1.5; color: #eee; white-space: pre-wrap; }
+        .win-body { padding: 15px; overflow-y: auto; flex: 1; font-size: 18px; line-height: 1.5; color: #eee; white-space: pre-wrap; }
         .win-footer { padding: 10px; border-top: 1px solid #444; display: flex; gap: 10px; background: #222; }
-        .btn-win-action { flex: 1; padding: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: black; }
+        .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; color: black; font-size: 16px; }
 
         /* Admin Fullscreen Chat */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 2000; flex-direction: column; }
@@ -315,6 +315,9 @@
                     // For now, ring bell always. 
                     // Admin handles Order Rings visually with shaking folders
                     if (userData.role === 'admin') {
+                        // ΠΑΙΖΕΙ ΤΟ ALERT.MP3 ΔΥΝΑΤΑ ΓΙΑ ΠΑΡΑΓΓΕΛΙΑ
+                        new Audio('alert.mp3').play().catch(e => console.log(e));
+                        
                         if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                         // Folder animation happens in renderDesktopIcons based on status 'pending'
                     } else {
@@ -343,6 +346,12 @@
                     win = document.createElement('div');
                     win.className = 'order-window';
                     win.id = `win-${order.id}`;
+                    
+                    // --- POSITION CORRECTION: START LOWER ---
+                    // Ανοίγει χαμηλά για να μην πέφτει πάνω στο μενού
+                    win.style.top = '220px'; 
+                    win.style.left = '20px';
+
                     document.getElementById('windowsContainer').appendChild(win);
                     
                     // Drag functionality
