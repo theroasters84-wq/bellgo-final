@@ -5,7 +5,7 @@ const path = require('path');
 const admin = require("firebase-admin");
 
 // --- STRIPE SETUP ---
-// ΕΔΩ ΜΠΗΚΕ ΤΟ ΝΕΟ ΜΥΣΤΙΚΟ ΚΛΕΙΔΙ ΣΟΥ (χωρίς κενά)
+// Το μυστικό κλειδί σου
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -38,7 +38,7 @@ let activeUsers = {};
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
 
-// 1. Έλεγχος Συνδρομής
+// 1. Έλεγχος Συνδρομής (Το καλεί το Android LoginActivity)
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     try {
@@ -66,7 +66,7 @@ app.post('/check-subscription', async (req, res) => {
     }
 });
 
-// 2. Δημιουργία Link Πληρωμής
+// 2. Δημιουργία Link Πληρωμής (Το καλεί το Android αν δεν έχει συνδρομή)
 app.post('/create-checkout-session', async (req, res) => {
     const { email } = req.body;
     try {
@@ -82,7 +82,11 @@ app.post('/create-checkout-session', async (req, res) => {
             success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`,
             cancel_url: `${req.headers.origin}/login.html?payment=cancel`,
         });
-        res.json({ id: session.id });
+
+        // --- H ALLAGH EGIN EDW ---
+        // Στέλνουμε ΚΑΙ το url για να το ανοίξει το Android
+        res.json({ id: session.id, url: session.url }); 
+
     } catch (e) {
         console.error("Checkout Error:", e.message);
         res.status(500).json({ error: e.message });
@@ -144,6 +148,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('update-token', (data) => {
+      const key = `${socket.store}_${socket.username}`;
+      if (activeUsers[key] && data.token) {
+          activeUsers[key].fcmToken = data.token;
+          console.log(`📲 FCM Token Updated for ${socket.username}`);
+      }
+  });
+
   socket.on('heartbeat', () => {
     const key = `${socket.store}_${socket.username}`;
     if (activeUsers[key]) {
@@ -177,7 +189,7 @@ io.on('connection', (socket) => {
                 data: { type: "alarm" },
                 android: { priority: "high", notification: { channelId: "fcm_default_channel", title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", body: "Πάτα για αποδοχή" } }
             };
-            admin.messaging().send(msg).catch(e => {});
+            admin.messaging().send(msg).catch(e => console.log("FCM Error:", e.message));
         }
         return; 
     }
