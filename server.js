@@ -4,8 +4,11 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 
+// --- ΣΗΜΑΝΤΙΚΗ ΔΙΟΡΘΩΣΗ: ΤΟ DOMAIN ΣΟΥ ---
+// Χωρίς αυτό, το Android βγάζει "Invalid URL" επειδή δεν στέλνει origin header
+const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
+
 // --- STRIPE SETUP ---
-// Το μυστικό κλειδί σου
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -38,7 +41,7 @@ let activeUsers = {};
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
 
-// 1. Έλεγχος Συνδρομής (Το καλεί το Android LoginActivity)
+// 1. Έλεγχος Συνδρομής
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     try {
@@ -66,7 +69,7 @@ app.post('/check-subscription', async (req, res) => {
     }
 });
 
-// 2. Δημιουργία Link Πληρωμής (Το καλεί το Android αν δεν έχει συνδρομή)
+// 2. Δημιουργία Link Πληρωμής
 app.post('/create-checkout-session', async (req, res) => {
     const { email } = req.body;
     try {
@@ -79,11 +82,14 @@ app.post('/create-checkout-session', async (req, res) => {
                 quantity: 1,
             }],
             mode: 'subscription',
-            success_url: `${req.headers.origin}/index.html?payment=success&email=${email}`,
-            cancel_url: `${req.headers.origin}/login.html?payment=cancel`,
+            
+            // --- ΔΙΟΡΘΩΣΗ ΕΔΩ ---
+            // Χρησιμοποιούμε το YOUR_DOMAIN αντί για req.headers.origin
+            // Αυτό λύνει το πρόβλημα "Invalid URL" στο Android
+            success_url: `${YOUR_DOMAIN}/index.html?payment=success&email=${email}`,
+            cancel_url: `${YOUR_DOMAIN}/login.html?payment=cancel`,
         });
 
-        // --- H ALLAGH EGIN EDW ---
         // Στέλνουμε ΚΑΙ το url για να το ανοίξει το Android
         res.json({ id: session.id, url: session.url }); 
 
