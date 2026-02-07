@@ -17,8 +17,25 @@
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        
+        /* ICON BUTTON WITH BADGE CONTAINER */
+        .btn-icon-wrapper { position: relative; display: inline-block; }
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .btn-icon:active { background: #333; }
+
+        /* CHAT NOTIFICATION BADGE */
+        .chat-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background-color: #D32F2F; /* Red */
+            border-radius: 50%;
+            border: 2px solid #1e1e1e;
+            display: none; /* Hidden by default */
+            z-index: 10;
+        }
 
         /* ADMIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
@@ -127,11 +144,11 @@
         .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         
         .win-body { 
-            padding: 20px; 
+            padding: 40px; 
             overflow-y: auto; 
             flex: 1; 
             font-weight: bold; 
-            line-height: 1.4; 
+            line-height: 1.6; 
             color: #fff; 
             white-space: pre-wrap;
             display: flex;
@@ -139,8 +156,8 @@
             justify-content: flex-start;
         }
         
-        .win-footer { padding: 10px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
-        .btn-win-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 20px; }
+        .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
+        .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
 
         /* STAFF LIST BUTTONS */
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
@@ -150,6 +167,7 @@
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+        /* CHAT OVERLAY */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -186,7 +204,12 @@
             </div>
             <div class="header-actions">
                 <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
-                <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
+                
+                <div class="btn-icon-wrapper">
+                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
+                    <div id="chatBadge" class="chat-badge"></div>
+                </div>
+
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
@@ -268,8 +291,9 @@
 
         window.App = {
             activeOrders: [],
-            menuData: [], // Array of { id, order, name, items: [] }
-            currentCategoryIndex: null, // null = showing categories, int = showing items of category index
+            menuData: [], 
+            currentCategoryIndex: null,
+            isChatOpen: false, // Track chat state
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -295,7 +319,6 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // HANDLE MENU DATA
                 socket.on('menu-update', (data) => {
                     try {
                         if (typeof data === 'string' && !data.startsWith('[')) {
@@ -329,14 +352,12 @@
                 const linkEl = document.getElementById('storeLink');
                 const qrEl = document.getElementById('qrcode');
                 
-                // Construct the link (Assumes order.html is in the same root)
                 const baseUrl = window.location.origin;
                 const fullLink = `${baseUrl}/order.html?store=${userData.store}`;
                 
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
                 
-                // Generate QR
                 qrEl.innerHTML = "";
                 new QRCode(qrEl, {
                     text: fullLink,
@@ -347,7 +368,7 @@
                 el.style.display = 'flex';
             },
 
-            // --- MENU LOGIC V2 (CATEGORIES) ---
+            // --- MENU LOGIC ---
             handlePlusButton: () => {
                 if (App.currentCategoryIndex === null) {
                     let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
@@ -486,18 +507,15 @@
 
                 const displayTxt = order.text.replace('\n', '<br>');
                 let actions = '';
-                let borderCol = '#555';
                 
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                    borderCol = '#2196F3';
                 }
 
-                // DYNAMIC FONT SIZE
                 const len = order.text.length;
-                let fontSize = '36px'; // Default Big
+                let fontSize = '36px'; 
                 if (len > 100) fontSize = '24px';
                 if (len > 300) fontSize = '18px';
 
@@ -573,7 +591,21 @@
                 });
             },
 
-            toggleAdminChat: () => { const el=document.getElementById('adminChatOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+            // --- CHAT LOGIC ---
+            toggleAdminChat: () => { 
+                const el = document.getElementById('adminChatOverlay');
+                App.isChatOpen = (el.style.display === 'flex');
+                
+                if (App.isChatOpen) {
+                    el.style.display = 'none';
+                    App.isChatOpen = false;
+                } else {
+                    el.style.display = 'flex';
+                    App.isChatOpen = true;
+                    // Clear Badge
+                    document.getElementById('chatBadge').style.display = 'none';
+                }
+            },
             
             sendChat: () => {
                 const inp = document.getElementById('adminChatInp');
@@ -581,6 +613,11 @@
             },
             
             appendChat: (data) => {
+                // If I am NOT the sender AND chat is CLOSED -> Show Badge
+                if (data.sender !== userData.name && !App.isChatOpen) {
+                    document.getElementById('chatBadge').style.display = 'block';
+                }
+
                 const box = document.getElementById('adminChatBox');
                 if(box) {
                     box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
