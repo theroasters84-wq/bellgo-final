@@ -62,9 +62,10 @@ try {
 } catch (e) { console.log("Load Error", e); }
 
 
-/* ---------------- DYNAMIC MANIFEST (ΓΙΑ PWA) ---------------- */
-// Το order.html καλεί αυτό για να πάρει το σωστό όνομα μαγαζιού στην εγκατάσταση
+/* ---------------- DYNAMIC MANIFEST (ΓΙΑ PWA ΕΓΚΑΤΑΣΤΑΣΗ) ---------------- */
 app.get('/manifest.json', (req, res) => {
+    // Αν το URL έχει ?name=... (από τον πελάτη), χρησιμοποιούμε αυτό.
+    // Αλλιώς χρησιμοποιούμε το αποθηκευμένο όνομα του μαγαζιού.
     const appName = req.query.name || storeSettings.name || "Delivery App";
     
     res.json({
@@ -77,7 +78,7 @@ app.get('/manifest.json', (req, res) => {
         "orientation": "portrait",
         "icons": [
             {
-                "src": "icon.png",
+                "src": "icon.png", // Βεβαιώσου ότι έχεις ένα γενικό εικονίδιο icon.png στο public
                 "sizes": "192x192",
                 "type": "image/png"
             },
@@ -177,6 +178,10 @@ io.on('connection', (socket) => {
 
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
+        
+        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε
+        socket.emit('menu-update', liveMenu);
+        socket.emit('store-settings-update', storeSettings);
     });
 
     // --- SAVE STORE NAME ---
@@ -219,11 +224,13 @@ io.on('connection', (socket) => {
             });
     });
 
+    // Admin accepts order
     socket.on('accept-order', (id) => {
         const o = activeOrders.find(x => x.id === id);
         if(o) { o.status = 'cooking'; updateStore(socket.store); }
     });
 
+    // Admin marks order as ready (Delivery / Coming)
     socket.on('ready-order', (id) => {
         const o = activeOrders.find(x => x.id === id);
         if(o) { 
@@ -240,6 +247,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Admin closes/deletes order
     socket.on('close-order', (id) => {
         activeOrders = activeOrders.filter(x => x.id !== id);
         updateStore(socket.store);
@@ -253,8 +261,6 @@ io.on('connection', (socket) => {
             target.isRinging = true;
             updateStore(socket.store);
             if (target.socketId) io.to(target.socketId).emit('ring-bell');
-            
-            // Native Push or Web Push logic can go here
         }
     });
 
@@ -287,11 +293,11 @@ io.on('connection', (socket) => {
     });
 });
 
-// Periodic Cleanup
+// Periodic Cleanup (1 hour idle check)
 setInterval(() => {
     const now = Date.now();
     for (const key in activeUsers) {
-        if (now - activeUsers[key].lastSeen > 12 * 3600000) { 
+        if (now - activeUsers[key].lastSeen > 3600000) { 
             delete activeUsers[key];
         }
     }
