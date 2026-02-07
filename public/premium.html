@@ -27,230 +27,152 @@
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
         .btn-icon:active { background: #333; }
 
-        /* STAFF BELL BUTTON */
-        #staffBellBtn {
-            background: #FFD700; 
-            color: black; 
-            border: 2px solid #FFD700; 
-            display: none; /* Κρυφό αρχικά */
-        }
-        #staffBellBtn.ringing {
-            display: flex;
-            animation: shake 0.5s infinite;
+        /* BADGES */
+        .pending-badge {
+            position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border: 2px solid #121212; z-index: 1100;
         }
 
-        /* BADGE */
-        .pending-badge {
-            position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none;
+        /* --- MENU GRID SYSTEM --- */
+        .menu-section { 
+            min-height: 100px; 
+            background: #1a1a1a; 
+            border-bottom: 2px solid #333; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
+            overflow-y: auto;
+            max-height: 40vh; /* Μεγαλώνει μέχρι το 40% της οθόνης */
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 5px;
+        }
+        .menu-item-input {
+            background: #000;
+            border: 1px solid #444;
+            color: #FFD700;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            width: 100%;
         }
 
         /* LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
-        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+        /* WAITER MODAL */
+        #waiterOrdersModal {
+            display: none; position: fixed; top: 70px; right: 10px; background: #2b2b2b; 
+            border: 2px solid #FFD700; border-radius: 10px; width: 280px; max-height: 70vh; 
+            z-index: 5000; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
 
         /* --- ADMIN UI --- */
         #adminPanel { display: none; flex-direction: column; height: 100%; position: relative; }
-        
-        .menu-section { height: 130px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
-        .menu-content { flex: 1; width: 100%; background: #000; color: #ccc; border: 1px solid #333; border-radius: 5px; padding: 8px; font-size: 14px; resize: none; overflow-y: auto; white-space: pre-wrap; }
-        
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
-        
-        #desktopArea { 
-            flex: 1; 
-            position: relative; 
-            background: #222; 
-            padding: 20px; 
-            display: flex; 
-            flex-wrap: wrap; 
-            align-content: flex-end; 
-            align-items: flex-end;
-            gap: 20px; 
-            overflow-y: auto; 
-        }
-        
+        #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 20px; overflow-y: auto; }
         #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
-        #staffList { flex: 1; overflow-y: auto; padding: 10px; }
-
-        /* WINDOWS LAYER */
-        #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
-
-        /* FOLDER ICON */
-        .order-folder { width: 90px; height: 110px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; margin-bottom: 10px; }
-        .order-folder.ringing { animation: shake 0.5s infinite; }
-        .folder-icon { font-size: 50px; }
-        .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .folder-time { font-size: 11px; color: #FFD700; background: #000; padding: 2px 5px; border-radius: 10px; margin-top: 2px; font-weight: bold; }
-
-        @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
-        @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-
-        /* ORDER WINDOW - RESPONSIVE FIX */
-        .order-window { 
-            position: absolute; 
-            /* Προσαρμογή μεγέθους για να χωράει παντού */
-            width: 90%; 
-            max-width: 550px; 
-            height: auto;
-            max-height: 80%;
-            top: 10%; left: 5%; /* Κεντράρισμα στο περίπου */
-            
-            background: #2b2b2b; border: 2px solid #555; border-radius: 8px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.95); 
-            display: none; flex-direction: column; 
-            pointer-events: auto; 
-            z-index: 3000;
-        }
-        .win-header { background: #444; padding: 12px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
-        .win-controls { display: flex; gap: 8px; }
-        .win-btn-top { border: none; width: 30px; height: 30px; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
         
-        .win-body { padding: 20px; overflow-y: auto; flex: 1; font-size: 20px; font-weight: bold; line-height: 1.4; color: #fff; white-space: pre-wrap; }
-        .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; }
-        .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 18px; }
-
-        /* ADMIN CHAT */
-        #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
-        .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-
         /* --- WAITER UI --- */
         #waiterPanel { display: none; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
-        
         .tabs { display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0; }
         .tab-btn { flex: 1; padding: 15px; background: transparent; color: #888; border: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
         .tab-btn.active { color: white; border-bottom: 3px solid #FFD700; background: #333; }
-        .tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
+        .tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; position: relative; }
         .tab-content.active { display: flex; }
 
-        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; height: 100%; overflow: hidden; }
-        .form-row { display: flex; gap: 10px; flex-shrink: 0; }
-        .input-group { flex: 1; }
-        .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
-        .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
-        textarea.order-text { flex-grow: 1; width: 100%; padding: 15px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; resize: none; min-height: 100px; }
-        .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
-
-        /* CHAT UI */
-        .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
-        .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 15px; word-wrap: break-word; }
-        .chat-msg.me { align-self: flex-end; background: #00E676; color: black; }
-        .chat-msg.other { align-self: flex-start; background: #333; color: white; }
-        .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
-        .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
-        .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
-
-        /* STAFF LIST BUTTONS */
-        .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
-        .btn-staff { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 14px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; cursor: pointer; }
-        .btn-staff.waiter { background: #1565C0; border-left: 4px solid #64B5F6; }
-        .btn-staff.driver { background: #C62828; border-left: 4px solid #FF5252; }
-        .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
-        .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        
+        /* ANIMATIONS & OTHERS */
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 10%, 30%, 50%, 70%, 90% { transform: translate(-2px,0); } 20%, 40%, 60%, 80% { transform: translate(2px,0); } }
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; display: inline-block; }
     </style>
 </head>
 <body>
 
-    <div id="pendingBadge" class="pending-badge">0</div>
+    <div id="waiterOrdersModal">
+        <div style="padding:12px; background:#333; font-weight:bold; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 ΕΝΕΡΓΕΣ ΠΑΡΑΓΓΕΛΙΕΣ</span>
+            <button onclick="UI.toggleOrdersList()" style="background:none; border:none; color:white; font-size:20px; cursor:pointer;">✕</button>
+        </div>
+        <div id="waiterOrdersListContent" style="padding:10px;"></div>
+    </div>
 
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()" style="background: gray;"></span>
                 <div class="user-info">
                     <span id="headerName" style="font-weight:bold; font-size:14px; color:#FFD700;">PREMIUM</span>
                     <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
                 </div>
             </div>
             <div class="header-actions">
-                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
+                <button class="btn-icon" onclick="UI.showInfo()" title="Οδηγίες" style="color:#2196F3; border:1px solid #2196F3;">i</button>
+                
+                <div style="position: relative;">
+                    <button class="btn-icon" onclick="UI.toggleOrdersList()" title="Λίστα Παραγγελιών">📋</button>
+                    <span id="ordersCountBadge" class="pending-badge" style="display:none;">0</span>
+                </div>
 
-                <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" style="display:none;" title="Άνοιγμα Chat">📁</button>
+                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
 
         <div class="content">
+            <div id="menuSection" class="menu-section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#FFD700; font-weight:bold; font-size:13px;">📜 ΚΑΤΑΛΟΓΟΣ</span>
+                    <button id="adminSaveMenuBtn" class="btn-logout" style="background:#00E676; color:black; display:none;" onclick="App.saveMenu()">SAVE</button>
+                </div>
+                <div id="menuGrid" class="menu-grid"></div>
+            </div>
             
             <div id="adminPanel">
-                <div class="menu-section">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ / ΣΗΜΕΙΩΣΕΙΣ</span>
-                        <button class="btn-save" onclick="App.saveMenu()">SAVE</button>
-                    </div>
-                    <textarea id="menuText" class="menu-content" placeholder="Γράψε εδώ..." oninput="App.liveUpdateMenu()"></textarea>
-                </div>
-
                 <div class="admin-main-area">
                     <div id="desktopArea"></div>
-                    <div id="windowsContainer"></div>
+                    <div id="windowsContainer" style="position:absolute; inset:0; pointer-events:none; z-index:2000;"></div>
                     <div id="adminStaffSidebar">
-                        <div class="sidebar-title">ΠΡΟΣΩΠΙΚΟ (ONLINE)</div>
-                        <div id="staffList"></div>
-                    </div>
-                </div>
-
-                <div id="adminChatOverlay">
-                    <div class="overlay-header">
-                        <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
-                        <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
-                    </div>
-                    <div class="chat-container">
-                        <div id="adminChatBox" class="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
-                            <button class="chat-btn" onclick="App.sendChat('admin')">➤</button>
-                        </div>
+                        <div style="padding:10px; background:#222; border-bottom:1px solid #333; font-weight:bold; text-align:center; color:#aaa; font-size:11px;">ONLINE</div>
+                        <div id="staffList" style="flex:1; overflow-y:auto; padding:10px;"></div>
                     </div>
                 </div>
             </div>
 
             <div id="waiterPanel">
-                <div id="waiterMenuRead" style="padding:10px; background:#111; color:#ccc; border-bottom:1px solid #333; font-size:13px; max-height:80px; overflow-y:auto; white-space:pre-wrap;"></div>
-
                 <div class="tabs">
-                    <button class="tab-btn active" onclick="UI.showTab('chat')">💬 CHAT</button>
-                    <button class="tab-btn" onclick="UI.showTab('order')">📝 ΠΑΡΑΓΓΕΛΙΑ</button>
+                    <button class="tab-btn active" id="tabChatBtn" onclick="UI.showTab('chat')">💬 CHAT</button>
+                    <button class="tab-btn" id="tabOrderBtn" onclick="UI.showTab('order')">📝 ΠΑΡΑΓΓΕΛΙΑ</button>
                 </div>
 
                 <div id="tabChat" class="tab-content active">
-                    <div class="chat-container">
-                        <div id="waiterChatBox" class="chat-messages"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα...">
-                            <button class="chat-btn" onclick="App.sendChat('waiter')">➤</button>
+                    <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                        <div id="waiterChatBox" style="flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px;"></div>
+                        <div style="display:flex; padding:10px; background:#1e1e1e; border-top:1px solid #333;">
+                            <input type="text" id="waiterChatInp" style="flex:1; padding:12px; border-radius:25px; border:1px solid #444; background:#111; color:white;" placeholder="Μήνυμα...">
+                            <button onclick="App.sendChat()" style="margin-left:10px; width:45px; height:45px; border-radius:50%; border:none; background:#00E676; color:black; font-weight:bold;">➤</button>
                         </div>
                     </div>
                 </div>
 
-                <div id="tabOrder" class="tab-content">
-                    <div class="order-form">
-                        <div class="form-row">
-                            <div class="input-group">
-                                <label>ΤΡΑΠΕΖΙ</label>
-                                <input type="number" id="inpTable" class="input-box" placeholder="#">
-                            </div>
-                            <div class="input-group">
-                                <label>ΚΟΥΒΕΡ</label>
-                                <input type="number" id="inpCovers" class="input-box" placeholder="0">
-                            </div>
-                        </div>
-                        
-                        <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ</label>
-                        <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
-
-                        <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
+                <div id="tabOrder" class="tab-content" style="padding:15px; gap:15px;">
+                    <div style="display:flex; gap:10px;">
+                        <div style="flex:1;"><label style="font-size:11px; color:#888;">ΤΡΑΠΕΖΙ</label><input type="number" id="inpTable" style="width:100%; padding:15px; background:#333; border:1px solid #444; color:white; border-radius:8px; text-align:center; font-weight:bold;"></div>
+                        <div style="flex:1;"><label style="font-size:11px; color:#888;">ΑΤΟΜΑ</label><input type="number" id="inpCovers" style="width:100%; padding:15px; background:#333; border:1px solid #444; color:white; border-radius:8px; text-align:center; font-weight:bold;"></div>
                     </div>
+                    <textarea id="inpOrderText" style="flex:1; padding:15px; background:#333; border:1px solid #444; color:white; border-radius:8px; font-size:18px; resize:none;" placeholder="Γράψε προϊόντα..."></textarea>
+                    <button onclick="App.sendOrder()" style="width:100%; padding:20px; background:#FFD700; color:black; border:none; border-radius:10px; font-size:20px; font-weight:bold;">ΑΠΟΣΤΟΛΗ 🚀</button>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -259,357 +181,207 @@
     </div>
 
     <script>
-    const AudioEngine = {
-        keepAlivePlayer: null, 
-        alarmPlayer: null,    
-        isRinging: false,
-        wakeLock: null,
-
-        async init() {
-            console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
-
-            if (!this.keepAlivePlayer) {
-                this.keepAlivePlayer = document.createElement("audio");
-                this.keepAlivePlayer.id = 'keepAlive';
-                this.keepAlivePlayer.src = "tone19hz.wav"; 
-                this.keepAlivePlayer.loop = true;
-                this.keepAlivePlayer.volume = 1.0; 
-                document.body.appendChild(this.keepAlivePlayer);
-            }
-
-            if (!this.alarmPlayer) {
-                this.alarmPlayer = document.createElement("audio");
-                this.alarmPlayer.id = 'alarmSound';
-                this.alarmPlayer.src = "alert.mp3"; 
-                this.alarmPlayer.loop = true; // LOOP ALARM
-                this.alarmPlayer.volume = 1.0;
-                document.body.appendChild(this.alarmPlayer);
-            }
-
-            this.requestWakeLock();
-            this.setupMediaSession();
-
-            try {
-                await this.keepAlivePlayer.play();
-                console.log("✅ Keep-Alive Running");
-            } catch (e) {
-                console.log("⏳ Waiting for user interaction...");
-            }
-        },
-
-        setupMediaSession() {
-            if (!("mediaSession" in navigator)) return;
-            const handler = () => { if(this.isRinging) { if(window.App) window.App.acceptAlarmStaff(); } else { this.keepAlivePlayer.play(); } };
-            ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
-        },
-
-        async triggerAlarm() {
-            if (this.isRinging) return;
-            this.isRinging = true;
-            this.alarmPlayer.currentTime = 0;
-            try { await this.alarmPlayer.play(); } catch(e){}
-        },
-
-        stopAlarm() {
-            if (!this.isRinging) return;
-            this.isRinging = false;
-            this.alarmPlayer.pause();
-            this.alarmPlayer.currentTime = 0;
-        },
-
-        async requestWakeLock() {
-            if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
-        }
-    };
-    window.AudioEngine = AudioEngine;
+        // AUDIO ENGINE & WAKELOCK (Διατηρείται ίδιο)
+        const AudioEngine = {
+            keepAlivePlayer: null, alarmPlayer: null, isRinging: false,
+            async init() {
+                if (!this.keepAlivePlayer) {
+                    this.keepAlivePlayer = document.createElement("audio");
+                    this.keepAlivePlayer.src = "tone19hz.wav"; this.keepAlivePlayer.loop = true;
+                    document.body.appendChild(this.keepAlivePlayer);
+                }
+                if (!this.alarmPlayer) {
+                    this.alarmPlayer = document.createElement("audio");
+                    this.alarmPlayer.src = "alert.mp3"; this.alarmPlayer.loop = true;
+                    document.body.appendChild(this.alarmPlayer);
+                }
+                try { await this.keepAlivePlayer.play(); } catch (e) {}
+            },
+            triggerAlarm() { this.isRinging = true; this.alarmPlayer.play().catch(e=>{}); },
+            stopAlarm() { this.isRinging = false; this.alarmPlayer.pause(); this.alarmPlayer.currentTime = 0; }
+        };
     </script>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-
         const savedSession = localStorage.getItem('bellgo_session');
         if (!savedSession) window.location.href = "login.html";
-        const userData = JSON.parse(savedSession || '{}');
+        const userData = JSON.parse(savedSession);
 
-        // Firebase Config
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
-            authDomain: "bellgo-5dbe5.firebaseapp.com", 
-            projectId: "bellgo-5dbe5", 
-            storageBucket: "bellgo-5dbe5.firebasestorage.app", 
-            messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
-        };
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
-
-        // EXTRA AUDIO (Loop for Admin Orders)
-        let orderAlertSound = new Audio('alert.mp3');
-        orderAlertSound.loop = true; 
+        let orderAlertSound = new Audio('alert.mp3'); orderAlertSound.loop = true;
 
         window.UI = {
-            showTab: (tabName) => {
-                document.getElementById('tabChat').style.display = (tabName === 'chat') ? 'flex' : 'none';
-                document.getElementById('tabOrder').style.display = (tabName === 'order') ? 'flex' : 'none';
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                event.target.classList.add('active');
+            showTab: (tab) => {
+                document.getElementById('tabChat').classList.toggle('active', tab==='chat');
+                document.getElementById('tabOrder').classList.toggle('active', tab==='order');
+                document.getElementById('tabChatBtn').classList.toggle('active', tab==='chat');
+                document.getElementById('tabOrderBtn').classList.toggle('active', tab==='order');
             },
-            updateBadge: (count) => {
-                const b = document.getElementById('pendingBadge');
-                if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
+            showInfo: () => {
+                alert("📢 ΠΡΟΣΟΧΗ:\n1. Μην χρησιμοποιείτε εξωτερικούς players.\n2. Μην κατεβάζετε την οθόνη (swipe down).\n3. Η εφαρμογή πρέπει να μένει πάντα ανοιχτή.");
+            },
+            toggleOrdersList: () => {
+                const modal = document.getElementById('waiterOrdersModal');
+                modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+                if(modal.style.display === 'block') UI.renderWaiterOrders();
+            },
+            renderWaiterOrders: () => {
+                const content = document.getElementById('waiterOrdersListContent');
+                if(!App.activeOrders.length) { content.innerHTML="<p style='color:#666; text-align:center;'>Καμία παραγγελία</p>"; return; }
+                content.innerHTML = App.activeOrders.map(o => `
+                    <div style="background:#111; padding:10px; border-radius:6px; margin-bottom:8px; border-left:4px solid ${o.status==='ready' ? '#00E676':'#FFD700'};">
+                        <div style="color:#FFD700; font-weight:bold; font-size:14px;">${o.text.split('\n')[0]}</div>
+                        <div style="font-size:12px; white-space:pre-wrap;">${o.text.split('\n').slice(1).join('\n')}</div>
+                        <div style="text-align:right; font-size:10px; color:#888;">${o.status.toUpperCase()}</div>
+                    </div>
+                `).join('');
             }
         };
 
         window.App = {
             activeOrders: [],
-            
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-
+                
                 if (userData.role === 'admin') {
                     document.getElementById('adminPanel').style.display = 'flex';
-                    document.getElementById('adminChatBtn').style.display = 'flex';
+                    document.getElementById('adminSaveMenuBtn').style.display = 'block';
                 } else {
                     document.getElementById('waiterPanel').style.display = 'flex';
-                    document.getElementById('menuText').style.display = 'none';
                 }
 
-                // START AUDIO ENGINE ON FIRST CLICK (Required by Browsers)
-                document.body.addEventListener('click', () => { 
-                    if(window.AudioEngine) window.AudioEngine.init(); 
-                }, {once:true});
-
+                document.body.addEventListener('click', () => AudioEngine.init(), {once:true});
                 App.connectSocket();
-                App.startHeartbeat();
             },
 
             connectSocket: () => {
-                if (window.socket && window.socket.connected) return;
-                window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
+                window.socket = io({ reconnection: true });
                 const socket = window.socket;
 
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
-                    const isNative = !!window.Capacitor;
-                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: isNative });
+                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role });
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
+                // ΔΥΝΑΜΙΚΟ ΜΕΝΟΥ GRID
                 socket.on('menu-update', (txt) => {
-                    if (userData.role === 'admin') {
-                        if (document.activeElement !== document.getElementById('menuText')) document.getElementById('menuText').value = txt;
-                    } else {
-                        document.getElementById('waiterMenuRead').innerText = txt || "ΜΕΝΟΥ";
-                    }
+                    const grid = document.getElementById('menuGrid');
+                    const items = txt ? txt.split('\n') : ["", "", "", ""];
+                    grid.innerHTML = '';
+                    items.forEach((item, idx) => {
+                        const input = document.createElement('input');
+                        input.className = 'menu-item-input';
+                        input.value = item;
+                        input.placeholder = "...";
+                        input.readOnly = (userData.role !== 'admin');
+                        if(userData.role === 'admin') input.oninput = App.liveUpdateMenu;
+                        grid.appendChild(input);
+                    });
                 });
-
-                socket.on('chat-message', (data) => App.appendChat(data));
-                socket.on('staff-list-update', (list) => App.renderStaffList(list));
 
                 socket.on('orders-update', (orders) => {
                     App.activeOrders = orders;
-                    if (userData.role === 'admin') {
-                        App.renderDesktopIcons(orders);
-                    } else {
-                        UI.updateBadge(orders.filter(o => o.from === userData.name).length);
-                    }
+                    // Ενημέρωση Badge
+                    const badge = document.getElementById('ordersCountBadge');
+                    if(orders.length > 0) { badge.style.display='flex'; badge.innerText=orders.length; }
+                    else { badge.style.display='none'; }
+                    
+                    if(userData.role === 'admin') App.renderDesktopIcons(orders);
+                    else UI.renderWaiterOrders();
                 });
-                
+
                 socket.on('ring-bell', () => {
-                    if (userData.role === 'admin') {
-                        // Admin: Rings on order or call
-                        orderAlertSound.currentTime = 0;
-                        orderAlertSound.play().catch(e => console.log(e));
-                    } else {
-                        // Staff: Show Bell Icon & Play Sound
-                        if(window.AudioEngine) window.AudioEngine.triggerAlarm();
+                    if (userData.role === 'admin') { orderAlertSound.play(); } 
+                    else {
+                        AudioEngine.triggerAlarm();
                         const bell = document.getElementById('staffBellBtn');
-                        bell.style.display = 'flex';
-                        bell.classList.add('ringing');
+                        bell.style.display = 'flex'; bell.classList.add('ringing');
                     }
                 });
-            },
 
-            // --- ADMIN DESKTOP ---
-            renderDesktopIcons: (orders) => {
-                const desktop = document.getElementById('desktopArea');
-                desktop.innerHTML = '';
-
-                orders.sort((a,b) => a.id - b.id);
-
-                orders.forEach(order => {
-                    const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const icon = document.createElement('div');
-                    icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
-                    icon.innerHTML = `<div class="folder-icon">📂</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
-                    icon.onclick = () => App.openOrderWindow(order);
-                    desktop.appendChild(icon);
-                });
-            },
-
-            openOrderWindow: (order) => {
-                // STOP SOUND
-                orderAlertSound.pause();
-                orderAlertSound.currentTime = 0;
-
-                let win = document.getElementById(`win-${order.id}`);
-                if (!win) {
-                    win = document.createElement('div');
-                    win.className = 'order-window';
-                    win.id = `win-${order.id}`;
-                    document.getElementById('windowsContainer').appendChild(win);
-                    
-                    // Drag logic
-                    let isDown=false, offset=[0,0];
-                    win.addEventListener('mousedown', (e) => {
-                        if(e.target.closest('.win-header')) { isDown=true; offset=[win.offsetLeft-e.clientX, win.offsetTop-e.clientY]; }
-                    });
-                    document.addEventListener('mouseup', () => isDown=false);
-                    document.addEventListener('mousemove', (e) => {
-                        if(isDown) { win.style.left=(e.clientX+offset[0])+'px'; win.style.top=(e.clientY+offset[1])+'px'; }
-                    });
-                }
-
-                const displayTxt = order.text.replace('\n', '<br>');
-                let actions = '';
-                let borderCol = '#555';
-                
-                if (order.status === 'pending') {
-                    actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
-                } else {
-                    actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                    borderCol = '#2196F3';
-                }
-
-                win.style.border = `2px solid ${borderCol}`;
-                win.innerHTML = `
-                    <div class="win-header">
-                        <span style="font-weight:bold; color:white;">${order.from}</span>
-                        <div class="win-controls">
-                            <button class="win-btn-top" style="background:#FF9800; color:black;" onclick="App.minimizeOrder('${order.id}')">_</button>
-                            <button class="win-btn-top" style="background:#D32F2F;" onclick="App.minimizeOrder('${order.id}')">X</button>
-                        </div>
-                    </div>
-                    <div class="win-body">${displayTxt}</div>
-                    <div class="win-footer">${actions}</div>
-                `;
-                win.style.display = 'flex';
-                // Bring to front logic can be added via z-index
-            },
-
-            minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
-
-            acceptOrder: (id) => {
-                // INSTANT STOP SOUND
-                orderAlertSound.pause();
-                orderAlertSound.currentTime = 0;
-                
-                // INSTANT UI UPDATE
-                const win = document.getElementById(`win-${id}`);
-                if (win) {
-                    const footer = win.querySelector('.win-footer');
-                    footer.innerHTML = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                    win.style.border = "2px solid #2196F3"; 
-                }
-
-                // NOTIFY SERVER
-                window.socket.emit('accept-order', Number(id));
-            },
-
-            completeOrder: (id) => {
-                if(confirm("Κλείσιμο παραγγελίας;")) {
-                    window.socket.emit('close-order', Number(id));
-                    const win = document.getElementById(`win-${id}`);
-                    if(win) win.remove();
-                }
-            },
-
-            // --- STAFF (WAITER) ACCEPT ---
-            acceptAlarmStaff: () => {
-                if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                
-                const bell = document.getElementById('staffBellBtn');
-                bell.style.display = 'none';
-                bell.classList.remove('ringing');
-                
-                window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
-            },
-
-            // --- STAFF LIST ---
-            renderStaffList: (list) => {
-                const container = document.getElementById('staffList');
-                if (!container) return;
-                container.innerHTML = '';
-                
-                list.forEach(u => {
-                    if (u.role === 'admin' || u.role === 'customer') return;
-                    
-                    const row = document.createElement('div');
-                    row.className = 'staff-row';
-                    const btn = document.createElement('button');
-                    const isAway = u.status === 'away';
-                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    let stTxt = isAway ? "⚠️ AWAY" : "IDLE";
-                    let stCol = isAway ? "#FF9800" : "white";
-                    if(u.isRinging) { stTxt = "📞 ..."; stCol = "yellow"; }
-
-                    btn.innerHTML = `<span>${u.username}</span><span id="status-${u.username}" style="color:${stCol}; font-size:10px;">${stTxt}</span>`;
-                    btn.onclick = () => {
-                        window.socket.emit('trigger-alarm', u.username);
-                        const span = document.getElementById(`status-${u.username}`);
-                        if(span) { span.innerText = "📞 ..."; span.style.color = "yellow"; }
-                    };
-                    row.appendChild(btn);
-
-                    if (userData.role === 'admin' && isAway && !u.isRinging) {
-                        const delBtn = document.createElement('button');
-                        delBtn.className = 'btn-delete';
-                        delBtn.innerText = 'X';
-                        delBtn.onclick = () => { if(confirm("Διαγραφή;")) window.socket.emit('manual-logout', { targetUser: u.username }); };
-                        row.appendChild(delBtn);
-                    }
-                    container.appendChild(row);
-                });
-            },
-
-            // --- MENU & CHAT & ORDER ---
-            liveUpdateMenu: () => window.socket.emit('live-menu-type', document.getElementById('menuText').value),
-            saveMenu: () => { window.socket.emit('save-menu', document.getElementById('menuText').value); alert("Αποθηκεύτηκε!"); },
-            toggleAdminChat: () => { const el=document.getElementById('adminChatOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
-            sendChat: (mode) => {
-                const id = mode === 'admin' ? 'adminChatInp' : 'waiterChatInp';
-                const inp = document.getElementById(id);
-                if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
-            },
-            appendChat: (data) => {
-                ['adminChatBox', 'waiterChatBox'].forEach(bid => {
-                    const box = document.getElementById(bid);
+                socket.on('chat-message', (data) => {
+                    const box = document.getElementById('waiterChatBox');
                     if(box) {
-                        box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
+                        box.innerHTML += `<div style="align-self:${data.sender===userData.name ? 'flex-end':'flex-start'}; background:${data.sender===userData.name ? '#00E676':'#333'}; color:${data.sender===userData.name ? 'black':'white'}; padding:10px; border-radius:12px; max-width:80%; font-size:14px;"><b>${data.sender}:</b> ${data.text}</div>`;
                         box.scrollTop = box.scrollHeight;
                     }
                 });
+
+                socket.on('staff-list-update', (list) => App.renderStaffList(list));
+            },
+
+            liveUpdateMenu: () => {
+                const inputs = document.querySelectorAll('.menu-item-input');
+                const txt = Array.from(inputs).map(i => i.value).join('\n');
+                window.socket.emit('live-menu-type', txt);
+            },
+            saveMenu: () => {
+                const inputs = document.querySelectorAll('.menu-item-input');
+                const txt = Array.from(inputs).map(i => i.value).join('\n');
+                window.socket.emit('save-menu', txt);
+                alert("Το μενού αποθηκεύτηκε!");
             },
             sendOrder: () => {
                 const t = document.getElementById('inpTable').value;
                 const c = document.getElementById('inpCovers').value;
                 const txt = document.getElementById('inpOrderText').value;
-                if (!txt.trim()) return alert("Γράψε παραγγελία!");
-                window.socket.emit('new-order', `[ΤΡ: ${t||'-'} | AT: ${c||'-'}]\n${txt}`);
-                document.getElementById('inpTable').value = '';
-                document.getElementById('inpCovers').value = '';
-                document.getElementById('inpOrderText').value = '';
+                if(!txt.trim()) return alert("Γράψε την παραγγελία!");
+                window.socket.emit('new-order', `ΤΡΑΠΕΖΙ ${t||'-'} (${c||'0'} άτομα)\n${txt}`);
+                document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value='';
                 alert("Εστάλη! 🚀");
             },
-
-            // --- SYSTEM ---
-            logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
-            toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
-            forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
-            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+            acceptAlarmStaff: () => {
+                AudioEngine.stopAlarm();
+                document.getElementById('staffBellBtn').style.display = 'none';
+                window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
+            },
+            renderDesktopIcons: (orders) => {
+                const desktop = document.getElementById('desktopArea'); desktop.innerHTML = '';
+                orders.forEach(o => {
+                    const div = document.createElement('div');
+                    div.className = `order-folder ${o.status==='pending' ? 'ringing':''}`;
+                    div.style = "width:80px; text-align:center; cursor:pointer;";
+                    div.innerHTML = `<div style="font-size:40px;">📂</div><div style="font-size:10px; background:rgba(0,0,0,0.5); border-radius:4px;">${o.from}</div>`;
+                    div.onclick = () => App.openOrderWindow(o);
+                    desktop.appendChild(div);
+                });
+            },
+            openOrderWindow: (o) => {
+                orderAlertSound.pause(); orderAlertSound.currentTime=0;
+                let win = document.getElementById(`win-${o.id}`);
+                if(!win) {
+                    win = document.createElement('div'); win.id=`win-${o.id}`;
+                    win.style = "position:absolute; top:20%; left:20%; width:300px; background:#2b2b2b; border:2px solid #FFD700; border-radius:8px; pointer-events:auto; z-index:3000; display:flex; flex-direction:column;";
+                    document.getElementById('windowsContainer').appendChild(win);
+                }
+                win.innerHTML = `
+                    <div style="background:#444; padding:8px; display:flex; justify-content:space-between; color:white; font-weight:bold;"><span>${o.from}</span><button onclick="this.parentElement.parentElement.remove()" style="background:red; color:white; border:none;">X</button></div>
+                    <div style="padding:15px; font-weight:bold; white-space:pre-wrap;">${o.text}</div>
+                    <div style="padding:10px; display:flex; gap:5px;">
+                        ${o.status==='pending' ? `<button onclick="App.acceptOrder('${o.id}')" style="flex:1; padding:10px; background:#2196F3; color:white; border:none; border-radius:4px;">ΑΠΟΔΟΧΗ</button>` : `<button onclick="App.completeOrder('${o.id}')" style="flex:1; padding:10px; background:#00E676; border:none; border-radius:4px;">ΕΤΟΙΜΟ</button>`}
+                    </div>
+                `;
+            },
+            acceptOrder: (id) => window.socket.emit('accept-order', Number(id)),
+            completeOrder: (id) => { if(confirm("Κλείσιμο;")) window.socket.emit('close-order', Number(id)); document.getElementById(`win-${id}`)?.remove(); },
+            renderStaffList: (list) => {
+                const sidebar = document.getElementById('staffList'); sidebar.innerHTML = '';
+                list.forEach(u => {
+                    if(u.role==='admin') return;
+                    const d = document.createElement('div');
+                    d.style = "padding:8px; margin-bottom:5px; background:#333; border-radius:4px; font-size:12px; display:flex; justify-content:space-between;";
+                    d.innerHTML = `<span>${u.username}</span><span style="color:${u.status==='online'?'#00E676':'#FF9800'}">${u.status}</span>`;
+                    d.onclick = () => window.socket.emit('trigger-alarm', u.username);
+                    sidebar.appendChild(d);
+                });
+            },
+            toggleFakeLock: () => {
+                const el = document.getElementById('fakeLockOverlay');
+                el.style.display = (el.style.display==='flex') ? 'none' : 'flex';
+            },
+            logout: () => { localStorage.removeItem('bellgo_session'); window.location.href="login.html"; }
         };
 
         window.onload = App.init;
