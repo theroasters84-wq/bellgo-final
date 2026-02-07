@@ -19,16 +19,22 @@
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-google { background: #DB4437; color: white; border: none; padding: 15px 25px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(219,68,55,0.4); }
 
-        /* DETAILS FORM */
-        #detailsOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
-        .inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; }
-        .btn-save-details { padding: 12px; background: #00E676; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        /* DETAILS & PAYMENT OVERLAYS */
+        .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        
+        .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+        
+        .inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; width: 100%; }
+        .btn-save-details { padding: 12px; background: #00E676; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; }
+
+        /* PAYMENT BUTTONS */
+        .btn-pay { width: 100%; padding: 15px; margin: 5px 0; border-radius: 8px; border: 1px solid #444; background: #333; color: white; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+        .btn-pay:active { background: #FFD700; color: black; transform: scale(0.98); }
 
         /* MAIN LAYOUT */
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; }
 
-        /* MENU AREA (SCROLLABLE) */
+        /* MENU AREA */
         #menuContainer {
             flex: 1;
             overflow-y: auto;
@@ -49,7 +55,7 @@
         }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
-        /* ORDER PANEL (FIXED BOTTOM) */
+        /* ORDER PANEL */
         .order-panel { 
             background: #1a1a1a; 
             border-top: 2px solid #333; 
@@ -57,7 +63,7 @@
             flex-direction: column; 
             padding: 10px; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
-            flex-shrink: 0; /* Δεν συρρικνώνεται */
+            flex-shrink: 0; 
             z-index: 20;
         }
         
@@ -77,7 +83,6 @@
             margin-bottom: 8px; 
             transition: border-color 0.2s, background-color 0.2s;
         }
-        /* Visual Flash Effect */
         textarea.order-text.flash { border-color: #00E676; background-color: #2a2a2a; }
         
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
@@ -93,11 +98,10 @@
         .status-text { font-size: 24px; font-weight: bold; color: white; margin-bottom: 10px; }
         .status-sub { font-size: 15px; color: #aaa; }
 
-        /* NEW ORDER BUTTON */
         .btn-new-order {
             margin-top: 30px;
             padding: 15px 30px;
-            background: #00E676; /* Green */
+            background: #00E676; 
             color: black;
             border: none;
             border-radius: 30px;
@@ -122,14 +126,27 @@
         </button>
     </div>
 
-    <div id="detailsOverlay">
+    <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; text-align:center; margin:0;">📍 Στοιχεία Παράδοσης</h3>
+            <h3 style="color:#FFD700; margin:0;">📍 Στοιχεία Παράδοσης</h3>
             <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας">
             <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)">
             <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι">
             <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας">
             <button class="btn-save-details" onclick="App.saveDetails()">ΑΠΟΘΗΚΕΥΣΗ & ΣΥΝΕΧΕΙΑ</button>
+        </div>
+    </div>
+
+    <div id="paymentOverlay" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#FFD700;">Τρόπος Πληρωμής</h3>
+            <button class="btn-pay" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">
+                💵 ΜΕΤΡΗΤΑ
+            </button>
+            <button class="btn-pay" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">
+                💳 ΚΑΡΤΑ
+            </button>
+            <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
 
@@ -152,7 +169,7 @@
                 <button class="btn-edit" onclick="App.editDetails()">✏️ Αλλαγή</button>
             </div>
             <textarea id="orderText" class="order-text" placeholder="Η παραγγελία σας..."></textarea>
-            <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀</button>
+            <button class="btn-send" onclick="App.requestPayment()">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀</button>
         </div>
 
         <div id="statusOverlay">
@@ -160,7 +177,6 @@
                 <div id="statusIcon" class="status-icon">⏳</div>
                 <div id="statusText" class="status-text">Αναμονή...</div>
                 <div id="statusSub" class="status-sub">Μην κλείνετε την εφαρμογή</div>
-                
                 <button id="btnNewOrder" class="btn-new-order" onclick="App.resetForNewOrder()">➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</button>
             </div>
         </div>
@@ -171,7 +187,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // Firebase Config
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -196,8 +211,6 @@
 
         let currentUser = null;
         let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-        
-        // PERSISTENCE: activeOrderState { id, status, timestamp }
         let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
         const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
@@ -212,7 +225,6 @@
 
             checkDetails: () => {
                 document.getElementById('loginScreen').style.display = 'none';
-                
                 if (!customerDetails) {
                     document.getElementById('detailsOverlay').style.display = 'flex';
                     if (currentUser && currentUser.displayName) {
@@ -263,7 +275,6 @@
             checkActiveOrderStorage: () => {
                 if (activeOrderState) {
                     const now = Date.now();
-                    // Expire 'ready' orders after 1 hour
                     if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
                         localStorage.removeItem('bellgo_active_order');
                         activeOrderState = null;
@@ -288,28 +299,23 @@
                     App.renderMenu(data);
                 });
 
-                // --- CRITICAL FIX FOR STATUS ---
                 socket.on('orders-update', (orders) => {
                     const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    // Check if MY order exists in the active orders list
                     const myOrder = orders.find(o => o.from === mySocketUsername);
                     
                     if (myOrder) {
-                        // Order exists on server -> Sync status
                         if (!activeOrderState || activeOrderState.status !== myOrder.status) {
                             activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                             App.updateStatusUI(myOrder.status);
                         }
                     } else {
-                        // Order MISSING from server. 
-                        // If I had a "Cooking" or "Pending" order locally, it means it was Deleted/Completed by Admin.
-                        // We must assume it is now DELIVERING ("Ready").
+                        // Logic: If order is missing but was cooking/pending, assume it's sent (Ready)
                         if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
                             activeOrderState.status = 'ready';
                             activeOrderState.timestamp = Date.now();
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                            App.updateStatusUI('ready'); // Switch to "Coming" screen
+                            App.updateStatusUI('ready');
                         }
                     }
                 });
@@ -339,10 +345,8 @@
                                 const box = document.createElement('div');
                                 box.className = 'item-box';
                                 box.innerText = item.trim();
-                                
-                                // KEYBOARD & INTERACTION FIX
                                 const handleAdd = (e) => {
-                                    if (e.cancelable) e.preventDefault(); // Stop focus loss
+                                    if (e.cancelable) e.preventDefault(); 
                                     App.addToOrder(item.trim());
                                 };
                                 box.addEventListener('mousedown', handleAdd);
@@ -361,10 +365,7 @@
 
             addToOrder: (item) => {
                 const txt = document.getElementById('orderText');
-                // Ensure focus logic
                 txt.focus();
-                
-                // Visual feedback
                 txt.classList.add('flash');
                 setTimeout(() => txt.classList.remove('flash'), 200);
 
@@ -386,13 +387,21 @@
                 txt.scrollTop = txt.scrollHeight;
             },
 
-            sendOrder: () => {
+            // Step 1: Open Payment Overlay
+            requestPayment: () => {
                 const items = document.getElementById('orderText').value.trim();
                 if (!items) return alert("Το καλάθι είναι άδειο!");
+                document.getElementById('paymentOverlay').style.display = 'flex';
+            },
 
-                const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n---\n${items}`;
+            // Step 2: Confirm & Send
+            confirmPayment: (method) => {
+                document.getElementById('paymentOverlay').style.display = 'none';
+                const items = document.getElementById('orderText').value.trim();
+
+                const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
                 
-                // Set initial local state
+                // Init State
                 activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
                 localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
 
@@ -410,7 +419,7 @@
                 const btnNew = document.getElementById('btnNewOrder');
 
                 overlay.style.height = '100%'; 
-                btnNew.style.display = 'none'; // Default hidden
+                btnNew.style.display = 'none'; 
 
                 if (status === 'pending') {
                     icon.innerText = '⏳';
@@ -424,7 +433,7 @@
                     icon.innerText = '🛵';
                     text.innerText = 'Η παραγγελία έρχεται!';
                     sub.innerText = 'Ο διανομέας ξεκίνησε';
-                    btnNew.style.display = 'block'; // SHOW BUTTON
+                    btnNew.style.display = 'block'; 
                 }
             },
 
