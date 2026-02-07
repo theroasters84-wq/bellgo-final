@@ -16,10 +16,16 @@
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        
+        /* ICON BUTTON & BADGE */
+        .btn-icon-wrapper { position: relative; display: inline-block; }
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
         .btn-icon:active { background: #333; }
 
-        /* HEADER BADGE */
+        .chat-badge {
+            position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10;
+        }
+
         .btn-badge {
             position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none;
         }
@@ -28,68 +34,34 @@
         #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
         #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
 
-        /* BADGE */
-        .pending-badge { position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none; }
-
-        /* STAFF LAYOUT */
+        /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
         
-        /* --- MENU STYLES (CATEGORIES) --- */
+        /* MENU (CATEGORIES) */
         #waiterMenuRead {
             padding: 10px;
             background: #111;
             border-bottom: 1px solid #333;
             overflow-y: auto;
-            max-height: 50vh; 
+            max-height: 40vh; /* Menu takes up to 40% */
             flex-shrink: 0;
             display: flex;
-            flex-direction: column; /* Stack categories vertically */
+            flex-direction: column; 
             gap: 15px;
         }
 
-        .category-block {
-            width: 100%;
-        }
-
-        .category-title {
-            color: #FFD700;
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 2px;
-            text-transform: uppercase;
-        }
-
-        .category-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        .category-block { width: 100%; }
+        .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
+        .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
 
         .menu-item-box {
-            background: #222;
-            border: 1px solid #444;
-            padding: 10px 14px;
-            border-radius: 6px;
-            color: #ccc;
-            font-size: 15px;
-            font-style: italic;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: background 0.1s;
-            user-select: none; 
+            background: #222; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; color: #ccc; font-size: 15px; font-style: italic; white-space: nowrap; cursor: pointer; transition: background 0.1s; user-select: none;
         }
         .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
 
-        .tabs { display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0; }
-        .tab-btn { flex: 1; padding: 15px; background: transparent; color: #888; border: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: white; border-bottom: 3px solid #FFD700; background: #333; }
-        .tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
-        .tab-content.active { display: flex; }
-
-        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; height: 100%; overflow: hidden; }
+        /* ORDER FORM (TAKES REMAINING SPACE) */
+        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 10px; flex: 1; height: 100%; overflow: hidden; background: #181818; }
         .form-row { display: flex; gap: 10px; flex-shrink: 0; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
@@ -99,7 +71,7 @@
             flex-grow: 1; 
             width: 100%; 
             padding: 15px; 
-            background: #333; 
+            background: #222; 
             border: 1px solid #444; 
             border-radius: 8px; 
             color: white; 
@@ -109,7 +81,12 @@
         
         .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
 
-        /* CHAT */
+        /* OVERLAYS */
+        .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
+        
+        /* CHAT OVERLAY */
+        #staffChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
+        .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
         .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
         .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 15px; word-wrap: break-word; }
@@ -118,24 +95,13 @@
         .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
         .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
-        
-        /* OVERLAYS */
-        .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
-        
+
+        /* INFO & ORDERS OVERLAYS */
         .info-box { background: #222; border: 2px solid #FFD700; border-radius: 10px; padding: 20px; width: 90%; max-width: 400px; text-align: left; }
         .info-title { color: #FFD700; font-size: 18px; font-weight: bold; margin-bottom: 10px; display:flex; align-items:center; gap:10px; }
         .info-list li { margin-bottom: 8px; color: #ddd; font-size: 14px; }
 
-        .orders-box-container {
-            width: 90%; 
-            max-width: 400px; 
-            background: #222; 
-            border: 1px solid #444; 
-            border-radius: 10px; 
-            display: flex; 
-            flex-direction: column;
-            max-height: 80%;
-        }
+        .orders-box-container { width: 90%; max-width: 400px; background: #222; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; max-height: 80%; }
         .orders-header { padding: 15px; border-bottom: 1px solid #444; font-weight: bold; font-size: 18px; color: white; text-align: center; }
         .orders-list { overflow-y: auto; padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
         .orders-footer { padding: 10px; border-top: 1px solid #444; }
@@ -149,8 +115,6 @@
     </style>
 </head>
 <body>
-
-    <div id="pendingBadge" class="pending-badge">0</div>
 
     <div id="mainApp">
         <div class="header">
@@ -168,7 +132,13 @@
                     📋 <span id="ordersBadge" class="btn-badge">0</span>
                 </button>
 
+                <div class="btn-icon-wrapper">
+                    <button id="chatBtn" class="btn-icon" onclick="App.toggleChat()" title="Chat">📁</button>
+                    <div id="chatBadge" class="chat-badge"></div>
+                </div>
+
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
+                
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
@@ -177,78 +147,70 @@
         <div id="waiterPanel">
             <div id="waiterMenuRead"></div>
 
-            <div class="tabs">
-                <button class="tab-btn active" onclick="UI.showTab('chat')">💬 CHAT</button>
-                <button class="tab-btn" onclick="UI.showTab('order')">📝 ΠΑΡΑΓΓΕΛΙΑ</button>
-            </div>
-
-            <div id="tabChat" class="tab-content active">
-                <div class="chat-container">
-                    <div id="waiterChatBox" class="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα...">
-                        <button class="chat-btn" onclick="App.sendChat()">➤</button>
+            <div class="order-form">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>ΤΡΑΠΕΖΙ</label>
+                        <input type="number" id="inpTable" class="input-box" placeholder="#">
+                    </div>
+                    <div class="input-group">
+                        <label>ΚΟΥΒΕΡ</label>
+                        <input type="number" id="inpCovers" class="input-box" placeholder="0">
                     </div>
                 </div>
+                
+                <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ (Πάτα στο μενού για προσθήκη)</label>
+                <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
+
+                <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
             </div>
+        </div>
 
-            <div id="tabOrder" class="tab-content">
-                <div class="order-form">
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>ΤΡΑΠΕΖΙ</label>
-                            <input type="number" id="inpTable" class="input-box" placeholder="#">
-                        </div>
-                        <div class="input-group">
-                            <label>ΚΟΥΒΕΡ</label>
-                            <input type="number" id="inpCovers" class="input-box" placeholder="0">
-                        </div>
-                    </div>
-                    
-                    <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ (Πάτα στο μενού για προσθήκη)</label>
-                    <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
-
-                    <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
+        <div id="staffChatOverlay">
+            <div class="overlay-header">
+                <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
+                <button onclick="App.toggleChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
+            </div>
+            <div class="chat-container">
+                <div id="waiterChatBox" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα...">
+                    <button class="chat-btn" onclick="App.sendChat()">➤</button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="fakeLockOverlay" class="overlay-screen" onclick="App.toggleFakeLock()" style="background:black;">
-        <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
-    </div>
-
-    <div id="infoOverlay" class="overlay-screen" onclick="App.toggleInfo()">
-        <div class="info-box" onclick="event.stopPropagation()">
-            <div class="info-title">⚠️ ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ</div>
-            <ul class="info-list">
-                <li>❌ <b>ΜΗΝ</b> κλείνετε την εφαρμογή (App).</li>
-                <li>❌ <b>ΜΗΝ</b> κλειδώνετε το κινητό (Power Button).</li>
-                <li>❌ <b>ΜΗΝ</b> χρησιμοποιείτε YouTube / Spotify.</li>
-                <li>✅ Χρησιμοποιήστε το <b>"🌙"</b> για μπαταρία.</li>
-            </ul>
-            <button onclick="App.toggleInfo()" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; margin-top:10px;">OK</button>
+        <div id="fakeLockOverlay" class="overlay-screen" onclick="App.toggleFakeLock()" style="background:black;">
+            <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
         </div>
-    </div>
 
-    <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
-        <div class="orders-box-container" onclick="event.stopPropagation()">
-            <div class="orders-header">Οι Παραγγελίες μου</div>
-            <div id="myOrdersList" class="orders-list"></div>
-            <div class="orders-footer">
-                <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
+        <div id="infoOverlay" class="overlay-screen" onclick="App.toggleInfo()">
+            <div class="info-box" onclick="event.stopPropagation()">
+                <div class="info-title">⚠️ ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ</div>
+                <ul class="info-list">
+                    <li>❌ <b>ΜΗΝ</b> κλείνετε την εφαρμογή (App).</li>
+                    <li>❌ <b>ΜΗΝ</b> κλειδώνετε το κινητό (Power Button).</li>
+                    <li>❌ <b>ΜΗΝ</b> χρησιμοποιείτε YouTube / Spotify.</li>
+                    <li>✅ Χρησιμοποιήστε το <b>"🌙"</b> για μπαταρία.</li>
+                </ul>
+                <button onclick="App.toggleInfo()" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; margin-top:10px;">OK</button>
+            </div>
+        </div>
+
+        <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
+            <div class="orders-box-container" onclick="event.stopPropagation()">
+                <div class="orders-header">Οι Παραγγελίες μου</div>
+                <div id="myOrdersList" class="orders-list"></div>
+                <div class="orders-footer">
+                    <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
     const AudioEngine = {
-        keepAlivePlayer: null, 
-        alarmPlayer: null,    
-        isRinging: false,
-        wakeLock: null,
-        vibrationInterval: null, // ΝΕΟ: Για επανάληψη δόνησης
-
+        keepAlivePlayer: null, alarmPlayer: null, isRinging: false, wakeLock: null, vibrationInterval: null,
         async init() {
             if (!this.keepAlivePlayer) {
                 this.keepAlivePlayer = document.createElement("audio");
@@ -273,13 +235,9 @@
             this.isRinging = true; 
             this.alarmPlayer.currentTime = 0; 
             try { await this.alarmPlayer.play(); } catch(e){} 
-            
-            // ΕΝΑΡΞΗ ΔΟΝΗΣΗΣ (500ms on, 500ms off)
             if ("vibrate" in navigator) {
                 navigator.vibrate([500, 500]);
-                this.vibrationInterval = setInterval(() => {
-                    navigator.vibrate([500, 500]);
-                }, 1000);
+                this.vibrationInterval = setInterval(() => { navigator.vibrate([500, 500]); }, 1000);
             }
         },
         stopAlarm() { 
@@ -287,15 +245,8 @@
             this.isRinging = false; 
             this.alarmPlayer.pause(); 
             this.alarmPlayer.currentTime = 0; 
-            
-            // ΤΕΡΜΑΤΙΣΜΟΣ ΔΟΝΗΣΗΣ
-            if (this.vibrationInterval) {
-                clearInterval(this.vibrationInterval);
-                this.vibrationInterval = null;
-            }
-            if ("vibrate" in navigator) {
-                navigator.vibrate(0); // Kill vibration immediately
-            }
+            if (this.vibrationInterval) { clearInterval(this.vibrationInterval); this.vibrationInterval = null; }
+            if ("vibrate" in navigator) { navigator.vibrate(0); }
         },
         async requestWakeLock() { if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} } }
     };
@@ -322,12 +273,6 @@
         const messaging = getMessaging(app);
 
         window.UI = {
-            showTab: (tabName) => {
-                document.getElementById('tabChat').style.display = (tabName === 'chat') ? 'flex' : 'none';
-                document.getElementById('tabOrder').style.display = (tabName === 'order') ? 'flex' : 'none';
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                event.target.classList.add('active');
-            },
             updateBadge: (count) => {
                 const b = document.getElementById('ordersBadge');
                 if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
@@ -344,7 +289,6 @@
                     let statusTxt = '⏳ Σε αναμονή'; let statusClass = 'pending';
                     if(o.status === 'cooking') { statusTxt = '🍳 Ετοιμάζεται'; statusClass = 'cooking'; }
                     if(o.status === 'ready') { statusTxt = '✅ Έτοιμο!'; statusClass = 'ready'; }
-
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
                     div.innerHTML = `<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${new Date(o.id).toLocaleTimeString()} - ${statusTxt}</div><div style="white-space:pre-wrap; font-weight:bold; color:white;">${o.text}</div>`;
@@ -355,6 +299,7 @@
 
         window.App = {
             myPendingOrders: [],
+            isChatOpen: false,
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -381,32 +326,19 @@
                 socket.on('menu-update', (data) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
-
                     let menu = [];
-                    // Check if it's JSON array or plain text
                     try {
-                        if(typeof data === 'string' && data.startsWith('[')) {
-                            menu = JSON.parse(data);
-                        } else if (typeof data === 'object') {
-                            menu = data;
-                        } else {
-                            // Old Plain Text Format Fallback
-                            const items = (data || "ΜΕΝΟΥ").split('\n');
-                            menu = [{ name: "ΓΕΝΙΚΑ", items: items }];
-                        }
+                        if(typeof data === 'string' && data.startsWith('[')) { menu = JSON.parse(data); } 
+                        else if (typeof data === 'object') { menu = data; } 
+                        else { const items = (data || "ΜΕΝΟΥ").split('\n'); menu = [{ name: "ΓΕΝΙΚΑ", items: items }]; }
                     } catch(e) { menu = []; }
 
-                    // Sort Categories
                     if(Array.isArray(menu)) {
                         menu.sort((a,b) => (a.order || 99) - (b.order || 99));
-                        
                         menu.forEach(cat => {
-                            // 1. Render Title
                             const title = document.createElement('div');
                             title.className = 'category-title';
                             title.innerText = cat.name;
-                            
-                            // 2. Container for items
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
 
@@ -415,7 +347,6 @@
                                     const box = document.createElement('div');
                                     box.className = 'menu-item-box';
                                     box.innerText = item.trim();
-                                    // Prevent keyboard close
                                     const handleAdd = (e) => {
                                         if (e.cancelable) e.preventDefault(); 
                                         App.addToOrder(item.trim());
@@ -425,8 +356,6 @@
                                     itemsDiv.appendChild(box);
                                 }
                             });
-
-                            // Only append if it has items or is a category wrapper
                             const wrapper = document.createElement('div');
                             wrapper.className = 'category-block';
                             wrapper.appendChild(title);
@@ -453,14 +382,11 @@
                 });
             },
 
-            // --- SMART ADD TO ORDER + FOCUS KEEP ---
             addToOrder: (item) => {
                 const txt = document.getElementById('inpOrderText');
-                UI.showTab('order');
-                
+                txt.focus();
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
-
                 for (let i = 0; i < lines.length; i++) {
                     let regex = new RegExp(`^(\\d+)?\\s*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
                     let match = lines[i].match(regex);
@@ -471,10 +397,8 @@
                         break;
                     }
                 }
-
                 if (!found) lines.push(item);
                 txt.value = lines.join('\n');
-                
                 txt.scrollTop = txt.scrollHeight;
                 setTimeout(() => txt.focus(), 0);
             },
@@ -486,12 +410,28 @@
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
             },
 
+            toggleChat: () => {
+                const el = document.getElementById('staffChatOverlay');
+                App.isChatOpen = (el.style.display === 'flex');
+                if(App.isChatOpen) {
+                    el.style.display = 'none';
+                    App.isChatOpen = false;
+                } else {
+                    el.style.display = 'flex';
+                    App.isChatOpen = true;
+                    document.getElementById('chatBadge').style.display = 'none';
+                }
+            },
+
             sendChat: () => {
                 const inp = document.getElementById('waiterChatInp');
                 if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
             },
             
             appendChat: (data) => {
+                if (data.sender !== userData.name && !App.isChatOpen) {
+                    document.getElementById('chatBadge').style.display = 'block';
+                }
                 const box = document.getElementById('waiterChatBox');
                 if(box) {
                     box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
