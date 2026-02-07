@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>BellGo Delivery</title>
+    <title>Delivery</title>
     
     <link rel="manifest" id="dynamicManifest" href="manifest.json">
     
@@ -21,11 +21,9 @@
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-google { background: #DB4437; color: white; border: none; padding: 15px 25px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(219,68,55,0.4); }
 
-        /* OVERLAYS (DETAILS & PAYMENT) */
+        /* OVERLAYS */
         .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        
         .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
-        
         .inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; width: 100%; }
         .btn-save-details { padding: 12px; background: #00E676; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; }
 
@@ -37,83 +35,29 @@
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; }
 
         /* MENU AREA */
-        #menuContainer {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            background: #121212;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            padding-bottom: 20px;
-        }
-        
+        #menuContainer { flex: 1; overflow-y: auto; padding: 10px; background: #121212; display: flex; flex-direction: column; gap: 15px; padding-bottom: 20px; }
         .category-block { width: 100%; }
         .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-        
-        .item-box { 
-            background: #222; border: 1px solid #444; padding: 12px 16px; border-radius: 8px; color: #eee; font-size: 15px; font-style: italic; cursor: pointer; transition: transform 0.1s; user-select: none; -webkit-user-select: none;
-        }
+        .item-box { background: #222; border: 1px solid #444; padding: 12px 16px; border-radius: 8px; color: #eee; font-size: 15px; font-style: italic; cursor: pointer; transition: transform 0.1s; user-select: none; -webkit-user-select: none; }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
         /* ORDER PANEL */
-        .order-panel { 
-            background: #1a1a1a; 
-            border-top: 2px solid #333; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 10px; 
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
-            flex-shrink: 0; 
-            z-index: 20;
-        }
-        
+        .order-panel { background: #1a1a1a; border-top: 2px solid #333; display: flex; flex-direction: column; padding: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); flex-shrink: 0; z-index: 20; }
         .address-bar { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #333; }
         .btn-edit { background: none; border: 1px solid #555; color: #FFD700; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
-        textarea.order-text { 
-            width: 100%; 
-            height: 80px; 
-            background: #222; 
-            border: 1px solid #444; 
-            color: white; 
-            padding: 10px; 
-            border-radius: 6px; 
-            font-size: 16px; 
-            resize: none; 
-            margin-bottom: 8px; 
-            transition: border-color 0.2s, background-color 0.2s;
-        }
+        textarea.order-text { width: 100%; height: 80px; background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 16px; resize: none; margin-bottom: 8px; transition: border-color 0.2s, background-color 0.2s; }
         textarea.order-text.flash { border-color: #00E676; background-color: #2a2a2a; }
-        
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
 
         /* STATUS OVERLAY */
-        #statusOverlay { 
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 0; 
-            background: rgba(0,0,0,0.95); transition: height 0.3s; 
-            overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; 
-        }
+        #statusOverlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: rgba(0,0,0,0.95); transition: height 0.3s; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; }
         .status-content { text-align: center; width: 80%; }
         .status-icon { font-size: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
         .status-text { font-size: 24px; font-weight: bold; color: white; margin-bottom: 10px; }
         .status-sub { font-size: 15px; color: #aaa; }
-
-        .btn-new-order {
-            margin-top: 30px;
-            padding: 15px 30px;
-            background: #00E676; 
-            color: black;
-            border: none;
-            border-radius: 30px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            display: none; 
-            box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4);
-            width: 100%;
-        }
+        .btn-new-order { margin-top: 30px; padding: 15px 30px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; display: none; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4); width: 100%; }
 
         @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -142,12 +86,8 @@
     <div id="paymentOverlay" class="overlay-screen">
         <div class="details-box">
             <h3 style="color:#FFD700;">Τρόπος Πληρωμής</h3>
-            <button class="btn-pay" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">
-                💵 ΜΕΤΡΗΤΑ
-            </button>
-            <button class="btn-pay" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">
-                💳 ΚΑΡΤΑ
-            </button>
+            <button class="btn-pay" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">💵 ΜΕΤΡΗΤΑ</button>
+            <button class="btn-pay" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">💳 ΚΑΡΤΑ</button>
             <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
@@ -204,7 +144,8 @@
         const messaging = getMessaging(app);
 
         const params = new URLSearchParams(window.location.search);
-        const TARGET_STORE = params.get('store');
+        let TARGET_STORE = params.get('store');
+        const PRELOADED_NAME = params.get('name'); // Check if name is already in URL
 
         if (!TARGET_STORE) {
             alert("⚠️ Λάθος σύνδεσμος καταστήματος!");
@@ -265,10 +206,16 @@
                 document.getElementById('detailsOverlay').style.display = 'none';
                 document.getElementById('appContent').style.display = 'flex';
                 
-                // Set default name (Email) initially, will be updated by socket
-                if(TARGET_STORE) {
+                // Set Header Name immediately if available in URL (Fastest UI)
+                if (PRELOADED_NAME) {
+                    document.getElementById('storeNameHeader').innerText = decodeURIComponent(PRELOADED_NAME);
+                    document.title = decodeURIComponent(PRELOADED_NAME);
+                    // Update Manifest Link immediately
+                    document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}`;
+                } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 }
+                
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
 
                 App.checkActiveOrderStorage();
@@ -302,18 +249,27 @@
                     App.renderMenu(data);
                 });
 
-                // --- RECEIVE STORE NAME & UPDATE MANIFEST ---
+                // --- SMART RELOAD FOR PWA NAME ---
                 socket.on('store-settings-update', (settings) => {
                     if (settings && settings.name) {
-                        // 1. Change Header Title
-                        document.getElementById('storeNameHeader').innerText = settings.name;
+                        const newName = settings.name;
                         
-                        // 2. Change Browser Title
-                        document.title = settings.name;
+                        // 1. Update UI
+                        document.getElementById('storeNameHeader').innerText = newName;
+                        document.title = newName;
 
-                        // 3. Update Manifest for PWA Installation
-                        const manifestLink = document.getElementById('dynamicManifest');
-                        manifestLink.href = `manifest.json?name=${encodeURIComponent(settings.name)}`;
+                        // 2. CHECK IF WE NEED RELOAD
+                        // If the URL does NOT have the name parameter, we reload with it.
+                        // This fixes the PWA install name on Android.
+                        const currentParams = new URLSearchParams(window.location.search);
+                        if (!currentParams.get('name')) {
+                            currentParams.set('name', newName);
+                            // RELOAD PAGE WITH NEW NAME IN URL
+                            window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
+                        } else {
+                            // If name is already in URL, simply confirm manifest link
+                            document.getElementById('dynamicManifest').href = `manifest.json?name=${encodeURIComponent(newName)}`;
+                        }
                     }
                 });
 
@@ -404,21 +360,18 @@
                 txt.scrollTop = txt.scrollHeight;
             },
 
-            // Step 1: Open Payment Overlay
             requestPayment: () => {
                 const items = document.getElementById('orderText').value.trim();
                 if (!items) return alert("Το καλάθι είναι άδειο!");
                 document.getElementById('paymentOverlay').style.display = 'flex';
             },
 
-            // Step 2: Confirm & Send
             confirmPayment: (method) => {
                 document.getElementById('paymentOverlay').style.display = 'none';
                 const items = document.getElementById('orderText').value.trim();
 
                 const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
                 
-                // Init State
                 activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
                 localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
 
