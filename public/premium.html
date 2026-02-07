@@ -23,7 +23,7 @@
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
         
-        /* MENU SECTION (NEW STYLE) */
+        /* MENU SECTION */
         .menu-section { height: 160px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         
         .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -50,9 +50,9 @@
             padding: 8px;
             border-radius: 4px;
             font-size: 14px;
-            width: 120px; /* Fixed width or auto */
+            width: 120px; 
             text-align: center;
-            font-style: italic; /* Πλάγια γραφή */
+            font-style: italic; 
         }
         .menu-input-box:focus { border-color: #FFD700; outline: none; background: #333; }
 
@@ -77,41 +77,46 @@
         /* WINDOWS LAYER */
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
         
-        /* ORDER WINDOW - AUTO HEIGHT (NO SCROLL UNLESS HUGE) */
+        /* ORDER SCREEN - FULL SCREEN OVERLAY */
         .order-window { 
-            position: absolute; 
-            width: 95%; 
-            max-width: 800px; 
-            height: auto; /* Αυτόματο ύψος για να φαίνεται όλη η παραγγελία */
-            max-height: 90%; /* Scroll μόνο αν ξεπεράσει το 90% της οθόνης */
-            top: 5%; 
-            left: 2.5%; 
-            background: #2b2b2b; 
-            border: 2px solid #555; 
-            border-radius: 8px; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.95); 
+            position: fixed !important; /* Force Fixed */
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            background: #000 !important; /* Black background covers everything */
+            border: none !important;
+            border-radius: 0 !important;
             display: none; 
             flex-direction: column; 
             pointer-events: auto; 
-            z-index: 3000; 
+            z-index: 10000 !important; /* Above everything */
         }
-        .win-header { background: #444; padding: 12px; border-top-left-radius: 8px; border-top-right-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
-        .win-controls { display: flex; gap: 8px; }
-        .win-btn-top { border: none; width: 30px; height: 30px; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
+        
+        .win-header { 
+            background: #1a1a1a; 
+            padding: 20px; 
+            border-bottom: 2px solid #333;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .win-controls { display: flex; gap: 15px; }
+        .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         
         .win-body { 
-            padding: 20px; 
-            overflow-y: auto; /* Scroll only if needed */
-            flex: 1; /* Takes available space */
-            font-size: 22px; 
+            padding: 40px; /* More padding */
+            overflow-y: auto; 
+            flex: 1; 
+            font-size: 32px; /* Huge text for readability */
             font-weight: bold; 
-            line-height: 1.4; 
+            line-height: 1.6; 
             color: #fff; 
             white-space: pre-wrap; 
         }
         
-        .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; flex-shrink: 0; }
-        .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 18px; }
+        .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
+        .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
 
         /* STAFF LIST BUTTONS */
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
@@ -205,10 +210,8 @@
         const savedSession = localStorage.getItem('bellgo_session');
         if (!savedSession) window.location.href = "login.html";
         const userData = JSON.parse(savedSession || '{}');
-        // Simple security check
         if (userData.role !== 'admin') { alert("Access Denied"); window.location.href = "login.html"; }
 
-        // Firebase Config
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -220,7 +223,6 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // EXTRA AUDIO (Loop for Admin Orders)
         let orderAlertSound = new Audio('alert.mp3');
         orderAlertSound.loop = true; 
 
@@ -230,8 +232,6 @@
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-                
-                // Init Audio on first click
                 document.body.addEventListener('click', () => { 
                     orderAlertSound.play().then(() => orderAlertSound.pause());
                 }, {once:true});
@@ -253,20 +253,13 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // HANDLE MENU UPDATE (RENDER BOXES)
                 socket.on('menu-update', (txt) => {
                     const container = document.getElementById('menuInputContainer');
-                    // Avoid re-rendering if active element is one of our inputs to prevent focus loss
-                    // But we must sync if it's an external update. 
-                    // Simple approach: Re-render completely if not focusing an input, 
-                    // or if focusing, do nothing (we assume admin is the source of truth).
                     if (document.activeElement && document.activeElement.classList.contains('menu-input-box')) {
                         return; 
                     }
-                    
                     container.innerHTML = '';
                     if (!txt) return;
-                    
                     const lines = txt.split('\n');
                     lines.forEach(line => {
                         if (line.trim()) App.addMenuItem(line.trim());
@@ -287,7 +280,6 @@
                 });
             },
 
-            // --- MENU LOGIC ---
             addMenuItem: (value = '') => {
                 const container = document.getElementById('menuInputContainer');
                 const input = document.createElement('input');
@@ -296,28 +288,14 @@
                 input.value = value;
                 input.placeholder = "Προϊόν...";
                 
-                // Live Update on typing
-                input.addEventListener('input', () => {
-                    App.syncMenuToServer();
-                });
-
-                // Remove if empty on blur
+                input.addEventListener('input', () => { App.syncMenuToServer(); });
                 input.addEventListener('blur', () => {
-                    if (input.value.trim() === '') {
-                        input.remove();
-                        App.syncMenuToServer();
-                    }
+                    if (input.value.trim() === '') { input.remove(); App.syncMenuToServer(); }
                 });
-
-                // Remove on Enter if empty, else blur
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        input.blur();
-                    }
-                });
+                input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { input.blur(); } });
 
                 container.appendChild(input);
-                if (value === '') input.focus(); // Focus if new
+                if (value === '') input.focus(); 
             },
 
             syncMenuToServer: () => {
@@ -333,11 +311,8 @@
                 alert("Αποθηκεύτηκε!");
             },
 
-            liveUpdateMenu: () => {
-                // Deprecated for textarea, now handled by syncMenuToServer
-            },
+            liveUpdateMenu: () => {},
 
-            // --- DESKTOP LOGIC ---
             renderDesktopIcons: (orders) => {
                 const desktop = document.getElementById('desktopArea');
                 desktop.innerHTML = '';
@@ -358,21 +333,12 @@
                 orderAlertSound.currentTime = 0;
 
                 let win = document.getElementById(`win-${order.id}`);
+                // Δημιουργία ή εύρεση
                 if (!win) {
                     win = document.createElement('div');
-                    win.className = 'order-window';
+                    win.className = 'order-window'; // Αυτό έχει CSS για Full Screen
                     win.id = `win-${order.id}`;
                     document.getElementById('windowsContainer').appendChild(win);
-                    
-                    // Drag logic
-                    let isDown=false, offset=[0,0];
-                    win.addEventListener('mousedown', (e) => {
-                        if(e.target.closest('.win-header')) { isDown=true; offset=[win.offsetLeft-e.clientX, win.offsetTop-e.clientY]; }
-                    });
-                    document.addEventListener('mouseup', () => isDown=false);
-                    document.addEventListener('mousemove', (e) => {
-                        if(isDown) { win.style.left=(e.clientX+offset[0])+'px'; win.style.top=(e.clientY+offset[1])+'px'; }
-                    });
                 }
 
                 const displayTxt = order.text.replace('\n', '<br>');
@@ -386,19 +352,18 @@
                     borderCol = '#2196F3';
                 }
 
-                win.style.border = `2px solid ${borderCol}`;
+                // Γεμίζουμε το περιεχόμενο
                 win.innerHTML = `
                     <div class="win-header">
-                        <span style="font-weight:bold; color:white;">${order.from}</span>
+                        <span style="font-weight:bold; color:white; font-size:24px;">${order.from}</span>
                         <div class="win-controls">
-                            <button class="win-btn-top" style="background:#FF9800; color:black;" onclick="App.minimizeOrder('${order.id}')">_</button>
-                            <button class="win-btn-top" style="background:#D32F2F;" onclick="App.minimizeOrder('${order.id}')">X</button>
+                            <button class="win-btn-top" style="background:#FF9800; color:black;" onclick="App.minimizeOrder('${order.id}')">🔙 ΠΙΣΩ</button>
                         </div>
                     </div>
                     <div class="win-body">${displayTxt}</div>
                     <div class="win-footer">${actions}</div>
                 `;
-                win.style.display = 'flex';
+                win.style.display = 'flex'; // Εμφάνιση
             },
 
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
@@ -411,7 +376,6 @@
                 if (win) {
                     const footer = win.querySelector('.win-footer');
                     footer.innerHTML = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                    win.style.border = "2px solid #2196F3"; 
                 }
                 window.socket.emit('accept-order', Number(id));
             },
@@ -424,7 +388,6 @@
                 }
             },
 
-            // --- STAFF LIST ---
             renderStaffList: (list) => {
                 const container = document.getElementById('staffList');
                 if (!container) return;
@@ -461,7 +424,6 @@
                 });
             },
 
-            // --- SYSTEM & MENU ---
             toggleAdminChat: () => { const el=document.getElementById('adminChatOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             
             sendChat: () => {
