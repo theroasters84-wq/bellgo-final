@@ -24,11 +24,10 @@
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
         
         /* MENU SECTION */
-        .menu-section { height: 160px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         
         .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         
-        /* INPUT CONTAINER FOR BOXES */
         #menuInputContainer {
             flex: 1;
             display: flex;
@@ -42,7 +41,28 @@
             padding: 5px;
         }
 
-        /* INDIVIDUAL MENU ITEM BOX */
+        /* CATEGORY BOX STYLE */
+        .category-box {
+            background: #333;
+            border: 2px solid #FFD700;
+            color: #FFD700;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            width: 140px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+        }
+        .category-order {
+            position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555;
+        }
+        .btn-delete-cat {
+            position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;
+        }
+
+        /* ITEM BOX STYLE */
         .menu-input-box {
             background: #222;
             border: 1px solid #555;
@@ -54,10 +74,11 @@
             text-align: center;
             font-style: italic; 
         }
-        .menu-input-box:focus { border-color: #FFD700; outline: none; background: #333; }
+        .menu-input-box:focus { border-color: #2196F3; outline: none; background: #333; }
 
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
+        .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
 
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
         
@@ -74,49 +95,49 @@
         .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-time { font-size: 11px; color: #FFD700; background: #000; padding: 2px 5px; border-radius: 10px; margin-top: 2px; font-weight: bold; }
 
-        /* WINDOWS LAYER */
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
         
         /* ORDER SCREEN - FULL SCREEN OVERLAY */
         .order-window { 
-            position: fixed !important; /* Force Fixed */
+            position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100vw !important;
             height: 100dvh !important;
-            background: #000 !important; /* Black background covers everything */
+            background: #000 !important;
             border: none !important;
-            border-radius: 0 !important;
             display: none; 
             flex-direction: column; 
             pointer-events: auto; 
-            z-index: 10000 !important; /* Above everything */
+            z-index: 10000 !important;
         }
         
         .win-header { 
             background: #1a1a1a; 
-            padding: 20px; 
+            padding: 15px 20px; 
             border-bottom: 2px solid #333;
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
         }
-        .win-controls { display: flex; gap: 15px; }
         .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         
         .win-body { 
-            padding: 40px; /* More padding */
+            padding: 20px; 
             overflow-y: auto; 
             flex: 1; 
-            font-size: 32px; /* Huge text for readability */
             font-weight: bold; 
-            line-height: 1.6; 
+            line-height: 1.4; 
             color: #fff; 
-            white-space: pre-wrap; 
+            white-space: pre-wrap;
+            display: flex;
+            align-items: flex-start; /* Start text from top */
+            justify-content: flex-start;
         }
         
-        .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
-        .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
+        .win-footer { padding: 10px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
+        /* SMALLER BUTTONS */
+        .btn-win-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 20px; }
 
         /* STAFF LIST BUTTONS */
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
@@ -126,7 +147,6 @@
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* CHAT OVERLAY */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -165,10 +185,11 @@
         <div id="adminPanel">
             <div class="menu-section">
                 <div class="menu-header">
-                    <span style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
-                    <div style="display:flex; gap:10px;">
-                        <button class="btn-add" onclick="App.addMenuItem()" title="Προσθήκη Προϊόντος">➕</button>
-                        <button class="btn-save" onclick="App.saveMenu()">SAVE</button>
+                    <span id="menuTitle" style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
+                        <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
+                        <button class="btn-save" onclick="App.saveMenuToServer()">SAVE</button>
                     </div>
                 </div>
                 <div id="menuInputContainer"></div>
@@ -228,7 +249,9 @@
 
         window.App = {
             activeOrders: [],
-            
+            menuData: [], // Array of { id, order, name, items: [] }
+            currentCategoryIndex: null, // null = showing categories, int = showing items of category index
+
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
@@ -253,17 +276,20 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                socket.on('menu-update', (txt) => {
-                    const container = document.getElementById('menuInputContainer');
-                    if (document.activeElement && document.activeElement.classList.contains('menu-input-box')) {
-                        return; 
+                // HANDLE MENU DATA
+                socket.on('menu-update', (data) => {
+                    // Try to parse JSON, if fails, it's old text format -> Convert to default category
+                    try {
+                        if (typeof data === 'string' && !data.startsWith('[')) {
+                            // Migration for legacy plain text
+                            App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
+                        } else {
+                            App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
+                        }
+                    } catch(e) {
+                        App.menuData = [];
                     }
-                    container.innerHTML = '';
-                    if (!txt) return;
-                    const lines = txt.split('\n');
-                    lines.forEach(line => {
-                        if (line.trim()) App.addMenuItem(line.trim());
-                    });
+                    App.renderMenu();
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
@@ -280,39 +306,124 @@
                 });
             },
 
-            addMenuItem: (value = '') => {
+            // --- MENU LOGIC V2 (CATEGORIES) ---
+            handlePlusButton: () => {
+                if (App.currentCategoryIndex === null) {
+                    // Create Category
+                    let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
+                    if(!order) return;
+                    let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
+                    if(!name) return;
+                    
+                    App.menuData.push({
+                        id: Date.now(),
+                        order: parseInt(order) || 99,
+                        name: name.toUpperCase(),
+                        items: []
+                    });
+                    App.saveMenuToServer();
+                } else {
+                    // Create Item in Category
+                    App.addItemInput('');
+                }
+            },
+
+            renderMenu: () => {
+                const container = document.getElementById('menuInputContainer');
+                container.innerHTML = '';
+
+                // SORT DATA
+                App.menuData.sort((a,b) => a.order - b.order);
+
+                if (App.currentCategoryIndex === null) {
+                    // SHOW CATEGORIES
+                    document.getElementById('menuTitle').innerText = "📜 ΚΑΤΗΓΟΡΙΕΣ";
+                    document.getElementById('btnBackCat').style.display = 'none';
+                    
+                    App.menuData.forEach((cat, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'category-box';
+                        div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
+                        
+                        // Delete Button
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'btn-delete-cat';
+                        delBtn.innerText = 'X';
+                        delBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            if(confirm("Διαγραφή κατηγορίας;")) {
+                                App.menuData.splice(index, 1);
+                                App.saveMenuToServer();
+                            }
+                        };
+                        div.appendChild(delBtn);
+
+                        div.onclick = () => {
+                            App.currentCategoryIndex = index;
+                            App.renderMenu();
+                        };
+                        container.appendChild(div);
+                    });
+
+                } else {
+                    // SHOW ITEMS IN CATEGORY
+                    const cat = App.menuData[App.currentCategoryIndex];
+                    if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
+
+                    document.getElementById('menuTitle').innerText = `📂 ${cat.name}`;
+                    document.getElementById('btnBackCat').style.display = 'block';
+
+                    cat.items.forEach((item, itemIdx) => {
+                        App.addItemInput(item, itemIdx);
+                    });
+                }
+            },
+
+            addItemInput: (val, index = null) => {
                 const container = document.getElementById('menuInputContainer');
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'menu-input-box';
-                input.value = value;
+                input.value = val;
                 input.placeholder = "Προϊόν...";
                 
-                input.addEventListener('input', () => { App.syncMenuToServer(); });
-                input.addEventListener('blur', () => {
-                    if (input.value.trim() === '') { input.remove(); App.syncMenuToServer(); }
-                });
-                input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { input.blur(); } });
+                const saveInput = () => {
+                    const val = input.value.trim();
+                    const cat = App.menuData[App.currentCategoryIndex];
+                    if(val === '') {
+                        if(index !== null) cat.items.splice(index, 1); // Remove empty
+                    } else {
+                        if(index === null) cat.items.push(val); // Add new
+                        else cat.items[index] = val; // Update
+                    }
+                    App.saveMenuToServer();
+                };
+
+                input.addEventListener('blur', saveInput);
+                input.addEventListener('keydown', (e) => { if(e.key==='Enter') input.blur(); });
 
                 container.appendChild(input);
-                if (value === '') input.focus(); 
+                if(index === null) input.focus();
             },
 
-            syncMenuToServer: () => {
-                const inputs = document.querySelectorAll('.menu-input-box');
-                const text = Array.from(inputs).map(i => i.value).filter(v => v.trim() !== '').join('\n');
-                window.socket.emit('live-menu-type', text);
+            goBackToCategories: () => {
+                App.currentCategoryIndex = null;
+                App.renderMenu();
             },
 
-            saveMenu: () => {
-                const inputs = document.querySelectorAll('.menu-input-box');
-                const text = Array.from(inputs).map(i => i.value).filter(v => v.trim() !== '').join('\n');
-                window.socket.emit('save-menu', text);
-                alert("Αποθηκεύτηκε!");
+            saveMenuToServer: () => {
+                // Remove empty items before save
+                App.menuData.forEach(cat => {
+                    cat.items = cat.items.filter(i => i.trim() !== '');
+                });
+                // Send as JSON string
+                window.socket.emit('save-menu', JSON.stringify(App.menuData));
+                App.renderMenu(); // Re-render to clean up
             },
 
-            liveUpdateMenu: () => {},
+            liveUpdateMenu: () => {}, // Deprecated
 
+            // --- DESKTOP LOGIC ---
             renderDesktopIcons: (orders) => {
                 const desktop = document.getElementById('desktopArea');
                 desktop.innerHTML = '';
@@ -333,26 +444,29 @@
                 orderAlertSound.currentTime = 0;
 
                 let win = document.getElementById(`win-${order.id}`);
-                // Δημιουργία ή εύρεση
                 if (!win) {
                     win = document.createElement('div');
-                    win.className = 'order-window'; // Αυτό έχει CSS για Full Screen
+                    win.className = 'order-window';
                     win.id = `win-${order.id}`;
                     document.getElementById('windowsContainer').appendChild(win);
                 }
 
                 const displayTxt = order.text.replace('\n', '<br>');
                 let actions = '';
-                let borderCol = '#555';
                 
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                    borderCol = '#2196F3';
                 }
 
-                // Γεμίζουμε το περιεχόμενο
+                // DYNAMIC FONT SIZE
+                const len = order.text.length;
+                let fontSize = '36px'; // Default Big
+                if (len > 100) fontSize = '24px';
+                if (len > 300) fontSize = '18px';
+
+                win.style.border = `none`;
                 win.innerHTML = `
                     <div class="win-header">
                         <span style="font-weight:bold; color:white; font-size:24px;">${order.from}</span>
@@ -360,10 +474,10 @@
                             <button class="win-btn-top" style="background:#FF9800; color:black;" onclick="App.minimizeOrder('${order.id}')">🔙 ΠΙΣΩ</button>
                         </div>
                     </div>
-                    <div class="win-body">${displayTxt}</div>
+                    <div class="win-body" style="font-size:${fontSize};">${displayTxt}</div>
                     <div class="win-footer">${actions}</div>
                 `;
-                win.style.display = 'flex'; // Εμφάνιση
+                win.style.display = 'flex';
             },
 
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
