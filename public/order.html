@@ -34,10 +34,37 @@
             overflow-y: auto;
             padding: 10px;
             background: #121212;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin: 15px 0 5px 0; border-bottom: 1px solid #333; padding-bottom: 5px; text-transform: uppercase; }
+        
+        .category-block { width: 100%; }
+        
+        .category-title { 
+            color: #FFD700; 
+            font-weight: bold; 
+            font-size: 16px; 
+            margin-bottom: 8px; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 2px; 
+            text-transform: uppercase; 
+        }
+        
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-        .item-box { background: #222; border: 1px solid #444; padding: 12px 15px; border-radius: 8px; color: #eee; font-size: 15px; font-style: italic; cursor: pointer; transition: transform 0.1s; }
+        
+        .item-box { 
+            background: #222; 
+            border: 1px solid #444; 
+            padding: 12px 15px; 
+            border-radius: 8px; 
+            color: #eee; 
+            font-size: 15px; 
+            font-style: italic; 
+            cursor: pointer; 
+            transition: transform 0.1s; 
+            user-select: none;
+        }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
         /* ORDER AREA (BOTTOM) */
@@ -53,7 +80,7 @@
         /* STATUS BAR OVERLAY */
         #statusOverlay { 
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0; 
-            background: rgba(0,0,0,0.9); transition: height 0.3s; 
+            background: rgba(0,0,0,0.95); transition: height 0.3s; 
             overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; 
         }
         .status-content { text-align: center; }
@@ -142,12 +169,12 @@
 
         if (!TARGET_STORE) {
             alert("⚠️ Λάθος σύνδεσμος καταστήματος!");
-            document.body.innerHTML = "<h2 style='text-align:center; padding:20px;'>Store Not Found</h2>";
+            document.body.innerHTML = "<h2 style='text-align:center; padding:20px; color:white;'>Store Not Found<br><small>Σκανάρετε ξανά το QR</small></h2>";
         }
 
         let currentUser = null;
         let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-        let currentOrderId = null;
+        let mySocketUsername = ""; // Θα κρατάει το μοναδικό όνομα χρήστη socket
 
         window.App = {
             loginGoogle: () => {
@@ -159,10 +186,11 @@
             },
 
             checkDetails: () => {
+                document.getElementById('loginScreen').style.display = 'none';
+                
                 if (!customerDetails) {
-                    // Show form
                     document.getElementById('detailsOverlay').style.display = 'flex';
-                    if (currentUser) {
+                    if (currentUser && currentUser.displayName) {
                         document.getElementById('inpName').value = currentUser.displayName;
                     }
                 } else {
@@ -185,6 +213,7 @@
             },
 
             editDetails: () => {
+                document.getElementById('appContent').style.display = 'none'; 
                 document.getElementById('detailsOverlay').style.display = 'flex';
                 document.getElementById('inpName').value = customerDetails.name;
                 document.getElementById('inpAddress').value = customerDetails.address;
@@ -194,10 +223,13 @@
 
             startApp: () => {
                 document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('detailsOverlay').style.display = 'none';
                 document.getElementById('appContent').style.display = 'flex';
-                document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 
-                // Update Address Bar
+                if(TARGET_STORE) {
+                    document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
+                }
+                
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
 
                 App.connectSocket();
@@ -209,29 +241,30 @@
                 const socket = window.socket;
 
                 socket.on('connect', () => {
-                    // Join as Customer
+                    mySocketUsername = customerDetails.name + " (Πελάτης)";
                     socket.emit('join-store', { 
                         storeName: TARGET_STORE, 
-                        username: customerDetails.name + " (Πελάτης)", 
+                        username: mySocketUsername, 
                         role: 'customer', 
                         isNative: false 
                     });
                 });
 
-                // Receive Menu
                 socket.on('menu-update', (data) => {
                     App.renderMenu(data);
                 });
 
-                // Listen for my order status updates
+                // CORRECT STATUS CHECKING
                 socket.on('orders-update', (orders) => {
-                    if (!currentOrderId) return;
+                    // Filter orders that belong to ME (using my socket username)
+                    const myOrders = orders.filter(o => o.from === mySocketUsername);
                     
-                    const myOrder = orders.find(o => o.id === currentOrderId);
-                    if (myOrder) {
-                        App.updateStatusUI(myOrder.status);
+                    if (myOrders.length > 0) {
+                        // Get the latest one
+                        const latestOrder = myOrders[myOrders.length - 1];
+                        App.updateStatusUI(latestOrder.status);
                     } else {
-                        // If order disappeared (closed by admin)
+                        // If I had an order and now it's gone (deleted by admin), reset UI
                         if (document.getElementById('statusOverlay').style.height === '100%') {
                             alert("Η παραγγελία ολοκληρώθηκε!");
                             App.resetUI();
@@ -271,18 +304,20 @@
                                 const box = document.createElement('div');
                                 box.className = 'item-box';
                                 box.innerText = item.trim();
-                                // Prevent keyboard hide on tap
+                                
                                 const handleAdd = (e) => {
                                     if (e.cancelable) e.preventDefault(); 
                                     App.addToOrder(item.trim());
                                 };
                                 box.addEventListener('mousedown', handleAdd);
                                 box.addEventListener('touchstart', handleAdd);
+                                
                                 itemsDiv.appendChild(box);
                             }
                         });
 
                         const wrapper = document.createElement('div');
+                        wrapper.className = 'category-block';
                         wrapper.appendChild(title);
                         wrapper.appendChild(itemsDiv);
                         container.appendChild(wrapper);
@@ -295,7 +330,7 @@
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
 
-                // Smart Qty
+                // Smart Qty Logic
                 for (let i = 0; i < lines.length; i++) {
                     let regex = new RegExp(`^(\\d+)?\\s*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
                     let match = lines[i].match(regex);
@@ -315,23 +350,12 @@
                 const items = document.getElementById('orderText').value.trim();
                 if (!items) return alert("Το καλάθι είναι άδειο!");
 
-                // Construct full order text for Admin
                 const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n---\n${items}`;
-
-                // Set ID to track status
-                currentOrderId = Date.now(); // Using timestamp logic same as socket sender
-                
-                // Emitting the order manually to match server expectations
-                // We need to patch the client-side socket emission slightly or assume server uses timestamp
-                // Actually server assigns ID = Date.now(). We need to rely on identifying our order by sender name initially or better logic.
-                // For this simple version, we trust the username matching.
                 
                 window.socket.emit('new-order', fullText);
                 
-                // Hack: We estimate ID will be close to now, but better rely on user filtering
-                // Wait for update
                 App.showStatus('pending');
-                document.getElementById('orderText').value = ''; // Clear
+                document.getElementById('orderText').value = ''; 
             },
 
             showStatus: (status) => {
@@ -340,7 +364,7 @@
                 const text = document.getElementById('statusText');
                 const sub = document.getElementById('statusSub');
 
-                overlay.style.height = '100%'; // Show Full Overlay
+                overlay.style.height = '100%'; 
 
                 if (status === 'pending') {
                     icon.innerText = '⏳';
@@ -363,7 +387,6 @@
 
             resetUI: () => {
                 document.getElementById('statusOverlay').style.height = '0';
-                currentOrderId = null;
             }
         };
 
