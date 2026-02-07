@@ -30,6 +30,31 @@
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
         
+        /* --- MENU STYLES (NEW) --- */
+        #waiterMenuRead {
+            padding: 10px;
+            background: #111;
+            border-bottom: 1px solid #333;
+            /* Flexbox για τα κουτάκια */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            overflow-y: auto;
+            max-height: 35vh; /* Μέγιστο ύψος 35% της οθόνης */
+            flex-shrink: 0;
+        }
+
+        .menu-item-box {
+            background: #222;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 15px;
+            font-style: italic; /* Πλάγια γραφή */
+            white-space: nowrap;
+        }
+
         .tabs { display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0; }
         .tab-btn { flex: 1; padding: 15px; background: transparent; color: #888; border: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
         .tab-btn.active { color: white; border-bottom: 3px solid #FFD700; background: #333; }
@@ -41,7 +66,20 @@
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
         .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
-        textarea.order-text { flex-grow: 1; width: 100%; padding: 15px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; resize: none; min-height: 100px; }
+        
+        /* --- ORDER TEXTAREA (EXPANDED) --- */
+        textarea.order-text { 
+            flex-grow: 1; /* Πιάνει όλο τον ελεύθερο χώρο */
+            width: 100%; 
+            padding: 15px; 
+            background: #333; 
+            border: 1px solid #444; 
+            border-radius: 8px; 
+            color: white; 
+            font-size: 18px; 
+            resize: none; 
+        }
+        
         .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
 
         /* CHAT */
@@ -79,7 +117,7 @@
         </div>
 
         <div id="waiterPanel">
-            <div id="waiterMenuRead" style="padding:10px; background:#111; color:#ccc; border-bottom:1px solid #333; font-size:13px; max-height:80px; overflow-y:auto; white-space:pre-wrap;"></div>
+            <div id="waiterMenuRead"></div>
 
             <div class="tabs">
                 <button class="tab-btn active" onclick="UI.showTab('chat')">💬 CHAT</button>
@@ -235,8 +273,21 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
+                // --- NEW LOGIC: MENU AS BOXES ---
                 socket.on('menu-update', (txt) => {
-                    document.getElementById('waiterMenuRead').innerText = txt || "ΜΕΝΟΥ";
+                    const container = document.getElementById('waiterMenuRead');
+                    container.innerHTML = '';
+                    if(!txt) { container.innerText = "ΜΕΝΟΥ"; return; }
+                    
+                    const lines = txt.split('\n');
+                    lines.forEach(line => {
+                        if(line.trim()) {
+                            const div = document.createElement('div');
+                            div.className = 'menu-item-box';
+                            div.innerText = line.trim();
+                            container.appendChild(div);
+                        }
+                    });
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
@@ -246,7 +297,6 @@
                 });
                 
                 socket.on('ring-bell', () => {
-                    // STAFF HEARS ALARM
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
