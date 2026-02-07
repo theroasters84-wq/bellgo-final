@@ -479,6 +479,7 @@
                 if(win) win.style.display = 'none'; // Re-open to refresh UI or update dynamically
             },
 
+            // --- ADDED FUNCTION (Fix for Missing Button Logic) ---
             markReady: (id) => {
                 window.socket.emit('ready-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
