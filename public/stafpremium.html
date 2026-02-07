@@ -59,7 +59,7 @@
             white-space: nowrap;
             cursor: pointer;
             transition: background 0.1s;
-            user-select: none; /* Όχι επιλογή κειμένου */
+            user-select: none; 
         }
         .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
 
@@ -325,7 +325,7 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // --- MENU LOGIC ---
+                // --- MENU LOGIC WITH PREVENT DEFAULT ---
                 socket.on('menu-update', (txt) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
@@ -337,8 +337,10 @@
                             const div = document.createElement('div');
                             div.className = 'menu-item-box';
                             div.innerText = line.trim();
-                            // CLICK TO ADD TO ORDER (INTELLIGENT)
-                            div.onclick = () => App.addToOrder(line.trim());
+                            
+                            // PREVENT FOCUS LOSS ON CLICK/TOUCH
+                            div.onmousedown = (e) => { e.preventDefault(); App.addToOrder(line.trim()); };
+                            
                             container.appendChild(div);
                         }
                     });
@@ -361,21 +363,17 @@
                 });
             },
 
-            // --- SMART ADD TO ORDER ---
+            // --- SMART ADD TO ORDER + FOCUS KEEP ---
             addToOrder: (item) => {
                 const txt = document.getElementById('inpOrderText');
-                // Ensure we are in Order Tab
                 UI.showTab('order');
                 
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
 
                 for (let i = 0; i < lines.length; i++) {
-                    // Check if line ends with item (to allow "2 Pita")
-                    // Regex: Starts with optional number, then spaces, then exact item name
                     let regex = new RegExp(`^(\\d+)?\\s*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
                     let match = lines[i].match(regex);
-
                     if (match) {
                         let currentQty = parseInt(match[1] || '1');
                         lines[i] = `${currentQty + 1} ${item}`;
@@ -384,11 +382,12 @@
                     }
                 }
 
-                if (!found) {
-                    lines.push(item);
-                }
-
+                if (!found) lines.push(item);
                 txt.value = lines.join('\n');
+                
+                // FORCE FOCUS & SCROLL TO BOTTOM
+                txt.focus();
+                txt.scrollTop = txt.scrollHeight;
             },
 
             acceptAlarmStaff: () => {
