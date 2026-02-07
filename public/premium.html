@@ -311,14 +311,20 @@
                 });
             },
 
-            // --- LINK & QR CODE ---
+            // --- LINK & QR CODE (UPDATED TO INCLUDE NAME) ---
             showLink: () => {
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
                 const qrEl = document.getElementById('qrcode');
                 
                 const baseUrl = window.location.origin;
-                const fullLink = `${baseUrl}/order.html?store=${userData.store}`;
+                const customName = document.getElementById('inpStoreName').value.trim();
+                
+                // Add name to URL if it exists
+                let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
+                if(customName) {
+                    fullLink += `&name=${encodeURIComponent(customName)}`;
+                }
                 
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
@@ -476,10 +482,9 @@
                 orderAlertSound.pause(); orderAlertSound.currentTime = 0;
                 window.socket.emit('accept-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
-                if(win) win.style.display = 'none'; // Re-open to refresh UI or update dynamically
+                if(win) win.style.display = 'none';
             },
 
-            // --- ADDED FUNCTION (Fix for Missing Button Logic) ---
             markReady: (id) => {
                 window.socket.emit('ready-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
