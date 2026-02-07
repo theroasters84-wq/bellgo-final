@@ -7,6 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
@@ -79,6 +80,9 @@
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
+        
+        /* LINK BUTTON */
+        .btn-link { background: #9C27B0; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight:bold; }
 
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
         
@@ -131,12 +135,11 @@
             color: #fff; 
             white-space: pre-wrap;
             display: flex;
-            align-items: flex-start; /* Start text from top */
+            align-items: flex-start;
             justify-content: flex-start;
         }
         
         .win-footer { padding: 10px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
-        /* SMALLER BUTTONS */
         .btn-win-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 20px; }
 
         /* STAFF LIST BUTTONS */
@@ -160,6 +163,12 @@
 
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
         
+        /* QR OVERLAY */
+        #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; }
+        .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
+        #qrcode { margin-top: 10px; }
+        .qr-link { color: #333; font-size: 12px; word-break: break-all; text-align: center; margin-top: 10px; }
+
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -176,6 +185,7 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
                 <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
@@ -217,6 +227,15 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="qrOverlay" onclick="this.style.display='none'">
+        <div class="qr-box" onclick="event.stopPropagation()">
+            <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Παραγγελίας</div>
+            <div id="qrcode"></div>
+            <a id="storeLink" href="#" target="_blank" class="qr-link">...</a>
+            <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:10px; padding:8px 20px; background:#D32F2F; color:white; border:none; border-radius:5px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
@@ -278,10 +297,8 @@
 
                 // HANDLE MENU DATA
                 socket.on('menu-update', (data) => {
-                    // Try to parse JSON, if fails, it's old text format -> Convert to default category
                     try {
                         if (typeof data === 'string' && !data.startsWith('[')) {
-                            // Migration for legacy plain text
                             App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
                         } else {
                             App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
@@ -306,10 +323,33 @@
                 });
             },
 
+            // --- LINK & QR CODE ---
+            showLink: () => {
+                const el = document.getElementById('qrOverlay');
+                const linkEl = document.getElementById('storeLink');
+                const qrEl = document.getElementById('qrcode');
+                
+                // Construct the link (Assumes order.html is in the same root)
+                const baseUrl = window.location.origin;
+                const fullLink = `${baseUrl}/order.html?store=${userData.store}`;
+                
+                linkEl.href = fullLink;
+                linkEl.innerText = fullLink;
+                
+                // Generate QR
+                qrEl.innerHTML = "";
+                new QRCode(qrEl, {
+                    text: fullLink,
+                    width: 200,
+                    height: 200
+                });
+                
+                el.style.display = 'flex';
+            },
+
             // --- MENU LOGIC V2 (CATEGORIES) ---
             handlePlusButton: () => {
                 if (App.currentCategoryIndex === null) {
-                    // Create Category
                     let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
                     if(!order) return;
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
@@ -323,7 +363,6 @@
                     });
                     App.saveMenuToServer();
                 } else {
-                    // Create Item in Category
                     App.addItemInput('');
                 }
             },
@@ -332,11 +371,9 @@
                 const container = document.getElementById('menuInputContainer');
                 container.innerHTML = '';
 
-                // SORT DATA
                 App.menuData.sort((a,b) => a.order - b.order);
 
                 if (App.currentCategoryIndex === null) {
-                    // SHOW CATEGORIES
                     document.getElementById('menuTitle').innerText = "📜 ΚΑΤΗΓΟΡΙΕΣ";
                     document.getElementById('btnBackCat').style.display = 'none';
                     
@@ -345,7 +382,6 @@
                         div.className = 'category-box';
                         div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
                         
-                        // Delete Button
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete-cat';
                         delBtn.innerText = 'X';
@@ -366,7 +402,6 @@
                     });
 
                 } else {
-                    // SHOW ITEMS IN CATEGORY
                     const cat = App.menuData[App.currentCategoryIndex];
                     if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
 
@@ -391,10 +426,10 @@
                     const val = input.value.trim();
                     const cat = App.menuData[App.currentCategoryIndex];
                     if(val === '') {
-                        if(index !== null) cat.items.splice(index, 1); // Remove empty
+                        if(index !== null) cat.items.splice(index, 1);
                     } else {
-                        if(index === null) cat.items.push(val); // Add new
-                        else cat.items[index] = val; // Update
+                        if(index === null) cat.items.push(val); 
+                        else cat.items[index] = val;
                     }
                     App.saveMenuToServer();
                 };
@@ -412,16 +447,14 @@
             },
 
             saveMenuToServer: () => {
-                // Remove empty items before save
                 App.menuData.forEach(cat => {
                     cat.items = cat.items.filter(i => i.trim() !== '');
                 });
-                // Send as JSON string
                 window.socket.emit('save-menu', JSON.stringify(App.menuData));
-                App.renderMenu(); // Re-render to clean up
+                App.renderMenu();
             },
 
-            liveUpdateMenu: () => {}, // Deprecated
+            liveUpdateMenu: () => {}, 
 
             // --- DESKTOP LOGIC ---
             renderDesktopIcons: (orders) => {
@@ -453,11 +486,13 @@
 
                 const displayTxt = order.text.replace('\n', '<br>');
                 let actions = '';
+                let borderCol = '#555';
                 
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
+                    borderCol = '#2196F3';
                 }
 
                 // DYNAMIC FONT SIZE
