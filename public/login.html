@@ -153,10 +153,15 @@
                         // ΕΝΕΡΓΗ ΣΥΝΔΡΟΜΗ -> ΕΛΕΓΧΟΣ ΠΑΚΕΤΟΥ
                         const user = { store: email, name, role, plan: data.plan };
                         
-                        // Εδώ γίνεται η μαγεία: Είτε Admin είτε Waiter, αν το πλάνο είναι Premium -> Πάει στο premium.html
                         if (data.plan === 'premium') {
-                            App.saveAndRedirect(user, "premium.html");
+                            // --- ΝΕΑ ΛΟΓΙΚΗ ΔΙΑΧΩΡΙΣΜΟΥ ΡΟΛΩΝ ---
+                            if (role === 'admin') {
+                                App.saveAndRedirect(user, "premium.html"); // Admin Panel
+                            } else {
+                                App.saveAndRedirect(user, "stafpremium.html"); // Staff Panel
+                            }
                         } else {
+                            // BASIC PLAN (Κοινό για όλους)
                             App.saveAndRedirect(user, "index.html");
                         }
                     } else {
@@ -206,7 +211,7 @@
                 App.pay('basic'); 
             },
 
-            // Login Προσωπικού - ΤΩΡΑ ΕΙΝΑΙ ΕΞΥΠΝΟ!
+            // Login Προσωπικού
             loginStaff: () => {
                 const store = document.getElementById('inpStoreEmail').value.trim();
                 const name = document.getElementById('inpMyName').value.trim();
@@ -214,9 +219,6 @@
 
                 if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
                 
-                // Καλεί τον server για να δει τι πακέτο έχει το κατάστημα
-                // Αν γράψεις π.χ. 'magazi@gmail.compremium', ο server θα επιστρέψει plan: 'premium'
-                // και το checkSubscriptionAndProceed θα σε στείλει στο premium.html
                 App.checkSubscriptionAndProceed(store, name, role);
             },
 
@@ -237,11 +239,16 @@
             }
         };
 
-        // Auto Login Check
+        // --- Auto Login Check (Modified for Role Split) ---
         if (localStorage.getItem('bellgo_session')) {
             const saved = JSON.parse(localStorage.getItem('bellgo_session'));
+            
             if (saved.plan === 'premium') {
-                window.location.href = "premium.html";
+                if (saved.role === 'admin') {
+                    window.location.href = "premium.html";
+                } else {
+                    window.location.href = "stafpremium.html";
+                }
             } else {
                 window.location.href = "index.html";
             }
