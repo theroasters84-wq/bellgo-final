@@ -18,23 +18,12 @@
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         
-        /* ICON BUTTON WITH BADGE CONTAINER */
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .btn-icon:active { background: #333; }
 
-        /* CHAT NOTIFICATION BADGE */
         .chat-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 12px;
-            height: 12px;
-            background-color: #D32F2F; /* Red */
-            border-radius: 50%;
-            border: 2px solid #1e1e1e;
-            display: none; /* Hidden by default */
-            z-index: 10;
+            position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10;
         }
 
         /* ADMIN LAYOUT */
@@ -44,67 +33,38 @@
         /* MENU SECTION */
         .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         
-        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         
         #menuInputContainer {
-            flex: 1;
-            display: flex;
-            flex-wrap: wrap;
-            align-content: flex-start;
-            gap: 8px;
-            overflow-y: auto;
-            background: #000;
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 5px;
+            flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px;
         }
 
         /* CATEGORY BOX STYLE */
         .category-box {
-            background: #333;
-            border: 2px solid #FFD700;
-            color: #FFD700;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            width: 140px;
-            text-align: center;
-            cursor: pointer;
-            position: relative;
+            background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 140px; text-align: center; cursor: pointer; position: relative;
         }
-        .category-order {
-            position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555;
-        }
-        .btn-delete-cat {
-            position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;
-        }
+        .category-order { position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555; }
+        .btn-delete-cat { position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
 
         /* ITEM BOX STYLE */
         .menu-input-box {
-            background: #222;
-            border: 1px solid #555;
-            color: white;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 14px;
-            width: 120px; 
-            text-align: center;
-            font-style: italic; 
+            background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; 
         }
         .menu-input-box:focus { border-color: #2196F3; outline: none; background: #333; }
+
+        /* STORE NAME INPUT */
+        .store-name-input {
+            background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 200px; text-align: center; margin-left: 10px;
+        }
+        .store-name-input:focus { border-color: #00E676; outline: none; }
 
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
-        
-        /* LINK BUTTON */
         .btn-link { background: #9C27B0; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight:bold; }
 
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
-        
         #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 20px; overflow-y: auto; }
-        
         #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
         #staffList { flex: 1; overflow-y: auto; padding: 10px; }
@@ -120,40 +80,23 @@
         
         /* ORDER SCREEN - FULL SCREEN OVERLAY */
         .order-window { 
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100dvh !important;
-            background: #000 !important;
-            border: none !important;
-            display: none; 
-            flex-direction: column; 
-            pointer-events: auto; 
-            z-index: 10000 !important;
+            position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; border: none !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important;
         }
-        
-        .win-header { 
-            background: #1a1a1a; 
-            padding: 15px 20px; 
-            border-bottom: 2px solid #333;
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        }
+        .win-header { background: #1a1a1a; padding: 15px 20px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         
         .win-body { 
-            padding: 40px; 
-            overflow-y: auto; 
+            padding: 20px; 
+            overflow-y: auto; /* Scroll only if absolutely necessary */
             flex: 1; 
             font-weight: bold; 
-            line-height: 1.6; 
+            line-height: 1.3; 
             color: #fff; 
             white-space: pre-wrap;
             display: flex;
-            align-items: flex-start;
-            justify-content: flex-start;
+            align-items: center; /* Center Vertically if short */
+            justify-content: center; /* Center Horizontally */
+            text-align: center;
         }
         
         .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
@@ -218,7 +161,14 @@
         <div id="adminPanel">
             <div class="menu-section">
                 <div class="menu-header">
-                    <span id="menuTitle" style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span id="menuTitle" style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <label style="font-size:9px; color:#aaa;">ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ</label>
+                            <input type="text" id="inpStoreName" class="store-name-input" placeholder="Όνομα...">
+                        </div>
+                    </div>
+
                     <div style="display:flex; gap:10px; align-items:center;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
@@ -293,7 +243,7 @@
             activeOrders: [],
             menuData: [], 
             currentCategoryIndex: null,
-            isChatOpen: false, // Track chat state
+            isChatOpen: false, 
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -301,6 +251,16 @@
                 document.body.addEventListener('click', () => { 
                     orderAlertSound.play().then(() => orderAlertSound.pause());
                 }, {once:true});
+
+                // LISTENER FOR STORE NAME INPUT
+                const nameInput = document.getElementById('inpStoreName');
+                nameInput.addEventListener('blur', () => {
+                    const newName = nameInput.value.trim();
+                    if(newName) window.socket.emit('save-store-name', newName);
+                });
+                nameInput.addEventListener('keydown', (e) => {
+                    if(e.key === 'Enter') nameInput.blur();
+                });
 
                 App.connectSocket();
                 App.startHeartbeat();
@@ -326,10 +286,15 @@
                         } else {
                             App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
                         }
-                    } catch(e) {
-                        App.menuData = [];
-                    }
+                    } catch(e) { App.menuData = []; }
                     App.renderMenu();
+                });
+
+                // UPDATE STORE NAME INPUT
+                socket.on('store-settings-update', (settings) => {
+                    if(settings && settings.name) {
+                        document.getElementById('inpStoreName').value = settings.name;
+                    }
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
@@ -359,12 +324,7 @@
                 linkEl.innerText = fullLink;
                 
                 qrEl.innerHTML = "";
-                new QRCode(qrEl, {
-                    text: fullLink,
-                    width: 200,
-                    height: 200
-                });
-                
+                new QRCode(qrEl, { text: fullLink, width: 200, height: 200 });
                 el.style.display = 'flex';
             },
 
@@ -376,12 +336,7 @@
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
                     if(!name) return;
                     
-                    App.menuData.push({
-                        id: Date.now(),
-                        order: parseInt(order) || 99,
-                        name: name.toUpperCase(),
-                        items: []
-                    });
+                    App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
                     App.saveMenuToServer();
                 } else {
                     App.addItemInput('');
@@ -391,7 +346,6 @@
             renderMenu: () => {
                 const container = document.getElementById('menuInputContainer');
                 container.innerHTML = '';
-
                 App.menuData.sort((a,b) => a.order - b.order);
 
                 if (App.currentCategoryIndex === null) {
@@ -402,7 +356,6 @@
                         const div = document.createElement('div');
                         div.className = 'category-box';
                         div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
-                        
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete-cat';
                         delBtn.innerText = 'X';
@@ -414,24 +367,15 @@
                             }
                         };
                         div.appendChild(delBtn);
-
-                        div.onclick = () => {
-                            App.currentCategoryIndex = index;
-                            App.renderMenu();
-                        };
+                        div.onclick = () => { App.currentCategoryIndex = index; App.renderMenu(); };
                         container.appendChild(div);
                     });
-
                 } else {
                     const cat = App.menuData[App.currentCategoryIndex];
                     if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
-
                     document.getElementById('menuTitle').innerText = `📂 ${cat.name}`;
                     document.getElementById('btnBackCat').style.display = 'block';
-
-                    cat.items.forEach((item, itemIdx) => {
-                        App.addItemInput(item, itemIdx);
-                    });
+                    cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
                 }
             },
 
@@ -449,33 +393,22 @@
                     if(val === '') {
                         if(index !== null) cat.items.splice(index, 1);
                     } else {
-                        if(index === null) cat.items.push(val); 
-                        else cat.items[index] = val;
+                        if(index === null) cat.items.push(val); else cat.items[index] = val;
                     }
                     App.saveMenuToServer();
                 };
-
                 input.addEventListener('blur', saveInput);
                 input.addEventListener('keydown', (e) => { if(e.key==='Enter') input.blur(); });
-
                 container.appendChild(input);
                 if(index === null) input.focus();
             },
 
-            goBackToCategories: () => {
-                App.currentCategoryIndex = null;
-                App.renderMenu();
-            },
-
+            goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             saveMenuToServer: () => {
-                App.menuData.forEach(cat => {
-                    cat.items = cat.items.filter(i => i.trim() !== '');
-                });
+                App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i.trim() !== ''); });
                 window.socket.emit('save-menu', JSON.stringify(App.menuData));
                 App.renderMenu();
             },
-
-            liveUpdateMenu: () => {}, 
 
             // --- DESKTOP LOGIC ---
             renderDesktopIcons: (orders) => {
@@ -510,14 +443,18 @@
                 
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
+                } else if (order.status === 'cooking') {
+                    actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady('${order.id}')">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
                 }
 
+                // SMART FONT SIZING (Adaptive Zoom)
                 const len = order.text.length;
-                let fontSize = '36px'; 
-                if (len > 100) fontSize = '24px';
-                if (len > 300) fontSize = '18px';
+                let fontSize = '42px'; // Default HUGE
+                if (len > 100) fontSize = '28px'; // Big
+                if (len > 300) fontSize = '20px'; // Normal
+                if (len > 600) fontSize = '16px'; // Small (Avoid scroll)
 
                 win.style.border = `none`;
                 win.innerHTML = `
@@ -536,15 +473,16 @@
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
 
             acceptOrder: (id) => {
-                orderAlertSound.pause();
-                orderAlertSound.currentTime = 0;
-                
-                const win = document.getElementById(`win-${id}`);
-                if (win) {
-                    const footer = win.querySelector('.win-footer');
-                    footer.innerHTML = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
-                }
+                orderAlertSound.pause(); orderAlertSound.currentTime = 0;
                 window.socket.emit('accept-order', Number(id));
+                const win = document.getElementById(`win-${id}`);
+                if(win) win.style.display = 'none'; // Re-open to refresh UI or update dynamically
+            },
+
+            markReady: (id) => {
+                window.socket.emit('ready-order', Number(id));
+                const win = document.getElementById(`win-${id}`);
+                if(win) win.style.display = 'none';
             },
 
             completeOrder: (id) => {
@@ -559,10 +497,8 @@
                 const container = document.getElementById('staffList');
                 if (!container) return;
                 container.innerHTML = '';
-                
                 list.forEach(u => {
                     if (u.role === 'admin' || u.role === 'customer') return;
-                    
                     const row = document.createElement('div');
                     row.className = 'staff-row';
                     const btn = document.createElement('button');
@@ -571,7 +507,6 @@
                     let stTxt = isAway ? "⚠️ AWAY" : "IDLE";
                     let stCol = isAway ? "#FF9800" : "white";
                     if(u.isRinging) { stTxt = "📞 ..."; stCol = "yellow"; }
-
                     btn.innerHTML = `<span>${u.username}</span><span id="status-${u.username}" style="color:${stCol}; font-size:10px;">${stTxt}</span>`;
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
@@ -579,7 +514,6 @@
                         if(span) { span.innerText = "📞 ..."; span.style.color = "yellow"; }
                     };
                     row.appendChild(btn);
-
                     if (isAway && !u.isRinging) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete';
@@ -591,20 +525,11 @@
                 });
             },
 
-            // --- CHAT LOGIC ---
             toggleAdminChat: () => { 
                 const el = document.getElementById('adminChatOverlay');
                 App.isChatOpen = (el.style.display === 'flex');
-                
-                if (App.isChatOpen) {
-                    el.style.display = 'none';
-                    App.isChatOpen = false;
-                } else {
-                    el.style.display = 'flex';
-                    App.isChatOpen = true;
-                    // Clear Badge
-                    document.getElementById('chatBadge').style.display = 'none';
-                }
+                if (App.isChatOpen) { el.style.display = 'none'; App.isChatOpen = false; } 
+                else { el.style.display = 'flex'; App.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
             },
             
             sendChat: () => {
@@ -613,11 +538,7 @@
             },
             
             appendChat: (data) => {
-                // If I am NOT the sender AND chat is CLOSED -> Show Badge
-                if (data.sender !== userData.name && !App.isChatOpen) {
-                    document.getElementById('chatBadge').style.display = 'block';
-                }
-
+                if (data.sender !== userData.name && !App.isChatOpen) { document.getElementById('chatBadge').style.display = 'block'; }
                 const box = document.getElementById('adminChatBox');
                 if(box) {
                     box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
