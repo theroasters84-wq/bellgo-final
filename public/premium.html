@@ -23,24 +23,41 @@
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
         
-        .menu-section { height: 130px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
+        /* MENU SECTION (NEW STYLE) */
+        .menu-section { height: 160px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         
-        /* MENU CONTENT - ΠΛΑΓΙΑ ΓΡΑΦΗ */
-        .menu-content { 
-            flex: 1; 
-            width: 100%; 
-            background: #000; 
-            color: #ccc; 
-            border: 1px solid #333; 
-            border-radius: 5px; 
-            padding: 8px; 
-            font-size: 14px; 
-            resize: none; 
-            overflow-y: auto; 
-            white-space: pre-wrap;
-            font-style: italic; /* ΑΛΛΑΓΗ: Πλάγια γραφή */
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        
+        /* INPUT CONTAINER FOR BOXES */
+        #menuInputContainer {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 8px;
+            overflow-y: auto;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 5px;
         }
-        .btn-save { background: #00E676; border: none; padding: 4px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+
+        /* INDIVIDUAL MENU ITEM BOX */
+        .menu-input-box {
+            background: #222;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 120px; /* Fixed width or auto */
+            text-align: center;
+            font-style: italic; /* Πλάγια γραφή */
+        }
+        .menu-input-box:focus { border-color: #FFD700; outline: none; background: #333; }
+
+        .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
 
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
         
@@ -60,13 +77,13 @@
         /* WINDOWS LAYER */
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
         
-        /* ORDER WINDOW - ΠΙΟ "ΕΛΕΥΘΕΡΟ" ΚΑΙ ΜΕΓΑΛΟ */
+        /* ORDER WINDOW - AUTO HEIGHT (NO SCROLL UNLESS HUGE) */
         .order-window { 
             position: absolute; 
-            width: 95%; /* ΑΛΛΑΓΗ: Πιάνει σχεδόν όλο το πλάτος αν χρειαστεί */
-            max-width: 800px; /* ΑΛΛΑΓΗ: Μεγαλύτερο όριο */
-            height: auto; 
-            max-height: 90%; /* ΑΛΛΑΓΗ: Μπορεί να ψηλώσει πολύ */
+            width: 95%; 
+            max-width: 800px; 
+            height: auto; /* Αυτόματο ύψος για να φαίνεται όλη η παραγγελία */
+            max-height: 90%; /* Scroll μόνο αν ξεπεράσει το 90% της οθόνης */
             top: 5%; 
             left: 2.5%; 
             background: #2b2b2b; 
@@ -84,16 +101,16 @@
         
         .win-body { 
             padding: 20px; 
-            overflow-y: auto; 
-            flex: 1; 
-            font-size: 22px; /* ΑΛΛΑΓΗ: Λίγο μεγαλύτερα γράμματα */
+            overflow-y: auto; /* Scroll only if needed */
+            flex: 1; /* Takes available space */
+            font-size: 22px; 
             font-weight: bold; 
             line-height: 1.4; 
             color: #fff; 
             white-space: pre-wrap; 
         }
         
-        .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; }
+        .win-footer { padding: 12px; border-top: 1px solid #444; display: flex; gap: 15px; background: #222; flex-shrink: 0; }
         .btn-win-action { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: black; font-size: 18px; }
 
         /* STAFF LIST BUTTONS */
@@ -142,11 +159,14 @@
 
         <div id="adminPanel">
             <div class="menu-section">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ / ΣΗΜΕΙΩΣΕΙΣ</span>
-                    <button class="btn-save" onclick="App.saveMenu()">SAVE</button>
+                <div class="menu-header">
+                    <span style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-add" onclick="App.addMenuItem()" title="Προσθήκη Προϊόντος">➕</button>
+                        <button class="btn-save" onclick="App.saveMenu()">SAVE</button>
+                    </div>
                 </div>
-                <textarea id="menuText" class="menu-content" placeholder="Γράψε εδώ..." oninput="App.liveUpdateMenu()"></textarea>
+                <div id="menuInputContainer"></div>
             </div>
 
             <div class="admin-main-area">
@@ -233,10 +253,24 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
+                // HANDLE MENU UPDATE (RENDER BOXES)
                 socket.on('menu-update', (txt) => {
-                    if (document.activeElement !== document.getElementById('menuText')) {
-                        document.getElementById('menuText').value = txt;
+                    const container = document.getElementById('menuInputContainer');
+                    // Avoid re-rendering if active element is one of our inputs to prevent focus loss
+                    // But we must sync if it's an external update. 
+                    // Simple approach: Re-render completely if not focusing an input, 
+                    // or if focusing, do nothing (we assume admin is the source of truth).
+                    if (document.activeElement && document.activeElement.classList.contains('menu-input-box')) {
+                        return; 
                     }
+                    
+                    container.innerHTML = '';
+                    if (!txt) return;
+                    
+                    const lines = txt.split('\n');
+                    lines.forEach(line => {
+                        if (line.trim()) App.addMenuItem(line.trim());
+                    });
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
@@ -248,10 +282,59 @@
                 });
                 
                 socket.on('ring-bell', () => {
-                    // Admin hears sound on ring
                     orderAlertSound.currentTime = 0;
                     orderAlertSound.play().catch(e => console.log(e));
                 });
+            },
+
+            // --- MENU LOGIC ---
+            addMenuItem: (value = '') => {
+                const container = document.getElementById('menuInputContainer');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'menu-input-box';
+                input.value = value;
+                input.placeholder = "Προϊόν...";
+                
+                // Live Update on typing
+                input.addEventListener('input', () => {
+                    App.syncMenuToServer();
+                });
+
+                // Remove if empty on blur
+                input.addEventListener('blur', () => {
+                    if (input.value.trim() === '') {
+                        input.remove();
+                        App.syncMenuToServer();
+                    }
+                });
+
+                // Remove on Enter if empty, else blur
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur();
+                    }
+                });
+
+                container.appendChild(input);
+                if (value === '') input.focus(); // Focus if new
+            },
+
+            syncMenuToServer: () => {
+                const inputs = document.querySelectorAll('.menu-input-box');
+                const text = Array.from(inputs).map(i => i.value).filter(v => v.trim() !== '').join('\n');
+                window.socket.emit('live-menu-type', text);
+            },
+
+            saveMenu: () => {
+                const inputs = document.querySelectorAll('.menu-input-box');
+                const text = Array.from(inputs).map(i => i.value).filter(v => v.trim() !== '').join('\n');
+                window.socket.emit('save-menu', text);
+                alert("Αποθηκεύτηκε!");
+            },
+
+            liveUpdateMenu: () => {
+                // Deprecated for textarea, now handled by syncMenuToServer
             },
 
             // --- DESKTOP LOGIC ---
@@ -379,8 +462,6 @@
             },
 
             // --- SYSTEM & MENU ---
-            liveUpdateMenu: () => window.socket.emit('live-menu-type', document.getElementById('menuText').value),
-            saveMenu: () => { window.socket.emit('save-menu', document.getElementById('menuText').value); alert("Αποθηκεύτηκε!"); },
             toggleAdminChat: () => { const el=document.getElementById('adminChatOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             
             sendChat: () => {
