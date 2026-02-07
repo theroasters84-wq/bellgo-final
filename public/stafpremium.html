@@ -28,6 +28,9 @@
         #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
         #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
 
+        /* BADGE */
+        .pending-badge { position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none; }
+
         /* STAFF LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
@@ -240,7 +243,12 @@
 
     <script>
     const AudioEngine = {
-        keepAlivePlayer: null, alarmPlayer: null, isRinging: false, wakeLock: null,
+        keepAlivePlayer: null, 
+        alarmPlayer: null,    
+        isRinging: false,
+        wakeLock: null,
+        vibrationInterval: null, // ΝΕΟ: Για επανάληψη δόνησης
+
         async init() {
             if (!this.keepAlivePlayer) {
                 this.keepAlivePlayer = document.createElement("audio");
@@ -260,8 +268,35 @@
             const handler = () => { if(this.isRinging) { if(window.App) window.App.acceptAlarmStaff(); } else { this.keepAlivePlayer.play(); } };
             ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
         },
-        async triggerAlarm() { if (this.isRinging) return; this.isRinging = true; this.alarmPlayer.currentTime = 0; try { await this.alarmPlayer.play(); } catch(e){} },
-        stopAlarm() { if (!this.isRinging) return; this.isRinging = false; this.alarmPlayer.pause(); this.alarmPlayer.currentTime = 0; },
+        async triggerAlarm() { 
+            if (this.isRinging) return; 
+            this.isRinging = true; 
+            this.alarmPlayer.currentTime = 0; 
+            try { await this.alarmPlayer.play(); } catch(e){} 
+            
+            // ΕΝΑΡΞΗ ΔΟΝΗΣΗΣ (500ms on, 500ms off)
+            if ("vibrate" in navigator) {
+                navigator.vibrate([500, 500]);
+                this.vibrationInterval = setInterval(() => {
+                    navigator.vibrate([500, 500]);
+                }, 1000);
+            }
+        },
+        stopAlarm() { 
+            if (!this.isRinging) return; 
+            this.isRinging = false; 
+            this.alarmPlayer.pause(); 
+            this.alarmPlayer.currentTime = 0; 
+            
+            // ΤΕΡΜΑΤΙΣΜΟΣ ΔΟΝΗΣΗΣ
+            if (this.vibrationInterval) {
+                clearInterval(this.vibrationInterval);
+                this.vibrationInterval = null;
+            }
+            if ("vibrate" in navigator) {
+                navigator.vibrate(0); // Kill vibration immediately
+            }
+        },
         async requestWakeLock() { if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} } }
     };
     window.AudioEngine = AudioEngine;
