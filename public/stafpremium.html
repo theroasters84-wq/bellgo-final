@@ -15,49 +15,35 @@
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
-        
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
         .btn-icon:active { background: #333; }
 
-        /* HEADER BADGE (ON BUTTON) */
+        /* HEADER BADGE */
         .btn-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #D32F2F;
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #121212;
-            display: none; /* Κρυφό αν είναι 0 */
+            position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none;
         }
 
-        /* BELL BUTTON (CALL) */
+        /* BELL BUTTON */
         #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
         #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
+
+        /* BADGE */
+        .pending-badge { position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none; }
 
         /* STAFF LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
         
-        /* --- MENU STYLES (UPDATED) --- */
+        /* --- MENU STYLES --- */
         #waiterMenuRead {
             padding: 10px;
             background: #111;
             border-bottom: 1px solid #333;
-            /* Flexbox για τα κουτάκια */
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             overflow-y: auto;
-            /* Scroll only if > 50% screen */
             max-height: 50vh; 
             flex-shrink: 0;
         }
@@ -65,13 +51,17 @@
         .menu-item-box {
             background: #222;
             border: 1px solid #444;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 6px;
             color: #ccc;
             font-size: 15px;
-            font-style: italic; /* Πλάγια γραφή */
+            font-style: italic;
             white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.1s;
+            user-select: none; /* Όχι επιλογή κειμένου */
         }
+        .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
 
         .tabs { display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0; }
         .tab-btn { flex: 1; padding: 15px; background: transparent; color: #888; border: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
@@ -85,7 +75,6 @@
         .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
         .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
         
-        /* ORDER TEXTAREA */
         textarea.order-text { 
             flex-grow: 1; 
             width: 100%; 
@@ -117,8 +106,21 @@
         .info-title { color: #FFD700; font-size: 18px; font-weight: bold; margin-bottom: 10px; display:flex; align-items:center; gap:10px; }
         .info-list li { margin-bottom: 8px; color: #ddd; font-size: 14px; }
 
-        .orders-list-box { width: 90%; max-height: 70%; background: #222; border: 1px solid #444; border-radius: 10px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-        .my-order-item { background: #333; padding: 10px; border-radius: 6px; border-left: 4px solid #999; }
+        .orders-box-container {
+            width: 90%; 
+            max-width: 400px; 
+            background: #222; 
+            border: 1px solid #444; 
+            border-radius: 10px; 
+            display: flex; 
+            flex-direction: column;
+            max-height: 80%;
+        }
+        .orders-header { padding: 15px; border-bottom: 1px solid #444; font-weight: bold; font-size: 18px; color: white; text-align: center; }
+        .orders-list { overflow-y: auto; padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .orders-footer { padding: 10px; border-top: 1px solid #444; }
+
+        .my-order-item { background: #333; padding: 10px; border-radius: 6px; border-left: 4px solid #999; text-align: left; }
         .my-order-item.pending { border-left-color: #FF9800; }
         .my-order-item.cooking { border-left-color: #2196F3; }
         .my-order-item.ready { border-left-color: #00E676; }
@@ -127,6 +129,8 @@
     </style>
 </head>
 <body>
+
+    <div id="pendingBadge" class="pending-badge">0</div>
 
     <div id="mainApp">
         <div class="header">
@@ -145,9 +149,7 @@
                 </button>
 
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
-                
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
-                
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
@@ -183,7 +185,7 @@
                         </div>
                     </div>
                     
-                    <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ</label>
+                    <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ (Πάτα στο μενού για προσθήκη)</label>
                     <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
 
                     <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
@@ -202,71 +204,48 @@
             <ul class="info-list">
                 <li>❌ <b>ΜΗΝ</b> κλείνετε την εφαρμογή (App).</li>
                 <li>❌ <b>ΜΗΝ</b> κλειδώνετε το κινητό (Power Button).</li>
-                <li>❌ <b>ΜΗΝ</b> χρησιμοποιείτε YouTube / Spotify (Κλέβουν τον ήχο).</li>
-                <li>✅ Χρησιμοποιήστε το <b>"🌙"</b> για εξοικονόμηση μπαταρίας.</li>
+                <li>❌ <b>ΜΗΝ</b> χρησιμοποιείτε YouTube / Spotify.</li>
+                <li>✅ Χρησιμοποιήστε το <b>"🌙"</b> για μπαταρία.</li>
             </ul>
             <button onclick="App.toggleInfo()" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; margin-top:10px;">OK</button>
         </div>
     </div>
 
     <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
-        <h3 style="color:white; margin-bottom:10px;">Οι Παραγγελίες μου</h3>
-        <div id="myOrdersList" class="orders-list-box" onclick="event.stopPropagation()">
+        <div class="orders-box-container" onclick="event.stopPropagation()">
+            <div class="orders-header">Οι Παραγγελίες μου</div>
+            <div id="myOrdersList" class="orders-list"></div>
+            <div class="orders-footer">
+                <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
             </div>
-        <button onclick="App.toggleMyOrders()" style="margin-top:15px; padding:10px 20px; background:#D32F2F; color:white; border:none; border-radius:6px;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
     </div>
 
     <script>
     const AudioEngine = {
-        keepAlivePlayer: null, 
-        alarmPlayer: null,    
-        isRinging: false,
-        wakeLock: null,
-
+        keepAlivePlayer: null, alarmPlayer: null, isRinging: false, wakeLock: null,
         async init() {
-            console.log("🔊 AudioEngine: STAFF MODE");
             if (!this.keepAlivePlayer) {
                 this.keepAlivePlayer = document.createElement("audio");
-                this.keepAlivePlayer.src = "tone19hz.wav"; 
-                this.keepAlivePlayer.loop = true;
-                this.keepAlivePlayer.volume = 1.0; 
+                this.keepAlivePlayer.src = "tone19hz.wav"; this.keepAlivePlayer.loop = true; this.keepAlivePlayer.volume = 1.0; 
                 document.body.appendChild(this.keepAlivePlayer);
             }
             if (!this.alarmPlayer) {
                 this.alarmPlayer = document.createElement("audio");
-                this.alarmPlayer.src = "alert.mp3"; 
-                this.alarmPlayer.loop = true; 
-                this.alarmPlayer.volume = 1.0;
+                this.alarmPlayer.src = "alert.mp3"; this.alarmPlayer.loop = true; this.alarmPlayer.volume = 1.0;
                 document.body.appendChild(this.alarmPlayer);
             }
-            this.requestWakeLock();
-            this.setupMediaSession();
-            try { await this.keepAlivePlayer.play(); } catch (e) { console.log("⏳ Wait interaction"); }
+            this.requestWakeLock(); this.setupMediaSession();
+            try { await this.keepAlivePlayer.play(); } catch (e) {}
         },
-
         setupMediaSession() {
             if (!("mediaSession" in navigator)) return;
             const handler = () => { if(this.isRinging) { if(window.App) window.App.acceptAlarmStaff(); } else { this.keepAlivePlayer.play(); } };
             ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
         },
-
-        async triggerAlarm() {
-            if (this.isRinging) return;
-            this.isRinging = true;
-            this.alarmPlayer.currentTime = 0;
-            try { await this.alarmPlayer.play(); } catch(e){}
-        },
-
-        stopAlarm() {
-            if (!this.isRinging) return;
-            this.isRinging = false;
-            this.alarmPlayer.pause();
-            this.alarmPlayer.currentTime = 0;
-        },
-
-        async requestWakeLock() {
-            if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
-        }
+        async triggerAlarm() { if (this.isRinging) return; this.isRinging = true; this.alarmPlayer.currentTime = 0; try { await this.alarmPlayer.play(); } catch(e){} },
+        stopAlarm() { if (!this.isRinging) return; this.isRinging = false; this.alarmPlayer.pause(); this.alarmPlayer.currentTime = 0; },
+        async requestWakeLock() { if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} } }
     };
     window.AudioEngine = AudioEngine;
     </script>
@@ -299,33 +278,24 @@
             },
             updateBadge: (count) => {
                 const b = document.getElementById('ordersBadge');
-                if (count > 0) { 
-                    b.style.display = 'flex'; 
-                    b.innerText = count; 
-                } else { 
-                    b.style.display = 'none'; 
-                }
+                if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
             },
             renderMyOrders: (orders) => {
                 const list = document.getElementById('myOrdersList');
                 list.innerHTML = '';
                 if(orders.length === 0) {
-                    list.innerHTML = '<div style="color:#777; text-align:center;">Καμία ενεργή παραγγελία</div>';
+                    list.innerHTML = '<div style="color:#777; text-align:center; padding:20px;">Καμία ενεργή παραγγελία</div>';
                     return;
                 }
-                orders.sort((a,b) => b.id - a.id); // Newest first
+                orders.sort((a,b) => b.id - a.id);
                 orders.forEach(o => {
-                    let statusTxt = '⏳ Σε αναμονή';
-                    let statusClass = 'pending';
+                    let statusTxt = '⏳ Σε αναμονή'; let statusClass = 'pending';
                     if(o.status === 'cooking') { statusTxt = '🍳 Ετοιμάζεται'; statusClass = 'cooking'; }
                     if(o.status === 'ready') { statusTxt = '✅ Έτοιμο!'; statusClass = 'ready'; }
 
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
-                    div.innerHTML = `
-                        <div style="font-size:12px; color:#aaa; margin-bottom:4px;">${new Date(o.id).toLocaleTimeString()} - ${statusTxt}</div>
-                        <div style="white-space:pre-wrap; font-weight:bold; color:white;">${o.text}</div>
-                    `;
+                    div.innerHTML = `<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${new Date(o.id).toLocaleTimeString()} - ${statusTxt}</div><div style="white-space:pre-wrap; font-weight:bold; color:white;">${o.text}</div>`;
                     list.appendChild(div);
                 });
             }
@@ -337,11 +307,7 @@
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-                
-                document.body.addEventListener('click', () => { 
-                    if(window.AudioEngine) window.AudioEngine.init(); 
-                }, {once:true});
-
+                document.body.addEventListener('click', () => { if(window.AudioEngine) window.AudioEngine.init(); }, {once:true});
                 App.connectSocket();
                 App.startHeartbeat();
             },
@@ -359,7 +325,7 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // --- DYNAMIC MENU ---
+                // --- MENU LOGIC ---
                 socket.on('menu-update', (txt) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
@@ -371,6 +337,8 @@
                             const div = document.createElement('div');
                             div.className = 'menu-item-box';
                             div.innerText = line.trim();
+                            // CLICK TO ADD TO ORDER (INTELLIGENT)
+                            div.onclick = () => App.addToOrder(line.trim());
                             container.appendChild(div);
                         }
                     });
@@ -378,12 +346,9 @@
 
                 socket.on('chat-message', (data) => App.appendChat(data));
                 
-                // --- ORDERS UPDATE ---
                 socket.on('orders-update', (orders) => {
-                    // Filter orders from THIS user
                     App.myPendingOrders = orders.filter(o => o.from === userData.name);
                     UI.updateBadge(App.myPendingOrders.length);
-                    // If overlay is open, refresh list
                     if(document.getElementById('myOrdersOverlay').style.display === 'flex') {
                         UI.renderMyOrders(App.myPendingOrders);
                     }
@@ -392,16 +357,44 @@
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
-                    bell.style.display = 'flex';
-                    bell.classList.add('ringing');
+                    bell.style.display = 'flex'; bell.classList.add('ringing');
                 });
+            },
+
+            // --- SMART ADD TO ORDER ---
+            addToOrder: (item) => {
+                const txt = document.getElementById('inpOrderText');
+                // Ensure we are in Order Tab
+                UI.showTab('order');
+                
+                let lines = txt.value.split('\n').filter(l => l.trim() !== '');
+                let found = false;
+
+                for (let i = 0; i < lines.length; i++) {
+                    // Check if line ends with item (to allow "2 Pita")
+                    // Regex: Starts with optional number, then spaces, then exact item name
+                    let regex = new RegExp(`^(\\d+)?\\s*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+                    let match = lines[i].match(regex);
+
+                    if (match) {
+                        let currentQty = parseInt(match[1] || '1');
+                        lines[i] = `${currentQty + 1} ${item}`;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    lines.push(item);
+                }
+
+                txt.value = lines.join('\n');
             },
 
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
                 const bell = document.getElementById('staffBellBtn');
-                bell.style.display = 'none';
-                bell.classList.remove('ringing');
+                bell.style.display = 'none'; bell.classList.remove('ringing');
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
             },
 
@@ -430,25 +423,11 @@
                 alert("Εστάλη! 🚀");
             },
 
-            // --- TOGGLES ---
-            toggleFakeLock: () => { 
-                const el = document.getElementById('fakeLockOverlay'); 
-                el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; 
-            },
-            
-            toggleInfo: () => {
-                const el = document.getElementById('infoOverlay');
-                el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
-            },
-
+            toggleFakeLock: () => { const el = document.getElementById('fakeLockOverlay'); el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; },
+            toggleInfo: () => { const el = document.getElementById('infoOverlay'); el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; },
             toggleMyOrders: () => {
                 const el = document.getElementById('myOrdersOverlay');
-                if (el.style.display === 'flex') {
-                    el.style.display = 'none';
-                } else {
-                    el.style.display = 'flex';
-                    UI.renderMyOrders(App.myPendingOrders);
-                }
+                if (el.style.display === 'flex') { el.style.display = 'none'; } else { el.style.display = 'flex'; UI.renderMyOrders(App.myPendingOrders); }
             },
 
             logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
