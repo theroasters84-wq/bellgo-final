@@ -28,24 +28,41 @@
         #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
         #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
 
-        /* BADGE */
-        .pending-badge { position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none; }
-
         /* STAFF LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
         
-        /* --- MENU STYLES --- */
+        /* --- MENU STYLES (CATEGORIES) --- */
         #waiterMenuRead {
             padding: 10px;
             background: #111;
             border-bottom: 1px solid #333;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
             overflow-y: auto;
             max-height: 50vh; 
             flex-shrink: 0;
+            display: flex;
+            flex-direction: column; /* Stack categories vertically */
+            gap: 15px;
+        }
+
+        .category-block {
+            width: 100%;
+        }
+
+        .category-title {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .category-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .menu-item-box {
@@ -59,7 +76,7 @@
             white-space: nowrap;
             cursor: pointer;
             transition: background 0.1s;
-            user-select: none; /* Όχι επιλογή κειμένου για να μην μπερδεύει το touch */
+            user-select: none; 
         }
         .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
 
@@ -325,31 +342,63 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // --- MENU LOGIC WITH KEYBOARD FIX ---
-                socket.on('menu-update', (txt) => {
+                // --- SMART MENU LOGIC (Categories + Fix for old data) ---
+                socket.on('menu-update', (data) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
-                    if(!txt) { container.innerText = "ΜΕΝΟΥ"; return; }
-                    
-                    const lines = txt.split('\n');
-                    lines.forEach(line => {
-                        if(line.trim()) {
-                            const div = document.createElement('div');
-                            div.className = 'menu-item-box';
-                            div.innerText = line.trim();
-                            
-                            // 1. PREVENT FOCUS LOSS
-                            const handleAdd = (e) => {
-                                if (e.cancelable) e.preventDefault(); // Κρατάει το πληκτρολόγιο ανοιχτό
-                                App.addToOrder(line.trim());
-                            };
 
-                            div.addEventListener('mousedown', handleAdd);
-                            div.addEventListener('touchstart', handleAdd); // Για κινητά
-
-                            container.appendChild(div);
+                    let menu = [];
+                    // Check if it's JSON array or plain text
+                    try {
+                        if(typeof data === 'string' && data.startsWith('[')) {
+                            menu = JSON.parse(data);
+                        } else if (typeof data === 'object') {
+                            menu = data;
+                        } else {
+                            // Old Plain Text Format Fallback
+                            const items = (data || "ΜΕΝΟΥ").split('\n');
+                            menu = [{ name: "ΓΕΝΙΚΑ", items: items }];
                         }
-                    });
+                    } catch(e) { menu = []; }
+
+                    // Sort Categories
+                    if(Array.isArray(menu)) {
+                        menu.sort((a,b) => (a.order || 99) - (b.order || 99));
+                        
+                        menu.forEach(cat => {
+                            // 1. Render Title
+                            const title = document.createElement('div');
+                            title.className = 'category-title';
+                            title.innerText = cat.name;
+                            
+                            // 2. Container for items
+                            const itemsDiv = document.createElement('div');
+                            itemsDiv.className = 'category-items';
+
+                            cat.items.forEach(item => {
+                                if(item && item.trim()) {
+                                    const box = document.createElement('div');
+                                    box.className = 'menu-item-box';
+                                    box.innerText = item.trim();
+                                    // Prevent keyboard close
+                                    const handleAdd = (e) => {
+                                        if (e.cancelable) e.preventDefault(); 
+                                        App.addToOrder(item.trim());
+                                    };
+                                    box.addEventListener('mousedown', handleAdd);
+                                    box.addEventListener('touchstart', handleAdd);
+                                    itemsDiv.appendChild(box);
+                                }
+                            });
+
+                            // Only append if it has items or is a category wrapper
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'category-block';
+                            wrapper.appendChild(title);
+                            wrapper.appendChild(itemsDiv);
+                            container.appendChild(wrapper);
+                        });
+                    }
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
@@ -372,8 +421,7 @@
             // --- SMART ADD TO ORDER + FOCUS KEEP ---
             addToOrder: (item) => {
                 const txt = document.getElementById('inpOrderText');
-                // Ensure focus first
-                txt.focus();
+                UI.showTab('order');
                 
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
@@ -392,9 +440,7 @@
                 if (!found) lines.push(item);
                 txt.value = lines.join('\n');
                 
-                // FORCE SCROLL TO BOTTOM AND RE-FOCUS
                 txt.scrollTop = txt.scrollHeight;
-                // Focus again to be 100% sure
                 setTimeout(() => txt.focus(), 0);
             },
 
