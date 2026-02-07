@@ -40,19 +40,33 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {};
 let activeOrders = []; // Λίστα ενεργών παραγγελιών
 
-// --- MENU SYSTEM (PERSISTENCE) ---
+// --- MENU SYSTEM (PERSISTENCE JSON) ---
 const MENU_FILE = path.join(__dirname, 'saved_menu.json');
-let liveMenu = "1. Καφές\n2. Τοστ\n3. Νερό"; // Default
+let liveMenu = []; // Default is now an Array (Categories)
 
-// Φόρτωση μενού από δίσκο κατά την εκκίνηση
+// Φόρτωση μενού από δίσκο κατά την εκκίνηση (Smart Load)
 try {
     if (fs.existsSync(MENU_FILE)) {
-        liveMenu = fs.readFileSync(MENU_FILE, 'utf8');
-        console.log("📜 Menu loaded from disk.");
+        const rawData = fs.readFileSync(MENU_FILE, 'utf8');
+        try {
+            // Προσπάθεια ανάγνωσης ως JSON (Νέο σύστημα)
+            liveMenu = JSON.parse(rawData);
+            console.log("📜 Menu loaded as JSON structure.");
+        } catch (err) {
+            // Αν αποτύχει, είναι παλιό text file -> Μετατροπή σε Default Category
+            console.log("⚠️ Old menu format detected. Converting...");
+            const items = rawData.split('\n').filter(l => l.trim() !== '');
+            liveMenu = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: items }];
+        }
     } else {
-        fs.writeFileSync(MENU_FILE, liveMenu, 'utf8');
+        // Αν δεν υπάρχει αρχείο, δημιουργούμε default δομή
+        liveMenu = [{ id: 1, order: 1, name: "ΚΑΦΕΔΕΣ", items: ["Espresso", "Cappuccino"] }];
+        fs.writeFileSync(MENU_FILE, JSON.stringify(liveMenu), 'utf8');
     }
-} catch (e) { console.error("Menu Load Error:", e); }
+} catch (e) { 
+    console.error("Menu Load Error:", e);
+    liveMenu = []; 
+}
 
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
@@ -142,11 +156,11 @@ function updateStore(store) {
 
   io.to(store).emit('staff-list-update', list);
 
-  // 2. Λίστα Παραγγελιών (Desktop Icons για Admin / Badge για Waiters)
+  // 2. Λίστα Παραγγελιών (Desktop Icons για Admin / Badge για Waiters / Status για Customers)
   const storeOrders = activeOrders.filter(o => o.store === store);
   io.to(store).emit('orders-update', storeOrders);
 
-  // 3. Ενημέρωση κειμένου Μενού
+  // 3. Ενημέρωση Μενού (JSON Data)
   io.to(store).emit('menu-update', liveMenu);
 }
 
@@ -171,7 +185,7 @@ io.on('connection', (socket) => {
 
     const store = rawStore.toLowerCase().trim();
     const username = (data.username || '').trim();
-    const role = data.role || 'waiter';
+    const role = data.role || 'waiter'; // 'admin', 'waiter', 'driver', 'customer'
     const token = data.token || null;
     const isNative = data.isNative === true || data.deviceType === "AndroidNative";
 
@@ -196,9 +210,11 @@ io.on('connection', (socket) => {
     };
 
     console.log(`👤 JOIN: ${username} @ ${store} (${role})`);
+    
+    // Ενημέρωση όλων στο κατάστημα
     updateStore(store);
 
-    // Άμεση αποστολή μενού στον χρήστη
+    // Στέλνουμε το τρέχον μενού ΜΟΝΟ στον χρήστη που μπήκε (για σιγουριά)
     socket.emit('menu-update', liveMenu);
 
     if (activeUsers[key].isRinging) {
@@ -231,16 +247,14 @@ io.on('connection', (socket) => {
     const target = activeUsers[key];
     
     if (!target) return;
-    if (target.isRinging) return; // Αν χτυπάει ήδη, αγνόησέ το
+    if (target.isRinging) return;
 
     console.log(`🔔 ALARM START -> ${targetName} @ ${socket.store}`);
     target.isRinging = true;
     updateStore(socket.store); 
 
-    // Χτυπάει άμεσα αν είναι συνδεδεμένος
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // Push Notifications
     if (target.isNative) {
         sendPushNotification(target, "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", "Πάτα για αποδοχή");
         return; 
@@ -259,7 +273,7 @@ io.on('connection', (socket) => {
                 data: { type: "alarm", time: Date.now().toString() },
                 webpush: { 
                     headers: { "Urgency": "high" }, 
-                    fcm_options: { link: "/stafpremium.html" } // Redirect στο σωστό αρχείο
+                    fcm_options: { link: "/stafpremium.html" } 
                 }
             };
             admin.messaging().send(message).catch(err => {});
@@ -288,20 +302,26 @@ io.on('connection', (socket) => {
 
   /* --- PREMIUM LOGIC: MENU & ORDERS --- */
 
-  // 1. Αποθήκευση Μενού
-  socket.on('save-menu', (newText) => {
-      liveMenu = newText;
-      fs.writeFileSync(MENU_FILE, liveMenu, 'utf8'); 
-      io.to(socket.store).emit('menu-update', liveMenu); 
+  // 1. Αποθήκευση Μενού (Save JSON)
+  socket.on('save-menu', (jsonText) => {
+      try {
+          liveMenu = JSON.parse(jsonText); // Validate JSON
+          fs.writeFileSync(MENU_FILE, jsonText, 'utf8'); 
+          io.to(socket.store).emit('menu-update', liveMenu); // Send as Object
+      } catch (e) {
+          console.error("Save Menu Error: Invalid JSON");
+      }
   });
 
-  // 2. Live Update (χωρίς Save)
-  socket.on('live-menu-type', (newText) => {
-      liveMenu = newText;
-      io.to(socket.store).emit('menu-update', liveMenu);
+  // 2. Live Update (Sync Input)
+  socket.on('live-menu-type', (jsonText) => {
+      // Σε αυτό το mode, απλά προωθούμε την αλλαγή, χωρίς save ακόμα
+      // Αλλά επειδή είναι πολύπλοκο το JSON structure, συνήθως το αγνοούμε
+      // ή το χρησιμοποιούμε αν θέλουμε real-time collaboration.
+      // Εδώ το αγνοούμε προς το παρόν για ασφάλεια δεδομένων.
   });
 
-  // 3. Νέα Παραγγελία (ΔΙΟΡΘΩΜΕΝΟ)
+  // 3. Νέα Παραγγελία (Από Πελάτη ή Σερβιτόρο)
   socket.on('new-order', (orderText) => {
       if (!socket.store) return;
       
@@ -314,29 +334,44 @@ io.on('connection', (socket) => {
       };
       
       activeOrders.push(newOrder);
-      updateStore(socket.store); // Ενημερώνει ΟΛΟΥΣ (icons για Admin, badges για Waiters)
+      updateStore(socket.store); // Ενημερώνει ΟΛΟΥΣ (Πελάτες, Staff, Admin)
 
-      // **ΔΙΟΡΘΩΣΗ:** Βρίσκουμε ΟΛΟΥΣ τους Admins του καταστήματος
+      // Ειδοποίηση σε ΟΛΟΥΣ τους ADMINS
       const adminUsers = Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin');
       
       adminUsers.forEach(adminUser => {
-          // Χτυπάει το PC του Admin (χρησιμοποιούμε το 'ring-bell' event που στο premium.html παίζει ήχο)
           if (adminUser.socketId) io.to(adminUser.socketId).emit('ring-bell');
-          // Στέλνουμε Push notification
           sendPushNotification(adminUser, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ", `Από: ${socket.username}`);
       });
   });
 
-  // 4. Αποδοχή Παραγγελίας
+  // 4. Αποδοχή Παραγγελίας (Pending -> Cooking)
   socket.on('accept-order', (orderId) => {
       const order = activeOrders.find(o => o.id === orderId);
       if (order) {
           order.status = 'cooking';
-          updateStore(socket.store);
+          updateStore(socket.store); // Ο Πελάτης θα δει την αλλαγή status
       }
   });
 
-  // 5. Κλείσιμο Παραγγελίας
+  // 5. Έτοιμη Παραγγελία (Cooking -> Ready) - *ΝΕΟ ΓΙΑ DELIVERY*
+  socket.on('ready-order', (orderId) => {
+      const order = activeOrders.find(o => o.id === orderId);
+      if (order) {
+          order.status = 'ready';
+          updateStore(socket.store);
+          
+          // Ειδοποίηση στον συγκεκριμένο πελάτη/σερβιτόρο
+          const targetKey = `${socket.store}_${order.from}`;
+          const targetUser = activeUsers[targetKey];
+          if (targetUser) {
+              if (targetUser.socketId) io.to(targetUser.socketId).emit('ring-bell');
+              sendPushNotification(targetUser, "Η ΠΑΡΑΓΓΕΛΙΑ ΣΟΥ ΕΙΝΑΙ ΕΤΟΙΜΗ!", "🛵 Έρχεται!");
+          }
+      }
+  });
+
+  // 6. Κλείσιμο Παραγγελίας (Delete)
   socket.on('close-order', (orderId) => {
       activeOrders = activeOrders.filter(o => o.id !== orderId);
       updateStore(socket.store);
@@ -374,7 +409,7 @@ io.on('connection', (socket) => {
 setInterval(() => {
   const now = Date.now();
   for (const key in activeUsers) {
-    if (now - activeUsers[key].lastSeen > 12 * 3600000) { // 12 ώρες
+    if (now - activeUsers[key].lastSeen > 12 * 3600000) { 
       if (activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
       const st = activeUsers[key].store;
       delete activeUsers[key];
