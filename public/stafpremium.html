@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>BellGo Staff Premium</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        
+        /* HEADER */
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
+        .user-info { display: flex; flex-direction: column; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .btn-icon:active { background: #333; }
+
+        /* BELL BUTTON */
+        #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
+        #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
+
+        /* BADGE */
+        .pending-badge { position: absolute; top: 5px; right: 55px; background: #D32F2F; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #121212; z-index: 1100; display: none; }
+
+        /* STAFF LAYOUT */
+        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
+        #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
+        
+        .tabs { display: flex; background: #222; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .tab-btn { flex: 1; padding: 15px; background: transparent; color: #888; border: none; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: white; border-bottom: 3px solid #FFD700; background: #333; }
+        .tab-content { flex: 1; display: none; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
+        .tab-content.active { display: flex; }
+
+        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 15px; flex: 1; height: 100%; overflow: hidden; }
+        .form-row { display: flex; gap: 10px; flex-shrink: 0; }
+        .input-group { flex: 1; }
+        .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+        .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
+        textarea.order-text { flex-grow: 1; width: 100%; padding: 15px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; resize: none; min-height: 100px; }
+        .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
+
+        /* CHAT */
+        .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
+        .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 15px; word-wrap: break-word; }
+        .chat-msg.me { align-self: flex-end; background: #00E676; color: black; }
+        .chat-msg.other { align-self: flex-start; background: #333; color: white; }
+        .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
+        .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
+        .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
+        
+        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
+    </style>
+</head>
+<body>
+
+    <div id="pendingBadge" class="pending-badge">0</div>
+
+    <div id="mainApp">
+        <div class="header">
+            <div style="display:flex; align-items:center;">
+                <span id="connDot" style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block; margin-right:10px;" onclick="App.forceReconnect()"></span>
+                <div class="user-info">
+                    <span id="headerName" style="font-weight:bold; font-size:14px; color:#FFD700;">STAFF</span>
+                    <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
+                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
+                <button class="btn-logout" onclick="App.logout()">EXIT</button>
+            </div>
+        </div>
+
+        <div id="waiterPanel">
+            <div id="waiterMenuRead" style="padding:10px; background:#111; color:#ccc; border-bottom:1px solid #333; font-size:13px; max-height:80px; overflow-y:auto; white-space:pre-wrap;"></div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="UI.showTab('chat')">💬 CHAT</button>
+                <button class="tab-btn" onclick="UI.showTab('order')">📝 ΠΑΡΑΓΓΕΛΙΑ</button>
+            </div>
+
+            <div id="tabChat" class="tab-content active">
+                <div class="chat-container">
+                    <div id="waiterChatBox" class="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα...">
+                        <button class="chat-btn" onclick="App.sendChat()">➤</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabOrder" class="tab-content">
+                <div class="order-form">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>ΤΡΑΠΕΖΙ</label>
+                            <input type="number" id="inpTable" class="input-box" placeholder="#">
+                        </div>
+                        <div class="input-group">
+                            <label>ΚΟΥΒΕΡ</label>
+                            <input type="number" id="inpCovers" class="input-box" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ</label>
+                    <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
+
+                    <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
+        <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
+    </div>
+
+    <script>
+    const AudioEngine = {
+        keepAlivePlayer: null, 
+        alarmPlayer: null,    
+        isRinging: false,
+        wakeLock: null,
+
+        async init() {
+            console.log("🔊 AudioEngine: STAFF MODE");
+            if (!this.keepAlivePlayer) {
+                this.keepAlivePlayer = document.createElement("audio");
+                this.keepAlivePlayer.src = "tone19hz.wav"; 
+                this.keepAlivePlayer.loop = true;
+                this.keepAlivePlayer.volume = 1.0; 
+                document.body.appendChild(this.keepAlivePlayer);
+            }
+            if (!this.alarmPlayer) {
+                this.alarmPlayer = document.createElement("audio");
+                this.alarmPlayer.src = "alert.mp3"; 
+                this.alarmPlayer.loop = true; 
+                this.alarmPlayer.volume = 1.0;
+                document.body.appendChild(this.alarmPlayer);
+            }
+            this.requestWakeLock();
+            this.setupMediaSession();
+            try { await this.keepAlivePlayer.play(); } catch (e) { console.log("⏳ Wait interaction"); }
+        },
+
+        setupMediaSession() {
+            if (!("mediaSession" in navigator)) return;
+            const handler = () => { if(this.isRinging) { if(window.App) window.App.acceptAlarmStaff(); } else { this.keepAlivePlayer.play(); } };
+            ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
+        },
+
+        async triggerAlarm() {
+            if (this.isRinging) return;
+            this.isRinging = true;
+            this.alarmPlayer.currentTime = 0;
+            try { await this.alarmPlayer.play(); } catch(e){}
+        },
+
+        stopAlarm() {
+            if (!this.isRinging) return;
+            this.isRinging = false;
+            this.alarmPlayer.pause();
+            this.alarmPlayer.currentTime = 0;
+        },
+
+        async requestWakeLock() {
+            if ('wakeLock' in navigator) { try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
+        }
+    };
+    window.AudioEngine = AudioEngine;
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getMessaging } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+        const savedSession = localStorage.getItem('bellgo_session');
+        if (!savedSession) window.location.href = "login.html";
+        const userData = JSON.parse(savedSession || '{}');
+
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
+            authDomain: "bellgo-5dbe5.firebaseapp.com", 
+            projectId: "bellgo-5dbe5", 
+            storageBucket: "bellgo-5dbe5.firebasestorage.app", 
+            messagingSenderId: "799314495253", 
+            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
+        };
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        window.UI = {
+            showTab: (tabName) => {
+                document.getElementById('tabChat').style.display = (tabName === 'chat') ? 'flex' : 'none';
+                document.getElementById('tabOrder').style.display = (tabName === 'order') ? 'flex' : 'none';
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+            },
+            updateBadge: (count) => {
+                const b = document.getElementById('pendingBadge');
+                if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
+            }
+        };
+
+        window.App = {
+            init: () => {
+                document.getElementById('headerName').innerText = userData.name;
+                document.getElementById('headerStore').innerText = userData.store;
+                
+                document.body.addEventListener('click', () => { 
+                    if(window.AudioEngine) window.AudioEngine.init(); 
+                }, {once:true});
+
+                App.connectSocket();
+                App.startHeartbeat();
+            },
+
+            connectSocket: () => {
+                if (window.socket && window.socket.connected) return;
+                window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
+                const socket = window.socket;
+
+                socket.on('connect', () => {
+                    document.getElementById('connDot').style.background = '#00E676';
+                    const isNative = !!window.Capacitor;
+                    socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: isNative });
+                });
+
+                socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
+
+                socket.on('menu-update', (txt) => {
+                    document.getElementById('waiterMenuRead').innerText = txt || "ΜΕΝΟΥ";
+                });
+
+                socket.on('chat-message', (data) => App.appendChat(data));
+                
+                socket.on('orders-update', (orders) => {
+                    UI.updateBadge(orders.filter(o => o.from === userData.name).length);
+                });
+                
+                socket.on('ring-bell', () => {
+                    // STAFF HEARS ALARM
+                    if(window.AudioEngine) window.AudioEngine.triggerAlarm();
+                    const bell = document.getElementById('staffBellBtn');
+                    bell.style.display = 'flex';
+                    bell.classList.add('ringing');
+                });
+            },
+
+            acceptAlarmStaff: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                const bell = document.getElementById('staffBellBtn');
+                bell.style.display = 'none';
+                bell.classList.remove('ringing');
+                window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
+            },
+
+            sendChat: () => {
+                const inp = document.getElementById('waiterChatInp');
+                if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
+            },
+            
+            appendChat: (data) => {
+                const box = document.getElementById('waiterChatBox');
+                if(box) {
+                    box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
+                    box.scrollTop = box.scrollHeight;
+                }
+            },
+
+            sendOrder: () => {
+                const t = document.getElementById('inpTable').value;
+                const c = document.getElementById('inpCovers').value;
+                const txt = document.getElementById('inpOrderText').value;
+                if (!txt.trim()) return alert("Γράψε παραγγελία!");
+                window.socket.emit('new-order', `[ΤΡ: ${t||'-'} | AT: ${c||'-'}]\n${txt}`);
+                document.getElementById('inpTable').value = '';
+                document.getElementById('inpCovers').value = '';
+                document.getElementById('inpOrderText').value = '';
+                alert("Εστάλη! 🚀");
+            },
+
+            logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
+            toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+            forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+        };
+
+        window.onload = App.init;
+    </script>
+</body>
+</html>
