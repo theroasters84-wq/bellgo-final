@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
-const fs = require('fs'); // ΝΕΟ: Για αποθήκευση του μενού
+const fs = require('fs');
 
 // --- TO DOMAIN ΣΟΥ ---
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
@@ -38,12 +38,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 /* ---------------- DATA STORE (MEMORY) ---------------- */
 let activeUsers = {};
-let activeOrders = []; // ΝΕΟ: Λίστα ενεργών παραγγελιών
+let activeOrders = []; // Λίστα ενεργών παραγγελιών
 
 // --- MENU SYSTEM (PERSISTENCE) ---
 const MENU_FILE = path.join(__dirname, 'saved_menu.json');
-let defaultMenu = "1. Καφές\n2. Τοστ\n3. Νερό";
-let liveMenu = defaultMenu;
+let liveMenu = "1. Καφές\n2. Τοστ\n3. Νερό"; // Default
 
 // Φόρτωση μενού από δίσκο κατά την εκκίνηση
 try {
@@ -51,27 +50,24 @@ try {
         liveMenu = fs.readFileSync(MENU_FILE, 'utf8');
         console.log("📜 Menu loaded from disk.");
     } else {
-        // Αν δεν υπάρχει, δημιουργούμε το αρχικό
-        fs.writeFileSync(MENU_FILE, defaultMenu, 'utf8');
+        fs.writeFileSync(MENU_FILE, liveMenu, 'utf8');
     }
 } catch (e) { console.error("Menu Load Error:", e); }
 
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
 
-// 1. Έλεγχος Συνδρομής (Τροποποιημένο για Premium Suffix)
 app.post('/check-subscription', async (req, res) => {
     let { email } = req.body;
-    let requestPlan = 'basic'; // Default
+    let requestPlan = 'basic'; 
 
     try {
         if (!email) return res.json({ active: false });
 
         // --- ΕΛΕΓΧΟΣ ΓΙΑ PREMIUM SUFFIX ---
-        // Αν το email τελειώνει σε "premium" (π.χ. "user@gmail.compremium")
         if (email.endsWith('premium')) {
             requestPlan = 'premium';
-            email = email.replace('premium', ''); // Καθαρίζουμε το email για το Stripe
+            email = email.replace('premium', ''); 
         }
 
         const customers = await stripe.customers.list({ 
@@ -88,12 +84,11 @@ app.post('/check-subscription', async (req, res) => {
 
         const isActive = subscriptions.data.length > 0;
         
-        // Αν είναι Active, επιστρέφουμε και το Plan που ζητήθηκε (hacky way)
         console.log(`🔍 Payment Check [${email}]: ${isActive ? '✅ PAID' : '❌ UNPAID'} (Mode: ${requestPlan})`);
         
         res.json({ 
             active: isActive, 
-            plan: isActive ? requestPlan : null // Επιστρέφει 'premium' ή 'basic'
+            plan: isActive ? requestPlan : null 
         });
 
     } catch (e) {
@@ -102,11 +97,9 @@ app.post('/check-subscription', async (req, res) => {
     }
 });
 
-// 2. Δημιουργία Link Πληρωμής
 app.post('/create-checkout-session', async (req, res) => {
     let { email } = req.body;
     
-    // Καθαρίζουμε το email αν κατά λάθος έστειλε το premium suffix στην πληρωμή
     if (email && email.endsWith('premium')) {
         email = email.replace('premium', '');
     }
@@ -116,8 +109,6 @@ app.post('/create-checkout-session', async (req, res) => {
             payment_method_types: ['card'],
             customer_email: email,
             line_items: [{
-                // Χρησιμοποιούμε το ίδιο Price ID που είχες (4€)
-                // Εφόσον το premium είναι "κόλπο" στο email, δεν αλλάζουμε το Stripe Product ακόμα
                 price: 'price_1Sx9PFJcEtNSGviLteieJCwj', 
                 quantity: 1,
             }],
@@ -138,10 +129,11 @@ app.post('/create-checkout-session', async (req, res) => {
 function updateStore(store) {
   if (!store) return;
 
+  // 1. Λίστα Προσωπικού
   const list = Object.values(activeUsers)
     .filter(u => u.store === store)
     .map(u => ({ 
-      name: u.username,       
+      name: u.username,        
       username: u.username,  
       role: u.role, 
       status: u.status, 
@@ -150,22 +142,21 @@ function updateStore(store) {
 
   io.to(store).emit('staff-list-update', list);
 
-  // --- ΝΕΟ: Ενημέρωση Παραγγελιών ---
+  // 2. Λίστα Παραγγελιών (Desktop Icons για Admin / Badge για Waiters)
   const storeOrders = activeOrders.filter(o => o.store === store);
   io.to(store).emit('orders-update', storeOrders);
 
-  // --- ΝΕΟ: Ενημέρωση Μενού ---
+  // 3. Ενημέρωση κειμένου Μενού
   io.to(store).emit('menu-update', liveMenu);
 }
 
-// Helper για Push Notification (επαναχρησιμοποίηση)
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
     if (target && target.fcmToken) {
         const msg = {
             token: target.fcmToken,
             data: dataPayload,
             android: { priority: "high", notification: { channelId: "fcm_default_channel", title: title, body: body } },
-            webpush: { headers: { "Urgency": "high" } } // Για web pwa
+            webpush: { headers: { "Urgency": "high" } }
         };
         admin.messaging().send(msg).catch(e => console.log("FCM Error:", e.message));
     }
@@ -175,7 +166,6 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 io.on('connection', (socket) => {
 
   socket.on('join-store', (data) => {
-    // Αν είναι premium email στο join, καθαρίζουμε το όνομα του Store
     let rawStore = data.storeName || '';
     if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');
 
@@ -208,7 +198,7 @@ io.on('connection', (socket) => {
     console.log(`👤 JOIN: ${username} @ ${store} (${role})`);
     updateStore(store);
 
-    // Στέλνουμε το τρέχον μενού στον χρήστη που μόλις μπήκε
+    // Άμεση αποστολή μενού στον χρήστη
     socket.emit('menu-update', liveMenu);
 
     if (activeUsers[key].isRinging) {
@@ -220,7 +210,6 @@ io.on('connection', (socket) => {
       const key = `${socket.store}_${socket.username}`;
       if (activeUsers[key] && data.token) {
           activeUsers[key].fcmToken = data.token;
-          console.log(`📲 FCM Token Updated for ${socket.username}`);
       }
   });
 
@@ -236,41 +225,41 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* --- ALARM LOGIC (ΥΠΑΡΧΟΥΣΑ) --- */
+  /* --- ALARM LOGIC (STAFF CALLING) --- */
   socket.on('trigger-alarm', (targetName) => {
     const key = `${socket.store}_${targetName}`;
     const target = activeUsers[key];
     
     if (!target) return;
-    if (target.isRinging) return;
+    if (target.isRinging) return; // Αν χτυπάει ήδη, αγνόησέ το
 
     console.log(`🔔 ALARM START -> ${targetName} @ ${socket.store}`);
     target.isRinging = true;
     updateStore(socket.store); 
 
+    // Χτυπάει άμεσα αν είναι συνδεδεμένος
     if (target.socketId) io.to(target.socketId).emit('ring-bell');
 
-    // Logic για Native App Push
+    // Push Notifications
     if (target.isNative) {
         sendPushNotification(target, "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑ!", "Πάτα για αποδοχή");
         return; 
     }
 
-    // Logic για Web Push Loop
+    // Web Push Loop
     const sendPushLoop = () => {
         const currentTarget = activeUsers[key];
         if (!currentTarget || !currentTarget.isRinging) {
             if (currentTarget && currentTarget.alarmInterval) clearInterval(currentTarget.alarmInterval);
             return;
         }
-        // Χρησιμοποιούμε την ίδια λογική με πριν για Web Push
         if (currentTarget.fcmToken) {
             const message = {
                 token: currentTarget.fcmToken,
                 data: { type: "alarm", time: Date.now().toString() },
                 webpush: { 
                     headers: { "Urgency": "high" }, 
-                    fcm_options: { link: "/index.html?type=alarm" } 
+                    fcm_options: { link: "/stafpremium.html" } // Redirect στο σωστό αρχείο
                 }
             };
             admin.messaging().send(message).catch(err => {});
@@ -293,28 +282,26 @@ io.on('connection', (socket) => {
         if (user.alarmInterval) clearInterval(user.alarmInterval);
         user.alarmInterval = null;
         user.isRinging = false;
-        io.to(sName).emit('staff-accepted-alarm', { username: uName });
         updateStore(sName);
     }
   });
 
-  /* --- ΝΕΑ PREMIUM LOGIC: MENU & ORDERS --- */
+  /* --- PREMIUM LOGIC: MENU & ORDERS --- */
 
-  // 1. Αποθήκευση Μενού (Save)
+  // 1. Αποθήκευση Μενού
   socket.on('save-menu', (newText) => {
-      // Μόνο admin ή εξουσιοδοτημένοι
       liveMenu = newText;
-      fs.writeFileSync(MENU_FILE, liveMenu, 'utf8'); // Γράψιμο στο δίσκο
-      io.to(socket.store).emit('menu-update', liveMenu); // Ενημέρωση όλων
+      fs.writeFileSync(MENU_FILE, liveMenu, 'utf8'); 
+      io.to(socket.store).emit('menu-update', liveMenu); 
   });
 
-  // 2. Live Update Μενού (χωρίς Save)
+  // 2. Live Update (χωρίς Save)
   socket.on('live-menu-type', (newText) => {
       liveMenu = newText;
       io.to(socket.store).emit('menu-update', liveMenu);
   });
 
-  // 3. Νέα Παραγγελία (Από Πελάτη ή Σερβιτόρο)
+  // 3. Νέα Παραγγελία (ΔΙΟΡΘΩΜΕΝΟ)
   socket.on('new-order', (orderText) => {
       if (!socket.store) return;
       
@@ -322,24 +309,25 @@ io.on('connection', (socket) => {
           id: Date.now(),
           text: orderText,
           from: socket.username,
-          status: 'pending', // pending -> cooking -> ready
+          status: 'pending', 
           store: socket.store
       };
       
       activeOrders.push(newOrder);
-      updateStore(socket.store);
+      updateStore(socket.store); // Ενημερώνει ΟΛΟΥΣ (icons για Admin, badges για Waiters)
 
-      // Ειδοποίηση στον ADMIN ότι ήρθε παραγγελία
-      const adminKey = `${socket.store}_Admin`;
-      const adminUser = Object.values(activeUsers).find(u => u.store === socket.store && u.role === 'admin');
+      // **ΔΙΟΡΘΩΣΗ:** Βρίσκουμε ΟΛΟΥΣ τους Admins του καταστήματος
+      const adminUsers = Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin');
       
-      if (adminUser) {
-          if (adminUser.socketId) io.to(adminUser.socketId).emit('ring-bell'); // Χτυπάει το PC
+      adminUsers.forEach(adminUser => {
+          // Χτυπάει το PC του Admin (χρησιμοποιούμε το 'ring-bell' event που στο premium.html παίζει ήχο)
+          if (adminUser.socketId) io.to(adminUser.socketId).emit('ring-bell');
+          // Στέλνουμε Push notification
           sendPushNotification(adminUser, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ", `Από: ${socket.username}`);
-      }
+      });
   });
 
-  // 4. Admin: Αποδοχή Παραγγελίας (Μπαίνει σε ετοιμασία)
+  // 4. Αποδοχή Παραγγελίας
   socket.on('accept-order', (orderId) => {
       const order = activeOrders.find(o => o.id === orderId);
       if (order) {
@@ -348,25 +336,7 @@ io.on('connection', (socket) => {
       }
   });
 
-  // 5. Admin: Έτοιμη Παραγγελία (Ειδοποιεί πελάτη/σερβιτόρο)
-  socket.on('ready-order', (orderId) => {
-      const order = activeOrders.find(o => o.id === orderId);
-      if (order) {
-          order.status = 'ready';
-          updateStore(socket.store);
-
-          // Βρες ποιος το παρήγγειλε και χτύπα του
-          const targetKey = `${socket.store}_${order.from}`;
-          const targetUser = activeUsers[targetKey];
-          
-          if (targetUser) {
-              if (targetUser.socketId) io.to(targetUser.socketId).emit('ring-bell');
-              sendPushNotification(targetUser, "Η ΠΑΡΑΓΓΕΛΙΑ ΣΟΥ ΕΙΝΑΙ ΕΤΟΙΜΗ!", "Έλα να παραλάβεις");
-          }
-      }
-  });
-
-  // 6. Κλείσιμο Παραγγελίας (Διαγραφή)
+  // 5. Κλείσιμο Παραγγελίας
   socket.on('close-order', (orderId) => {
       activeOrders = activeOrders.filter(o => o.id !== orderId);
       updateStore(socket.store);
@@ -404,7 +374,7 @@ io.on('connection', (socket) => {
 setInterval(() => {
   const now = Date.now();
   for (const key in activeUsers) {
-    if (now - activeUsers[key].lastSeen > 12 * 3600000) {
+    if (now - activeUsers[key].lastSeen > 12 * 3600000) { // 12 ώρες
       if (activeUsers[key].alarmInterval) clearInterval(activeUsers[key].alarmInterval);
       const st = activeUsers[key].store;
       delete activeUsers[key];
