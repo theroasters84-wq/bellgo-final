@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>BellGo Delivery</title>
     <link rel="manifest" href="manifest.json">
     <script src="/socket.io/socket.io.js"></script>
@@ -11,7 +11,7 @@
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
 
         /* HEADER */
-        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 10; }
         .store-info { display: flex; flex-direction: column; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
 
@@ -19,16 +19,16 @@
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-google { background: #DB4437; color: white; border: none; padding: 15px 25px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(219,68,55,0.4); }
 
-        /* DETAILS FORM OVERLAY */
+        /* DETAILS FORM */
         #detailsOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
         .inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; }
         .btn-save-details { padding: 12px; background: #00E676; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
 
-        /* MAIN CONTENT */
+        /* MAIN LAYOUT */
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; }
 
-        /* MENU AREA */
+        /* MENU AREA (SCROLLABLE) */
         #menuContainer {
             flex: 1;
             overflow-y: auto;
@@ -37,70 +37,76 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            padding-bottom: 20px;
         }
         
         .category-block { width: 100%; }
-        
-        .category-title { 
-            color: #FFD700; 
-            font-weight: bold; 
-            font-size: 16px; 
-            margin-bottom: 8px; 
-            border-bottom: 1px solid #333; 
-            padding-bottom: 2px; 
-            text-transform: uppercase; 
-        }
-        
+        .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
         
         .item-box { 
-            background: #222; 
-            border: 1px solid #444; 
-            padding: 12px 15px; 
-            border-radius: 8px; 
-            color: #eee; 
-            font-size: 15px; 
-            font-style: italic; 
-            cursor: pointer; 
-            transition: transform 0.1s; 
-            user-select: none;
+            background: #222; border: 1px solid #444; padding: 12px 16px; border-radius: 8px; color: #eee; font-size: 15px; font-style: italic; cursor: pointer; transition: transform 0.1s; user-select: none; -webkit-user-select: none;
         }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
-        /* ORDER AREA (BOTTOM) */
-        .order-panel { height: 35%; background: #1a1a1a; border-top: 2px solid #333; display: flex; flex-direction: column; padding: 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+        /* ORDER PANEL (FIXED BOTTOM) */
+        .order-panel { 
+            background: #1a1a1a; 
+            border-top: 2px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 10px; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
+            flex-shrink: 0; /* Δεν συρρικνώνεται */
+            z-index: 20;
+        }
         
         .address-bar { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #333; }
         .btn-edit { background: none; border: 1px solid #555; color: #FFD700; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
-        textarea.order-text { flex: 1; background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 16px; resize: none; margin-bottom: 8px; }
+        textarea.order-text { 
+            width: 100%; 
+            height: 80px; 
+            background: #222; 
+            border: 1px solid #444; 
+            color: white; 
+            padding: 10px; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            resize: none; 
+            margin-bottom: 8px; 
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        /* Visual Flash Effect */
+        textarea.order-text.flash { border-color: #00E676; background-color: #2a2a2a; }
         
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
 
-        /* STATUS BAR OVERLAY */
+        /* STATUS OVERLAY */
         #statusOverlay { 
             position: absolute; bottom: 0; left: 0; width: 100%; height: 0; 
             background: rgba(0,0,0,0.95); transition: height 0.3s; 
             overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; 
         }
-        .status-content { text-align: center; }
-        .status-icon { font-size: 60px; margin-bottom: 10px; animation: pulse 1.5s infinite; }
-        .status-text { font-size: 22px; font-weight: bold; color: white; }
-        .status-sub { font-size: 14px; color: #aaa; margin-top: 5px; }
+        .status-content { text-align: center; width: 80%; }
+        .status-icon { font-size: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
+        .status-text { font-size: 24px; font-weight: bold; color: white; margin-bottom: 10px; }
+        .status-sub { font-size: 15px; color: #aaa; }
 
-        /* New Order Button in Overlay */
+        /* NEW ORDER BUTTON */
         .btn-new-order {
-            margin-top: 25px;
-            padding: 12px 25px;
-            background: #2196F3;
-            color: white;
+            margin-top: 30px;
+            padding: 15px 30px;
+            background: #00E676; /* Green */
+            color: black;
             border: none;
-            border-radius: 25px;
-            font-size: 16px;
+            border-radius: 30px;
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            display: none; /* Hidden by default */
-            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.4);
+            display: none; 
+            box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4);
+            width: 100%;
         }
 
         @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
@@ -152,7 +158,7 @@
         <div id="statusOverlay">
             <div class="status-content">
                 <div id="statusIcon" class="status-icon">⏳</div>
-                <div id="statusText" class="status-text">Αναμονή επιβεβαίωσης...</div>
+                <div id="statusText" class="status-text">Αναμονή...</div>
                 <div id="statusSub" class="status-sub">Μην κλείνετε την εφαρμογή</div>
                 
                 <button id="btnNewOrder" class="btn-new-order" onclick="App.resetForNewOrder()">➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</button>
@@ -180,23 +186,19 @@
         const provider = new GoogleAuthProvider();
         const messaging = getMessaging(app);
 
-        // Get Store from URL
         const params = new URLSearchParams(window.location.search);
         const TARGET_STORE = params.get('store');
 
         if (!TARGET_STORE) {
             alert("⚠️ Λάθος σύνδεσμος καταστήματος!");
-            document.body.innerHTML = "<h2 style='text-align:center; padding:20px; color:white;'>Store Not Found<br><small>Σκανάρετε ξανά το QR</small></h2>";
+            document.body.innerHTML = "<h2 style='text-align:center; padding:20px; color:white;'>Store Not Found</h2>";
         }
 
         let currentUser = null;
         let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
         
-        // --- ORDER PERSISTENCE LOGIC ---
-        // We store the active order ID and its last known status locally
+        // PERSISTENCE: activeOrderState { id, status, timestamp }
         let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
-        
-        // Timeout for "Coming" screen (1 hour = 3600000 ms)
         const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
         window.App = {
@@ -252,26 +254,21 @@
                 if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 }
-                
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
 
-                // Check if we have an active order in memory
                 App.checkActiveOrderStorage();
-
                 App.connectSocket();
             },
 
-            // --- PERSISTENCE CHECK ---
             checkActiveOrderStorage: () => {
                 if (activeOrderState) {
                     const now = Date.now();
-                    // If order was ready more than 1 hour ago, expire it
+                    // Expire 'ready' orders after 1 hour
                     if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
                         localStorage.removeItem('bellgo_active_order');
                         activeOrderState = null;
                         App.resetUI();
                     } else {
-                        // Restore status screen
                         App.updateStatusUI(activeOrderState.status);
                     }
                 }
@@ -284,46 +281,35 @@
 
                 socket.on('connect', () => {
                     const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    socket.emit('join-store', { 
-                        storeName: TARGET_STORE, 
-                        username: mySocketUsername, 
-                        role: 'customer', 
-                        isNative: false 
-                    });
+                    socket.emit('join-store', { storeName: TARGET_STORE, username: mySocketUsername, role: 'customer', isNative: false });
                 });
 
                 socket.on('menu-update', (data) => {
                     App.renderMenu(data);
                 });
 
-                // STATUS UPDATES
+                // --- CRITICAL FIX FOR STATUS ---
                 socket.on('orders-update', (orders) => {
                     const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    // Find MY latest order
-                    const myOrders = orders.filter(o => o.from === mySocketUsername);
+                    // Check if MY order exists in the active orders list
+                    const myOrder = orders.find(o => o.from === mySocketUsername);
                     
-                    if (myOrders.length > 0) {
-                        const latestOrder = myOrders[myOrders.length - 1];
-                        
-                        // Compare with local state to see if it changed
-                        if (!activeOrderState || activeOrderState.id !== latestOrder.id || activeOrderState.status !== latestOrder.status) {
-                            
-                            // Save to local storage
-                            activeOrderState = {
-                                id: latestOrder.id,
-                                status: latestOrder.status,
-                                timestamp: Date.now() // Update timestamp
-                            };
+                    if (myOrder) {
+                        // Order exists on server -> Sync status
+                        if (!activeOrderState || activeOrderState.status !== myOrder.status) {
+                            activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                            
-                            App.updateStatusUI(latestOrder.status);
+                            App.updateStatusUI(myOrder.status);
                         }
                     } else {
-                        // If I have a local pending order but it's gone from server -> Completed/Deleted
-                        // BUT if I have a local 'ready' order, keep showing it until timeout or user reset
-                        if (activeOrderState && activeOrderState.status !== 'ready') {
-                            // It was pending/cooking and now gone => probably reset
-                             // Optional: Could auto-switch to "Ready" logic here if we assume delete = delivered
+                        // Order MISSING from server. 
+                        // If I had a "Cooking" or "Pending" order locally, it means it was Deleted/Completed by Admin.
+                        // We must assume it is now DELIVERING ("Ready").
+                        if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
+                            activeOrderState.status = 'ready';
+                            activeOrderState.timestamp = Date.now();
+                            localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+                            App.updateStatusUI('ready'); // Switch to "Coming" screen
                         }
                     }
                 });
@@ -332,17 +318,11 @@
             renderMenu: (data) => {
                 const container = document.getElementById('menuContainer');
                 container.innerHTML = '';
-
                 let menu = [];
                 try {
-                    if(typeof data === 'string' && data.startsWith('[')) {
-                        menu = JSON.parse(data);
-                    } else if (typeof data === 'object') {
-                        menu = data;
-                    } else {
-                        const items = (data || "").split('\n');
-                        menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }];
-                    }
+                    if(typeof data === 'string' && data.startsWith('[')) { menu = JSON.parse(data); } 
+                    else if (typeof data === 'object') { menu = data; } 
+                    else { const items = (data || "").split('\n'); menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }]; }
                 } catch(e) { menu = []; }
 
                 if(Array.isArray(menu)) {
@@ -351,7 +331,6 @@
                         const title = document.createElement('div');
                         title.className = 'category-title';
                         title.innerText = cat.name;
-                        
                         const itemsDiv = document.createElement('div');
                         itemsDiv.className = 'category-items';
 
@@ -360,8 +339,10 @@
                                 const box = document.createElement('div');
                                 box.className = 'item-box';
                                 box.innerText = item.trim();
+                                
+                                // KEYBOARD & INTERACTION FIX
                                 const handleAdd = (e) => {
-                                    if (e.cancelable) e.preventDefault(); 
+                                    if (e.cancelable) e.preventDefault(); // Stop focus loss
                                     App.addToOrder(item.trim());
                                 };
                                 box.addEventListener('mousedown', handleAdd);
@@ -369,8 +350,8 @@
                                 itemsDiv.appendChild(box);
                             }
                         });
-
                         const wrapper = document.createElement('div');
+                        wrapper.className = 'category-block';
                         wrapper.appendChild(title);
                         wrapper.appendChild(itemsDiv);
                         container.appendChild(wrapper);
@@ -380,6 +361,13 @@
 
             addToOrder: (item) => {
                 const txt = document.getElementById('orderText');
+                // Ensure focus logic
+                txt.focus();
+                
+                // Visual feedback
+                txt.classList.add('flash');
+                setTimeout(() => txt.classList.remove('flash'), 200);
+
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
 
@@ -404,9 +392,8 @@
 
                 const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n---\n${items}`;
                 
-                // Temp ID for immediate UI feedback (Server will override, but we sync on update)
-                const tempId = Date.now();
-                activeOrderState = { id: tempId, status: 'pending', timestamp: Date.now() };
+                // Set initial local state
+                activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
                 localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
 
                 window.socket.emit('new-order', fullText);
@@ -423,9 +410,7 @@
                 const btnNew = document.getElementById('btnNewOrder');
 
                 overlay.style.height = '100%'; 
-
-                // Default hidden button
-                btnNew.style.display = 'none';
+                btnNew.style.display = 'none'; // Default hidden
 
                 if (status === 'pending') {
                     icon.innerText = '⏳';
@@ -439,8 +424,7 @@
                     icon.innerText = '🛵';
                     text.innerText = 'Η παραγγελία έρχεται!';
                     sub.innerText = 'Ο διανομέας ξεκίνησε';
-                    // SHOW NEW ORDER BUTTON
-                    btnNew.style.display = 'block';
+                    btnNew.style.display = 'block'; // SHOW BUTTON
                 }
             },
 
@@ -448,7 +432,6 @@
                 App.showStatus(status);
             },
 
-            // --- RESET FOR NEW ORDER ---
             resetForNewOrder: () => {
                 if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
                     localStorage.removeItem('bellgo_active_order');
@@ -463,7 +446,6 @@
             }
         };
 
-        // AUTH STATE
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
