@@ -34,8 +34,6 @@ const io = new Server(server, {
   pingInterval: 25000
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
 /* ---------------- DATA STORE ---------------- */
 let activeUsers = {};
 let activeOrders = []; 
@@ -62,18 +60,19 @@ try {
 } catch (e) { console.log("Load Error", e); }
 
 
-/* ---------------- DYNAMIC MANIFEST (ΓΙΑ PWA ΕΓΚΑΤΑΣΤΑΣΗ) ---------------- */
+/* ---------------- DYNAMIC MANIFEST (PRIORITY - ΜΕΤΑΚΙΝΗΘΗΚΕ ΠΑΝΩ) ---------------- */
+// ΣΗΜΑΝΤΙΚΟ: Αυτό πρέπει να είναι ΠΡΙΝ το static folder για να αγνοεί τυχόν παλιά αρχεία manifest.json
 app.get('/manifest.json', (req, res) => {
     // Παίρνουμε το όνομα από το URL (που το στέλνει το order.html) ή από τις ρυθμίσεις
     const appName = req.query.name || storeSettings.name || "Delivery App";
     
     // Φτιάχνουμε το start_url ώστε όταν ανοίγει το App να θυμάται ποιο μαγαζί είναι
-    // Αν υπάρχει store στο query, το βάζουμε στο start_url
     let startUrl = ".";
     if (req.query.store) {
         startUrl = `./order.html?store=${req.query.store}&name=${encodeURIComponent(appName)}`;
     }
 
+    res.set('Content-Type', 'application/manifest+json'); // Βοηθάει τον Chrome να το αναγνωρίσει
     res.json({
         "name": appName,
         "short_name": appName,
@@ -96,6 +95,9 @@ app.get('/manifest.json', (req, res) => {
         ]
     });
 });
+
+// --- STATIC FILES (ΤΩΡΑ ΜΠΑΙΝΟΥΝ ΜΕΤΑ ΤΟ MANIFEST) ---
+app.use(express.static(path.join(__dirname, 'public')));
 
 
 /* ---------------- STRIPE FUNCTIONS ---------------- */
@@ -185,7 +187,7 @@ io.on('connection', (socket) => {
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
         
-        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε (για να πάρει το όνομα αμέσως)
+        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
     });
