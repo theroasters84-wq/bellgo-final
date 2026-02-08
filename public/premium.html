@@ -12,6 +12,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="admin.png"> 
 
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const pName = params.get('name');
+            const pStore = params.get('store');
+            
+            // Αν υπάρχουν παράμετροι, ενημερώνουμε το manifest link ΑΜΕΣΩΣ
+            if (pName && pStore) {
+                const manifestLink = document.getElementById('dynamicManifest');
+                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}&icon=admin`;
+                document.title = decodeURIComponent(pName) + " (Admin)";
+            }
+        })();
+    </script>
+
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
