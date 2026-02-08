@@ -43,48 +43,48 @@ const MENU_FILE = path.join(__dirname, 'saved_menu.json');
 const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
 
 let liveMenu = []; 
-let storeSettings = { name: "BellGo Delivery" }; // Default Name
+let storeSettings = { name: "BellGo Delivery" }; 
 
 // LOAD DATA ON STARTUP
 try {
-    // 1. Load Menu
     if (fs.existsSync(MENU_FILE)) {
         const raw = fs.readFileSync(MENU_FILE, 'utf8');
         try { liveMenu = JSON.parse(raw); } 
         catch { liveMenu = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: raw.split('\n').filter(x=>x) }]; }
     }
-    // 2. Load Store Settings (Name)
     if (fs.existsSync(SETTINGS_FILE)) {
         storeSettings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     }
 } catch (e) { console.log("Load Error", e); }
 
 
-/* ---------------- DYNAMIC MANIFEST (PRIORITY) ---------------- */
-// ΣΗΜΑΝΤΙΚΟ: Αυτό μπαίνει ΠΡΙΝ το static folder για να αγνοεί τυχόν παλιά αρχεία και να διαβάζει τα εικονίδια
+/* ---------------- DYNAMIC MANIFEST (PRIORITY & FIXED FOR MULTIPLE APPS) ---------------- */
 app.get('/manifest.json', (req, res) => {
-    // 1. Όνομα Εφαρμογής
     const appName = req.query.name || storeSettings.name || "Delivery App";
-    
-    // 2. Επιλογή Εικονιδίου (Βάσει ρόλου)
-    const iconType = req.query.icon; // admin, staff, ή τίποτα (πελάτης)
-    let iconFile = "shop.png"; // Default (Εικόνα Πελάτη)
+    const iconType = req.query.icon; 
+    let iconFile = "shop.png"; // Default (Πελάτης)
 
     if (iconType === 'admin') {
         iconFile = "admin.png";
     } else if (iconType === 'staff') {
         iconFile = "staff.png";
+    } else if (iconType === 'login') {
+        iconFile = "login.png";
     }
 
-    // 3. Start URL
     let startUrl = ".";
     if (req.query.store) {
-        // Κρατάμε το store και το name στο URL εκκίνησης
         startUrl = `./order.html?store=${req.query.store}&name=${encodeURIComponent(appName)}`;
+        
+        // Αν είναι admin, αλλάζουμε το start url για να ανοίγει το premium
+        if (iconType === 'admin') {
+            startUrl = `./premium.html?store=${req.query.store}`; 
+        }
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
+        "id": startUrl, // <--- ΚΛΕΙΔΙ ΓΙΑ ΤΑ ΠΟΛΛΑΠΛΑ ΕΙΚΟΝΙΔΙΑ
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -107,7 +107,7 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-// --- STATIC FILES (ΜΕΤΑΚΙΝΗΘΗΚΕ ΕΔΩ ΓΙΑ ΝΑ ΜΗΝ ΜΠΛΟΚΑΡΕΙ ΤΟ MANIFEST) ---
+// --- STATIC FILES (Μετά το manifest) ---
 app.use(express.static(path.join(__dirname, 'public')));
 
 
@@ -145,10 +145,13 @@ app.post('/create-checkout-session', async (req, res) => {
 function updateStore(store) {
     if (!store) return;
     
-    // Send Staff List
-    const list = Object.values(activeUsers).filter(u => u.store === store).map(u => ({ 
-        name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
-    }));
+    // Send Staff List (ΦΙΛΤΡΑΡΙΣΜΑ ΠΕΛΑΤΩΝ - GHOST FIX)
+    const list = Object.values(activeUsers)
+        .filter(u => u.store === store && u.role !== 'customer') // <--- Η ΛΥΣΗ ΓΙΑ ΤΑ ΦΑΝΤΑΣΜΑΤΑ
+        .map(u => ({ 
+            name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
+        }));
+    
     io.to(store).emit('staff-list-update', list);
     
     // Send Orders
@@ -185,7 +188,9 @@ io.on('connection', (socket) => {
 
         socket.store = store;
         socket.username = username;
-        socket.role = data.role || 'waiter';
+        socket.role = data.role || 'waiter'; // Default waiter
+        if(data.role === 'customer') socket.role = 'customer'; // Explicit customer
+
         socket.join(store);
 
         const key = `${store}_${username}`;
@@ -198,19 +203,16 @@ io.on('connection', (socket) => {
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
         
-        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
     });
 
-    // --- SAVE STORE NAME ---
     socket.on('save-store-name', (newName) => {
         storeSettings.name = newName;
         fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings), 'utf8');
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
-    // --- MENU HANDLING ---
     socket.on('save-menu', (jsonText) => {
         try {
             liveMenu = JSON.parse(jsonText);
@@ -219,7 +221,6 @@ io.on('connection', (socket) => {
         } catch (e) {}
     });
 
-    // --- ORDERS ---
     socket.on('new-order', (orderText) => {
         if (!socket.store) return;
         
@@ -234,7 +235,6 @@ io.on('connection', (socket) => {
         activeOrders.push(newOrder);
         updateStore(socket.store);
         
-        // Notify Admins
         Object.values(activeUsers)
             .filter(u => u.store === socket.store && u.role === 'admin')
             .forEach(adm => {
@@ -243,20 +243,16 @@ io.on('connection', (socket) => {
             });
     });
 
-    // Admin accepts order
     socket.on('accept-order', (id) => {
         const o = activeOrders.find(x => x.id === id);
         if(o) { o.status = 'cooking'; updateStore(socket.store); }
     });
 
-    // Admin marks order as ready (Delivery / Coming)
     socket.on('ready-order', (id) => {
         const o = activeOrders.find(x => x.id === id);
         if(o) { 
             o.status = 'ready'; 
             updateStore(socket.store); 
-            
-            // Notify Customer
             const targetKey = `${socket.store}_${o.from}`;
             const targetUser = activeUsers[targetKey];
             if (targetUser) {
@@ -266,13 +262,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Admin closes/deletes order
     socket.on('close-order', (id) => {
         activeOrders = activeOrders.filter(x => x.id !== id);
         updateStore(socket.store);
     });
 
-    // --- STAFF ALARM ---
     socket.on('trigger-alarm', (targetName) => {
         const key = `${socket.store}_${targetName}`;
         const target = activeUsers[key];
@@ -291,12 +285,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- CHAT ---
     socket.on('chat-message', (msg) => {
         if (socket.store) io.to(socket.store).emit('chat-message', { sender: socket.username, text: msg.text });
     });
 
-    // --- CLEANUP ---
     socket.on('manual-logout', (data) => {
         const tUser = data && data.targetUser ? data.targetUser : socket.username;
         const tKey = `${socket.store}_${tUser}`;
@@ -312,7 +304,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Periodic Cleanup (1 hour idle check)
 setInterval(() => {
     const now = Date.now();
     for (const key in activeUsers) {
