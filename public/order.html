@@ -10,16 +10,22 @@
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon.png"> 
+    <link rel="apple-touch-icon" href="shop.png"> 
     
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const pName = params.get('name');
-        const pStore = params.get('store');
-        if (pName && pStore) {
-            document.getElementById('dynamicManifest').href = `manifest.json?name=${pName}&store=${pStore}`;
-            document.title = decodeURIComponent(pName);
-        }
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const pName = params.get('name');
+            const pStore = params.get('store');
+            
+            // Αν υπάρχουν παράμετροι, ενημερώνουμε το manifest link ΑΜΕΣΩΣ
+            if (pName && pStore) {
+                const manifestLink = document.getElementById('dynamicManifest');
+                // Εδώ δεν βάζουμε ?icon=... γιατί θέλουμε το default (shop.png)
+                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}`;
+                document.title = decodeURIComponent(pName);
+            }
+        })();
     </script>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -163,7 +169,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // REGISTER SERVICE WORKER
+        // --- PWA: REGISTER SERVICE WORKER (MANDATORY) ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log('✅ Service Worker Registered'))
@@ -247,10 +253,12 @@
                 document.getElementById('detailsOverlay').style.display = 'none';
                 document.getElementById('appContent').style.display = 'flex';
                 
+                // --- PWA NAME LOGIC (CRITICAL FIX) ---
                 if (PRELOADED_NAME) {
                     const cleanName = decodeURIComponent(PRELOADED_NAME);
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
+                    // Ensure manifest link is correct for install
                     document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}&store=${TARGET_STORE}`;
                 } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
@@ -289,17 +297,21 @@
                     App.renderMenu(data);
                 });
 
+                // --- SMART RELOAD & MANIFEST FIX (FORCE RELOAD IF NO NAME) ---
                 socket.on('store-settings-update', (settings) => {
                     if (settings && settings.name) {
                         const newName = settings.name;
+                        
                         document.getElementById('storeNameHeader').innerText = newName;
                         document.title = newName;
 
                         const currentParams = new URLSearchParams(window.location.search);
+                        // Αν δεν υπάρχει όνομα στο URL, κάνουμε FORCE RELOAD για να το δει το PWA
                         if (!currentParams.get('name')) {
                             currentParams.set('name', newName);
                             window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
                         } else {
+                            // Update Manifest Link just in case
                             const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}`;
                             document.getElementById('dynamicManifest').href = maniUrl;
                         }
