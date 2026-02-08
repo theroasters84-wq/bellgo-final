@@ -87,38 +87,39 @@
         
         /* NEW WINDOW LAYOUT */
         .win-body { 
-            padding: 0; /* Reset padding */
+            padding: 20px; 
             flex: 1; 
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-y: auto;
+            gap: 15px;
         }
 
-        /* LEFT INFO SECTION (DISCRETE) */
+        /* INFO SECTION (HIGHLIGHTED HEADER) */
         .order-info-section {
-            background: #111;
-            padding: 15px 20px;
-            border-bottom: 1px solid #333;
-            color: #aaa;
-            font-size: 16px;
+            background: #252525;
+            border-left: 8px solid #00E676; /* Φωσφοριζέ Πράσινη Μπάρα */
+            padding: 15px;
+            color: #fff;
+            font-size: 22px; /* Μεγάλα γράμματα, ίδια με το μενού */
+            font-weight: bold;
             text-align: left;
-            line-height: 1.5;
+            line-height: 1.4;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
-        .order-info-section strong { color: #FFD700; }
-
-        /* MAIN ITEMS SECTION (HUGE) */
+        
+        /* MAIN ITEMS SECTION (BALANCED) */
         .order-items-section {
             flex: 1;
-            padding: 20px;
-            overflow-y: auto;
             color: #fff;
             font-weight: bold;
-            display: flex;
-            align-items: center; /* Center Vertically */
-            justify-content: center; /* Center Horizontally */
-            text-align: center;
+            font-size: 22px; /* ΙΔΙΟ ΜΕΓΕΘΟΣ ΜΕ ΤΑ ΣΤΟΙΧΕΙΑ */
+            text-align: left; /* Στοίχιση αριστερά για λίστα */
+            padding: 10px;
             white-space: pre-wrap;
+            line-height: 1.5;
         }
         
         .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
@@ -333,7 +334,7 @@
                 });
             },
 
-            // --- LINK & QR CODE ---
+            // --- LINK & QR CODE (UPDATED TO INCLUDE NAME) ---
             showLink: () => {
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
@@ -490,13 +491,6 @@
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
                 }
 
-                // SMART FONT SIZING (ONLY FOR ITEMS)
-                const len = itemsText.length;
-                let fontSize = '42px'; 
-                if (len > 100) fontSize = '28px'; 
-                if (len > 300) fontSize = '20px'; 
-                if (len > 600) fontSize = '16px'; 
-
                 win.style.border = `none`;
                 win.innerHTML = `
                     <div class="win-header">
@@ -507,7 +501,7 @@
                     </div>
                     <div class="win-body">
                         <div class="order-info-section">${infoText}</div>
-                        <div class="order-items-section" style="font-size:${fontSize};">${displayItems}</div>
+                        <div class="order-items-section">${displayItems}</div>
                     </div>
                     <div class="win-footer">${actions}</div>
                 `;
