@@ -1,4 +1,4 @@
-/* sw.js - Service Worker για PWA */
+/* sw.js - Service Worker για BellGo PWA */
 self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
@@ -8,6 +8,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Απλά επιτρέπει τη φόρτωση, απαραίτητο για PWA
+    // Επιτρέπει την κανονική λειτουργία του δικτύου
     event.respondWith(fetch(event.request));
 });
