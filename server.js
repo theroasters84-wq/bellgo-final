@@ -64,21 +64,27 @@ try {
 
 /* ---------------- DYNAMIC MANIFEST (ΓΙΑ PWA ΕΓΚΑΤΑΣΤΑΣΗ) ---------------- */
 app.get('/manifest.json', (req, res) => {
-    // Αν το URL έχει ?name=... (από τον πελάτη), χρησιμοποιούμε αυτό.
-    // Αλλιώς χρησιμοποιούμε το αποθηκευμένο όνομα του μαγαζιού.
+    // Παίρνουμε το όνομα από το URL (που το στέλνει το order.html) ή από τις ρυθμίσεις
     const appName = req.query.name || storeSettings.name || "Delivery App";
     
+    // Φτιάχνουμε το start_url ώστε όταν ανοίγει το App να θυμάται ποιο μαγαζί είναι
+    // Αν υπάρχει store στο query, το βάζουμε στο start_url
+    let startUrl = ".";
+    if (req.query.store) {
+        startUrl = `./order.html?store=${req.query.store}&name=${encodeURIComponent(appName)}`;
+    }
+
     res.json({
         "name": appName,
         "short_name": appName,
-        "start_url": ".",
+        "start_url": startUrl,
         "display": "standalone",
-        "background_color": "#000000",
-        "theme_color": "#000000",
+        "background_color": "#121212",
+        "theme_color": "#121212",
         "orientation": "portrait",
         "icons": [
             {
-                "src": "icon.png", // Βεβαιώσου ότι έχεις ένα γενικό εικονίδιο icon.png στο public
+                "src": "icon.png", // Βεβαιώσου ότι υπάρχει το icon.png στο public
                 "sizes": "192x192",
                 "type": "image/png"
             },
@@ -179,7 +185,7 @@ io.on('connection', (socket) => {
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
         
-        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε
+        // Άμεση ενημέρωση στον χρήστη που μόλις συνδέθηκε (για να πάρει το όνομα αμέσως)
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
     });
