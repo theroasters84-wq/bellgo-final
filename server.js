@@ -60,19 +60,30 @@ try {
 } catch (e) { console.log("Load Error", e); }
 
 
-/* ---------------- DYNAMIC MANIFEST (PRIORITY - ΜΕΤΑΚΙΝΗΘΗΚΕ ΠΑΝΩ) ---------------- */
-// ΣΗΜΑΝΤΙΚΟ: Αυτό πρέπει να είναι ΠΡΙΝ το static folder για να αγνοεί τυχόν παλιά αρχεία manifest.json
+/* ---------------- DYNAMIC MANIFEST (PRIORITY) ---------------- */
+// ΣΗΜΑΝΤΙΚΟ: Αυτό μπαίνει ΠΡΙΝ το static folder για να αγνοεί τυχόν παλιά αρχεία και να διαβάζει τα εικονίδια
 app.get('/manifest.json', (req, res) => {
-    // Παίρνουμε το όνομα από το URL (που το στέλνει το order.html) ή από τις ρυθμίσεις
+    // 1. Όνομα Εφαρμογής
     const appName = req.query.name || storeSettings.name || "Delivery App";
     
-    // Φτιάχνουμε το start_url ώστε όταν ανοίγει το App να θυμάται ποιο μαγαζί είναι
+    // 2. Επιλογή Εικονιδίου (Βάσει ρόλου)
+    const iconType = req.query.icon; // admin, staff, ή τίποτα (πελάτης)
+    let iconFile = "shop.png"; // Default (Εικόνα Πελάτη)
+
+    if (iconType === 'admin') {
+        iconFile = "admin.png";
+    } else if (iconType === 'staff') {
+        iconFile = "staff.png";
+    }
+
+    // 3. Start URL
     let startUrl = ".";
     if (req.query.store) {
+        // Κρατάμε το store και το name στο URL εκκίνησης
         startUrl = `./order.html?store=${req.query.store}&name=${encodeURIComponent(appName)}`;
     }
 
-    res.set('Content-Type', 'application/manifest+json'); // Βοηθάει τον Chrome να το αναγνωρίσει
+    res.set('Content-Type', 'application/manifest+json');
     res.json({
         "name": appName,
         "short_name": appName,
@@ -83,12 +94,12 @@ app.get('/manifest.json', (req, res) => {
         "orientation": "portrait",
         "icons": [
             {
-                "src": "icon.png", // Βεβαιώσου ότι υπάρχει το icon.png στο public
+                "src": iconFile, 
                 "sizes": "192x192",
                 "type": "image/png"
             },
             {
-                "src": "icon.png",
+                "src": iconFile,
                 "sizes": "512x512",
                 "type": "image/png"
             }
@@ -96,7 +107,7 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-// --- STATIC FILES (ΤΩΡΑ ΜΠΑΙΝΟΥΝ ΜΕΤΑ ΤΟ MANIFEST) ---
+// --- STATIC FILES (ΜΕΤΑΚΙΝΗΘΗΚΕ ΕΔΩ ΓΙΑ ΝΑ ΜΗΝ ΜΠΛΟΚΑΡΕΙ ΤΟ MANIFEST) ---
 app.use(express.static(path.join(__dirname, 'public')));
 
 
