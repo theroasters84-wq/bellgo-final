@@ -13,19 +13,13 @@
     <link rel="apple-touch-icon" href="icon.png"> 
     
     <script>
-        (function() {
-            // Παίρνουμε τις παραμέτρους από το URL
-            const params = new URLSearchParams(window.location.search);
-            const pName = params.get('name');
-            const pStore = params.get('store');
-            
-            // Αν υπάρχει όνομα στο URL, ενημερώνουμε το μανιφέστο ΑΜΕΣΩΣ
-            if (pName && pStore) {
-                const manifestLink = document.getElementById('dynamicManifest');
-                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}`;
-                document.title = decodeURIComponent(pName); // Αλλάζουμε και τον τίτλο της καρτέλας
-            }
-        })();
+        const params = new URLSearchParams(window.location.search);
+        const pName = params.get('name');
+        const pStore = params.get('store');
+        if (pName && pStore) {
+            document.getElementById('dynamicManifest').href = `manifest.json?name=${pName}&store=${pStore}`;
+            document.title = decodeURIComponent(pName);
+        }
     </script>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -60,7 +54,21 @@
         .category-block { width: 100%; }
         .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-        .item-box { background: #222; border: 1px solid #444; padding: 12px 16px; border-radius: 8px; color: #eee; font-size: 15px; font-style: italic; cursor: pointer; transition: transform 0.1s; user-select: none; -webkit-user-select: none; }
+        
+        /* ITEM BOX STYLE */
+        .item-box { 
+            background: #222; 
+            border: 1px solid #444; 
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            color: #eee; 
+            font-size: 15px; 
+            font-style: italic; 
+            cursor: pointer; 
+            transition: transform 0.1s; 
+            user-select: none; 
+            -webkit-user-select: none; /* Απαραίτητο για να μην επιλέγεται το κείμενο στο διπλό κλικ */
+        }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
         /* ORDER PANEL */
@@ -155,7 +163,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // --- PWA: REGISTER SERVICE WORKER (MANDATORY) ---
+        // REGISTER SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(() => console.log('✅ Service Worker Registered'))
@@ -239,12 +247,10 @@
                 document.getElementById('detailsOverlay').style.display = 'none';
                 document.getElementById('appContent').style.display = 'flex';
                 
-                // --- PWA NAME LOGIC (CRITICAL FIX) ---
                 if (PRELOADED_NAME) {
                     const cleanName = decodeURIComponent(PRELOADED_NAME);
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
-                    // Ensure manifest link is correct for install
                     document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}&store=${TARGET_STORE}`;
                 } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
@@ -283,21 +289,17 @@
                     App.renderMenu(data);
                 });
 
-                // --- SMART RELOAD & MANIFEST FIX (FORCE RELOAD IF NO NAME) ---
                 socket.on('store-settings-update', (settings) => {
                     if (settings && settings.name) {
                         const newName = settings.name;
-                        
                         document.getElementById('storeNameHeader').innerText = newName;
                         document.title = newName;
 
                         const currentParams = new URLSearchParams(window.location.search);
-                        // Αν δεν υπάρχει όνομα στο URL, κάνουμε FORCE RELOAD για να το δει το PWA
                         if (!currentParams.get('name')) {
                             currentParams.set('name', newName);
                             window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
                         } else {
-                            // Update Manifest Link just in case
                             const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}`;
                             document.getElementById('dynamicManifest').href = maniUrl;
                         }
@@ -349,12 +351,14 @@
                                 const box = document.createElement('div');
                                 box.className = 'item-box';
                                 box.innerText = item.trim();
-                                const handleAdd = (e) => {
-                                    if (e.cancelable) e.preventDefault(); 
+                                
+                                // === CHANGED: DOUBLE CLICK TO ADD ===
+                                box.addEventListener('dblclick', (e) => {
+                                    e.preventDefault(); 
                                     App.addToOrder(item.trim());
-                                };
-                                box.addEventListener('mousedown', handleAdd);
-                                box.addEventListener('touchstart', handleAdd);
+                                });
+                                // ====================================
+                                
                                 itemsDiv.appendChild(box);
                             }
                         });
@@ -444,6 +448,7 @@
                     sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
                     icon.innerText = '🛵';
+                    // Show exact time here
                     text.innerText = `Η παραγγελία (${timeString}) έρχεται!`;
                     sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
