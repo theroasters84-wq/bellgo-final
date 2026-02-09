@@ -4,33 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>BellGo Admin Premium</title>
-    
     <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
-    
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <link rel="apple-touch-icon" href="admin.png"> 
-
     <script>
         (function() {
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             const pStore = params.get('store');
-            
-            // Αν υπάρχουν παράμετροι, ενημερώνουμε το manifest link ΑΜΕΣΩΣ με icon=admin
             if (pName && pStore) {
                 const manifestLink = document.getElementById('dynamicManifest');
                 manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}&icon=admin`;
                 document.title = decodeURIComponent(pName) + " (Admin)";
             } else if (pStore) {
-                // Ακόμα και χωρίς όνομα, σιγουρεύουμε ότι ζητάει το εικονίδιο admin
                 document.getElementById('dynamicManifest').href = `manifest.json?store=${pStore}&icon=admin`;
             }
         })();
     </script>
-
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -43,14 +35,10 @@
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .btn-icon:active { background: #333; }
-
-        .chat-badge {
-            position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10;
-        }
+        .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
 
         /* ADMIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
@@ -58,32 +46,15 @@
         
         /* MENU SECTION */
         .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
-        
         .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        
-        #menuInputContainer {
-            flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px;
-        }
-
-        /* CATEGORY BOX STYLE */
-        .category-box {
-            background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 140px; text-align: center; cursor: pointer; position: relative;
-        }
+        #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px; }
+        .category-box { background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 140px; text-align: center; cursor: pointer; position: relative; }
         .category-order { position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555; }
         .btn-delete-cat { position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
-
-        /* ITEM BOX STYLE */
-        .menu-input-box {
-            background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; 
-        }
+        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; }
         .menu-input-box:focus { border-color: #2196F3; outline: none; background: #333; }
-
-        /* STORE NAME INPUT */
-        .store-name-input {
-            background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 200px; text-align: center; margin-left: 10px;
-        }
+        .store-name-input { background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 200px; text-align: center; margin-left: 10px; }
         .store-name-input:focus { border-color: #00E676; outline: none; }
-
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
@@ -104,50 +75,13 @@
 
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
         
-        /* ORDER SCREEN - FULL SCREEN OVERLAY */
-        .order-window { 
-            position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; border: none !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important;
-        }
+        /* ORDER SCREEN */
+        .order-window { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; border: none !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important; }
         .win-header { background: #1a1a1a; padding: 15px 20px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-        
-        /* NEW WINDOW LAYOUT */
-        .win-body { 
-            padding: 20px; 
-            flex: 1; 
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            gap: 15px;
-        }
-
-        /* INFO SECTION (HIGHLIGHTED HEADER) */
-        .order-info-section {
-            background: #252525;
-            border-left: 8px solid #00E676; /* Φωσφοριζέ Πράσινη Μπάρα */
-            padding: 15px;
-            color: #fff;
-            font-size: 22px; /* Μεγάλα γράμματα, ίδια με το μενού */
-            font-weight: bold;
-            text-align: left;
-            line-height: 1.4;
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            flex-shrink: 0;
-        }
-        
-        /* MAIN ITEMS SECTION (BALANCED) */
-        .order-items-section {
-            flex: 1;
-            color: #fff;
-            font-weight: bold;
-            font-size: 22px; /* ΙΔΙΟ ΜΕΓΕΘΟΣ ΜΕ ΤΑ ΣΤΟΙΧΕΙΑ */
-            text-align: left; /* Στοίχιση αριστερά για λίστα */
-            padding: 10px;
-            white-space: pre-wrap;
-            line-height: 1.5;
-        }
-        
+        .win-body { padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; gap: 15px; }
+        .order-info-section { background: #252525; border-left: 8px solid #00E676; padding: 15px; color: #fff; font-size: 22px; font-weight: bold; text-align: left; line-height: 1.4; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
+        .order-items-section { flex: 1; color: #fff; font-weight: bold; font-size: 22px; text-align: left; padding: 10px; white-space: pre-wrap; line-height: 1.5; }
         .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
         .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
 
@@ -159,7 +93,7 @@
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* CHAT OVERLAY */
+        /* CHAT */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -172,8 +106,6 @@
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
 
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
-        
-        /* QR OVERLAY */
         #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; }
         .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
         #qrcode { margin-top: 10px; }
@@ -196,12 +128,10 @@
             </div>
             <div class="header-actions">
                 <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
-                
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
-
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
@@ -217,7 +147,6 @@
                             <input type="text" id="inpStoreName" class="store-name-input" placeholder="Όνομα...">
                         </div>
                     </div>
-
                     <div style="display:flex; gap:10px; align-items:center;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
@@ -288,6 +217,21 @@
         let orderAlertSound = new Audio('alert.mp3');
         orderAlertSound.loop = true; 
 
+        // HELPER: Calculate Total
+        const calculateTotal = (text) => {
+            let total = 0;
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                const match = line.match(/^(\d+)?\s*(.+):(\d+(\.\d+)?)$/);
+                if (match) {
+                    let qty = parseInt(match[1] || '1');
+                    let price = parseFloat(match[3]);
+                    total += qty * price;
+                }
+            });
+            return total;
+        };
+
         window.App = {
             activeOrders: [],
             menuData: [], 
@@ -301,7 +245,6 @@
                     orderAlertSound.play().then(() => orderAlertSound.pause());
                 }, {once:true});
 
-                // LISTENER FOR STORE NAME INPUT
                 const nameInput = document.getElementById('inpStoreName');
                 nameInput.addEventListener('blur', () => {
                     const newName = nameInput.value.trim();
@@ -339,7 +282,6 @@
                     App.renderMenu();
                 });
 
-                // UPDATE STORE NAME INPUT
                 socket.on('store-settings-update', (settings) => {
                     if(settings && settings.name) {
                         document.getElementById('inpStoreName').value = settings.name;
@@ -360,7 +302,6 @@
                 });
             },
 
-            // --- LINK & QR CODE (UPDATED TO INCLUDE NAME) ---
             showLink: () => {
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
@@ -369,7 +310,6 @@
                 const baseUrl = window.location.origin;
                 const customName = document.getElementById('inpStoreName').value.trim();
                 
-                // Add name to URL if it exists
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
                 if(customName) {
                     fullLink += `&name=${encodeURIComponent(customName)}`;
@@ -383,7 +323,6 @@
                 el.style.display = 'flex';
             },
 
-            // --- MENU LOGIC ---
             handlePlusButton: () => {
                 if (App.currentCategoryIndex === null) {
                     let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
@@ -440,7 +379,7 @@
                 input.type = 'text';
                 input.className = 'menu-input-box';
                 input.value = val;
-                input.placeholder = "Προϊόν...";
+                input.placeholder = "Προϊόν:Τιμή"; // Updated Placeholder
                 
                 const saveInput = () => {
                     const val = input.value.trim();
@@ -465,7 +404,6 @@
                 App.renderMenu();
             },
 
-            // --- DESKTOP LOGIC ---
             renderDesktopIcons: (orders) => {
                 const desktop = document.getElementById('desktopArea');
                 desktop.innerHTML = '';
@@ -473,8 +411,11 @@
 
                 orders.forEach(order => {
                     const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    // Green border if ready
+                    const style = order.status === 'ready' ? 'border: 2px solid #00E676;' : '';
                     const icon = document.createElement('div');
                     icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
+                    icon.style = style;
                     icon.innerHTML = `<div class="folder-icon">📂</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
                     icon.onclick = () => App.openOrderWindow(order);
                     desktop.appendChild(icon);
@@ -493,7 +434,6 @@
                     document.getElementById('windowsContainer').appendChild(win);
                 }
 
-                // SPLIT INFO AND ITEMS
                 let infoText = "";
                 let itemsText = order.text;
 
@@ -502,19 +442,22 @@
                     infoText = parts[0].replace(/\n/g, '<br>').trim();
                     itemsText = parts[1].trim();
                 } else {
-                    // Fallback for waiter or old orders
                     itemsText = order.text;
                 }
 
+                // CALCULATE TOTAL
+                const total = calculateTotal(order.text);
                 const displayItems = itemsText.replace(/\n/g, '<br>');
 
                 let actions = '';
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else if (order.status === 'cooking') {
+                    // ΠΡΟΣΟΧΗ: Αυτό στέλνει Silent Notification στο σερβιτόρο
                     actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady('${order.id}')">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
                 } else {
-                    actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">✅ ΟΛΟΚΛΗΡΩΣΗ</button>`;
+                    // ΚΟΥΜΠΙ ΠΛΗΡΩΜΗΣ
+                    actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
                 }
 
                 win.style.border = `none`;
@@ -528,6 +471,7 @@
                     <div class="win-body">
                         <div class="order-info-section">${infoText}</div>
                         <div class="order-items-section">${displayItems}</div>
+                        <div style="font-size:24px; color:#FFD700; font-weight:bold; text-align:right; margin-top:20px;">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
                     </div>
                     <div class="win-footer">${actions}</div>
                 `;
@@ -550,8 +494,8 @@
             },
 
             completeOrder: (id) => {
-                if(confirm("Κλείσιμο παραγγελίας;")) {
-                    window.socket.emit('close-order', Number(id));
+                if(confirm("Εξόφληση και κλείσιμο;")) {
+                    window.socket.emit('pay-order', Number(id)); // Using new Event
                     const win = document.getElementById(`win-${id}`);
                     if(win) win.remove();
                 }
