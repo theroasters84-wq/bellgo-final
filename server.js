@@ -44,7 +44,7 @@ const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
 const ORDERS_FILE = path.join(__dirname, 'active_orders.json');
 
 let liveMenu = [];
-// ✅ Προσθήκη isOpen και adminEmail (για να βρίσκονται Admin-Staff)
+// ✅ Προσθήκη PIN, isOpen και adminEmail
 let storeSettings = { name: "BellGo Delivery", pin: null, isOpen: true, adminEmail: "" }; 
 
 // LOAD DATA ON STARTUP
@@ -76,27 +76,29 @@ function saveSettingsToDisk() {
 app.get('/manifest.json', (req, res) => {
     const appName = req.query.name || storeSettings.name || "BellGo App";
     const iconType = req.query.icon; 
-    const storeParam = req.query.store || "general";
+    const rawStoreParam = req.query.store || "general";
+    
+    // ✅ SAFE ID: Αφαιρούμε κενά και σύμβολα για να είναι valid ID στον Browser
+    // Π.χ. "The Roasters" -> "TheRoasters"
+    const safeStoreParam = rawStoreParam.replace(/[^a-zA-Z0-9]/g, '');
 
-    // ✅ UNIQUE ID: Αυτό λέει στον Browser ότι είναι ΔΙΑΦΟΡΕΤΙΚΗ εφαρμογή
-    // BellGo Roasters != BellGo Psistiri
-    let appId = `bellgo_${iconType}_${storeParam}`; 
+    // ✅ UNIQUE ID: Αυτό κάνει τον Browser να βλέπει το App ως ξεχωριστό
+    let appId = `bellgo_${iconType}_${safeStoreParam}`; 
 
     let iconFile = "admin.png"; 
     let startUrl = ".";         
 
     if (iconType === 'shop') {
         iconFile = "shop.png";
-        startUrl = `./order.html?store=${req.query.store || ''}&name=${encodeURIComponent(appName)}`;
+        startUrl = `./order.html?store=${encodeURIComponent(rawStoreParam)}&name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
-        // Το προσωπικό πάει πάντα Login, αλλά κρατάμε το store param αν υπάρχει
-        startUrl = req.query.store ? `./login.html?store=${req.query.store}` : `./login.html`; 
+        startUrl = `./login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId, // <-- ΤΟ ΚΛΕΙΔΙ
+        "id": appId,
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -116,7 +118,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 /* ---------------- STRIPE ---------------- */
 app.post('/check-subscription', async (req, res) => {
     let { email } = req.body;
-    // Mock response for now to ensure login works
     return res.json({ active: true, plan: 'premium' }); 
 });
 
@@ -163,7 +164,7 @@ io.on('connection', (socket) => {
 
     socket.on('set-new-pin', (data) => {
         storeSettings.pin = data.pin;
-        if(data.email) storeSettings.adminEmail = data.email; // Save correct room ID
+        if(data.email) storeSettings.adminEmail = data.email; 
         saveSettingsToDisk();
         socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
     });
