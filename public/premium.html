@@ -38,7 +38,7 @@
         .btn-icon:active { background: #333; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         
-        /* TOGGLE SWITCH */
+        /* TOGGLE SWITCH - FIXED CSS */
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; margin-right: 5px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; -webkit-transition: .4s; transition: .4s; }
@@ -253,16 +253,14 @@
                     try {
                         if (typeof data === 'string' && !data.startsWith('[')) {
                             App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
-                        } else {
-                            App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
-                        }
+                        } else { App.menuData = typeof data === 'string' ? JSON.parse(data) : data; }
                     } catch(e) { App.menuData = []; }
                     App.renderMenu();
                 });
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
                         if(settings.name) document.getElementById('inpStoreName').value = settings.name;
-                        // UPDATE SWITCH
+                        // ✅ SYNC TOGGLE STATE FROM SERVER
                         document.getElementById('storeToggle').checked = settings.isOpen;
                     }
                 });
@@ -278,6 +276,7 @@
                 });
             },
             
+            // ✅ TOGGLE FUNCTION
             toggleStore: () => {
                 const isOpen = document.getElementById('storeToggle').checked;
                 window.socket.emit('toggle-store-open', isOpen);
@@ -290,9 +289,7 @@
                 const baseUrl = window.location.origin;
                 const customName = document.getElementById('inpStoreName').value.trim();
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
-                if(customName) {
-                    fullLink += `&name=${encodeURIComponent(customName)}`;
-                }
+                if(customName) { fullLink += `&name=${encodeURIComponent(customName)}`; }
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
                 qrEl.innerHTML = "";
