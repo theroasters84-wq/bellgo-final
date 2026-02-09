@@ -36,14 +36,15 @@ const io = new Server(server, {
 
 /* ---------------- DATA STORE ---------------- */
 let activeUsers = {};
-let activeOrders = []; // TODO: Θα προσθέσουμε Persistence στο επόμενο βήμα
+let activeOrders = [];
 
 // --- FILE PERSISTENCE ---
 const MENU_FILE = path.join(__dirname, 'saved_menu.json');
 const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
+const ORDERS_FILE = path.join(__dirname, 'active_orders.json'); // ✅ ΝΕΟ: Αποθήκευση παραγγελιών
 
 let liveMenu = [];
-let storeSettings = { name: "BellGo Delivery" }; // Default Name
+let storeSettings = { name: "BellGo Delivery" };
 
 // LOAD DATA ON STARTUP
 try {
@@ -55,36 +56,41 @@ try {
     if (fs.existsSync(SETTINGS_FILE)) {
         storeSettings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     }
+    // ✅ Φόρτωση ενεργών παραγγελιών
+    if (fs.existsSync(ORDERS_FILE)) {
+        activeOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
+        console.log(`♻️ Loaded ${activeOrders.length} active orders.`);
+    }
 } catch (e) { console.log("Load Error", e); }
 
+// SAVE ORDERS HELPER
+function saveOrdersToDisk() {
+    try {
+        fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8');
+    } catch (e) { console.log("Save Orders Error", e); }
+}
 
-/* ---------------- DYNAMIC MANIFEST (FIXED FOR ICONS) ---------------- */
+
+/* ---------------- DYNAMIC MANIFEST ---------------- */
 app.get('/manifest.json', (req, res) => {
-    // 1. Όνομα Εφαρμογής
     const appName = req.query.name || storeSettings.name || "BellGo App";
-    
-    // 2. Επιλογή Εικονιδίου & Start URL
-    const iconType = req.query.icon; // 'shop' ή 'admin'
+    const iconType = req.query.icon; 
     const storeParam = req.query.store;
 
-    let iconFile = "admin.png"; // Default (Admin/Staff)
-    let startUrl = ".";         // Default (Login)
+    let iconFile = "admin.png"; 
+    let startUrl = ".";         
 
     if (iconType === 'shop') {
-        // --- ΡΥΘΜΙΣΕΙΣ ΓΙΑ ΠΕΛΑΤΗ ---
         iconFile = "shop.png";
         if (storeParam) {
-            // Ο πελάτης ανοίγει κατευθείαν το μενού
             startUrl = `./order.html?store=${storeParam}&name=${encodeURIComponent(appName)}`;
         } else {
             startUrl = "./order.html";
         }
     } else {
-        // --- ΡΥΘΜΙΣΕΙΣ ΓΙΑ ADMIN / STAFF ---
         iconFile = "admin.png";
-        // Αν υπάρχει store parameter, τον στέλνουμε στο login/premium
         if (storeParam) {
-            startUrl = `./index.html`; // Ή login.html
+            startUrl = `./index.html`; 
         }
     }
 
@@ -99,25 +105,15 @@ app.get('/manifest.json', (req, res) => {
         "theme_color": "#121212",
         "orientation": "portrait",
         "icons": [
-            {
-                "src": iconFile,
-                "sizes": "192x192",
-                "type": "image/png"
-            },
-            {
-                "src": iconFile,
-                "sizes": "512x512",
-                "type": "image/png"
-            }
+            { "src": iconFile, "sizes": "192x192", "type": "image/png" },
+            { "src": iconFile, "sizes": "512x512", "type": "image/png" }
         ]
     });
 });
 
-// --- STATIC FILES ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-/* ---------------- STRIPE FUNCTIONS ---------------- */
+/* ---------------- STRIPE ---------------- */
 app.post('/check-subscription', async (req, res) => {
     let { email } = req.body;
     let requestPlan = 'basic';
@@ -147,25 +143,19 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 
-/* ---------------- HELPER FUNCTIONS ---------------- */
+/* ---------------- HELPER ---------------- */
 function updateStore(store) {
     if (!store) return;
-
-    // Send Staff List
     const list = Object.values(activeUsers)
         .filter(u => u.store === store && u.role !== 'customer')
-        .map(u => ({
-            name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging
-        }));
+        .map(u => ({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging }));
 
     io.to(store).emit('staff-list-update', list);
-
-    // Send Orders
     io.to(store).emit('orders-update', activeOrders.filter(o => o.store === store));
-
-    // Send Menu & Settings
     io.to(store).emit('menu-update', liveMenu);
     io.to(store).emit('store-settings-update', storeSettings);
+    
+    saveOrdersToDisk(); // ✅ Αποθήκευση σε κάθε αλλαγή
 }
 
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
@@ -181,7 +171,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 }
 
 
-/* ---------------- SOCKET.IO LOGIC ---------------- */
+/* ---------------- SOCKET.IO ---------------- */
 io.on('connection', (socket) => {
 
     socket.on('join-store', (data) => {
@@ -208,7 +198,6 @@ io.on('connection', (socket) => {
 
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
-
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
     });
@@ -229,7 +218,6 @@ io.on('connection', (socket) => {
 
     socket.on('new-order', (orderText) => {
         if (!socket.store) return;
-
         const newOrder = {
             id: Date.now(),
             text: orderText,
@@ -237,7 +225,6 @@ io.on('connection', (socket) => {
             status: 'pending',
             store: socket.store
         };
-
         activeOrders.push(newOrder);
         updateStore(socket.store);
 
@@ -247,6 +234,24 @@ io.on('connection', (socket) => {
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ", `Από: ${socket.username}`);
             });
+    });
+
+    // ✅ ΝΕΟ: ΕΝΗΜΕΡΩΣΗ ΥΠΑΡΧΟΥΣΑΣ ΠΑΡΑΓΓΕΛΙΑΣ
+    socket.on('update-order', (data) => {
+        const o = activeOrders.find(x => x.id === Number(data.id));
+        if (o) {
+            o.text += `\n➕ ${data.addText}`; // Προσθήκη από κάτω
+            o.status = 'pending'; // Την ξανακάνουμε pending για να τη δει ο Admin
+            updateStore(socket.store);
+            
+            // Ειδοποίηση Admin
+            Object.values(activeUsers)
+            .filter(u => u.store === socket.store && u.role === 'admin')
+            .forEach(adm => {
+                if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
+                sendPushNotification(adm, "ΠΡΟΣΘΗΚΗ ΠΑΡΑΓΓΕΛΙΑΣ", `Σε τραπέζι του: ${o.from}`);
+            });
+        }
     });
 
     socket.on('accept-order', (id) => {
@@ -259,15 +264,25 @@ io.on('connection', (socket) => {
         if (o) {
             o.status = 'ready';
             updateStore(socket.store);
+            
+            // ✅ ΔΙΟΡΘΩΣΗ: Αφαιρέθηκε το io.to(...).emit('ring-bell') 
+            // Στέλνουμε ΜΟΝΟ Push notification, όχι ήχο εφαρμογής (Silent Tick)
             const targetKey = `${socket.store}_${o.from}`;
             const targetUser = activeUsers[targetKey];
             if (targetUser) {
-                if (targetUser.socketId) io.to(targetUser.socketId).emit('ring-bell');
-                sendPushNotification(targetUser, "Η ΠΑΡΑΓΓΕΛΙΑ ΕΡΧΕΤΑΙ!", "🛵 Καλή όρεξη!");
+                // Δεν στέλνουμε ring-bell. Το UI θα πρασινίσει αυτόματα λόγω updateStore
+                sendPushNotification(targetUser, "ΕΤΟΙΜΟ!", "Η παραγγελία είναι στο πάσο.");
             }
         }
     });
 
+    // ✅ ΝΕΟ: ΠΛΗΡΩΜΗ / ΚΛΕΙΣΙΜΟ
+    socket.on('pay-order', (id) => {
+        activeOrders = activeOrders.filter(x => x.id !== Number(id));
+        updateStore(socket.store);
+    });
+
+    // (Παλιό close-order, κρατάμε για συμβατότητα)
     socket.on('close-order', (id) => {
         activeOrders = activeOrders.filter(x => x.id !== id);
         updateStore(socket.store);
