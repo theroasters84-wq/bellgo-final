@@ -34,7 +34,7 @@
             }
             
             // Ενημερώνουμε το link
-            manifestLink.href = url;
+            manifestLink.setAttribute('href', url);
         })();
     </script>
 
@@ -212,8 +212,8 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
+        // ✅ PWA: Register Service Worker from ROOT
         if ('serviceWorker' in navigator) {
-            // ✅ FIX: Use absolute path for SW
             navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log('✅ Service Worker Registered'))
                 .catch(err => console.log('❌ SW Error:', err));
@@ -325,7 +325,7 @@
                     // ✅ Dynamic Manifest Link Update
                     let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
                     if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
-                    document.getElementById('dynamicManifest').href = maniUrl;
+                    document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
                 } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 }
@@ -378,7 +378,7 @@
                                 // ✅ Manifest Update
                                 let maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&icon=shop`;
                                 if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
-                                document.getElementById('dynamicManifest').href = maniUrl;
+                                document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
                             }
                         }
                         
