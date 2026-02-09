@@ -17,20 +17,13 @@
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         
-        /* ICON BUTTON & BADGE */
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
         .btn-icon:active { background: #333; }
 
-        .chat-badge {
-            position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10;
-        }
+        .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
+        .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
 
-        .btn-badge {
-            position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none;
-        }
-
-        /* BELL BUTTON */
         #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
         #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
 
@@ -39,52 +32,59 @@
         #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
         
         /* MENU (CATEGORIES) */
-        #waiterMenuRead {
-            padding: 10px;
-            background: #111;
-            border-bottom: 1px solid #333;
-            overflow-y: auto;
-            max-height: 40vh; /* Menu takes up to 40% */
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column; 
-            gap: 15px;
-        }
-
+        #waiterMenuRead { padding: 10px; background: #111; border-bottom: 1px solid #333; overflow-y: auto; max-height: 40vh; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; }
         .category-block { width: 100%; }
         .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-
-        .menu-item-box {
-            background: #222; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; color: #ccc; font-size: 15px; font-style: italic; white-space: nowrap; cursor: pointer; transition: background 0.1s; user-select: none;
-        }
+        .menu-item-box { background: #222; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; color: #ccc; font-size: 15px; font-style: italic; white-space: nowrap; cursor: pointer; transition: background 0.1s; user-select: none; }
         .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
 
-        /* ORDER FORM (TAKES REMAINING SPACE) */
+        /* ORDER FORM */
         .order-form { padding: 15px; display: flex; flex-direction: column; gap: 10px; flex: 1; height: 100%; overflow: hidden; background: #181818; }
-        .form-row { display: flex; gap: 10px; flex-shrink: 0; }
+        .form-row { display: flex; gap: 10px; flex-shrink: 0; align-items: flex-end; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
         .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
         
-        textarea.order-text { 
-            flex-grow: 1; 
-            width: 100%; 
-            padding: 15px; 
-            background: #222; 
-            border: 1px solid #444; 
-            border-radius: 8px; 
-            color: white; 
-            font-size: 18px; 
-            resize: none; 
-        }
-        
+        /* Payment Toggles */
+        .pay-method-toggle { display: flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; height: 48px; }
+        .pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+        .pay-btn.active { background: #00E676; color: black; }
+
+        textarea.order-text { flex-grow: 1; width: 100%; padding: 15px; background: #222; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; resize: none; }
         .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
 
         /* OVERLAYS */
         .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
         
-        /* CHAT OVERLAY */
+        /* ORDERS OVERLAY & TABS */
+        .orders-box-container { width: 95%; max-width: 500px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; height: 85vh; overflow:hidden; }
+        .orders-tabs { display: flex; background: #111; border-bottom: 1px solid #333; }
+        .tab-btn { flex: 1; padding: 15px; background: transparent; border: none; color: #888; font-weight: bold; border-bottom: 3px solid transparent; cursor: pointer; }
+        .tab-btn.active { color: #FFD700; border-bottom-color: #FFD700; background: #222; }
+        
+        .search-bar { padding: 10px; background: #222; border-bottom: 1px solid #333; display: flex; gap: 10px; }
+        .search-inp { flex: 1; padding: 10px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; text-align: center; font-size: 16px; }
+        
+        .orders-list { overflow-y: auto; padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* ORDER ITEM STYLE */
+        .my-order-item { background: #2a2a2a; padding: 12px; border-radius: 8px; border-left: 5px solid #999; text-align: left; position: relative; cursor: pointer; }
+        .my-order-item:active { transform: scale(0.98); background: #333; }
+        .my-order-item.pending { border-left-color: #FF9800; }
+        .my-order-item.cooking { border-left-color: #2196F3; }
+        .my-order-item.ready { border-left-color: #00E676; } /* ΠΡΑΣΙΝΟ */
+        
+        .order-meta { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .order-content { white-space: pre-wrap; font-weight: bold; color: white; font-size: 15px; }
+        .order-total { text-align: right; color: #FFD700; font-weight: bold; margin-top: 5px; font-size: 16px; }
+
+        /* ACTION MODAL (Pay/Update) */
+        #actionModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 25000; align-items:center; justify-content:center; }
+        .action-box { background: #222; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; display:flex; flex-direction:column; gap:15px; }
+        .btn-act { padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: black; }
+
+        /* CHAT */
         #staffChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -96,20 +96,8 @@
         .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
 
-        /* INFO & ORDERS OVERLAYS */
-        .info-box { background: #222; border: 2px solid #FFD700; border-radius: 10px; padding: 20px; width: 90%; max-width: 400px; text-align: left; }
-        .info-title { color: #FFD700; font-size: 18px; font-weight: bold; margin-bottom: 10px; display:flex; align-items:center; gap:10px; }
-        .info-list li { margin-bottom: 8px; color: #ddd; font-size: 14px; }
-
-        .orders-box-container { width: 90%; max-width: 400px; background: #222; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; max-height: 80%; }
-        .orders-header { padding: 15px; border-bottom: 1px solid #444; font-weight: bold; font-size: 18px; color: white; text-align: center; }
-        .orders-list { overflow-y: auto; padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .orders-footer { padding: 10px; border-top: 1px solid #444; }
-
-        .my-order-item { background: #333; padding: 10px; border-radius: 6px; border-left: 4px solid #999; text-align: left; }
-        .my-order-item.pending { border-left-color: #FF9800; }
-        .my-order-item.cooking { border-left-color: #2196F3; }
-        .my-order-item.ready { border-left-color: #00E676; }
+        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
+        #fakeLockOverlay div { color: #333; font-size: 14px; }
 
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
     </style>
@@ -126,9 +114,7 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn-icon" onclick="App.toggleInfo()" title="Οδηγίες" style="color:#2196F3; border-color:#2196F3;">ℹ️</button>
-                
-                <button class="btn-icon" onclick="App.toggleMyOrders()" title="Οι παραγγελίες μου">
+                <button class="btn-icon" onclick="App.toggleMyOrders()" title="Παραγγελίες">
                     📋 <span id="ordersBadge" class="btn-badge">0</span>
                 </button>
 
@@ -137,7 +123,7 @@
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
 
-                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="background:#FFD700; color:black; border:2px solid #FFD700; display:none;">🔔</button>
+                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ">🔔</button>
                 
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
@@ -157,10 +143,14 @@
                         <label>ΚΟΥΒΕΡ</label>
                         <input type="number" id="inpCovers" class="input-box" placeholder="0">
                     </div>
+                    <div class="pay-method-toggle">
+                        <button class="pay-btn active" id="btnCash" onclick="App.setPayment('cash')">💵</button>
+                        <button class="pay-btn" id="btnCard" onclick="App.setPayment('card')">💳</button>
+                    </div>
                 </div>
                 
-                <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ (Πάτα στο μενού για προσθήκη)</label>
-                <textarea id="inpOrderText" class="order-text" placeholder="Γράψε προϊόντα..."></textarea>
+                <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ</label>
+                <textarea id="inpOrderText" class="order-text" placeholder="Προϊόντα..."></textarea>
 
                 <button class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
             </div>
@@ -168,7 +158,7 @@
 
         <div id="staffChatOverlay">
             <div class="overlay-header">
-                <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
+                <span style="font-size:18px; font-weight:bold;">💬 Chat</span>
                 <button onclick="App.toggleChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
             </div>
             <div class="chat-container">
@@ -180,35 +170,42 @@
             </div>
         </div>
 
-        <div id="fakeLockOverlay" class="overlay-screen" onclick="App.toggleFakeLock()" style="background:black;">
-            <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
-        </div>
-
-        <div id="infoOverlay" class="overlay-screen" onclick="App.toggleInfo()">
-            <div class="info-box" onclick="event.stopPropagation()">
-                <div class="info-title">⚠️ ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ</div>
-                <ul class="info-list">
-                    <li>❌ <b>ΜΗΝ</b> κλείνετε την εφαρμογή (App).</li>
-                    <li>❌ <b>ΜΗΝ</b> κλειδώνετε το κινητό (Power Button).</li>
-                    <li>❌ <b>ΜΗΝ</b> χρησιμοποιείτε YouTube / Spotify.</li>
-                    <li>✅ Χρησιμοποιήστε το <b>"🌙"</b> για μπαταρία.</li>
-                </ul>
-                <button onclick="App.toggleInfo()" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; margin-top:10px;">OK</button>
-            </div>
+        <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
+            <div>Tap to Unlock</div>
         </div>
 
         <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
             <div class="orders-box-container" onclick="event.stopPropagation()">
-                <div class="orders-header">Οι Παραγγελίες μου</div>
-                <div id="myOrdersList" class="orders-list"></div>
-                <div class="orders-footer">
+                <div class="orders-tabs">
+                    <button class="tab-btn active" id="tabMyOrders" onclick="App.switchTab('my')">Οι Παραγγελίες μου</button>
+                    <button class="tab-btn" id="tabAllOrders" onclick="App.switchTab('all')">📂 ΓΕΝΙΚΕΣ</button>
+                </div>
+                
+                <div class="search-bar">
+                    <input type="number" id="searchTable" class="search-inp" placeholder="🔍 Αρ. Τραπεζιού" oninput="UI.filterOrders()">
+                </div>
+
+                <div id="ordersList" class="orders-list"></div>
+                
+                <div class="orders-footer" style="padding:15px; border-top:1px solid #333;">
                     <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
                 </div>
             </div>
         </div>
+
+        <div id="actionModal" onclick="document.getElementById('actionModal').style.display='none'">
+            <div class="action-box" onclick="event.stopPropagation()">
+                <h3 style="color:white; text-align:center; margin:0;">Επιλογές</h3>
+                <button class="btn-act" style="background:#2196F3;" onclick="App.handleUpdateOrder()">➕ ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ</button>
+                <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
+                <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'">ΑΚΥΡΟ</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
+    // --- AUDIO ENGINE (UNCHANGED) ---
     const AudioEngine = {
         keepAlivePlayer: null, alarmPlayer: null, isRinging: false, wakeLock: null, vibrationInterval: null,
         async init() {
@@ -272,33 +269,108 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
+        // --- HELPER TO PARSE PRICE ---
+        // Expects: "Freddo:3.5" or "Freddo"
+        const parseItem = (str) => {
+            const parts = str.split(':');
+            const name = parts[0].trim();
+            const price = parts[1] ? parseFloat(parts[1]) : 0;
+            return { name, price };
+        };
+
         window.UI = {
             updateBadge: (count) => {
                 const b = document.getElementById('ordersBadge');
                 if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
             },
-            renderMyOrders: (orders) => {
-                const list = document.getElementById('myOrdersList');
+            
+            // RENDER ORDERS WITH TOTAL CALCULATION
+            renderOrders: (orders, mode = 'my') => {
+                const list = document.getElementById('ordersList');
+                const searchVal = document.getElementById('searchTable').value.trim();
                 list.innerHTML = '';
-                if(orders.length === 0) {
-                    list.innerHTML = '<div style="color:#777; text-align:center; padding:20px;">Καμία ενεργή παραγγελία</div>';
+
+                let filtered = orders;
+                
+                // 1. Filter by Mode
+                if (mode === 'my') {
+                    filtered = orders.filter(o => o.from === userData.name);
+                }
+
+                // 2. Filter by Search (Table Number)
+                if (searchVal) {
+                    filtered = filtered.filter(o => o.text.includes(`ΤΡ: ${searchVal}`) || o.text.includes(`ΤΡ:${searchVal}`));
+                }
+
+                if(filtered.length === 0) {
+                    list.innerHTML = '<div style="color:#777; text-align:center; padding:20px;">Καμία παραγγελία</div>';
                     return;
                 }
-                orders.sort((a,b) => b.id - a.id);
-                orders.forEach(o => {
-                    let statusTxt = '⏳ Σε αναμονή'; let statusClass = 'pending';
-                    if(o.status === 'cooking') { statusTxt = '🍳 Ετοιμάζεται'; statusClass = 'cooking'; }
-                    if(o.status === 'ready') { statusTxt = '✅ Έτοιμο!'; statusClass = 'ready'; }
+
+                // Sort: Pending first, then active
+                filtered.sort((a,b) => b.id - a.id);
+
+                filtered.forEach(o => {
+                    let statusTxt = '⏳ Pending'; let statusClass = 'pending';
+                    if(o.status === 'cooking') { statusTxt = '🍳 Cooking'; statusClass = 'cooking'; }
+                    if(o.status === 'ready') { statusTxt = '✅ Ready'; statusClass = 'ready'; }
+
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
-                    div.innerHTML = `<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${new Date(o.id).toLocaleTimeString()} - ${statusTxt}</div><div style="white-space:pre-wrap; font-weight:bold; color:white;">${o.text}</div>`;
+                    
+                    // CALCULATE TOTAL
+                    let total = 0;
+                    // Extract items from text (skip header lines)
+                    const lines = o.text.split('\n');
+                    let displayLines = [];
+                    
+                    lines.forEach(line => {
+                        if (line.startsWith('[')) { displayLines.push(line); return; } // Header
+                        
+                        // Parse quantity and price
+                        // Example: "2 Freddo:3.5"
+                        const match = line.match(/^(\d+)?\s*(.+)$/);
+                        if (match) {
+                            let qty = parseInt(match[1] || '1');
+                            let rawItem = match[2];
+                            let { name, price } = parseItem(rawItem);
+                            
+                            if (price > 0) total += qty * price;
+                            displayLines.push(`${qty > 1 ? qty + ' ' : ''}${name} ${price>0 ? '('+price+'€)' : ''}`);
+                        } else {
+                            displayLines.push(line);
+                        }
+                    });
+
+                    div.innerHTML = `
+                        <div class="order-meta">
+                            <span>${o.from}</span>
+                            <span>${new Date(o.id).toLocaleTimeString()} • ${statusTxt}</span>
+                        </div>
+                        <div class="order-content">${displayLines.join('\n')}</div>
+                        ${total > 0 ? `<div class="order-total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>` : ''}
+                    `;
+                    
+                    // Click to Open Actions
+                    div.onclick = () => {
+                        App.selectedOrderId = o.id;
+                        document.getElementById('actionModal').style.display = 'flex';
+                    };
+
                     list.appendChild(div);
                 });
+            },
+
+            filterOrders: () => {
+                const mode = document.getElementById('tabMyOrders').classList.contains('active') ? 'my' : 'all';
+                UI.renderOrders(App.allActiveOrders, mode);
             }
         };
 
         window.App = {
-            myPendingOrders: [],
+            allActiveOrders: [],
+            selectedOrderId: null,
+            payMethod: 'cash', // 'cash' or 'card'
             isChatOpen: false,
 
             init: () => {
@@ -322,7 +394,7 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
-                // --- SMART MENU LOGIC (Categories + Fix for old data) ---
+                // --- SMART MENU (Hide Prices in Buttons) ---
                 socket.on('menu-update', (data) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
@@ -342,14 +414,16 @@
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
 
-                            cat.items.forEach(item => {
-                                if(item && item.trim()) {
+                            cat.items.forEach(itemStr => {
+                                if(itemStr && itemStr.trim()) {
+                                    const { name, price } = parseItem(itemStr); // Use Helper
                                     const box = document.createElement('div');
                                     box.className = 'menu-item-box';
-                                    box.innerText = item.trim();
+                                    box.innerText = name; // SHOW ONLY NAME
+                                    
                                     const handleAdd = (e) => {
                                         if (e.cancelable) e.preventDefault(); 
-                                        App.addToOrder(item.trim());
+                                        App.addToOrder(itemStr.trim()); // ADD FULL STRING (Name:Price)
                                     };
                                     box.addEventListener('mousedown', handleAdd);
                                     box.addEventListener('touchstart', handleAdd);
@@ -368,10 +442,12 @@
                 socket.on('chat-message', (data) => App.appendChat(data));
                 
                 socket.on('orders-update', (orders) => {
-                    App.myPendingOrders = orders.filter(o => o.from === userData.name);
-                    UI.updateBadge(App.myPendingOrders.length);
+                    App.allActiveOrders = orders;
+                    const myCount = orders.filter(o => o.from === userData.name).length;
+                    UI.updateBadge(myCount);
+                    
                     if(document.getElementById('myOrdersOverlay').style.display === 'flex') {
-                        UI.renderMyOrders(App.myPendingOrders);
+                        UI.filterOrders();
                     }
                 });
                 
@@ -382,25 +458,95 @@
                 });
             },
 
+            // --- ORDER CREATION ---
+            setPayment: (method) => {
+                App.payMethod = method;
+                document.getElementById('btnCash').className = method === 'cash' ? 'pay-btn active' : 'pay-btn';
+                document.getElementById('btnCard').className = method === 'card' ? 'pay-btn active' : 'pay-btn';
+            },
+
             addToOrder: (item) => {
                 const txt = document.getElementById('inpOrderText');
                 txt.focus();
                 let lines = txt.value.split('\n').filter(l => l.trim() !== '');
                 let found = false;
+                
+                // Parse item to get raw name for regex matching (ignore price in logic but keep in value)
+                const { name } = parseItem(item); 
+                
                 for (let i = 0; i < lines.length; i++) {
-                    let regex = new RegExp(`^(\\d+)?\\s*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
-                    let match = lines[i].match(regex);
-                    if (match) {
-                        let currentQty = parseInt(match[1] || '1');
-                        lines[i] = `${currentQty + 1} ${item}`;
-                        found = true;
-                        break;
+                    // Regex matches: "2 Freddo:3.5" or "Freddo:3.5" -> We match on "Freddo"
+                    // Escape special regex chars in name
+                    const safeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    // Check if line contains this item name followed by optional :price
+                    if (lines[i].includes(name)) {
+                        let match = lines[i].match(/^(\d+)?\s*(.+)$/);
+                        if(match && match[2].includes(name)) {
+                             let currentQty = parseInt(match[1] || '1');
+                             lines[i] = `${currentQty + 1} ${item}`; // Replace with full item string (incl updated price if needed)
+                             found = true;
+                             break;
+                        }
                     }
                 }
                 if (!found) lines.push(item);
                 txt.value = lines.join('\n');
                 txt.scrollTop = txt.scrollHeight;
                 setTimeout(() => txt.focus(), 0);
+            },
+
+            sendOrder: () => {
+                const t = document.getElementById('inpTable').value;
+                const c = document.getElementById('inpCovers').value;
+                const txt = document.getElementById('inpOrderText').value;
+                if (!txt.trim()) return alert("Γράψε παραγγελία!");
+                
+                const payIcon = App.payMethod === 'card' ? '💳' : '💵';
+                const header = `[ΤΡ: ${t||'-'} | AT: ${c||'-'} | ${payIcon}]`;
+                
+                window.socket.emit('new-order', `${header}\n${txt}`);
+                
+                document.getElementById('inpTable').value = '';
+                document.getElementById('inpCovers').value = '';
+                document.getElementById('inpOrderText').value = '';
+                App.setPayment('cash'); // Reset to default
+                alert("Εστάλη! 🚀");
+            },
+
+            // --- MODAL ACTIONS ---
+            handleUpdateOrder: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                document.getElementById('myOrdersOverlay').style.display = 'none';
+                
+                // Prompt user
+                const newItems = prompt("Πρόσθεσε προϊόντα (π.χ. 1 Νερό):");
+                if (newItems && App.selectedOrderId) {
+                    window.socket.emit('update-order', { id: App.selectedOrderId, addText: newItems });
+                }
+            },
+
+            handlePayOrder: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                if(confirm("Εξόφληση και κλείσιμο τραπεζιού;")) {
+                    window.socket.emit('pay-order', App.selectedOrderId);
+                }
+            },
+
+            // --- TABS ---
+            toggleMyOrders: () => {
+                const el = document.getElementById('myOrdersOverlay');
+                if (el.style.display === 'flex') { 
+                    el.style.display = 'none'; 
+                } else { 
+                    el.style.display = 'flex'; 
+                    UI.filterOrders(); // Render based on active tab
+                }
+            },
+
+            switchTab: (mode) => {
+                document.getElementById('tabMyOrders').className = mode === 'my' ? 'tab-btn active' : 'tab-btn';
+                document.getElementById('tabAllOrders').className = mode === 'all' ? 'tab-btn active' : 'tab-btn';
+                UI.filterOrders();
             },
 
             acceptAlarmStaff: () => {
@@ -414,11 +560,9 @@
                 const el = document.getElementById('staffChatOverlay');
                 App.isChatOpen = (el.style.display === 'flex');
                 if(App.isChatOpen) {
-                    el.style.display = 'none';
-                    App.isChatOpen = false;
+                    el.style.display = 'none'; App.isChatOpen = false;
                 } else {
-                    el.style.display = 'flex';
-                    App.isChatOpen = true;
+                    el.style.display = 'flex'; App.isChatOpen = true;
                     document.getElementById('chatBadge').style.display = 'none';
                 }
             },
@@ -439,25 +583,9 @@
                 }
             },
 
-            sendOrder: () => {
-                const t = document.getElementById('inpTable').value;
-                const c = document.getElementById('inpCovers').value;
-                const txt = document.getElementById('inpOrderText').value;
-                if (!txt.trim()) return alert("Γράψε παραγγελία!");
-                window.socket.emit('new-order', `[ΤΡ: ${t||'-'} | AT: ${c||'-'}]\n${txt}`);
-                document.getElementById('inpTable').value = '';
-                document.getElementById('inpCovers').value = '';
-                document.getElementById('inpOrderText').value = '';
-                alert("Εστάλη! 🚀");
-            },
-
             toggleFakeLock: () => { const el = document.getElementById('fakeLockOverlay'); el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; },
             toggleInfo: () => { const el = document.getElementById('infoOverlay'); el.style.display = (el.style.display === 'flex') ? 'none' : 'flex'; },
-            toggleMyOrders: () => {
-                const el = document.getElementById('myOrdersOverlay');
-                if (el.style.display === 'flex') { el.style.display = 'none'; } else { el.style.display = 'flex'; UI.renderMyOrders(App.myPendingOrders); }
-            },
-
+            
             logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
