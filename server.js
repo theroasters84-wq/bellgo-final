@@ -5,10 +5,7 @@ const path = require('path');
 const admin = require("firebase-admin");
 const fs = require('fs');
 
-// --- TO DOMAIN ΣΟΥ ---
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com';
-
-// --- STRIPE SETUP ---
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -44,8 +41,8 @@ const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
 const ORDERS_FILE = path.join(__dirname, 'active_orders.json');
 
 let liveMenu = [];
-// ✅ Προσθήκη PIN στο αντικείμενο ρυθμίσεων
-let storeSettings = { name: "BellGo Delivery", pin: null }; 
+// ✅ Προσθήκη isOpen και adminEmail στις ρυθμίσεις
+let storeSettings = { name: "BellGo Delivery", pin: null, isOpen: true, adminEmail: "" }; 
 
 // LOAD DATA ON STARTUP
 try {
@@ -72,7 +69,7 @@ function saveSettingsToDisk() {
 }
 
 
-/* ---------------- DYNAMIC MANIFEST (FIXED ID) ---------------- */
+/* ---------------- DYNAMIC MANIFEST ---------------- */
 app.get('/manifest.json', (req, res) => {
     const appName = req.query.name || storeSettings.name || "BellGo App";
     const iconType = req.query.icon; 
@@ -81,23 +78,20 @@ app.get('/manifest.json', (req, res) => {
     let iconFile = "admin.png"; 
     let startUrl = ".";         
     
-    // ✅ UNIQUE ID: Λύνει το πρόβλημα σύγκρουσης PWA
-    // Ο Browser βλέπει διαφορετικό ID για πελάτη (shop) και προσωπικό (admin/staff)
+    // UNIQUE ID
     let appId = `bellgo_${iconType}_${storeParam}`; 
 
     if (iconType === 'shop') {
         iconFile = "shop.png";
-        // Ο πελάτης πάει στο order.html
         startUrl = `./order.html?store=${req.query.store || ''}&name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
-        // Το προσωπικό πάει πάντα Login
         startUrl = `./login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId, // <-- ΤΟ ΚΛΕΙΔΙ ΓΙΑ ΤΟ PWA CONFLICT
+        "id": appId,
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -177,26 +171,34 @@ io.on('connection', (socket) => {
 
     // --- AUTH & PIN LOGIC ---
     socket.on('check-pin-status', () => {
-        // Επιστρέφει αν έχει οριστεί PIN ή όχι (για τον Admin)
         socket.emit('pin-status', { hasPin: !!storeSettings.pin });
     });
 
-    socket.on('set-new-pin', (newPin) => {
-        // Ο Admin ορίζει νέο PIN
-        storeSettings.pin = newPin;
-        saveSettingsToDisk(); // Αποθήκευση
+    socket.on('set-new-pin', (data) => {
+        // Admin Sets PIN and binds Email
+        storeSettings.pin = data.pin;
+        if(data.email) storeSettings.adminEmail = data.email; // Save Admin Email
+        saveSettingsToDisk();
         socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
     });
 
     socket.on('verify-pin', (pin) => {
-        // Έλεγχος PIN για είσοδο (Admin ή Staff)
-        // Σημείωση: Εδώ υποθέτουμε single-tenant (ένα κατάστημα ανά server)
-        // Αν είχες πολλούς, θα έπρεπε να ψάχνεις το PIN βάσει του storeName.
         if (storeSettings.pin === pin) {
-            socket.emit('pin-verified', { success: true });
+            // ✅ Return the Admin Email as the official Store ID
+            socket.emit('pin-verified', { 
+                success: true, 
+                storeId: storeSettings.adminEmail || storeSettings.name 
+            });
         } else {
             socket.emit('pin-verified', { success: false });
         }
+    });
+
+    // --- SETTINGS (ON/OFF) ---
+    socket.on('toggle-store-open', (isOpen) => {
+        storeSettings.isOpen = isOpen;
+        saveSettingsToDisk();
+        io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
     socket.on('join-store', (data) => {
@@ -223,13 +225,15 @@ io.on('connection', (socket) => {
 
         console.log(`👤 JOIN: ${username} @ ${store} (${socket.role})`);
         updateStore(store);
+        
+        // Send initial state immediately
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
     });
 
     socket.on('save-store-name', (newName) => {
         storeSettings.name = newName;
-        saveSettingsToDisk(); // Save settings
+        saveSettingsToDisk();
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
@@ -243,6 +247,8 @@ io.on('connection', (socket) => {
 
     socket.on('new-order', (orderText) => {
         if (!socket.store) return;
+        if (!storeSettings.isOpen && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return; // Block closed store
+
         const newOrder = {
             id: Date.now(),
             text: orderText,
