@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Delivery</title>
     
-    <link rel="manifest" id="dynamicManifest" href="manifest.json">
+    <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=shop">
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,11 +18,11 @@
             const pName = params.get('name');
             const pStore = params.get('store');
             
-            // Αν υπάρχουν παράμετροι, ενημερώνουμε το manifest link ΑΜΕΣΩΣ
+            // ΑΝΑΒΑΘΜΙΣΜΕΝΗ ΛΟΓΙΚΗ MANIFEST
             if (pName && pStore) {
                 const manifestLink = document.getElementById('dynamicManifest');
-                // Εδώ δεν βάζουμε ?icon=... γιατί θέλουμε το default (shop.png)
-                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}`;
+                // ΠΡΟΣΟΧΗ ΕΔΩ: Προσθέτουμε το &icon=shop για να το ξεχωρίζει ο Server
+                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}&icon=shop`;
                 document.title = decodeURIComponent(pName);
             }
         })();
@@ -73,7 +73,7 @@
             cursor: pointer; 
             transition: transform 0.1s; 
             user-select: none; 
-            -webkit-user-select: none; /* Απαραίτητο για να μην επιλέγεται το κείμενο στο διπλό κλικ */
+            -webkit-user-select: none;
         }
         .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
 
@@ -195,8 +195,10 @@
         const PRELOADED_NAME = params.get('name'); 
 
         if (!TARGET_STORE) {
-            alert("⚠️ Λάθος σύνδεσμος καταστήματος!");
-            document.body.innerHTML = "<h2 style='text-align:center; padding:20px; color:white;'>Store Not Found</h2>";
+            // Αν δεν υπάρχει κατάστημα, ίσως είναι "ορφανό" άνοιγμα PWA. 
+            // Εδώ μπορούμε να βάλουμε μια fallback λογική, αλλά προς το παρόν δείχνουμε μήνυμα.
+            // alert("⚠️ Λάθος σύνδεσμος καταστήματος!");
+            // document.body.innerHTML = "<h2 style='text-align:center; padding:20px; color:white;'>Store Not Found</h2>";
         }
 
         let currentUser = null;
@@ -258,8 +260,9 @@
                     const cleanName = decodeURIComponent(PRELOADED_NAME);
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
-                    // Ensure manifest link is correct for install
-                    document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}&store=${TARGET_STORE}`;
+                    
+                    // FIXED: Προσθέτουμε &icon=shop και εδώ για σιγουριά
+                    document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}&store=${TARGET_STORE}&icon=shop`;
                 } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 }
@@ -311,8 +314,8 @@
                             currentParams.set('name', newName);
                             window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
                         } else {
-                            // Update Manifest Link just in case
-                            const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}`;
+                            // Update Manifest Link just in case (ME ICON=SHOP)
+                            const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}&icon=shop`;
                             document.getElementById('dynamicManifest').href = maniUrl;
                         }
                     }
