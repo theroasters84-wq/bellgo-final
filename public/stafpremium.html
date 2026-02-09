@@ -4,7 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>BellGo Staff Premium</title>
-    <link rel="manifest" href="manifest.json">
+    
+    <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
+    
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="admin.png">
+
+    <script>
+        (function() {
+            // Διαβάζουμε το session για να βρούμε το Store ID
+            const saved = localStorage.getItem('bellgo_session');
+            const manifestLink = document.getElementById('dynamicManifest');
+            
+            // Default URL με Admin Icon
+            let url = `manifest.json?icon=admin`;
+            
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    if (data.store) {
+                        // Προσθέτουμε το store ID για μοναδικότητα PWA
+                        url += `&store=${data.store}`;
+                    }
+                } catch(e) {}
+            }
+            manifestLink.href = url;
+        })();
+    </script>
+
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -259,6 +288,13 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
+        // ✅ PWA SERVICE WORKER REGISTRATION (Unified App)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('✅ Staff Service Worker Registered'))
+                .catch(err => console.log('❌ Staff SW Error:', err));
+        }
+
         const savedSession = localStorage.getItem('bellgo_session');
         if (!savedSession) window.location.href = "login.html";
         const userData = JSON.parse(savedSession || '{}');
@@ -379,7 +415,16 @@
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-                // Wait for click on START
+                
+                // ✅ UNIFIED APP: Volume Button Listener for Acceptance
+                document.addEventListener('keydown', (e) => {
+                    if (['AudioVolumeUp', 'AudioVolumeDown'].includes(e.code) || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        if(window.AudioEngine && window.AudioEngine.isRinging) {
+                            // Only trigger if actually ringing to avoid accidental presses
+                            App.acceptAlarmStaff();
+                        }
+                    }
+                });
             },
 
             // ✅ UNLOCK AUDIO
