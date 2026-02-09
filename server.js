@@ -41,10 +41,11 @@ let activeOrders = [];
 // --- FILE PERSISTENCE ---
 const MENU_FILE = path.join(__dirname, 'saved_menu.json');
 const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
-const ORDERS_FILE = path.join(__dirname, 'active_orders.json'); // ✅ ΝΕΟ: Αποθήκευση παραγγελιών
+const ORDERS_FILE = path.join(__dirname, 'active_orders.json');
 
 let liveMenu = [];
-let storeSettings = { name: "BellGo Delivery" };
+// ✅ Προσθήκη PIN στο αντικείμενο ρυθμίσεων
+let storeSettings = { name: "BellGo Delivery", pin: null }; 
 
 // LOAD DATA ON STARTUP
 try {
@@ -56,47 +57,47 @@ try {
     if (fs.existsSync(SETTINGS_FILE)) {
         storeSettings = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
     }
-    // ✅ Φόρτωση ενεργών παραγγελιών
     if (fs.existsSync(ORDERS_FILE)) {
         activeOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
         console.log(`♻️ Loaded ${activeOrders.length} active orders.`);
     }
 } catch (e) { console.log("Load Error", e); }
 
-// SAVE ORDERS HELPER
+// SAVE HELPERS
 function saveOrdersToDisk() {
-    try {
-        fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8');
-    } catch (e) { console.log("Save Orders Error", e); }
+    try { fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8'); } catch (e) {}
+}
+function saveSettingsToDisk() {
+    try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings, null, 2), 'utf8'); } catch (e) {}
 }
 
 
-/* ---------------- DYNAMIC MANIFEST ---------------- */
+/* ---------------- DYNAMIC MANIFEST (FIXED ID) ---------------- */
 app.get('/manifest.json', (req, res) => {
     const appName = req.query.name || storeSettings.name || "BellGo App";
     const iconType = req.query.icon; 
-    const storeParam = req.query.store;
+    const storeParam = req.query.store || "general";
 
     let iconFile = "admin.png"; 
     let startUrl = ".";         
+    
+    // ✅ UNIQUE ID: Λύνει το πρόβλημα σύγκρουσης PWA
+    // Ο Browser βλέπει διαφορετικό ID για πελάτη (shop) και προσωπικό (admin/staff)
+    let appId = `bellgo_${iconType}_${storeParam}`; 
 
     if (iconType === 'shop') {
         iconFile = "shop.png";
-        if (storeParam) {
-            startUrl = `./order.html?store=${storeParam}&name=${encodeURIComponent(appName)}`;
-        } else {
-            startUrl = "./order.html";
-        }
+        // Ο πελάτης πάει στο order.html
+        startUrl = `./order.html?store=${req.query.store || ''}&name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
-        if (storeParam) {
-            startUrl = `./index.html`; 
-        }
+        // Το προσωπικό πάει πάντα Login
+        startUrl = `./login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": startUrl,
+        "id": appId, // <-- ΤΟ ΚΛΕΙΔΙ ΓΙΑ ΤΟ PWA CONFLICT
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -155,7 +156,7 @@ function updateStore(store) {
     io.to(store).emit('menu-update', liveMenu);
     io.to(store).emit('store-settings-update', storeSettings);
     
-    saveOrdersToDisk(); // ✅ Αποθήκευση σε κάθε αλλαγή
+    saveOrdersToDisk();
 }
 
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
@@ -173,6 +174,30 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
 /* ---------------- SOCKET.IO ---------------- */
 io.on('connection', (socket) => {
+
+    // --- AUTH & PIN LOGIC ---
+    socket.on('check-pin-status', () => {
+        // Επιστρέφει αν έχει οριστεί PIN ή όχι (για τον Admin)
+        socket.emit('pin-status', { hasPin: !!storeSettings.pin });
+    });
+
+    socket.on('set-new-pin', (newPin) => {
+        // Ο Admin ορίζει νέο PIN
+        storeSettings.pin = newPin;
+        saveSettingsToDisk(); // Αποθήκευση
+        socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
+    });
+
+    socket.on('verify-pin', (pin) => {
+        // Έλεγχος PIN για είσοδο (Admin ή Staff)
+        // Σημείωση: Εδώ υποθέτουμε single-tenant (ένα κατάστημα ανά server)
+        // Αν είχες πολλούς, θα έπρεπε να ψάχνεις το PIN βάσει του storeName.
+        if (storeSettings.pin === pin) {
+            socket.emit('pin-verified', { success: true });
+        } else {
+            socket.emit('pin-verified', { success: false });
+        }
+    });
 
     socket.on('join-store', (data) => {
         let rawStore = data.storeName || '';
@@ -204,7 +229,7 @@ io.on('connection', (socket) => {
 
     socket.on('save-store-name', (newName) => {
         storeSettings.name = newName;
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings), 'utf8');
+        saveSettingsToDisk(); // Save settings
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
@@ -236,15 +261,13 @@ io.on('connection', (socket) => {
             });
     });
 
-    // ✅ ΝΕΟ: ΕΝΗΜΕΡΩΣΗ ΥΠΑΡΧΟΥΣΑΣ ΠΑΡΑΓΓΕΛΙΑΣ
     socket.on('update-order', (data) => {
         const o = activeOrders.find(x => x.id === Number(data.id));
         if (o) {
-            o.text += `\n➕ ${data.addText}`; // Προσθήκη από κάτω
-            o.status = 'pending'; // Την ξανακάνουμε pending για να τη δει ο Admin
+            o.text += `\n➕ ${data.addText}`; 
+            o.status = 'pending'; 
             updateStore(socket.store);
             
-            // Ειδοποίηση Admin
             Object.values(activeUsers)
             .filter(u => u.store === socket.store && u.role === 'admin')
             .forEach(adm => {
@@ -265,24 +288,19 @@ io.on('connection', (socket) => {
             o.status = 'ready';
             updateStore(socket.store);
             
-            // ✅ ΔΙΟΡΘΩΣΗ: Αφαιρέθηκε το io.to(...).emit('ring-bell') 
-            // Στέλνουμε ΜΟΝΟ Push notification, όχι ήχο εφαρμογής (Silent Tick)
             const targetKey = `${socket.store}_${o.from}`;
             const targetUser = activeUsers[targetKey];
             if (targetUser) {
-                // Δεν στέλνουμε ring-bell. Το UI θα πρασινίσει αυτόματα λόγω updateStore
                 sendPushNotification(targetUser, "ΕΤΟΙΜΟ!", "Η παραγγελία είναι στο πάσο.");
             }
         }
     });
 
-    // ✅ ΝΕΟ: ΠΛΗΡΩΜΗ / ΚΛΕΙΣΙΜΟ
     socket.on('pay-order', (id) => {
         activeOrders = activeOrders.filter(x => x.id !== Number(id));
         updateStore(socket.store);
     });
 
-    // (Παλιό close-order, κρατάμε για συμβατότητα)
     socket.on('close-order', (id) => {
         activeOrders = activeOrders.filter(x => x.id !== id);
         updateStore(socket.store);
