@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo Login</title>
-    <link rel="manifest" href="manifest.json?icon=admin">
+    <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
+    
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -35,6 +36,9 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
         .num-btn:active { background: #555; }
+        
+        /* FORGOT PIN LINK */
+        .forgot-link { margin-top: 15px; color: #aaa; text-decoration: underline; font-size: 12px; cursor: pointer; background: none; border: none; display: none; }
     </style>
 </head>
 <body>
@@ -87,6 +91,7 @@
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
                 <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
             </div>
+            <button id="btnForgot" class="forgot-link" onclick="PIN.resetFlow()">Ξέχασα το PIN</button>
         </div>
     </div>
 
@@ -113,6 +118,14 @@
         let pinValue = '';
         let adminUser = null;
 
+        // ✅ PWA LOGIC: Fix Browser Confusion
+        // Αν το URL έχει ?store=..., το προσθέτουμε στο manifest
+        const urlParams = new URLSearchParams(window.location.search);
+        const storeParam = urlParams.get('store');
+        if (storeParam) {
+            document.getElementById('dynamicManifest').href = `manifest.json?store=${storeParam}&icon=admin`;
+        }
+
         window.switchTab = (tab) => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
@@ -127,32 +140,57 @@
         };
 
         window.PIN = {
-            add: (n) => { if (pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
-            clear: () => { pinValue = ''; PIN.updateDisplay(); },
-            updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
+            add: (n) => {
+                if (pinValue.length < 4) {
+                    pinValue += n;
+                    PIN.updateDisplay();
+                }
+            },
+            clear: () => {
+                pinValue = '';
+                PIN.updateDisplay();
+            },
+            updateDisplay: () => {
+                document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length);
+            },
+            // ✅ FORGOT PIN LOGIC
+            resetFlow: () => {
+                if(!confirm("Θέλετε να ορίσετε νέο κωδικό;")) return;
+                currentPinMode = 'create';
+                pinValue = '';
+                PIN.updateDisplay();
+                document.getElementById('pinTitle').innerText = "ΝΕΟ PIN";
+                document.getElementById('pinSub').innerText = "Ορίστε νέο 4-ψήφιο κωδικό";
+                document.getElementById('btnForgot').style.display = 'none'; // Hide button during creation
+            },
             submit: () => {
                 if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
                 
                 if (currentPinMode === 'enter') {
                     socket.emit('verify-pin', pinValue);
                 } else if (currentPinMode === 'create') {
-                    tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
+                    tempPin = pinValue;
+                    pinValue = '';
+                    PIN.updateDisplay();
                     currentPinMode = 'confirm';
-                    document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ PIN";
+                    document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
                     document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
                 } else if (currentPinMode === 'confirm') {
                     if (pinValue === tempPin) {
-                        // Pass admin email to bind PIN to it
                         socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
                     } else {
                         alert("Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");
-                        currentPinMode = 'create'; pinValue = ''; tempPin = ''; PIN.updateDisplay();
-                        document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
+                        currentPinMode = 'create';
+                        pinValue = '';
+                        tempPin = '';
+                        PIN.updateDisplay();
+                        document.getElementById('pinTitle').innerText = "ΝΕΟ PIN";
                     }
                 }
             }
         };
 
+        // --- STAFF LOGIC ---
         window.Staff = {
             login: () => {
                 const name = document.getElementById('stName').value.trim();
@@ -161,62 +199,78 @@
 
                 if (!name || !pin) return alert("Συμπληρώστε τα πεδία!");
 
-                // Check PIN & Get Correct Store ID
+                // Check PIN & Get Store ID from Server
                 socket.emit('verify-pin', pin);
                 
                 socket.once('pin-verified', (res) => {
                     if (res.success) {
-                        // ✅ KEY FIX: Use the Store ID (Admin Email) returned by server
+                        // Use Server-Provided StoreID
                         const sessionData = { name: name, store: res.storeId, role: role };
                         localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                         window.location.href = "stafpremium.html";
                     } else {
                         alert("Λάθος Κωδικός Καταστήματος (PIN)!");
+                        PIN.clear();
                     }
                 });
             }
         };
 
+        // --- ADMIN LOGIC ---
         window.Admin = {
             googleLogin: () => {
                 signInWithPopup(auth, provider).then((result) => {
                     adminUser = result.user;
+                    // Check if PIN exists
                     socket.emit('check-pin-status');
                 }).catch((error) => alert(error.message));
             }
         };
 
-        // --- LISTENERS ---
+        // --- SOCKET LISTENERS ---
         socket.on('pin-status', (data) => {
             document.getElementById('pinModal').style.display = 'flex';
             if (data.hasPin) {
                 currentPinMode = 'enter';
                 document.getElementById('pinTitle').innerText = "ΕΙΣΑΓΩΓΗ PIN";
+                document.getElementById('pinSub').innerText = "Βάλτε τον κωδικό σας";
+                // Show forgot button ONLY in enter mode
+                document.getElementById('btnForgot').style.display = 'block';
             } else {
                 currentPinMode = 'create';
                 document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
+                document.getElementById('pinSub').innerText = "Ορίστε έναν νέο 4-ψήφιο κωδικό";
+                document.getElementById('btnForgot').style.display = 'none';
             }
         });
 
         socket.on('pin-success', (data) => {
-            const storeName = adminUser.displayName || "My Store"; 
+            // PIN Created/Reset successfully
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             window.location.href = "premium.html";
         });
 
+        // Verification Listener (For Admin Login via Modal)
         socket.on('pin-verified', (res) => {
-            // This is for ADMIN verification in the modal
             if (currentPinMode === 'enter' && document.getElementById('pinModal').style.display === 'flex') {
                 if (res.success) {
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     window.location.href = "premium.html";
                 } else {
-                    alert("Λάθος PIN!"); PIN.clear();
+                    alert("Λάθος PIN!");
+                    PIN.clear();
                 }
             }
         });
+
+        // Auto Login Check
+        if (localStorage.getItem('bellgo_session')) {
+            const saved = JSON.parse(localStorage.getItem('bellgo_session'));
+            if (saved.role === 'admin') window.location.href = "premium.html";
+            else window.location.href = "stafpremium.html";
+        }
 
     </script>
 </body>
