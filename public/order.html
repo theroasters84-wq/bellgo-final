@@ -19,12 +19,22 @@
             const pName = params.get('name');
             const pStore = params.get('store');
             
-            if (pName && pStore) {
-                const manifestLink = document.getElementById('dynamicManifest');
-                // Pass params so server generates unique ID
-                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}&icon=shop`;
+            const manifestLink = document.getElementById('dynamicManifest');
+            
+            // Ξεκινάμε με το icon=shop
+            let url = `manifest.json?icon=shop`;
+
+            // Προσθέτουμε το store ID αν υπάρχει (ΚΡΙΣΙΜΟ για μοναδικό PWA)
+            if (pStore) url += `&store=${pStore}`;
+
+            // Προσθέτουμε το όνομα αν υπάρχει
+            if (pName) {
+                url += `&name=${encodeURIComponent(pName)}`;
                 document.title = decodeURIComponent(pName);
             }
+            
+            // Ενημερώνουμε το link
+            manifestLink.href = url;
         })();
     </script>
 
@@ -203,7 +213,8 @@
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
+            // ✅ FIX: Use absolute path for SW
+            navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log('✅ Service Worker Registered'))
                 .catch(err => console.log('❌ SW Error:', err));
         }
@@ -310,7 +321,11 @@
                     const cleanName = decodeURIComponent(PRELOADED_NAME);
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
-                    document.getElementById('dynamicManifest').href = `manifest.json?name=${PRELOADED_NAME}&store=${TARGET_STORE}&icon=shop`;
+                    
+                    // ✅ Dynamic Manifest Link Update
+                    let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
+                    if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
+                    document.getElementById('dynamicManifest').href = maniUrl;
                 } else if(TARGET_STORE) {
                     document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
                 }
@@ -360,7 +375,9 @@
                                 currentParams.set('name', newName);
                                 window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
                             } else {
-                                const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}&icon=shop`;
+                                // ✅ Manifest Update
+                                let maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&icon=shop`;
+                                if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
                                 document.getElementById('dynamicManifest').href = maniUrl;
                             }
                         }
