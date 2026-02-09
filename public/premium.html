@@ -29,8 +29,9 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
-        .user-info { display: flex; flex-direction: column; }
+        
+        .header { height: 70px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
+        .user-info { display: flex; flex-direction: column; max-width: 120px; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
         .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
         .btn-icon-wrapper { position: relative; display: inline-block; }
@@ -38,16 +39,27 @@
         .btn-icon:active { background: #333; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         
-        /* TOGGLE SWITCH - FIXED CSS */
-        .switch { position: relative; display: inline-block; width: 50px; height: 26px; margin-right: 5px; }
+        /* TOGGLE SWITCHES CONTAINER */
+        .switches-container { display: flex; flex-direction: column; gap: 2px; margin-right: 10px; }
+        .switch-row { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #aaa; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; -webkit-transition: .4s; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; -webkit-transition: .4s; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; -webkit-transition: .4s; transition: .4s; }
         input:checked + .slider { background-color: #00E676; }
-        input:checked + .slider:before { -webkit-transform: translateX(24px); -ms-transform: translateX(24px); transform: translateX(24px); }
+        input:checked + .slider:before { -webkit-transform: translateX(16px); -ms-transform: translateX(16px); transform: translateX(16px); }
         .slider.round { border-radius: 34px; }
         .slider.round:before { border-radius: 50%; }
 
+        /* PIN MODAL */
+        #pinChangeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
+        .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
+        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
+        .num-btn:active { background: #555; }
+        
+        /* ... (Rest of CSS remains same) ... */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
         .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -104,6 +116,7 @@
         .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
         #qrcode { margin-top: 10px; }
         .qr-link { color: #333; font-size: 12px; word-break: break-all; text-align: center; margin-top: 10px; }
+        
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -119,10 +132,24 @@
                 </div>
             </div>
             <div class="header-actions">
-                <label class="switch">
-                    <input type="checkbox" id="storeToggle" onclick="App.toggleStore()">
-                    <span class="slider round"></span>
-                </label>
+                <div class="switches-container">
+                    <div class="switch-row">
+                        <span>ΠΕΛΑΤΕΣ:</span>
+                        <label class="switch">
+                            <input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="switch-row">
+                        <span>STAFF:</span>
+                        <label class="switch">
+                            <input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn-icon" onclick="App.openPinModal()" title="Αλλαγή PIN">🔑</button>
 
                 <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
                 <div class="btn-icon-wrapper">
@@ -174,6 +201,30 @@
             </div>
         </div>
     </div>
+    
+    <div id="pinChangeModal">
+        <div class="pin-box">
+            <h3 style="margin:0; color:#FFD700;">ΑΛΛΑΓΗ PIN</h3>
+            <p id="pinSub" style="font-size:12px; color:#aaa;">Εισάγετε νέο 4-ψήφιο κωδικό</p>
+            <div id="pinDisplay" class="pin-display"></div>
+            <div class="numpad">
+                <button class="num-btn" onclick="PIN.add(1)">1</button>
+                <button class="num-btn" onclick="PIN.add(2)">2</button>
+                <button class="num-btn" onclick="PIN.add(3)">3</button>
+                <button class="num-btn" onclick="PIN.add(4)">4</button>
+                <button class="num-btn" onclick="PIN.add(5)">5</button>
+                <button class="num-btn" onclick="PIN.add(6)">6</button>
+                <button class="num-btn" onclick="PIN.add(7)">7</button>
+                <button class="num-btn" onclick="PIN.add(8)">8</button>
+                <button class="num-btn" onclick="PIN.add(9)">9</button>
+                <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
+                <button class="num-btn" onclick="PIN.add(0)">0</button>
+                <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
+            </div>
+            <button onclick="App.closePinModal()" style="margin-top:15px; background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
     <div id="qrOverlay" onclick="this.style.display='none'">
         <div class="qr-box" onclick="event.stopPropagation()">
             <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Παραγγελίας</div>
@@ -185,6 +236,7 @@
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
         <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
     </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
@@ -217,6 +269,20 @@
             });
             return total;
         };
+
+        // --- PIN MODULE ---
+        let pinValue = '';
+        window.PIN = {
+            add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
+            clear: () => { pinValue = ''; PIN.updateDisplay(); },
+            updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; }, // Show numbers to admin
+            submit: () => {
+                if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+                window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
+                App.closePinModal();
+            }
+        };
+
         window.App = {
             activeOrders: [],
             menuData: [], 
@@ -253,17 +319,24 @@
                     try {
                         if (typeof data === 'string' && !data.startsWith('[')) {
                             App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
-                        } else { App.menuData = typeof data === 'string' ? JSON.parse(data) : data; }
+                        } else {
+                            App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
+                        }
                     } catch(e) { App.menuData = []; }
                     App.renderMenu();
                 });
+                
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
                         if(settings.name) document.getElementById('inpStoreName').value = settings.name;
-                        // ✅ SYNC TOGGLE STATE FROM SERVER
-                        document.getElementById('storeToggle').checked = settings.isOpen;
+                        // ✅ Update Switches
+                        document.getElementById('switchCust').checked = settings.statusCustomer;
+                        document.getElementById('switchStaff').checked = settings.statusStaff;
                     }
                 });
+
+                socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
+
                 socket.on('chat-message', (data) => App.appendChat(data));
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('orders-update', (orders) => {
@@ -276,10 +349,23 @@
                 });
             },
             
-            // ✅ TOGGLE FUNCTION
-            toggleStore: () => {
-                const isOpen = document.getElementById('storeToggle').checked;
-                window.socket.emit('toggle-store-open', isOpen);
+            // ✅ NEW TOGGLE FUNCTION
+            toggleStatus: (type) => {
+                const isOpen = (type === 'customer') 
+                    ? document.getElementById('switchCust').checked 
+                    : document.getElementById('switchStaff').checked;
+                
+                window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
+            },
+
+            // ✅ PIN MODAL FUNCTIONS
+            openPinModal: () => {
+                pinValue = '';
+                PIN.updateDisplay();
+                document.getElementById('pinChangeModal').style.display = 'flex';
+            },
+            closePinModal: () => {
+                document.getElementById('pinChangeModal').style.display = 'none';
             },
 
             showLink: () => {
@@ -289,7 +375,9 @@
                 const baseUrl = window.location.origin;
                 const customName = document.getElementById('inpStoreName').value.trim();
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
-                if(customName) { fullLink += `&name=${encodeURIComponent(customName)}`; }
+                if(customName) {
+                    fullLink += `&name=${encodeURIComponent(customName)}`;
+                }
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
                 qrEl.innerHTML = "";
