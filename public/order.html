@@ -14,26 +14,21 @@
     
     <script>
         (function() {
-            // ✅ PWA FIX: Ensure Manifest is unique based on URL params
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             const pStore = params.get('store');
             
             const manifestLink = document.getElementById('dynamicManifest');
             
-            // Ξεκινάμε με το icon=shop
             let url = `manifest.json?icon=shop`;
 
-            // Προσθέτουμε το store ID αν υπάρχει (ΚΡΙΣΙΜΟ για μοναδικό PWA)
             if (pStore) url += `&store=${pStore}`;
 
-            // Προσθέτουμε το όνομα αν υπάρχει
             if (pName) {
                 url += `&name=${encodeURIComponent(pName)}`;
                 document.title = decodeURIComponent(pName);
             }
             
-            // Ενημερώνουμε το link
             manifestLink.setAttribute('href', url);
         })();
     </script>
@@ -52,9 +47,22 @@
         #loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-google { background: #DB4437; color: white; border: none; padding: 15px 25px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(219,68,55,0.4); }
 
-        /* START SCREEN (Audio Unlock) */
+        /* START SCREEN (Audio Unlock & Install) */
         #startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; }
+        .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; margin-bottom: 20px; }
+        
+        /* ✅ INSTALL BUTTON STYLE */
+        .btn-install-app { 
+            display: none; /* Hidden by default */
+            background: transparent; 
+            border: 2px solid #FFD700; 
+            color: #FFD700; 
+            padding: 10px 20px; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
 
         /* OVERLAYS */
         .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
@@ -139,6 +147,8 @@
     <div id="startScreen">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo 🔔</h1>
         <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ / START</button>
+        
+        <button id="btnInstallApp" class="btn-install-app" onclick="App.installPWA()">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</button>
     </div>
 
     <div id="detailsOverlay" class="overlay-screen">
@@ -212,11 +222,31 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // ✅ PWA: Register Service Worker from ROOT
+        // ✅ PWA: Register Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log('✅ Service Worker Registered'))
                 .catch(err => console.log('❌ SW Error:', err));
+        }
+
+        // ✅ INSTALL PROMPT LOGIC
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('btnInstallApp');
+            if(btn) btn.style.display = 'block';
+        });
+
+        // ✅ CHECK IOS
+        const isIos = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test( userAgent );
+        }
+        // Force show button on iOS too (manual instruction)
+        if (isIos() && !window.navigator.standalone) {
+             const btn = document.getElementById('btnInstallApp');
+             if(btn) btn.style.display = 'block';
         }
 
         const firebaseConfig = { 
@@ -254,6 +284,20 @@
         const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
         window.App = {
+            // ✅ INSTALL FUNCTION
+            installPWA: async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        document.getElementById('btnInstallApp').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                } else if (isIos()) {
+                    alert("Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
+                }
+            },
+
             loginGoogle: () => {
                 signInWithPopup(auth, provider).catch(e => alert("Login Error: " + e.message));
             },
@@ -270,7 +314,6 @@
                         document.getElementById('inpName').value = currentUser.displayName;
                     }
                 } else {
-                    // Show START screen to unlock audio
                     document.getElementById('startScreen').style.display = 'flex';
                 }
             },
@@ -287,7 +330,6 @@
                 localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
                 document.getElementById('detailsOverlay').style.display = 'none';
                 
-                // Show START screen after details
                 document.getElementById('startScreen').style.display = 'flex';
             },
 
@@ -300,9 +342,7 @@
                 document.getElementById('inpPhone').value = customerDetails.phone;
             },
 
-            // ✅ NEW: UNLOCK AUDIO AND START
             unlockAudio: () => {
-                // Play silent sound
                 const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
                 audio.play().then(() => {
                     document.getElementById('startScreen').style.display = 'none';
@@ -322,7 +362,6 @@
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
                     
-                    // ✅ Dynamic Manifest Link Update
                     let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
                     if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
                     document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
@@ -375,18 +414,15 @@
                                 currentParams.set('name', newName);
                                 window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
                             } else {
-                                // ✅ Manifest Update
                                 let maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&icon=shop`;
                                 if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
                                 document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
                             }
                         }
                         
-                        // ✅ CHECK CUSTOMER STATUS FOR CLOSED
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
 
-                        // Check specific statusCustomer flag
                         if (settings.statusCustomer === false) {
                             closedOverlay.style.display = 'flex';
                             if(btnSend) {
