@@ -4,87 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo Login</title>
-    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="manifest" href="manifest.json?icon=admin">
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .btn-apk-landing { position: absolute; top: 20px; right: 20px; text-decoration: none; color: #00E676; border: 1px solid #00E676; padding: 8px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 200; backdrop-filter: blur(4px); }
-        h1 { margin-bottom: 30px; color: #00E676; font-size: 32px; }
-        .role-switch { display: flex; gap: 10px; margin-bottom: 20px; }
-        .role-btn { padding: 10px 20px; border: 1px solid #444; background: #222; color: white; border-radius: 20px; cursor: pointer; }
-        .role-btn.active { background: #00E676; color: black; font-weight: bold; border-color: #00E676; }
-        .login-form { width: 85%; display: flex; flex-direction: column; gap: 12px; }
-        input, select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 16px; text-align: center; }
-        .btn-login { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 5px; transition: opacity 0.2s; }
-        .btn-login:active { opacity: 0.8; }
-        .btn-google { width: 100%; padding: 15px; background: #DB4437; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 5px; }
-        .divider { text-align:center; margin: 5px 0; color:#444; font-size: 14px; }
+        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         
-        /* ΝΕΑ ΣΤΥΛ ΓΙΑ ΕΠΙΛΟΓΗ ΠΑΚΕΤΟΥ */
-        .plan-btn { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
-        .plan-basic { background: #2196F3; color: white; }
-        .plan-premium { background: #FFD700; color: black; border: 2px solid #FFA000; }
-        .plan-desc { font-size: 12px; opacity: 0.9; font-weight: normal; margin-top: 4px; }
+        .login-container { width: 90%; max-width: 400px; background: #1e1e1e; padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; }
+        h1 { color: #FFD700; margin-bottom: 20px; font-size: 28px; }
+        
+        /* TABS */
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #444; }
+        .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #777; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; font-size: 16px; }
+        .tab.active { color: #FFD700; border-bottom-color: #FFD700; }
+
+        /* FORMS */
+        .form-section { display: none; flex-direction: column; gap: 15px; }
+        .form-section.active { display: flex; }
+
+        .inp { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 16px; width: 100%; box-sizing: border-box; text-align: center; }
+        .btn-main { padding: 14px; border-radius: 6px; border: none; background: #FFD700; color: black; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn-google { background: #DB4437; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+        /* PIN MODAL */
+        #pinModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
+        .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
+        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
+        .num-btn:active { background: #555; }
     </style>
 </head>
 <body>
-    <a href="https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk" class="btn-apk-landing" target="_blank">📲 APP</a>
 
-    <h1>🔔 BellGo</h1>
-
-    <div class="role-switch">
-        <button class="role-btn active" id="btnRoleStaff" onclick="UI.showStaffLogin()">Προσωπικό</button>
-        <button class="role-btn" id="btnRoleAdmin" onclick="UI.showAdminLogin()">Admin</button>
-    </div>
-
-    <div id="staffForm" class="login-form">
-        <input type="email" id="inpStoreEmail" placeholder="Email Επιχείρησης (Admin)">
-        <input type="text" id="inpMyName" placeholder="Το Όνομά σου">
-        <select id="inpMyRole">
-            <option value="waiter">🟦 Σερβιτόρος</option>
-            <option value="driver">🟥 Διανομέας</option>
-        </select>
-        <button class="btn-login" style="background: #00E676; color: black;" onclick="App.loginStaff()">ΣΥΝΔΕΣΗ</button>
-    </div>
-
-    <div id="adminForm" class="login-form" style="display:none;">
-        <div id="defaultAdminView">
-            <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:5px;">Διαχείριση Επιχείρησης</p>
-            
-            <input type="email" id="inpAdminManualEmail" placeholder="Email Επιχείρησης">
-            
-            <button class="btn-login" style="background: #00E676; color: black;" onclick="App.loginAdminManual()">ΕΙΣΟΔΟΣ</button>
-
-            <button class="btn-login" style="background: #9C27B0; color: white;" onclick="App.redirectToStripe()">💳 ΠΛΗΡΩΜΗ</button>
-
-            <div class="divider">ή</div>
-
-            <button class="btn-google" onclick="App.loginAdminGoogle()"><span>G</span> Σύνδεση με Google</button>
-        </div>
+    <div class="login-container">
+        <h1>BellGo 🔔</h1>
         
-        <div id="paymentOptionsView" style="display:none;">
-            <p style="text-align:center; color:white; margin-bottom:15px;">⚠️ Δεν βρέθηκε ενεργή συνδρομή.<br>Επιλέξτε πακέτο:</p>
-            
-            <button class="plan-btn plan-basic" onclick="App.pay('basic')">
-                <span>🔹 BASIC (4€)</span>
-                <span class="plan-desc">Απλό Κουδούνι (Waiters/Drivers)</span>
-            </button>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('staff')">ΠΡΟΣΩΠΙΚΟ</button>
+            <button class="tab" onclick="switchTab('admin')">ADMIN</button>
+        </div>
 
-            <button class="plan-btn plan-premium" onclick="App.pay('premium')">
-                <span>👑 PREMIUM (10€)</span>
-                <span class="plan-desc">Παραγγελίες, Μενού & Εφαρμογή Πελάτη</span>
-            </button>
+        <div id="staffForm" class="form-section active">
+            <input type="text" id="stStore" class="inp" placeholder="Όνομα Καταστήματος (ή Email)">
+            <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
+            <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
             
-            <button onclick="location.reload()" style="background:none; border:none; color:#777; width:100%; margin-top:10px; cursor:pointer;">Πίσω</button>
+            <label style="color:#aaa; font-size:12px; text-align:left;">Ρόλος:</label>
+            <select id="stRole" class="inp">
+                <option value="waiter">Σερβιτόρος 🤵</option>
+                <option value="driver">Διανομέας 🛵</option>
+            </select>
+
+            <button class="btn-main" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
+        </div>
+
+        <div id="adminForm" class="form-section">
+            <p style="color:#aaa;">Συνδεθείτε με Google για διαχείριση</p>
+            <button class="btn-main btn-google" onclick="Admin.googleLogin()">
+                <span>G</span> Σύνδεση Google
+            </button>
+        </div>
+    </div>
+
+    <div id="pinModal">
+        <div class="pin-box">
+            <h3 id="pinTitle" style="margin:0; color:#FFD700;">ΕΙΣΑΓΩΓΗ PIN</h3>
+            <p id="pinSub" style="font-size:12px; color:#aaa;">Εισάγετε τον κωδικό καταστήματος</p>
+            <div id="pinDisplay" class="pin-display"></div>
+            <div class="numpad">
+                <button class="num-btn" onclick="PIN.add(1)">1</button>
+                <button class="num-btn" onclick="PIN.add(2)">2</button>
+                <button class="num-btn" onclick="PIN.add(3)">3</button>
+                <button class="num-btn" onclick="PIN.add(4)">4</button>
+                <button class="num-btn" onclick="PIN.add(5)">5</button>
+                <button class="num-btn" onclick="PIN.add(6)">6</button>
+                <button class="num-btn" onclick="PIN.add(7)">7</button>
+                <button class="num-btn" onclick="PIN.add(8)">8</button>
+                <button class="num-btn" onclick="PIN.add(9)">9</button>
+                <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
+                <button class="num-btn" onclick="PIN.add(0)">0</button>
+                <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
+            </div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        // Stripe API Key
-        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLKOxO4p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiPOay');
 
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
@@ -94,163 +101,154 @@
             messagingSenderId: "799314495253", 
             appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        // Προσωρινή αποθήκευση email για τη διαδικασία πληρωμής
-        let currentEmail = "";
+        const socket = io({ transports: ['polling', 'websocket'] });
 
-        window.UI = {
-            showStaffLogin: () => {
-                document.getElementById('btnRoleStaff').classList.add('active');
-                document.getElementById('btnRoleAdmin').classList.remove('active');
-                document.getElementById('staffForm').style.display = 'flex';
-                document.getElementById('adminForm').style.display = 'none';
-            },
-            showAdminLogin: () => {
-                document.getElementById('btnRoleStaff').classList.remove('active');
-                document.getElementById('btnRoleAdmin').classList.add('active');
-                document.getElementById('staffForm').style.display = 'none';
-                document.getElementById('adminForm').style.display = 'flex';
-            },
-            showPaymentOptions: (email) => {
-                currentEmail = email;
-                document.getElementById('defaultAdminView').style.display = 'none';
-                document.getElementById('paymentOptionsView').style.display = 'block';
-            }
-        };
+        let currentPinMode = 'enter'; // 'enter', 'create', 'confirm'
+        let tempPin = '';
+        let pinValue = '';
+        let adminUser = null;
 
-        window.App = {
-            // --- Αποθήκευση & Redirect ---
-            saveAndRedirect: (user, forceUrl) => {
-                user.store = user.store.toLowerCase().trim();
-                
-                // Καθαρίζουμε το 'premium' suffix αν υπάρχει στο όνομα καταστήματος, 
-                // ώστε να φαίνεται καθαρό μέσα στην εφαρμογή
-                if (user.store.endsWith('premium')) {
-                    user.store = user.store.replace('premium', '');
-                }
-
-                localStorage.setItem('bellgo_session', JSON.stringify(user));
-                
-                // Αν δεν δοθεί URL, πηγαίνουμε στο index.html (fallback)
-                window.location.href = forceUrl || "index.html";
-            },
-
-            // --- ΛΟΓΙΚΗ ΕΛΕΓΧΟΥ ΠΛΗΡΩΜΗΣ (ΧΡΗΣΙΜΟΠΟΙΕΙΤΑΙ ΚΑΙ ΑΠΟ ADMIN ΚΑΙ ΑΠΟ STAFF) ---
-            checkSubscriptionAndProceed: async (email, name, role) => {
-                try {
-                    const res = await fetch('/check-subscription', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ email })
-                    });
-                    const data = await res.json();
-
-                    if (data.active) {
-                        // ΕΝΕΡΓΗ ΣΥΝΔΡΟΜΗ -> ΕΛΕΓΧΟΣ ΠΑΚΕΤΟΥ
-                        const user = { store: email, name, role, plan: data.plan };
-                        
-                        if (data.plan === 'premium') {
-                            // --- ΝΕΑ ΛΟΓΙΚΗ ΔΙΑΧΩΡΙΣΜΟΥ ΡΟΛΩΝ ---
-                            if (role === 'admin') {
-                                App.saveAndRedirect(user, "premium.html"); // Admin Panel
-                            } else {
-                                App.saveAndRedirect(user, "stafpremium.html"); // Staff Panel
-                            }
-                        } else {
-                            // BASIC PLAN (Κοινό για όλους)
-                            App.saveAndRedirect(user, "index.html");
-                        }
-                    } else {
-                        // ΑΝΕΝΕΡΓΗ
-                        if (role === 'admin') {
-                            // Στον Admin δείχνουμε επιλογές πληρωμής
-                            UI.showPaymentOptions(email);
-                        } else {
-                            // Στο προσωπικό απλά λέμε ότι το κατάστημα δεν έχει συνδρομή
-                            alert("⚠️ Το κατάστημα δεν έχει ενεργή συνδρομή.\nΕπικοινωνήστε με τον Admin.");
-                        }
-                    }
-                } catch (e) {
-                    alert("Σφάλμα σύνδεσης με τον server. Δοκιμάστε ξανά.");
-                }
-            },
-
-            // --- ΠΛΗΡΩΜΗ ΜΕ ΕΠΙΛΟΓΗ (ΜΟΝΟ ADMIN) ---
-            pay: async (planType) => {
-                if (!currentEmail) return alert("Σφάλμα Email");
-                
-                try {
-                    const stripeRes = await fetch('/create-checkout-session', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ email: currentEmail, planType: planType })
-                    });
-                    
-                    const session = await stripeRes.json();
-                    
-                    if (session.id) {
-                        stripe.redirectToCheckout({ sessionId: session.id });
-                    } else {
-                        alert("Σφάλμα πληρωμής: " + (session.error || "Άγνωστο"));
-                    }
-                } catch (e) {
-                    alert("Σφάλμα σύνδεσης. Δοκιμάστε ξανά.");
-                }
-            },
-
-            redirectToStripe: () => {
-                const email = document.getElementById('inpAdminManualEmail').value.trim();
-                if (!email || !email.includes('@')) {
-                    return alert("Παρακαλώ συμπληρώστε το Email επιχείρησης.");
-                }
-                currentEmail = email;
-                App.pay('basic'); 
-            },
-
-            // Login Προσωπικού
-            loginStaff: () => {
-                const store = document.getElementById('inpStoreEmail').value.trim();
-                const name = document.getElementById('inpMyName').value.trim();
-                const role = document.getElementById('inpMyRole').value;
-
-                if (!store || !name) return alert("Συμπλήρωσε τα πεδία!");
-                
-                App.checkSubscriptionAndProceed(store, name, role);
-            },
-
-            // Login Admin Manual
-            loginAdminManual: () => {
-                const email = document.getElementById('inpAdminManualEmail').value.trim();
-                if (!email || !email.includes('@')) return alert("Έγκυρο Email παρακαλώ");
-                App.checkSubscriptionAndProceed(email, "Admin", "admin");
-            },
-
-            // Login Google
-            loginAdminGoogle: () => {
-                signInWithPopup(auth, provider).then((result) => {
-                    const email = result.user.email;
-                    document.getElementById('inpAdminManualEmail').value = email;
-                    App.checkSubscriptionAndProceed(email, "Admin", "admin");
-                }).catch((error) => alert("Error: " + error.message));
-            }
-        };
-
-        // --- Auto Login Check (Modified for Role Split) ---
-        if (localStorage.getItem('bellgo_session')) {
-            const saved = JSON.parse(localStorage.getItem('bellgo_session'));
+        window.switchTab = (tab) => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
             
-            if (saved.plan === 'premium') {
-                if (saved.role === 'admin') {
+            if (tab === 'staff') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('staffForm').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('adminForm').classList.add('active');
+            }
+        };
+
+        // --- PIN LOGIC ---
+        window.PIN = {
+            add: (n) => {
+                if (pinValue.length < 4) {
+                    pinValue += n;
+                    PIN.updateDisplay();
+                }
+            },
+            clear: () => {
+                pinValue = '';
+                PIN.updateDisplay();
+            },
+            updateDisplay: () => {
+                document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length);
+            },
+            submit: () => {
+                if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+                
+                if (currentPinMode === 'enter') {
+                    socket.emit('verify-pin', pinValue);
+                } else if (currentPinMode === 'create') {
+                    tempPin = pinValue;
+                    pinValue = '';
+                    PIN.updateDisplay();
+                    currentPinMode = 'confirm';
+                    document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ PIN";
+                    document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
+                } else if (currentPinMode === 'confirm') {
+                    if (pinValue === tempPin) {
+                        socket.emit('set-new-pin', pinValue);
+                    } else {
+                        alert("Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");
+                        currentPinMode = 'create';
+                        pinValue = '';
+                        tempPin = '';
+                        PIN.updateDisplay();
+                        document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
+                    }
+                }
+            }
+        };
+
+        // --- STAFF LOGIC ---
+        window.Staff = {
+            login: () => {
+                const store = document.getElementById('stStore').value.trim();
+                const name = document.getElementById('stName').value.trim();
+                const pin = document.getElementById('stPin').value.trim();
+                const role = document.getElementById('stRole').value;
+
+                if (!store || !name || !pin) return alert("Συμπληρώστε όλα τα πεδία!");
+
+                // Check PIN via Socket
+                socket.emit('verify-pin', pin);
+                
+                // We need a one-time listener for the result
+                socket.once('pin-verified', (res) => {
+                    if (res.success) {
+                        const sessionData = { name: name, store: store, role: role };
+                        localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
+                        window.location.href = "stafpremium.html";
+                    } else {
+                        alert("Λάθος Κωδικός Καταστήματος (PIN)!");
+                    }
+                });
+            }
+        };
+
+        // --- ADMIN LOGIC ---
+        window.Admin = {
+            googleLogin: () => {
+                signInWithPopup(auth, provider).then((result) => {
+                    adminUser = result.user;
+                    // Check if PIN exists
+                    socket.emit('check-pin-status');
+                }).catch((error) => alert(error.message));
+            }
+        };
+
+        // --- SOCKET LISTENERS ---
+        socket.on('pin-status', (data) => {
+            document.getElementById('pinModal').style.display = 'flex';
+            if (data.hasPin) {
+                currentPinMode = 'enter';
+                document.getElementById('pinTitle').innerText = "ΕΙΣΑΓΩΓΗ PIN";
+                document.getElementById('pinSub').innerText = "Βάλτε τον κωδικό σας";
+            } else {
+                currentPinMode = 'create';
+                document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
+                document.getElementById('pinSub').innerText = "Ορίστε έναν νέο 4-ψήφιο κωδικό";
+            }
+        });
+
+        socket.on('pin-success', (data) => {
+            // PIN created successfully
+            const storeName = adminUser.displayName || "My Store"; 
+            const sessionData = { name: adminUser.displayName, store: storeName, role: 'admin', email: adminUser.email };
+            localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
+            window.location.href = "premium.html";
+        });
+
+        // Used for Admin Login verification
+        socket.on('pin-verified', (res) => {
+            // Only process if modal is open (Admin flow)
+            if (document.getElementById('pinModal').style.display === 'flex') {
+                if (res.success) {
+                    const storeName = adminUser.displayName || "My Store"; 
+                    const sessionData = { name: adminUser.displayName, store: storeName, role: 'admin', email: adminUser.email };
+                    localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     window.location.href = "premium.html";
                 } else {
-                    window.location.href = "stafpremium.html";
+                    alert("Λάθος PIN!");
+                    PIN.clear();
                 }
+            }
+        });
+
+        // --- Auto Login Check ---
+        if (localStorage.getItem('bellgo_session')) {
+            const saved = JSON.parse(localStorage.getItem('bellgo_session'));
+            if (saved.role === 'admin') {
+                window.location.href = "premium.html";
             } else {
-                window.location.href = "index.html";
+                window.location.href = "stafpremium.html";
             }
         }
     </script>
