@@ -52,10 +52,7 @@
         textarea.order-text { width: 100%; height: 80px; background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 16px; resize: none; margin-bottom: 8px; transition: border-color 0.2s, background-color 0.2s; }
         textarea.order-text.flash { border-color: #00E676; background-color: #2a2a2a; }
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        
-        /* LIVE TOTAL DISPLAY */
         #liveTotal { text-align: right; color: #00E676; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-
         #statusOverlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: rgba(0,0,0,0.95); transition: height 0.3s; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; }
         .status-content { text-align: center; width: 80%; display: flex; flex-direction: column; align-items: center; }
         .status-icon { font-size: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
@@ -64,6 +61,10 @@
         .btn-new-order { margin-top: 20px; padding: 12px 25px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; display: none; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4); width: 100%; }
         .btn-minimize { margin-top: 15px; background: transparent; border: 1px solid #555; color: #aaa; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+        
+        /* CLOSED STORE STYLE */
+        .store-closed-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9000; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        .closed-text { font-size: 30px; color: #D32F2F; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -92,6 +93,12 @@
             <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
+    
+    <div id="closedOverlay" class="store-closed-overlay">
+        <div class="closed-text">🔴 ΚΛΕΙΣΤΟ</div>
+        <p style="color:#aaa;">Το κατάστημα δεν δέχεται παραγγελίες αυτή τη στιγμή.</p>
+    </div>
+
     <div id="appContent">
         <div class="header">
             <div class="store-info">
@@ -108,14 +115,11 @@
                 <span id="displayAddress">...</span>
                 <button class="btn-edit" onclick="App.editDetails()">✏️ Αλλαγή</button>
             </div>
-            
             <textarea id="orderText" class="order-text" 
                 placeholder="Γράψτε εδώ...&#10;(⚠️ Για πληρωμή με ΚΑΡΤΑ, επιλέξτε προϊόντα από τον κατάλογο!)" 
                 oninput="App.handleInput()">
             </textarea>
-            
             <div id="liveTotal">ΣΥΝΟΛΟ: 0.00€</div>
-
             <button class="btn-send" onclick="App.requestPayment()">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀</button>
         </div>
         <div id="statusOverlay">
@@ -232,17 +236,27 @@
                 });
                 socket.on('menu-update', (data) => { App.renderMenu(data); });
                 socket.on('store-settings-update', (settings) => {
-                    if (settings && settings.name) {
-                        const newName = settings.name;
-                        document.getElementById('storeNameHeader').innerText = newName;
-                        document.title = newName;
-                        const currentParams = new URLSearchParams(window.location.search);
-                        if (!currentParams.get('name')) {
-                            currentParams.set('name', newName);
-                            window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
+                    if (settings) {
+                        if(settings.name) {
+                            const newName = settings.name;
+                            document.getElementById('storeNameHeader').innerText = newName;
+                            document.title = newName;
+                            const currentParams = new URLSearchParams(window.location.search);
+                            if (!currentParams.get('name')) {
+                                currentParams.set('name', newName);
+                                window.location.replace(`${window.location.pathname}?${currentParams.toString()}`);
+                            } else {
+                                const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}&icon=shop`;
+                                document.getElementById('dynamicManifest').href = maniUrl;
+                            }
+                        }
+                        
+                        // ✅ CHECK CLOSED STATE
+                        const closedOverlay = document.getElementById('closedOverlay');
+                        if(settings.isOpen === false) {
+                            closedOverlay.style.display = 'flex';
                         } else {
-                            const maniUrl = `manifest.json?name=${encodeURIComponent(newName)}&store=${TARGET_STORE}&icon=shop`;
-                            document.getElementById('dynamicManifest').href = maniUrl;
+                            closedOverlay.style.display = 'none';
                         }
                     }
                 });
@@ -326,20 +340,14 @@
                 App.handleInput(); 
             },
             
-            // ✅ UNIFIED INPUT HANDLER: Validates Card & Calculates Live Total
             handleInput: () => {
                 const text = document.getElementById('orderText').value.trim();
                 const lines = text.split('\n');
                 let validForCard = true;
                 let total = 0;
-
                 if (text.length === 0) validForCard = false;
-
                 for (const line of lines) {
                     if (!line.trim()) continue;
-                    
-                    // Check logic for Quantity & Price
-                    // 1. Qty
                     let qty = 1; 
                     let rest = line;
                     const qtyMatch = line.match(/^(\d+)\s+(.*)/);
@@ -347,25 +355,19 @@
                         qty = parseInt(qtyMatch[1]);
                         rest = qtyMatch[2];
                     }
-
-                    // 2. Price
                     if(rest.includes(':')) {
                         const parts = rest.split(':');
                         const priceVal = parseFloat(parts[parts.length-1]);
                         if(!isNaN(priceVal)) {
                             total += qty * priceVal;
                         } else {
-                            validForCard = false; // Has colon but invalid price
+                            validForCard = false; 
                         }
                     } else {
-                        validForCard = false; // No colon = No price
+                        validForCard = false; 
                     }
                 }
-
-                // Update Total
                 document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
-
-                // Update Card Button
                 const btnCard = document.getElementById('payCard');
                 if (validForCard && total > 0) {
                     btnCard.disabled = false;
@@ -375,7 +377,6 @@
                     btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
                 }
             },
-
             requestPayment: () => {
                 const items = document.getElementById('orderText').value.trim();
                 if (!items) return alert("Το καλάθι είναι άδειο!");
