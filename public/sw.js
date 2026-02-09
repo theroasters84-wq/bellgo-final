@@ -1,13 +1,13 @@
 /* -----------------------------------------------------------
-   1. IMPORTS (Πρέπει να είναι πρώτα)
+   1. IMPORTS
 ----------------------------------------------------------- */
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE
+   2. CONFIGURATION & CACHE (ΑΛΛΑΓΗ ΣΕ v5)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v4'; // ✅ Αλλαγή σε v3 για ανανέωση
+const CACHE_NAME = 'bellgo-v5'; 
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -39,39 +39,36 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 /* -----------------------------------------------------------
-   4. BACKGROUND MESSAGING (Κλήση όταν είναι κλειστό)
+   4. BACKGROUND MESSAGING
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
   console.log('[sw.js] Background message:', payload);
-  
   const title = payload.data.title || '🚨 ΚΛΗΣΗ!';
   const body = payload.data.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
 
   return self.registration.showNotification(title, {
     body: body,
-    icon: '/admin.png',       // ✅ ΔΙΟΡΘΩΣΗ: admin.png
+    icon: '/admin.png',
     tag: 'bellgo-alarm',      
-    renotify: true,           // 🔴 ΣΗΜΑΝΤΙΚΟ: Ξαναχτυπάει!
-    requireInteraction: true, // ✅ Να μένει στην οθόνη
-    vibrate: [500, 200, 500], // ✅ Δόνηση
-    data: { url: '/premium.html' } // ✅ Να ανοίγει το Admin Panel
+    renotify: true,
+    requireInteraction: true,
+    vibrate: [500, 200, 500],
+    data: { url: '/premium.html' }
   });
 });
 
 /* -----------------------------------------------------------
-   5. NOTIFICATION CLICK (Άνοιγμα εφαρμογής)
+   5. NOTIFICATION CLICK
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // Προσπάθησε να βρεις ανοιχτό παράθυρο του Admin
       for (const client of clientsArr) {
         if (client.url.includes('premium.html') && 'focus' in client) {
             return client.focus();
         }
       }
-      // Αν δεν υπάρχει, άνοιξε νέο
       if (clients.openWindow) {
         return clients.openWindow('/premium.html');
       }
@@ -80,10 +77,8 @@ self.addEventListener('notificationclick', function(event) {
 });
 
 /* -----------------------------------------------------------
-   6. PWA CACHING (Install, Activate, Fetch)
+   6. PWA CACHING (Network First Strategy)
 ----------------------------------------------------------- */
-
-// ΕΓΚΑΤΑΣΤΑΣΗ
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -93,7 +88,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ΕΝΕΡΓΟΠΟΙΗΣΗ (Καθαρισμός παλιών caches)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
@@ -109,9 +103,10 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// FETCH (Offline support)
+// 🔴 ΝΕΑ ΣΤΡΑΤΗΓΙΚΗ: NETWORK FIRST
+// Προσπαθεί να κατεβάσει το φρέσκο. Αν αποτύχει (offline), δίνει το παλιό.
 self.addEventListener('fetch', (event) => {
-  // ΑΓΝΟΗΣΕ ΤΑ DYNAMIC (Socket.io, Manifest, Firebase) - Πάντα Network
+  // Αγνοούμε τα δυναμικά calls
   if (event.request.url.includes('socket.io') || 
       event.request.url.includes('manifest.json') ||
       event.request.url.includes('firestore') ||
@@ -120,9 +115,17 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Αν το βρήκες στην cache, δώσ' το. Αλλιώς ζήτα το από το δίκτυο.
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Αν πετύχει η σύνδεση, αποθήκευσε το νέο αρχείο στην cache για την επόμενη φορά
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // Αν δεν έχει ίντερνετ, δώσε το παλιό από τη μνήμη
+        return caches.match(event.request);
+      })
   );
 });
