@@ -44,7 +44,7 @@ const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
 const ORDERS_FILE = path.join(__dirname, 'active_orders.json');
 
 let liveMenu = [];
-// ✅ Προσθήκη PIN, isOpen και adminEmail
+// ✅ Προσθήκη isOpen και adminEmail (για να βρίσκονται Admin-Staff)
 let storeSettings = { name: "BellGo Delivery", pin: null, isOpen: true, adminEmail: "" }; 
 
 // LOAD DATA ON STARTUP
@@ -64,41 +64,37 @@ try {
 } catch (e) { console.log("Load Error", e); }
 
 // SAVE HELPERS
-function saveOrdersToDisk() {
-    try { fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8'); } catch (e) {}
-}
-function saveSettingsToDisk() {
-    try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings, null, 2), 'utf8'); } catch (e) {}
-}
+function saveOrdersToDisk() { try { fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8'); } catch (e) {} }
+function saveSettingsToDisk() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings, null, 2), 'utf8'); } catch (e) {} }
 
 
 /* ---------------- DYNAMIC MANIFEST (FIXED ID FOR PWA CONFLICT) ---------------- */
 app.get('/manifest.json', (req, res) => {
     const appName = req.query.name || storeSettings.name || "BellGo App";
     const iconType = req.query.icon; 
-    const rawStoreParam = req.query.store || "general";
-    
-    // ✅ SAFE ID: Αφαιρούμε κενά και σύμβολα για να είναι valid ID στον Browser
-    // Π.χ. "The Roasters" -> "TheRoasters"
-    const safeStoreParam = rawStoreParam.replace(/[^a-zA-Z0-9]/g, '');
+    const storeParam = req.query.store || "general";
 
-    // ✅ UNIQUE ID: Αυτό κάνει τον Browser να βλέπει το App ως ξεχωριστό
-    let appId = `bellgo_${iconType}_${safeStoreParam}`; 
+    // ✅ UNIQUE ID FIX: 
+    // Καθαρίζουμε το όνομα από κενά/σύμβολα για να είναι Valid ID για τον Browser.
+    // Αυτό λύνει το πρόβλημα που μπερδεύει τα μαγαζιά.
+    const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
+    let appId = `bellgo_${iconType}_${safeStoreId}`; 
 
     let iconFile = "admin.png"; 
     let startUrl = ".";         
 
     if (iconType === 'shop') {
         iconFile = "shop.png";
-        startUrl = `./order.html?store=${encodeURIComponent(rawStoreParam)}&name=${encodeURIComponent(appName)}`;
+        startUrl = `./order.html?store=${encodeURIComponent(storeParam)}&name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
+        // Το προσωπικό πάει πάντα Login
         startUrl = `./login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId,
+        "id": appId, // <-- ΤΟ ΚΛΕΙΔΙ ΓΙΑ ΤΟ PWA CONFLICT
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -171,7 +167,7 @@ io.on('connection', (socket) => {
 
     socket.on('verify-pin', (pin) => {
         if (storeSettings.pin === pin) {
-            // ✅ Επιστρέφουμε το STORE ID (Admin Email) στον υπάλληλο
+            // ✅ Return Store ID (Admin Email)
             socket.emit('pin-verified', { 
                 success: true, 
                 storeId: storeSettings.adminEmail || storeSettings.name 
@@ -233,7 +229,7 @@ io.on('connection', (socket) => {
     socket.on('new-order', (orderText) => {
         if (!socket.store) return;
         
-        // ✅ BLOCK ORDER IF CLOSED (Only for customers)
+        // ✅ BLOCK ORDER IF CLOSED
         if (!storeSettings.isOpen && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') {
             return; 
         }
