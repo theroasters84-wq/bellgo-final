@@ -50,7 +50,7 @@
         /* OVERLAYS */
         .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
         
-        /* START SCREEN FOR AUDIO UNLOCK */
+        /* START SCREEN */
         #startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; }
 
@@ -58,7 +58,6 @@
         #closedOverlay { position: fixed; top: 60px; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0,0,0,0.8); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .closed-text { font-size: 24px; color: #D32F2F; font-weight: bold; text-transform: uppercase; border: 2px solid #D32F2F; padding: 10px 20px; border-radius: 10px; background: #121212; }
 
-        /* ORDERS OVERLAY */
         .orders-box-container { width: 95%; max-width: 500px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; height: 85vh; overflow:hidden; }
         .orders-tabs { display: flex; background: #111; border-bottom: 1px solid #333; }
         .tab-btn { flex: 1; padding: 15px; background: transparent; border: none; color: #888; font-weight: bold; border-bottom: 3px solid transparent; cursor: pointer; }
@@ -74,11 +73,9 @@
         .order-meta { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; }
         .order-content { white-space: pre-wrap; font-weight: bold; color: white; font-size: 15px; }
         .order-total { text-align: right; color: #FFD700; font-weight: bold; margin-top: 5px; font-size: 16px; }
-        
         #actionModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 25000; align-items:center; justify-content:center; }
         .action-box { background: #222; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; display:flex; flex-direction:column; gap:15px; }
         .btn-act { padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: black; }
-        
         #staffChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -89,10 +86,8 @@
         .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
         .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
-        
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
         #fakeLockOverlay div { color: #333; font-size: 14px; }
-        
         #cancelUpdateBtn { display:none; width: 100%; padding: 10px; background: #555; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; }
 
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
@@ -159,7 +154,7 @@
             </div>
             
             <div id="closedOverlay">
-                <div class="closed-text">🔴 ΚΛΕΙΣΤΟ</div>
+                <div class="closed-text">🔴 ΤΟ ΣΥΣΤΗΜΑ ΠΡΟΣΩΠΙΚΟΥ ΕΙΝΑΙ ΚΛΕΙΣΤΟ</div>
             </div>
         </div>
 
@@ -215,7 +210,7 @@
     const AudioEngine = {
         keepAlivePlayer: null, alarmPlayer: null, isRinging: false, wakeLock: null, vibrationInterval: null,
         async init() {
-            // Unmute Audio Context
+            // Unmute Audio Context with silent buffer
             const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
             await audio.play().catch(e=>{});
 
@@ -279,7 +274,6 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // --- HELPER TO PARSE PRICE ---
         const parseItem = (str) => {
             const parts = str.split(':');
             let name = parts[0];
@@ -297,7 +291,6 @@
                 if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
             },
             
-            // ✅ AUTO CALCULATION IN RENDER
             renderOrders: (orders, mode = 'my') => {
                 const list = document.getElementById('ordersList');
                 const searchVal = document.getElementById('searchTable').value.trim();
@@ -328,7 +321,6 @@
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
                     
-                    // CALCULATE TOTAL
                     let total = 0;
                     const lines = o.text.split('\n');
                     let displayLines = [];
@@ -387,9 +379,10 @@
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
-                // Wait for user to click START
+                // Wait for click on START
             },
 
+            // ✅ UNLOCK AUDIO
             unlockAudio: () => {
                 if(window.AudioEngine) window.AudioEngine.init();
                 document.getElementById('startScreen').style.display = 'none';
@@ -412,12 +405,11 @@
 
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
-                        // CHECK CLOSED STATE
-                        const overlay = document.getElementById('closedOverlay');
-                        if (settings.isOpen === false) {
-                            overlay.style.display = 'flex';
+                        // ✅ CHECK STAFF CLOSED STATUS
+                        if(settings.statusStaff === false) {
+                            document.getElementById('closedOverlay').style.display = 'flex';
                         } else {
-                            overlay.style.display = 'none';
+                            document.getElementById('closedOverlay').style.display = 'none';
                         }
                     }
                 });
@@ -448,7 +440,6 @@
                                     box.className = 'menu-item-box';
                                     box.innerText = name; 
                                     
-                                    // DOUBLE TAP HANDLER
                                     box.addEventListener('dblclick', (e) => { 
                                         e.preventDefault(); 
                                         App.addToOrder(itemStr.trim()); 
@@ -542,7 +533,6 @@
                 alert("Εστάλη! 🚀");
             },
 
-            // UPDATE LOGIC
             prepareUpdateOrder: () => {
                 document.getElementById('actionModal').style.display = 'none';
                 document.getElementById('myOrdersOverlay').style.display = 'none';
@@ -552,14 +542,12 @@
 
                 App.updatingOrderId = order.id;
                 
-                // Extract table/covers
                 const tMatch = order.text.match(/ΤΡ:\s*(\d+)/);
                 const cMatch = order.text.match(/AT:\s*(\d+)/);
                 
                 if(tMatch) document.getElementById('inpTable').value = tMatch[1];
                 if(cMatch) document.getElementById('inpCovers').value = cMatch[1];
                 
-                // Change UI
                 const btn = document.getElementById('btnSendOrder');
                 btn.innerText = "➕ ΕΝΗΜΕΡΩΣΗ ΠΑΡΑΓΓΕΛΙΑΣ";
                 btn.classList.add('update-mode');
