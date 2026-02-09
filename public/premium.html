@@ -29,8 +29,6 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        
-        /* HEADER */
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
         .user-info { display: flex; flex-direction: column; }
         .header-actions { display: flex; align-items: center; gap: 8px; }
@@ -39,12 +37,19 @@
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .btn-icon:active { background: #333; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
+        
+        /* TOGGLE SWITCH */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; margin-right: 5px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; -webkit-transition: .4s; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; -webkit-transition: .4s; transition: .4s; }
+        input:checked + .slider { background-color: #00E676; }
+        input:checked + .slider:before { -webkit-transform: translateX(24px); -ms-transform: translateX(24px); transform: translateX(24px); }
+        .slider.round { border-radius: 34px; }
+        .slider.round:before { border-radius: 50%; }
 
-        /* ADMIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
-        
-        /* MENU SECTION */
         .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px; }
@@ -59,23 +64,17 @@
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
         .btn-link { background: #9C27B0; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight:bold; }
-
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
         #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 20px; overflow-y: auto; }
         #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
         #staffList { flex: 1; overflow-y: auto; padding: 10px; }
-
-        /* FOLDER ICON */
         .order-folder { width: 90px; height: 110px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; margin-bottom: 10px; }
         .order-folder.ringing { animation: shake 0.5s infinite; }
         .folder-icon { font-size: 50px; }
         .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-time { font-size: 11px; color: #FFD700; background: #000; padding: 2px 5px; border-radius: 10px; margin-top: 2px; font-weight: bold; }
-
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
-        
-        /* ORDER SCREEN */
         .order-window { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; border: none !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important; }
         .win-header { background: #1a1a1a; padding: 15px 20px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
@@ -84,16 +83,12 @@
         .order-items-section { flex: 1; color: #fff; font-weight: bold; font-size: 22px; text-align: left; padding: 10px; white-space: pre-wrap; line-height: 1.5; }
         .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
         .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
-
-        /* STAFF LIST BUTTONS */
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
         .btn-staff { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 14px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; cursor: pointer; }
         .btn-staff.waiter { background: #1565C0; border-left: 4px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 4px solid #FF5252; }
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        /* CHAT */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -104,19 +99,16 @@
         .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
         .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
-
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
         #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; }
         .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
         #qrcode { margin-top: 10px; }
         .qr-link { color: #333; font-size: 12px; word-break: break-all; text-align: center; margin-top: 10px; }
-
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
-
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
@@ -127,6 +119,11 @@
                 </div>
             </div>
             <div class="header-actions">
+                <label class="switch">
+                    <input type="checkbox" id="storeToggle" onclick="App.toggleStore()">
+                    <span class="slider round"></span>
+                </label>
+
                 <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
@@ -136,7 +133,6 @@
                 <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
-
         <div id="adminPanel">
             <div class="menu-section">
                 <div class="menu-header">
@@ -155,7 +151,6 @@
                 </div>
                 <div id="menuInputContainer"></div>
             </div>
-
             <div class="admin-main-area">
                 <div id="desktopArea"></div>
                 <div id="windowsContainer"></div>
@@ -164,7 +159,6 @@
                     <div id="staffList"></div>
                 </div>
             </div>
-
             <div id="adminChatOverlay">
                 <div class="overlay-header">
                     <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
@@ -180,7 +174,6 @@
             </div>
         </div>
     </div>
-
     <div id="qrOverlay" onclick="this.style.display='none'">
         <div class="qr-box" onclick="event.stopPropagation()">
             <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Παραγγελίας</div>
@@ -189,20 +182,16 @@
             <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:10px; padding:8px 20px; background:#D32F2F; color:white; border:none; border-radius:5px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
-
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
         <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
     </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-
         const savedSession = localStorage.getItem('bellgo_session');
         if (!savedSession) window.location.href = "login.html";
         const userData = JSON.parse(savedSession || '{}');
         if (userData.role !== 'admin') { alert("Access Denied"); window.location.href = "login.html"; }
-
         const firebaseConfig = { 
             apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
             authDomain: "bellgo-5dbe5.firebaseapp.com", 
@@ -213,16 +202,12 @@
         };
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-
         let orderAlertSound = new Audio('alert.mp3');
         orderAlertSound.loop = true; 
-
-        // ✅ AUTO CALCULATION HELPER
         const calculateTotal = (text) => {
             let total = 0;
             const lines = text.split('\n');
             lines.forEach(line => {
-                // Matches: "2 Freddo:3.5" or "Freddo:3.5" (Captures Qty, Name, Price)
                 const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
                 if (match) {
                     let qty = parseInt(match[1] || '1');
@@ -232,20 +217,17 @@
             });
             return total;
         };
-
         window.App = {
             activeOrders: [],
             menuData: [], 
             currentCategoryIndex: null,
             isChatOpen: false, 
-
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 document.body.addEventListener('click', () => { 
                     orderAlertSound.play().then(() => orderAlertSound.pause());
                 }, {once:true});
-
                 const nameInput = document.getElementById('inpStoreName');
                 nameInput.addEventListener('blur', () => {
                     const newName = nameInput.value.trim();
@@ -254,24 +236,19 @@
                 nameInput.addEventListener('keydown', (e) => {
                     if(e.key === 'Enter') nameInput.blur();
                 });
-
                 App.connectSocket();
                 App.startHeartbeat();
             },
-
             connectSocket: () => {
                 if (window.socket && window.socket.connected) return;
                 window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
                 const socket = window.socket;
-
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
                     const isNative = !!window.Capacitor;
                     socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: isNative });
                 });
-
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
-
                 socket.on('menu-update', (data) => {
                     try {
                         if (typeof data === 'string' && !data.startsWith('[')) {
@@ -282,71 +259,65 @@
                     } catch(e) { App.menuData = []; }
                     App.renderMenu();
                 });
-
                 socket.on('store-settings-update', (settings) => {
-                    if(settings && settings.name) {
-                        document.getElementById('inpStoreName').value = settings.name;
+                    if(settings) {
+                        if(settings.name) document.getElementById('inpStoreName').value = settings.name;
+                        // UPDATE SWITCH
+                        document.getElementById('storeToggle').checked = settings.isOpen;
                     }
                 });
-
                 socket.on('chat-message', (data) => App.appendChat(data));
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
-
                 socket.on('orders-update', (orders) => {
                     App.activeOrders = orders;
                     App.renderDesktopIcons(orders);
                 });
-                
                 socket.on('ring-bell', () => {
                     orderAlertSound.currentTime = 0;
                     orderAlertSound.play().catch(e => console.log(e));
                 });
+            },
+            
+            toggleStore: () => {
+                const isOpen = document.getElementById('storeToggle').checked;
+                window.socket.emit('toggle-store-open', isOpen);
             },
 
             showLink: () => {
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
                 const qrEl = document.getElementById('qrcode');
-                
                 const baseUrl = window.location.origin;
                 const customName = document.getElementById('inpStoreName').value.trim();
-                
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
                 if(customName) {
                     fullLink += `&name=${encodeURIComponent(customName)}`;
                 }
-                
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
-                
                 qrEl.innerHTML = "";
                 new QRCode(qrEl, { text: fullLink, width: 200, height: 200 });
                 el.style.display = 'flex';
             },
-
             handlePlusButton: () => {
                 if (App.currentCategoryIndex === null) {
                     let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
                     if(!order) return;
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
                     if(!name) return;
-                    
                     App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
                     App.saveMenuToServer();
                 } else {
                     App.addItemInput('');
                 }
             },
-
             renderMenu: () => {
                 const container = document.getElementById('menuInputContainer');
                 container.innerHTML = '';
                 App.menuData.sort((a,b) => a.order - b.order);
-
                 if (App.currentCategoryIndex === null) {
                     document.getElementById('menuTitle').innerText = "📜 ΚΑΤΗΓΟΡΙΕΣ";
                     document.getElementById('btnBackCat').style.display = 'none';
-                    
                     App.menuData.forEach((cat, index) => {
                         const div = document.createElement('div');
                         div.className = 'category-box';
@@ -373,15 +344,13 @@
                     cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
                 }
             },
-
             addItemInput: (val, index = null) => {
                 const container = document.getElementById('menuInputContainer');
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'menu-input-box';
                 input.value = val;
-                input.placeholder = "Προϊόν:Τιμή"; // Updated Placeholder
-                
+                input.placeholder = "Προϊόν:Τιμή"; 
                 const saveInput = () => {
                     const val = input.value.trim();
                     const cat = App.menuData[App.currentCategoryIndex];
@@ -397,22 +366,18 @@
                 container.appendChild(input);
                 if(index === null) input.focus();
             },
-
             goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             saveMenuToServer: () => {
                 App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i.trim() !== ''); });
                 window.socket.emit('save-menu', JSON.stringify(App.menuData));
                 App.renderMenu();
             },
-
             renderDesktopIcons: (orders) => {
                 const desktop = document.getElementById('desktopArea');
                 desktop.innerHTML = '';
                 orders.sort((a,b) => a.id - b.id);
-
                 orders.forEach(order => {
                     const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    // Green border if ready
                     const style = order.status === 'ready' ? 'border: 2px solid #00E676;' : '';
                     const icon = document.createElement('div');
                     icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
@@ -422,11 +387,9 @@
                     desktop.appendChild(icon);
                 });
             },
-
             openOrderWindow: (order) => {
                 orderAlertSound.pause();
                 orderAlertSound.currentTime = 0;
-
                 let win = document.getElementById(`win-${order.id}`);
                 if (!win) {
                     win = document.createElement('div');
@@ -434,10 +397,8 @@
                     win.id = `win-${order.id}`;
                     document.getElementById('windowsContainer').appendChild(win);
                 }
-
                 let infoText = "";
                 let itemsText = order.text;
-
                 if (order.text.includes("---")) {
                     const parts = order.text.split("---");
                     infoText = parts[0].replace(/\n/g, '<br>').trim();
@@ -445,11 +406,8 @@
                 } else {
                     itemsText = order.text;
                 }
-
-                // ✅ CALCULATE TOTAL
                 const total = calculateTotal(order.text);
                 const displayItems = itemsText.replace(/\n/g, '<br>');
-
                 let actions = '';
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
@@ -458,7 +416,6 @@
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
                 }
-
                 win.style.border = `none`;
                 win.innerHTML = `
                     <div class="win-header">
@@ -476,22 +433,18 @@
                 `;
                 win.style.display = 'flex';
             },
-
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
-
             acceptOrder: (id) => {
                 orderAlertSound.pause(); orderAlertSound.currentTime = 0;
                 window.socket.emit('accept-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
             },
-
             markReady: (id) => {
                 window.socket.emit('ready-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
             },
-
             completeOrder: (id) => {
                 if(confirm("Εξόφληση και κλείσιμο;")) {
                     window.socket.emit('pay-order', Number(id)); 
@@ -499,7 +452,6 @@
                     if(win) win.remove();
                 }
             },
-
             renderStaffList: (list) => {
                 const container = document.getElementById('staffList');
                 if (!container) return;
@@ -531,19 +483,16 @@
                     container.appendChild(row);
                 });
             },
-
             toggleAdminChat: () => { 
                 const el = document.getElementById('adminChatOverlay');
                 App.isChatOpen = (el.style.display === 'flex');
                 if (App.isChatOpen) { el.style.display = 'none'; App.isChatOpen = false; } 
                 else { el.style.display = 'flex'; App.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
             },
-            
             sendChat: () => {
                 const inp = document.getElementById('adminChatInp');
                 if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
             },
-            
             appendChat: (data) => {
                 if (data.sender !== userData.name && !App.isChatOpen) { document.getElementById('chatBadge').style.display = 'block'; }
                 const box = document.getElementById('adminChatBox');
@@ -552,13 +501,11 @@
                     box.scrollTop = box.scrollHeight;
                 }
             },
-
             logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
-
         window.onload = App.init;
     </script>
 </body>
