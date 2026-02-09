@@ -16,7 +16,6 @@
             const pStore = params.get('store');
             const manifestLink = document.getElementById('dynamicManifest');
             
-            // ✅ Fix: Ensure store param is always passed for Unique ID generation
             let url = `manifest.json?icon=admin`;
             if (pName) url += `&name=${encodeURIComponent(pName)}`;
             if (pStore) url += `&store=${pStore}`;
@@ -56,14 +55,24 @@
         .slider.round { border-radius: 34px; }
         .slider.round:before { border-radius: 50%; }
 
-        /* PIN MODAL */
-        #pinChangeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
-        .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
-        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
+        /* GENERAL MODALS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
+        .modal-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 15px; }
+        .modal-title { color: #FFD700; font-size: 20px; font-weight: bold; margin: 0; }
+        .modal-btn { padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; color: black; }
+        
+        /* PIN SPECIFIC */
+        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 10px 0; font-weight: bold; color: #00E676; min-height: 40px; }
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
         .num-btn:active { background: #555; }
         
+        /* MENU INPUT STYLES */
+        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; }
+        .menu-input-box:focus { border-color: #2196F3; outline: none; background: #333; }
+        .btn-item-del { background: #D32F2F; color: white; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
         /* ... (Rest of CSS remains same) ... */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
@@ -73,14 +82,13 @@
         .category-box { background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 140px; text-align: center; cursor: pointer; position: relative; }
         .category-order { position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555; }
         .btn-delete-cat { position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
-        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; }
-        .menu-input-box:focus { border-color: #2196F3; outline: none; background: #333; }
         .store-name-input { background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 200px; text-align: center; margin-left: 10px; }
         .store-name-input:focus { border-color: #00E676; outline: none; }
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
         .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
         .btn-link { background: #9C27B0; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight:bold; }
+        
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
         #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 20px; overflow-y: auto; }
         #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -91,6 +99,7 @@
         .folder-icon { font-size: 50px; }
         .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-time { font-size: 11px; color: #FFD700; background: #000; padding: 2px 5px; border-radius: 10px; margin-top: 2px; font-weight: bold; }
+        
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
         .order-window { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; border: none !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important; }
         .win-header { background: #1a1a1a; padding: 15px 20px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
@@ -100,12 +109,14 @@
         .order-items-section { flex: 1; color: #fff; font-weight: bold; font-size: 22px; text-align: left; padding: 10px; white-space: pre-wrap; line-height: 1.5; }
         .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
         .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
+        
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
         .btn-staff { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 14px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; cursor: pointer; }
         .btn-staff.waiter { background: #1565C0; border-left: 4px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 4px solid #FF5252; }
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
         .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
@@ -116,6 +127,7 @@
         .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
         .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
         .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
+        
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
         #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; }
         .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
@@ -154,6 +166,7 @@
                     </div>
                 </div>
 
+                <button class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
                 <button class="btn-icon" onclick="App.openPinModal()" title="Αλλαγή PIN">🔑</button>
 
                 <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
@@ -178,7 +191,7 @@
                     <div style="display:flex; gap:10px; align-items:center;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
-                        <button class="btn-save" onclick="App.saveMenuToServer()">SAVE</button>
+                        <button class="btn-save" onclick="App.openSaveModal()">SAVE</button>
                     </div>
                 </div>
                 <div id="menuInputContainer"></div>
@@ -207,10 +220,10 @@
         </div>
     </div>
     
-    <div id="pinChangeModal">
-        <div class="pin-box">
-            <h3 style="margin:0; color:#FFD700;">ΑΛΛΑΓΗ PIN</h3>
-            <p id="pinSub" style="font-size:12px; color:#aaa;">Εισάγετε νέο 4-ψήφιο κωδικό</p>
+    <div id="pinChangeModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">ΑΛΛΑΓΗ PIN</h3>
+            <p id="pinSub" style="font-size:12px; color:#aaa; margin:0;">Εισάγετε νέο 4-ψήφιο κωδικό</p>
             <div id="pinDisplay" class="pin-display"></div>
             <div class="numpad">
                 <button class="num-btn" onclick="PIN.add(1)">1</button>
@@ -226,7 +239,30 @@
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
                 <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
             </div>
-            <button onclick="App.closePinModal()" style="margin-top:15px; background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
+            <button onclick="App.closePinModal()" style="background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <div id="saveModeModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">ΑΠΟΘΗΚΕΥΣΗ ΑΛΛΑΓΩΝ</h3>
+            <p style="color:#aaa; font-size:13px;">Οι αλλαγές (π.χ. προϊόντα που διαγράψατε) θα ισχύουν:</p>
+            <button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.saveMenu('temporary')">📅 ΓΙΑ ΣΗΜΕΡΑ ΜΟΝΟ<br><span style="font-size:10px; font-weight:normal;">(Θα επανέλθουν το πρωί)</span></button>
+            <button class="modal-btn" style="background:#D32F2F; color:white;" onclick="App.saveMenu('permanent')">♾️ ΜΟΝΙΜΑ / ΓΕΝΙΚΑ<br><span style="font-size:10px; font-weight:normal;">(Οριστική αλλαγή)</span></button>
+            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <div style="text-align:left; color:#ccc; font-size:14px;">
+                <label>Ώρα Αναπαλήρωσης Menu (Reset):</label>
+                <input type="time" id="inpResetTime" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:5px; margin-top:5px; font-size:18px;">
+                <small style="color:#777;">Ώρα που επαναφέρονται αυτόματα τα "προσωρινά διαγραμμένα" προϊόντα.</small>
+            </div>
+            <button class="modal-btn" style="background:#00E676;" onclick="App.saveSettings()">ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
@@ -280,13 +316,24 @@
         window.PIN = {
             add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
             clear: () => { pinValue = ''; PIN.updateDisplay(); },
-            updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; }, // Show numbers to admin
+            updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
             submit: () => {
                 if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
                 window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
                 App.closePinModal();
             }
         };
+
+        const DEFAULT_CATEGORIES = [
+            { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
+            { order: 2, name: "SANDWICH", items: [] },
+            { order: 3, name: "ΑΝΑΨΥΚΤΙΚΑ", items: [] },
+            { order: 4, name: "ΡΟΦΗΜΑΤΑ", items: [] },
+            { order: 5, name: "ΖΕΣΤΗ ΚΟΥΖΙΝΑ", items: [] },
+            { order: 6, name: "ΚΡΥΑ ΚΟΥΖΙΝΑ", items: [] },
+            { order: 7, name: "ΣΦΟΛΙΑΤΕΣ", items: [] },
+            { order: 8, name: "SNACKS", items: [] }
+        ];
 
         window.App = {
             activeOrders: [],
@@ -322,26 +369,28 @@
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 socket.on('menu-update', (data) => {
                     try {
-                        if (typeof data === 'string' && !data.startsWith('[')) {
+                        if (!data || data.length === 0) {
+                            // Load defaults if empty
+                            App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+                        } else if (typeof data === 'string' && !data.startsWith('[')) {
                             App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
                         } else {
                             App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
                         }
-                    } catch(e) { App.menuData = []; }
+                    } catch(e) { App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
                     App.renderMenu();
                 });
                 
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
                         if(settings.name) document.getElementById('inpStoreName').value = settings.name;
-                        // ✅ Update Switches
                         document.getElementById('switchCust').checked = settings.statusCustomer;
                         document.getElementById('switchStaff').checked = settings.statusStaff;
+                        if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
                     }
                 });
 
                 socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
-
                 socket.on('chat-message', (data) => App.appendChat(data));
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('orders-update', (orders) => {
@@ -354,23 +403,32 @@
                 });
             },
             
-            // ✅ NEW TOGGLE FUNCTION
             toggleStatus: (type) => {
                 const isOpen = (type === 'customer') 
                     ? document.getElementById('switchCust').checked 
                     : document.getElementById('switchStaff').checked;
-                
                 window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
             },
 
-            // ✅ PIN MODAL FUNCTIONS
+            // --- MODALS ---
             openPinModal: () => {
                 pinValue = '';
                 PIN.updateDisplay();
                 document.getElementById('pinChangeModal').style.display = 'flex';
             },
-            closePinModal: () => {
-                document.getElementById('pinChangeModal').style.display = 'none';
+            closePinModal: () => { document.getElementById('pinChangeModal').style.display = 'none'; },
+            
+            openSettingsModal: () => {
+                document.getElementById('settingsModal').style.display = 'flex';
+            },
+            saveSettings: () => {
+                const time = document.getElementById('inpResetTime').value;
+                if(time) {
+                    window.socket.emit('save-store-settings', { resetTime: time });
+                    document.getElementById('settingsModal').style.display = 'none';
+                } else {
+                    alert("Παρακαλώ επιλέξτε ώρα.");
+                }
             },
 
             showLink: () => {
@@ -396,7 +454,8 @@
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
                     if(!name) return;
                     App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
-                    App.saveMenuToServer();
+                    // Only save basic structure, no mode needed yet
+                    App.saveMenu('temporary'); 
                 } else {
                     App.addItemInput('');
                 }
@@ -419,7 +478,7 @@
                             e.stopPropagation();
                             if(confirm("Διαγραφή κατηγορίας;")) {
                                 App.menuData.splice(index, 1);
-                                App.saveMenuToServer();
+                                App.saveMenu('permanent'); // Deleting category is permanent
                             }
                         };
                         div.appendChild(delBtn);
@@ -436,33 +495,63 @@
             },
             addItemInput: (val, index = null) => {
                 const container = document.getElementById('menuInputContainer');
+                const wrapper = document.createElement('div');
+                wrapper.className = 'item-wrapper';
+                
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'menu-input-box';
                 input.value = val;
                 input.placeholder = "Προϊόν:Τιμή"; 
-                const saveInput = () => {
-                    const val = input.value.trim();
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-item-del';
+                delBtn.innerText = 'X';
+                delBtn.onclick = () => {
+                    // Visually remove immediately, then let user save to confirm logic
+                    wrapper.remove();
                     const cat = App.menuData[App.currentCategoryIndex];
-                    if(val === '') {
-                        if(index !== null) cat.items.splice(index, 1);
-                    } else {
-                        if(index === null) cat.items.push(val); else cat.items[index] = val;
-                    }
-                    App.saveMenuToServer();
+                    if (index !== null) cat.items.splice(index, 1);
+                    // We don't save immediately here to allow bulk edits, 
+                    // BUT for better UX per request: "molos teleiosei kati o admin pataei x"
+                    // It's better to force a Save decision now to clarify "Today vs General"
+                    App.openSaveModal(); 
                 };
-                input.addEventListener('blur', saveInput);
+
+                // Logic to update local array on blur
+                input.addEventListener('blur', () => {
+                    const newVal = input.value.trim();
+                    const cat = App.menuData[App.currentCategoryIndex];
+                    if(newVal !== '') {
+                        if(index === null && !cat.items.includes(newVal)) cat.items.push(newVal); 
+                        else if (index !== null) cat.items[index] = newVal;
+                    }
+                });
                 input.addEventListener('keydown', (e) => { if(e.key==='Enter') input.blur(); });
-                container.appendChild(input);
+                
+                wrapper.appendChild(input);
+                if (index !== null) wrapper.appendChild(delBtn); // Only show delete for existing items
+                
+                container.appendChild(wrapper);
                 if(index === null) input.focus();
             },
             goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
-            saveMenuToServer: () => {
-                // ✅ Fix: Clean empty items and send as Array/Object (Server.js expects this now)
-                App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i.trim() !== ''); });
-                window.socket.emit('save-menu', App.menuData);
-                App.renderMenu();
+            
+            // --- SAVE LOGIC ---
+            openSaveModal: () => {
+                document.getElementById('saveModeModal').style.display = 'flex';
             },
+            saveMenu: (mode) => {
+                // Clean empty items
+                App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i && i.trim() !== ''); });
+                
+                // Emit with mode flag
+                window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
+                
+                document.getElementById('saveModeModal').style.display = 'none';
+                App.renderMenu(); // Re-render to clean up UI
+            },
+
             renderDesktopIcons: (orders) => {
                 const desktop = document.getElementById('desktopArea');
                 desktop.innerHTML = '';
@@ -599,7 +688,6 @@
         };
         window.onload = App.init;
 
-        // ✅ PWA Service Worker Registration for Admin
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log("✅ Admin Service Worker Registered"))
