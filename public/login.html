@@ -9,24 +9,16 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        
         .login-container { width: 90%; max-width: 400px; background: #1e1e1e; padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; }
         h1 { color: #FFD700; margin-bottom: 20px; font-size: 28px; }
-        
-        /* TABS */
         .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #444; }
         .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #777; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; font-size: 16px; }
         .tab.active { color: #FFD700; border-bottom-color: #FFD700; }
-
-        /* FORMS */
         .form-section { display: none; flex-direction: column; gap: 15px; }
         .form-section.active { display: flex; }
-
         .inp { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 16px; width: 100%; box-sizing: border-box; text-align: center; }
         .btn-main { padding: 14px; border-radius: 6px; border: none; background: #FFD700; color: black; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-google { background: #DB4437; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
-
-        /* PIN MODAL */
         #pinModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
         .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
         .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
@@ -36,29 +28,22 @@
     </style>
 </head>
 <body>
-
     <div class="login-container">
         <h1>BellGo 🔔</h1>
-        
         <div class="tabs">
             <button class="tab active" onclick="switchTab('staff')">ΠΡΟΣΩΠΙΚΟ</button>
             <button class="tab" onclick="switchTab('admin')">ADMIN</button>
         </div>
-
         <div id="staffForm" class="form-section active">
-            <input type="text" id="stStore" class="inp" placeholder="Όνομα Καταστήματος (ή Email)">
+            <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
             <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
-            
-            <label style="color:#aaa; font-size:12px; text-align:left;">Ρόλος:</label>
             <select id="stRole" class="inp">
                 <option value="waiter">Σερβιτόρος 🤵</option>
                 <option value="driver">Διανομέας 🛵</option>
             </select>
-
             <button class="btn-main" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
         </div>
-
         <div id="adminForm" class="form-section">
             <p style="color:#aaa;">Συνδεθείτε με Google για διαχείριση</p>
             <button class="btn-main btn-google" onclick="Admin.googleLogin()">
@@ -66,7 +51,6 @@
             </button>
         </div>
     </div>
-
     <div id="pinModal">
         <div class="pin-box">
             <h3 id="pinTitle" style="margin:0; color:#FFD700;">ΕΙΣΑΓΩΓΗ PIN</h3>
@@ -88,7 +72,6 @@
             </div>
         </div>
     </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -104,10 +87,9 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
-
         const socket = io({ transports: ['polling', 'websocket'] });
 
-        let currentPinMode = 'enter'; // 'enter', 'create', 'confirm'
+        let currentPinMode = 'enter'; 
         let tempPin = '';
         let pinValue = '';
         let adminUser = null;
@@ -115,7 +97,6 @@
         window.switchTab = (tab) => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
-            
             if (tab === 'staff') {
                 document.querySelectorAll('.tab')[0].classList.add('active');
                 document.getElementById('staffForm').classList.add('active');
@@ -125,65 +106,44 @@
             }
         };
 
-        // --- PIN LOGIC ---
         window.PIN = {
-            add: (n) => {
-                if (pinValue.length < 4) {
-                    pinValue += n;
-                    PIN.updateDisplay();
-                }
-            },
-            clear: () => {
-                pinValue = '';
-                PIN.updateDisplay();
-            },
-            updateDisplay: () => {
-                document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length);
-            },
+            add: (n) => { if (pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
+            clear: () => { pinValue = ''; PIN.updateDisplay(); },
+            updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
             submit: () => {
                 if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-                
                 if (currentPinMode === 'enter') {
                     socket.emit('verify-pin', pinValue);
                 } else if (currentPinMode === 'create') {
-                    tempPin = pinValue;
-                    pinValue = '';
-                    PIN.updateDisplay();
+                    tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
                     currentPinMode = 'confirm';
                     document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ PIN";
                     document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
                 } else if (currentPinMode === 'confirm') {
                     if (pinValue === tempPin) {
-                        socket.emit('set-new-pin', pinValue);
+                        socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
                     } else {
-                        alert("Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");
-                        currentPinMode = 'create';
-                        pinValue = '';
-                        tempPin = '';
-                        PIN.updateDisplay();
+                        alert("Οι κωδικοί δεν ταιριάζουν.");
+                        currentPinMode = 'create'; pinValue = ''; tempPin = ''; PIN.updateDisplay();
                         document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
                     }
                 }
             }
         };
 
-        // --- STAFF LOGIC ---
         window.Staff = {
             login: () => {
-                const store = document.getElementById('stStore').value.trim();
                 const name = document.getElementById('stName').value.trim();
                 const pin = document.getElementById('stPin').value.trim();
                 const role = document.getElementById('stRole').value;
-
-                if (!store || !name || !pin) return alert("Συμπληρώστε όλα τα πεδία!");
-
-                // Check PIN via Socket
-                socket.emit('verify-pin', pin);
+                if (!name || !pin) return alert("Συμπληρώστε τα πεδία!");
                 
-                // We need a one-time listener for the result
+                // Only Verify PIN. If correct, Server returns the correct Store ID.
+                socket.emit('verify-pin', pin);
                 socket.once('pin-verified', (res) => {
                     if (res.success) {
-                        const sessionData = { name: name, store: store, role: role };
+                        // USE THE ID RETURNED FROM SERVER (Admin's Email/ID)
+                        const sessionData = { name: name, store: res.storeId, role: role };
                         localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                         window.location.href = "stafpremium.html";
                     } else {
@@ -193,63 +153,48 @@
             }
         };
 
-        // --- ADMIN LOGIC ---
         window.Admin = {
             googleLogin: () => {
                 signInWithPopup(auth, provider).then((result) => {
                     adminUser = result.user;
-                    // Check if PIN exists
                     socket.emit('check-pin-status');
                 }).catch((error) => alert(error.message));
             }
         };
 
-        // --- SOCKET LISTENERS ---
         socket.on('pin-status', (data) => {
             document.getElementById('pinModal').style.display = 'flex';
             if (data.hasPin) {
                 currentPinMode = 'enter';
                 document.getElementById('pinTitle').innerText = "ΕΙΣΑΓΩΓΗ PIN";
-                document.getElementById('pinSub').innerText = "Βάλτε τον κωδικό σας";
             } else {
                 currentPinMode = 'create';
                 document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
-                document.getElementById('pinSub').innerText = "Ορίστε έναν νέο 4-ψήφιο κωδικό";
             }
         });
 
         socket.on('pin-success', (data) => {
-            // PIN created successfully
-            const storeName = adminUser.displayName || "My Store"; 
-            const sessionData = { name: adminUser.displayName, store: storeName, role: 'admin', email: adminUser.email };
+            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             window.location.href = "premium.html";
         });
 
-        // Used for Admin Login verification
         socket.on('pin-verified', (res) => {
-            // Only process if modal is open (Admin flow)
-            if (document.getElementById('pinModal').style.display === 'flex') {
+            if (currentPinMode === 'enter' && document.getElementById('pinModal').style.display === 'flex') {
                 if (res.success) {
-                    const storeName = adminUser.displayName || "My Store"; 
-                    const sessionData = { name: adminUser.displayName, store: storeName, role: 'admin', email: adminUser.email };
+                    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     window.location.href = "premium.html";
                 } else {
-                    alert("Λάθος PIN!");
-                    PIN.clear();
+                    alert("Λάθος PIN!"); PIN.clear();
                 }
             }
         });
 
-        // --- Auto Login Check ---
         if (localStorage.getItem('bellgo_session')) {
             const saved = JSON.parse(localStorage.getItem('bellgo_session'));
-            if (saved.role === 'admin') {
-                window.location.href = "premium.html";
-            } else {
-                window.location.href = "stafpremium.html";
-            }
+            if (saved.role === 'admin') window.location.href = "premium.html";
+            else window.location.href = "stafpremium.html";
         }
     </script>
 </body>
