@@ -14,12 +14,17 @@
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             const pStore = params.get('store');
-            if (pName && pStore) {
-                const manifestLink = document.getElementById('dynamicManifest');
-                manifestLink.href = `manifest.json?name=${encodeURIComponent(pName)}&store=${pStore}&icon=admin`;
+            const manifestLink = document.getElementById('dynamicManifest');
+            
+            // ✅ Fix: Ensure store param is always passed for Unique ID generation
+            let url = `manifest.json?icon=admin`;
+            if (pName) url += `&name=${encodeURIComponent(pName)}`;
+            if (pStore) url += `&store=${pStore}`;
+            
+            manifestLink.href = url;
+
+            if (pName) {
                 document.title = decodeURIComponent(pName) + " (Admin)";
-            } else if (pStore) {
-                document.getElementById('dynamicManifest').href = `manifest.json?store=${pStore}&icon=admin`;
             }
         })();
     </script>
@@ -453,8 +458,9 @@
             },
             goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             saveMenuToServer: () => {
+                // ✅ Fix: Clean empty items and send as Array/Object (Server.js expects this now)
                 App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i.trim() !== ''); });
-                window.socket.emit('save-menu', JSON.stringify(App.menuData));
+                window.socket.emit('save-menu', App.menuData);
                 App.renderMenu();
             },
             renderDesktopIcons: (orders) => {
@@ -592,6 +598,13 @@
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
         window.onload = App.init;
+
+        // ✅ PWA Service Worker Registration for Admin
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log("✅ Admin Service Worker Registered"))
+                .catch(err => console.log("❌ Admin SW Error:", err));
+        }
     </script>
 </body>
 </html>
