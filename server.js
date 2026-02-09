@@ -36,7 +36,7 @@ const io = new Server(server, {
 
 /* ---------------- DATA STORE ---------------- */
 let activeUsers = {};
-let activeOrders = [];
+let activeOrders = []; // TODO: Θα προσθέσουμε Persistence στο επόμενο βήμα
 
 // --- FILE PERSISTENCE ---
 const MENU_FILE = path.join(__dirname, 'saved_menu.json');
@@ -58,42 +58,39 @@ try {
 } catch (e) { console.log("Load Error", e); }
 
 
-/* ---------------- DYNAMIC MANIFEST (PRIORITY & FIXED FOR MULTIPLE APPS) ---------------- */
+/* ---------------- DYNAMIC MANIFEST (FIXED FOR ICONS) ---------------- */
 app.get('/manifest.json', (req, res) => {
-    // 1. Όνομα Εφαρμογής (Από τα settings ή default)
+    // 1. Όνομα Εφαρμογής
     const appName = req.query.name || storeSettings.name || "BellGo App";
     
-    // 2. Επιλογή Εικονιδίου
-    // Αν το query parameter 'icon' είναι 'shop', τότε βάλε 'shop.png'.
-    // Σε ΟΛΕΣ τις άλλες περιπτώσεις (admin, staff, login, χωρίς παράμετρο), βάλε 'admin.png'.
-    const iconType = req.query.icon;
-    let iconFile = "admin.png"; // Default εικονίδιο
+    // 2. Επιλογή Εικονιδίου & Start URL
+    const iconType = req.query.icon; // 'shop' ή 'admin'
+    const storeParam = req.query.store;
+
+    let iconFile = "admin.png"; // Default (Admin/Staff)
+    let startUrl = ".";         // Default (Login)
 
     if (iconType === 'shop') {
-        iconFile = "shop.png"; // Ειδικό εικονίδιο για πελάτες
-    }
-
-    // 3. Start URL & ID
-    // Καθορίζουμε πού θα ανοίγει η εφαρμογή όταν πατηθεί το εικονίδιο
-    let startUrl = "."; // Default: πηγαίνει στο root (login.html)
-    
-    // Αν έχουμε store parameter, το προσθέτουμε στο URL
-    if (req.query.store) {
-        // Αν είναι πελάτης (icon=shop), πήγαινε στο order.html
-        if (iconType === 'shop') {
-             startUrl = `./order.html?store=${req.query.store}&name=${encodeURIComponent(appName)}`;
-        } 
-        // Αν είναι admin (ή οτιδήποτε άλλο), πήγαινε στο premium.html (ή login)
-        else {
-             // Μπορείς να το στείλεις στο premium.html ή στο login.html ανάλογα με το flow σου.
-             // Εδώ το στέλνω στο premium.html για να ταιριάζει με το προηγούμενο παράδειγμα admin.
-             startUrl = `./premium.html?store=${req.query.store}`;
+        // --- ΡΥΘΜΙΣΕΙΣ ΓΙΑ ΠΕΛΑΤΗ ---
+        iconFile = "shop.png";
+        if (storeParam) {
+            // Ο πελάτης ανοίγει κατευθείαν το μενού
+            startUrl = `./order.html?store=${storeParam}&name=${encodeURIComponent(appName)}`;
+        } else {
+            startUrl = "./order.html";
+        }
+    } else {
+        // --- ΡΥΘΜΙΣΕΙΣ ΓΙΑ ADMIN / STAFF ---
+        iconFile = "admin.png";
+        // Αν υπάρχει store parameter, τον στέλνουμε στο login/premium
+        if (storeParam) {
+            startUrl = `./index.html`; // Ή login.html
         }
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": startUrl, // Μοναδικό ID για να ξεχωρίζουν τα Apps
+        "id": startUrl,
         "name": appName,
         "short_name": appName,
         "start_url": startUrl,
@@ -116,7 +113,7 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-// --- STATIC FILES (Μετά το manifest) ---
+// --- STATIC FILES ---
 app.use(express.static(path.join(__dirname, 'public')));
 
 
@@ -154,7 +151,7 @@ app.post('/create-checkout-session', async (req, res) => {
 function updateStore(store) {
     if (!store) return;
 
-    // Send Staff List (ΦΙΛΤΡΑΡΙΣΜΑ ΠΕΛΑΤΩΝ)
+    // Send Staff List
     const list = Object.values(activeUsers)
         .filter(u => u.store === store && u.role !== 'customer')
         .map(u => ({
@@ -197,7 +194,6 @@ io.on('connection', (socket) => {
 
         socket.store = store;
         socket.username = username;
-        // Αν δεν οριστεί ρόλος, default είναι 'waiter'. Αν έρθει 'customer', κρατάμε 'customer'.
         socket.role = data.role || 'waiter'; 
         if (data.role === 'customer') socket.role = 'customer';
 
