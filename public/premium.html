@@ -136,6 +136,45 @@
         
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+   /* --- RESPONSIVE MOBILE CSS --- */
+        @media screen and (max-width: 768px) {
+            /* 1. Αλλαγές στο Header για να χωράνε τα κουμπιά */
+            .header { padding: 0 5px; height: 60px; }
+            .user-info { display: none; } /* Κρύβουμε το όνομα admin στο κινητό */
+            .btn-logout { font-size: 10px; padding: 4px 8px; }
+            .btn-icon { width: 30px; height: 30px; font-size: 16px; }
+            
+            /* 2. Αλλαγή διάταξης: Το Menu και το Sidebar πιάνουν λιγότερο χώρο */
+            .menu-section { height: 140px; }
+            .admin-main-area { flex-direction: column; } /* Κάθετη διάταξη */
+            
+            /* 3. Το Sidebar του προσωπικού πάει κάτω αντί για δεξιά */
+            #adminStaffSidebar { 
+                width: 100%; 
+                height: 120px; 
+                border-left: none; 
+                border-top: 2px solid #333; 
+                flex-direction: row; /* Οριζόντια λίστα */
+                overflow-x: auto; /* Scroll δεξιά-αριστερά */
+            }
+            .sidebar-title { width: 100px; font-size: 10px; white-space: normal; display: flex; align-items: center; }
+            #staffList { display: flex; flex-direction: row; gap: 10px; }
+            .staff-row { width: 120px; flex-shrink: 0; }
+            
+            /* 4. Μικρότερα εικονίδια φακέλων */
+            .order-folder { width: 70px; height: 90px; }
+            .folder-icon { font-size: 35px; }
+            .folder-label { font-size: 10px; }
+
+            /* 5. Προσαρμογή παραθύρων (Modals) */
+            .modal-box { width: 95%; padding: 15px; }
+            .pin-display { font-size: 24px; letter-spacing: 5px; }
+            .num-btn { padding: 10px; font-size: 18px; }
+            
+            /* 6. Παράθυρο Παραγγελίας Full Screen */
+            .order-window { width: 100% !important; height: 100% !important; }
+            .btn-win-action { font-size: 16px; padding: 15px; }
+        }
     </style>
 </head>
 <body>
