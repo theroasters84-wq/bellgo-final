@@ -113,7 +113,7 @@ app.get('/manifest.json', (req, res) => {
         startUrl = `/shop/${safeStoreId}?name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
-        startUrl = `/staff/login`; 
+        startUrl = `/login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
