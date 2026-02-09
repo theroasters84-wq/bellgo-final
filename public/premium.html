@@ -217,12 +217,13 @@
         let orderAlertSound = new Audio('alert.mp3');
         orderAlertSound.loop = true; 
 
-        // HELPER: Calculate Total
+        // ✅ AUTO CALCULATION HELPER
         const calculateTotal = (text) => {
             let total = 0;
             const lines = text.split('\n');
             lines.forEach(line => {
-                const match = line.match(/^(\d+)?\s*(.+):(\d+(\.\d+)?)$/);
+                // Matches: "2 Freddo:3.5" or "Freddo:3.5" (Captures Qty, Name, Price)
+                const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
                 if (match) {
                     let qty = parseInt(match[1] || '1');
                     let price = parseFloat(match[3]);
@@ -445,7 +446,7 @@
                     itemsText = order.text;
                 }
 
-                // CALCULATE TOTAL
+                // ✅ CALCULATE TOTAL
                 const total = calculateTotal(order.text);
                 const displayItems = itemsText.replace(/\n/g, '<br>');
 
@@ -453,10 +454,8 @@
                 if (order.status === 'pending') {
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else if (order.status === 'cooking') {
-                    // ΠΡΟΣΟΧΗ: Αυτό στέλνει Silent Notification στο σερβιτόρο
                     actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady('${order.id}')">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
                 } else {
-                    // ΚΟΥΜΠΙ ΠΛΗΡΩΜΗΣ
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
                 }
 
@@ -495,7 +494,7 @@
 
             completeOrder: (id) => {
                 if(confirm("Εξόφληση και κλείσιμο;")) {
-                    window.socket.emit('pay-order', Number(id)); // Using new Event
+                    window.socket.emit('pay-order', Number(id)); 
                     const win = document.getElementById(`win-${id}`);
                     if(win) win.remove();
                 }
