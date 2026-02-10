@@ -118,7 +118,7 @@ app.get('/stripe-connect-callback', async (req, res) => {
     }
 });
 
-/* ---------------- DYNAMIC MANIFEST (✅ PWA SEPARATION FIX) ---------------- */
+/* ---------------- DYNAMIC MANIFEST ---------------- */
 app.get('/manifest.json', (req, res) => {
     const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
@@ -249,7 +249,10 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             token: target.fcmToken,
             data: { ...dataPayload, title: title, body: body, url: "/premium.html" },
             android: { priority: "high" },
-            webpush: { headers: { "Urgency": "high" } }
+            webpush: { 
+                headers: { "Urgency": "high" },
+                fcm_options: { link: `${YOUR_DOMAIN}/premium.html` } // Link for background clicks
+            }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
     }
@@ -315,10 +318,13 @@ io.on('connection', (socket) => {
         socket.join(store);
 
         const key = `${store}_${username}`;
+        // Preserve isRinging state if user rejoins quickly
+        const wasRinging = activeUsers[key]?.isRinging || false;
+
         activeUsers[key] = {
             store, username, role: socket.role, socketId: socket.id,
             fcmToken: data.token, status: "online", lastSeen: Date.now(),
-            isRinging: activeUsers[key]?.isRinging || false, isNative: data.isNative
+            isRinging: wasRinging, isNative: data.isNative
         };
 
         updateStore(store);
@@ -357,12 +363,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('new-order', (orderText) => {
-        // ✅ SERVER-SIDE DEBUG FIX: Ελέγχουμε αν υπάρχει store
-        if (!socket.store) {
-            console.log(`⚠️ DEBUG: Rejected Order from ${socket.id} (No Store Joined)`);
-            return; 
-        }
-
+        if (!socket.store) return;
         if (!storeSettings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
 
         const newOrder = {
@@ -381,22 +382,12 @@ io.on('connection', (socket) => {
         });
     });
 
-    // ✅ UPDATE ORDER (NEW: ΠΡΟΣΘΗΚΗ ΣΕ ΥΠΑΡΧΟΥΣΑ)
     socket.on('update-order', (data) => {
-        // 1. Βρίσκουμε την παραγγελία με βάση το ID
         const order = activeOrders.find(o => o.id === Number(data.id));
-        
         if (order) {
-            // 2. Προσθέτουμε τα νέα προϊόντα με το σύμβολο ++
             order.text += `\n++ ${data.addText}`;
-
-            // 3. Αλλάζουμε το status ξανά σε 'pending' για να αναβοσβήνει ο φάκελος στον Admin
             order.status = 'pending';
-
-            // 4. Ενημερώνουμε όλους (Admin & Staff)
             updateStore(socket.store);
-
-            // 5. Χτυπάμε το κουδούνι στους Admins
             Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
@@ -415,15 +406,19 @@ io.on('connection', (socket) => {
     });
     socket.on('pay-order', (id) => { activeOrders = activeOrders.filter(x => x.id !== Number(id)); updateStore(socket.store); });
     
+    // 🔔 STAFF ALARM (TRIGGER)
     socket.on('trigger-alarm', (tName) => { 
         const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
         if(t){ 
-            t.isRinging = true; updateStore(socket.store); 
+            t.isRinging = true; // Set Ringing State
+            updateStore(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
+            // First immediate notification
             sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
         } 
     });
 
+    // ✅ SMART ALARM ACCEPTED
     socket.on('alarm-accepted', (data) => {
         let userKey = null;
         if (data && data.store && data.username) {
@@ -437,15 +432,32 @@ io.on('connection', (socket) => {
         }
         if (userKey) {
             const user = activeUsers[userKey];
-            user.isRinging = false; 
+            user.isRinging = false; // Stop Ringing
             console.log(`✅ Alarm Accepted by ${user.username}`);
             updateStore(user.store); 
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
 
-    socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStore(socket.store); } });
-    socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStore(socket.store); } });
+    // 🔴 MANUAL LOGOUT (Permanent exit)
+    socket.on('manual-logout', (data) => { 
+        const tUser = data && data.targetUser ? data.targetUser : socket.username; 
+        const tKey = `${socket.store}_${tUser}`; 
+        if (activeUsers[tKey]) { 
+            delete activeUsers[tKey]; 
+            updateStore(socket.store); 
+        } 
+    });
+
+    // ⚠️ DISCONNECT (Temp offline)
+    socket.on('disconnect', () => { 
+        const key = `${socket.store}_${socket.username}`; 
+        if (activeUsers[key] && activeUsers[key].socketId === socket.id) { 
+            activeUsers[key].status = 'away'; 
+            // DO NOT DELETE USER HERE. Keep them in memory so we can spam notifications if isRinging=true
+            updateStore(socket.store); 
+        } 
+    });
 });
 
 // CRON JOBS
@@ -462,6 +474,19 @@ setInterval(() => {
 }, 60000); 
 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) delete activeUsers[key]; } }, 60000);
+
+// 🔥🔥🔥 NEW: PERSISTENT ALARM LOOP (The "Nagging" Feature) 🔥🔥🔥
+// Ελέγχει κάθε 3 δευτερόλεπτα αν κάποιος χρήστης έχει isRinging = true και του στέλνει notification
+setInterval(() => {
+    for (const key in activeUsers) {
+        const user = activeUsers[key];
+        // Αν χτυπάει (isRinging) ΚΑΙ έχει token, στείλε ξανά!
+        if (user.isRinging && user.fcmToken) {
+            console.log(`🔁 Looping Alarm for ${user.username}`);
+            sendPushNotification(user, "📞 ΣΕ ΚΑΛΟΥΝ!", "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"); // Το 'tag' στο sw.js θα κάνει το stack/replace
+        }
+    }
+}, 3000); // Κάθε 3 sec (2 sec είναι πολύ επιθετικό για FCM, το 3 είναι πιο safe)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
