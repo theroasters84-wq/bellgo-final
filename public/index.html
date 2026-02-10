@@ -205,7 +205,9 @@
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
-                    const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                    // ✅ FIXED: Changed to /sw.js to match your files
+                    const reg = await navigator.serviceWorker.register('/sw.js');
+                    
                     if (window.Capacitor?.Plugins?.PushNotifications) {
                         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
                         await PushNotifications.createChannel({ id: 'fcm_default_channel', name: 'BellGo Urgent', importance: 5, visibility: 1, sound: 'alert_sound', vibration: true });
@@ -213,7 +215,11 @@
                     }
                     const permission = await Notification.requestPermission();
                     if (permission === 'granted') {
-                        const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: reg });
+                        // ✅ ADDED YOUR VAPID KEY HERE
+                        const token = await getToken(messaging, { 
+                            vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
+                            serviceWorkerRegistration: reg 
+                        });
                         if (token) {
                             localStorage.setItem('fcm_token', token);
                             if (window.socket && window.socket.connected) window.socket.emit('update-token', { username: userData.name, token: token });
