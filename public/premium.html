@@ -39,7 +39,6 @@
         .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
         .btn-icon:active { background: #333; }
         
-        /* Compact Link Button */
         .btn-link { background: #9C27B0; color: white; border: none; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight:bold; }
 
         .btn-icon-wrapper { position: relative; display: inline-block; }
@@ -84,11 +83,9 @@
         .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
         .btn-staff { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 14px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        /* Staff Colors */
         .btn-staff.waiter { background: #1565C0; border-left: 4px solid #64B5F6; }
         .btn-staff.driver { background: #C62828; border-left: 4px solid #FF5252; }
         .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
-        
         .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         .order-folder { width: 90px; height: 110px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; margin-bottom: 10px; }
@@ -146,45 +143,51 @@
             
             #desktopArea { flex: 1; min-height: 50%; } 
             
-            /* ✅ NEW: STAFF TABS (Look like Categories) */
+            /* ✅ STAFF TABS LAYOUT (Grid: Top Left -> Down -> Next Column) */
             #adminStaffSidebar { 
                 width: 100%; 
-                flex: 1; 
+                height: 150px; /* Fixed height so items wrap */
                 border-left: none; 
                 border-top: 2px solid #333; 
-                overflow-y: auto; 
+                overflow-x: auto; /* Scroll horizontally */
+                overflow-y: hidden;
             }
             #staffList { 
                 display: flex; 
-                flex-wrap: wrap; 
-                gap: 8px; 
-                padding: 10px;
-                align-content: flex-start;
-                justify-content: center; /* Center buttons */
+                flex-direction: column; /* Start stacking vertically */
+                flex-wrap: wrap; /* Wrap to next column when height is full */
+                gap: 5px; 
+                padding: 5px;
+                height: 100%; /* Fill the 150px */
+                align-content: flex-start; /* Start from left */
             }
             .staff-row { 
                 width: auto; 
                 margin: 0; 
             }
+            
+            /* ✅ STAFF BUTTON STYLE (Matches Categories) */
             .btn-staff { 
-                width: 100px; /* Fixed width like categories */
-                height: auto;
-                padding: 10px; 
+                width: 130px; /* Same as category-box */
+                height: 45px;
+                padding: 5px; 
                 background: #333;
-                border: 2px solid #FFD700; /* Gold border like categories */
+                border: 2px solid #FFD700; 
                 border-radius: 6px;
                 color: #FFD700;
                 font-weight: bold;
-                flex-direction: column; /* Stack name and status */
+                flex-direction: row; /* Horizontal text */
+                align-items: center;
+                justify-content: center;
                 text-align: center;
                 gap: 5px;
             }
-            /* Remove left border colors in mobile to look consistent */
-            .btn-staff.waiter, .btn-staff.driver { border-left: 2px solid #FFD700; }
             
-            .btn-staff span:first-child { font-size: 14px; }
-            .btn-staff span:last-child { font-size: 10px; color: #fff; } /* Status in white */
-
+            /* Clean up style */
+            .btn-staff.waiter, .btn-staff.driver { border-left: 2px solid #FFD700; }
+            .btn-staff span:first-child { font-size: 13px; }
+            .btn-staff span:last-child { font-size: 9px; color: #fff; display: block; } /* Status below name */
+            
             .order-folder { width: 70px; height: 90px; }
             .folder-icon { font-size: 35px; }
             .folder-label { font-size: 10px; }
@@ -400,7 +403,8 @@
             pendingAction: null, 
             
             // ✅ TRACK RINGING STATE
-            lastRingingState: {}, // Stores previous state to detect changes
+            lastRingingState: {}, 
+            tempComingState: {},
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -777,12 +781,17 @@
                     }
 
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    btn.innerHTML = `<span>${u.username}</span><span id="status-${u.username}" style="color:${stCol};">${stTxt}</span>`;
+                    // Split name and status into spans for flex styling
+                    btn.innerHTML = `<span>${u.username}</span><span style="color:${stCol};">${stTxt}</span>`;
                     
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
-                        const span = document.getElementById(`status-${u.username}`);
-                        if(span) { span.innerText = "📞 ..."; span.style.color = "yellow"; }
+                        // Immediate feedback
+                        const spans = btn.getElementsByTagName('span');
+                        if(spans.length > 1) {
+                             spans[1].innerText = "📞 ...";
+                             spans[1].style.color = "yellow";
+                        }
                     };
                     
                     row.appendChild(btn);
