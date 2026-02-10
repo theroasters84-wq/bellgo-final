@@ -219,20 +219,56 @@ app.post('/create-order-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ---------------- NOTIFICATION LOGIC ---------------- */
+/* ---------------- NOTIFICATION LOGIC (SYSTEM MESSAGE) ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    // ✅ ONLY SEND PUSH IF NOT NATIVE (Avoid Double Notification on App)
+    // Μην στέλνεις σε Native apps (αυτά το χειρίζονται μόνα τους)
     if (target && target.fcmToken && !target.isNative) {
+        
+        // Καθορισμός URL ανάλογα με τον ρόλο
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
 
         const msg = {
             token: target.fcmToken,
-            data: { ...dataPayload, title: title, body: body, url: targetUrl },
-            android: { priority: "high" },
+            
+            // ✅ CRITICAL: Αυτό το κομμάτι εμφανίζει την ειδοποίηση ακόμα και με κλειστό Chrome
+            notification: {
+                title: title,
+                body: body,
+            },
+
+            // Android Settings
+            android: { 
+                priority: "high",
+                notification: {
+                    sound: "default",
+                    tag: "bellgo-alarm", // Για να μην στοιβάζονται
+                    clickAction: `${YOUR_DOMAIN}${targetUrl}` // Για να ανοίγει η εφαρμογή στο κλικ
+                }
+            },
+
+            // Web Push Settings (Chrome Desktop/Android)
             webpush: { 
                 headers: { "Urgency": "high" },
-                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` } 
+                fcm_options: { 
+                    link: `${YOUR_DOMAIN}${targetUrl}` 
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: '/admin.png',
+                    requireInteraction: true, // Να μένει στην οθόνη
+                    tag: 'bellgo-alarm',
+                    vibrate: [500, 200, 500]
+                }
+            },
+
+            // Data payload για το Service Worker (αν είναι ανοιχτό)
+            data: { 
+                ...dataPayload, 
+                title: title, 
+                body: body, 
+                url: targetUrl 
             }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
@@ -307,10 +343,8 @@ io.on('connection', (socket) => {
         const key = `${store}_${username}`;
         const wasRinging = activeUsers[key]?.isRinging || false;
 
-        // ✅ FIX LAG: Check if user exists and nothing changed to avoid spamming updateStore
         const existing = activeUsers[key];
         if (existing && existing.socketId === socket.id && existing.status === 'online') {
-            // Already online, just update token if needed
             if (data.token) existing.fcmToken = data.token;
             return; 
         }
@@ -318,8 +352,7 @@ io.on('connection', (socket) => {
         activeUsers[key] = {
             store, username, role: socket.role, socketId: socket.id,
             fcmToken: data.token, status: "online", lastSeen: Date.now(),
-            isRinging: wasRinging, 
-            isNative: data.isNative 
+            isRinging: wasRinging, isNative: data.isNative 
         };
 
         updateStore(store);
@@ -445,8 +478,6 @@ io.on('connection', (socket) => {
             user.isRinging = false; 
             console.log(`✅ Alarm Accepted by ${user.username}`);
             updateStore(user.store); 
-            
-            // ✅ BROADCAST TO EVERYONE IN STORE (So Admin UI updates immediately)
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
@@ -485,7 +516,6 @@ setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if 
 setInterval(() => {
     for (const key in activeUsers) {
         const user = activeUsers[key];
-        // Check Ringing AND NOT Native (Native handles its own loop locally or via push)
         if (user.isRinging && user.fcmToken && !user.isNative) {
             console.log(`🔁 Looping Alarm for ${user.username}`);
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!";
