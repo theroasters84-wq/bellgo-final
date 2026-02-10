@@ -118,38 +118,58 @@ app.get('/stripe-connect-callback', async (req, res) => {
     }
 });
 
-/* ---------------- DYNAMIC MANIFEST ---------------- */
+/* ---------------- DYNAMIC MANIFEST (✅ PWA SEPARATION FIX) ---------------- */
 app.get('/manifest.json', (req, res) => {
-    const appName = req.query.name || storeSettings.name || "BellGo App";
-    const iconType = req.query.icon; 
+    // 1. Παίρνουμε παραμέτρους από το URL
+    const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
+    
+    // 2. Καθαρίζουμε το όνομα του καταστήματος για χρήση σε ID
     const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // 3. Καθορισμός Ονόματος App
+    // Αν είναι shop, προσπαθούμε να πάρουμε το όνομα από το query, αλλιώς από τα settings, αλλιώς default
+    let appName = "BellGo App";
+    if (iconType === 'shop') {
+        appName = req.query.name || storeSettings.name || `Shop ${safeStoreId}`;
+    } else {
+        appName = storeSettings.name || "BellGo Admin";
+    }
+
+    // 4. Καθορισμός ID για να είναι ΞΕΧΩΡΙΣΤΟ App
+    // Προσθέτουμε το safeStoreId στο ID για να μην μπερδεύονται τα μαγαζιά μεταξύ τους
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
 
     let iconFile = "admin.png"; 
-    let startUrl = ".";          
+    let startUrl = ".";  
+    let scopeUrl = "/";        
 
     if (iconType === 'shop') {
-        iconFile = "shop.png";
+        iconFile = "shop.png"; // ✅ Το εικονίδιο του καταστήματος
+        // ✅ To start_url πρέπει να κρατάει το όνομα για να ανοίγει σωστά την επόμενη φορά
         startUrl = `/shop/${safeStoreId}?name=${encodeURIComponent(appName)}`;
+        // ✅ Το scope περιορίζει το PWA μόνο σε αυτό το μαγαζί (βοηθάει στο διαχωρισμό)
+        scopeUrl = `/shop/${safeStoreId}`; 
     } else {
         iconFile = "admin.png";
         startUrl = `/login.html`; 
+        scopeUrl = "/";
     }
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId,
-        "name": appName,
+        "id": appId,             // ✅ Κλειδί για το ξεχωριστό Install
+        "name": appName,         // ✅ Ο τίτλος που θα φαίνεται κάτω από το εικονίδιο
         "short_name": appName,
-        "start_url": startUrl,
+        "start_url": startUrl,   // ✅ Πού ανοίγει όταν πατάς το εικονίδιο
+        "scope": scopeUrl,       // ✅ Περιοχή λειτουργίας
         "display": "standalone",
         "background_color": "#121212",
         "theme_color": "#121212",
         "orientation": "portrait",
         "icons": [
-            { "src": iconFile, "sizes": "192x192", "type": "image/png" },
-            { "src": iconFile, "sizes": "512x512", "type": "image/png" }
+            { "src": `/${iconFile}`, "sizes": "192x192", "type": "image/png" },
+            { "src": `/${iconFile}`, "sizes": "512x512", "type": "image/png" }
         ]
     });
 });
