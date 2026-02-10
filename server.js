@@ -7,11 +7,12 @@ const fs = require('fs');
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
-const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
+const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; // ✅ YOUR KEY
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
-const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   
-const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; 
+// ✅ PRICE LIST
+const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
+const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 try {
@@ -88,13 +89,15 @@ app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'p
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 
-/* ---------------- STRIPE CONNECT OAUTH ---------------- */
+/* ---------------- STRIPE CONNECT OAUTH (THE BUTTON) ---------------- */
+// 1. Start Connection
 app.get('/connect-stripe', (req, res) => {
     const state = "BellGo_Store"; 
     const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&state=${state}`;
     res.redirect(url);
 });
 
+// 2. Callback from Stripe
 app.get('/stripe-connect-callback', async (req, res) => {
     const { code, error } = req.query;
     if (error || !code) {
@@ -119,6 +122,7 @@ app.get('/stripe-connect-callback', async (req, res) => {
 app.get('/manifest.json', (req, res) => {
     const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
+    
     const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
     
     let appName = "BellGo App";
@@ -161,27 +165,42 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-/* ---------------- STRIPE PAYMENTS ---------------- */
+/* ---------------- STRIPE PAYMENTS (SUBSCRIPTIONS & ORDERS) ---------------- */
+
+// 1. Subscription Check
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
+
     try {
         const customers = await stripe.customers.search({ query: `email:'${email}'` });
         if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
-        const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
+
+        const subscriptions = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: 'active',
+        });
+
         if (subscriptions.data.length > 0) {
             const planId = subscriptions.data[0].items.data[0].price.id;
             let planType = 'basic';
             if (planId === PRICE_PREMIUM) planType = 'premium';
             return res.json({ active: true, plan: planType });
-        } else { return res.json({ active: false }); }
-    } catch (e) { res.json({ active: false, error: e.message }); }
+        } else {
+            return res.json({ active: false });
+        }
+    } catch (e) {
+        console.error("Stripe Check Error:", e);
+        res.json({ active: false, error: e.message });
+    }
 });
 
+// 2. Buy Subscription
 app.post('/create-checkout-session', async (req, res) => {
     const { email, plan } = req.body;
     let priceId = PRICE_BASIC; 
     if (plan === 'premium') priceId = PRICE_PREMIUM; 
+
     try {
         const session = await stripe.checkout.sessions.create({
             line_items: [{ price: priceId, quantity: 1 }],
@@ -194,10 +213,15 @@ app.post('/create-checkout-session', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// 3. Pay Order (Customer -> Store)
 app.post('/create-order-payment', async (req, res) => {
     const { amount, storeName } = req.body; 
     const shopStripeId = storeSettings.stripeConnectId; 
-    if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
+
+    if (!shopStripeId) {
+        return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." });
+    }
+
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -223,7 +247,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
     if (target && target.fcmToken) {
         const msg = {
             token: target.fcmToken,
-            data: { ...dataPayload, title: title, body: body, url: "/stafpremium.html" }, // Στοχεύει στο staff
+            data: { ...dataPayload, title: title, body: body, url: "/stafpremium.html" },
             android: { priority: "high" },
             webpush: { 
                 headers: { "Urgency": "high" },
@@ -295,7 +319,7 @@ io.on('connection', (socket) => {
 
         const key = `${store}_${username}`;
         
-        // ⚠️ ΚΡΑΤΑΜΕ ΤΟ RINGING STATE ΑΝ ΞΑΝΑΣΥΝΔΕΘΕΙ (Για να μην σταματάει το loop)
+        // ⚠️ PRESERVE RINGING STATE ON RECONNECT (Fix for Status Glitch)
         const wasRinging = activeUsers[key]?.isRinging || false;
 
         activeUsers[key] = {
@@ -341,7 +365,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('new-order', (orderText) => {
-        if (!socket.store) return;
+        // ✅ SERVER-SIDE DEBUG FIX
+        if (!socket.store) {
+            console.log(`⚠️ DEBUG: Rejected Order from ${socket.id} (No Store Joined)`);
+            return; 
+        }
+
         if (!storeSettings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
 
         const newOrder = {
@@ -388,37 +417,36 @@ io.on('connection', (socket) => {
     socket.on('trigger-alarm', (tName) => { 
         const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
         if(t){ 
-            t.isRinging = true; // Set ringing status
+            t.isRinging = true; // Set Ringing State
             updateStore(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
+            // First immediate notification
             sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
         } 
     });
 
-    // ✅ SMART ALARM ACCEPTED (Explicitly called by Staff)
+    // ✅ SMART ALARM ACCEPTED
     socket.on('alarm-accepted', (data) => {
         let userKey = null;
         if (data && data.store && data.username) {
             const directKey = `${data.store}_${data.username}`;
             if (activeUsers[directKey]) userKey = directKey;
         }
-        // Fallback search
         if (!userKey) {
             for (const [key, user] of Object.entries(activeUsers)) {
                 if (user.socketId === socket.id) { userKey = key; break; }
             }
         }
-
         if (userKey) {
             const user = activeUsers[userKey];
-            user.isRinging = false; // Stop ringing loop
+            user.isRinging = false; // Stop Ringing
             console.log(`✅ Alarm Accepted by ${user.username}`);
             updateStore(user.store); 
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
 
-    // 🔴 MANUAL LOGOUT (Permanent exit - remove from activeUsers)
+    // 🔴 MANUAL LOGOUT (Permanent exit)
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
         const tKey = `${socket.store}_${tUser}`; 
@@ -428,12 +456,12 @@ io.on('connection', (socket) => {
         } 
     });
 
-    // ⚠️ DISCONNECT (Temp offline - Keep user in memory for notifications)
+    // ⚠️ DISCONNECT (Temp offline)
     socket.on('disconnect', () => { 
         const key = `${socket.store}_${socket.username}`; 
         if (activeUsers[key] && activeUsers[key].socketId === socket.id) { 
             activeUsers[key].status = 'away'; 
-            // ❌ We DO NOT delete here. We keep them to send FCM loop if isRinging is true.
+            // ❌ DO NOT DELETE USER HERE. Keep in memory for notifications loop.
             updateStore(socket.store); 
         } 
     });
@@ -454,18 +482,17 @@ setInterval(() => {
 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) delete activeUsers[key]; } }, 60000);
 
-// 🔥🔥🔥 FAST LOOP (2 SECONDS) - The "Nagging" Feature 🔥🔥🔥
+// 🔥🔥🔥 NAGGING LOOP: 2 SECONDS (Fix Applied) 🔥🔥🔥
 setInterval(() => {
     for (const key in activeUsers) {
         const user = activeUsers[key];
-        // Send loop only if ringing AND has token AND is not 'online' with socket connected (socket handles foreground)
-        // Actually, send anyway to ensure delivery in doze mode
+        // Send loop only if ringing AND has token
         if (user.isRinging && user.fcmToken) {
             console.log(`🔁 Looping Alarm for ${user.username}`);
-            sendPushNotification(user, "📞 ΣΕ ΚΑΛΟΥΝ!", "ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ");
+            sendPushNotification(user, "📞 ΣΕ ΚΑΛΟΥΝ!", "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"); 
         }
     }
-}, 2000); // 2 Seconds Loop
+}, 2000); // ✅ Changed to 2000ms
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
