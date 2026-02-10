@@ -5,9 +5,9 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V6)
+   2. CONFIGURATION & CACHE (V7)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v6'; 
+const CACHE_NAME = 'bellgo-v7'; 
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -39,42 +39,49 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 /* -----------------------------------------------------------
-   4. BACKGROUND HANDLER (NAGGING LOOP)
+   4. BACKGROUND HANDLER (Τρέχει όταν είναι κλειστό/background)
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[sw.js] Background:', payload);
-  const title = payload.data.title || '🚨 ΚΛΗΣΗ!';
-  const body = payload.data.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
-  const url = payload.data.url || '/stafpremium.html';
+  console.log('[sw.js] Background message received:', payload);
+  
+  // Διαβάζουμε τα δεδομένα από το payload του server
+  const title = payload.data.title || payload.notification?.title || '🚨 ΚΛΗΣΗ!';
+  const body = payload.data.body || payload.notification?.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
+  
+  // Το URL έρχεται δυναμικά από τον Server (premium.html ή stafpremium.html)
+  const url = payload.data.url || '/login.html';
 
+  // Εμφάνιση της ειδοποίησης συστήματος
   return self.registration.showNotification(title, {
     body: body,
-    icon: '/staff.png',
-    tag: 'bellgo-alarm',      // ⚠️ ΣΗΜΑΝΤΙΚΟ: Το ίδιο tag αντικαθιστά το προηγούμενο
-    renotify: true,           // ⚠️ ΣΗΜΑΝΤΙΚΟ: Ξανακάνει δόνηση/ήχο παρόλο που υπάρχει ήδη
-    requireInteraction: true, // Μένει στην οθόνη
+    icon: '/admin.png', // Generic icon, θα μπορούσε να είναι δυναμικό
+    tag: 'bellgo-alarm',      // Το ίδιο tag αντικαθιστά το προηγούμενο (για να μην γεμίζει η μπάρα)
+    renotify: true,           // Ξανακάνει δόνηση/ήχο παρόλο που υπάρχει ήδη
+    requireInteraction: true, // Μένει στην οθόνη μέχρι να το πατήσει ο χρήστης
     vibrate: [500, 200, 500, 200, 500],
-    data: { url: url }
+    data: { url: url }        // Αποθηκεύουμε το URL για το click event
   });
 });
 
 /* -----------------------------------------------------------
-   5. CLICK HANDLER
+   5. CLICK HANDLER (Τρέχει όταν πατάς την ειδοποίηση)
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-  const urlToOpen = event.notification.data.url || '/stafpremium.html';
+  event.notification.close(); // Κλείνει την ειδοποίηση
+  
+  // Παίρνουμε το URL που αποθηκεύσαμε στο data
+  const urlToOpen = event.notification.data.url || '/login.html';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // 1. Ψάχνουμε αν είναι ήδη ανοιχτό
+      // 1. Ψάχνουμε αν υπάρχει ήδη ανοιχτή καρτέλα με αυτό το URL
       for (const client of clientsArr) {
-        // Ελέγχουμε αν το URL ταιριάζει με αυτό που θέλουμε να ανοίξουμε
-        if (client.url.includes('stafpremium.html') && 'focus' in client) {
-            return client.focus();
+        // Ελέγχουμε αν το URL ταιριάζει (π.χ. αν περιέχει "premium.html")
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+            return client.focus(); // Αν υπάρχει, απλά την φέρνουμε μπροστά
         }
       }
-      // 2. Αν δεν είναι, ανοίγουμε νέο
+      // 2. Αν δεν υπάρχει, ανοίγουμε νέα
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
@@ -111,25 +118,23 @@ self.addEventListener('activate', (event) => {
 
 // NETWORK FIRST, THEN CACHE
 self.addEventListener('fetch', (event) => {
-  // Αγνοούμε τα δυναμικά calls
   if (event.request.url.includes('socket.io') || 
       event.request.url.includes('manifest.json') ||
       event.request.url.includes('firestore') ||
-      event.request.url.includes('googleapis')) {
+      event.request.url.includes('googleapis') ||
+      event.request.method !== 'GET') {
     return;
   }
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Αν πετύχει η σύνδεση, αποθήκευσε το νέο αρχείο στην cache
         return caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, networkResponse.clone());
           return networkResponse;
         });
       })
       .catch(() => {
-        // Αν δεν έχει ίντερνετ, δώσε το παλιό από τη μνήμη
         return caches.match(event.request);
       })
   );
