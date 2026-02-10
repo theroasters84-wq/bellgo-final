@@ -104,11 +104,11 @@
             <div class="pricing-box">
                 <button class="btn-price" onclick="Admin.buyPackage('basic')">
                     <span class="price-tag">4€</span>
-                    <span>Κλήση Προσωπικού</span>
+                    <span>Basic (Index)</span>
                 </button>
-                <button class="btn-price" onclick="Admin.buyPackage('pro')">
+                <button class="btn-price" onclick="Admin.buyPackage('premium')">
                     <span class="price-tag">10€</span>
-                    <span>Πλήρες Σύστημα</span>
+                    <span>Premium (Full)</span>
                 </button>
             </div>
 
@@ -149,25 +149,21 @@
 
         // ✅ SW REGISTRATION
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log("✅ Login Service Worker Registered"))
-                .catch(err => console.log("❌ Login SW Error:", err));
+            navigator.serviceWorker.register('/sw.js').then(() => console.log("✅ Login SW Registered"));
         }
 
         /* -----------------------------------------------
-           ✅ SMART INSTALL LOGIC (Android vs PWA)
+           ✅ SMART INSTALL LOGIC
         ----------------------------------------------- */
         let deferredPrompt;
         const btnInstall = document.getElementById('btnInstall');
         const isAndroid = /Android/i.test(navigator.userAgent);
 
         if (isAndroid) {
-            // Αν είναι Android, δείχνουμε ΠΑΝΤΑ το κουμπί για το APK
             btnInstall.innerText = "🤖 ΚΑΤΕΒΑΣΤΕ ΤΟ APP (APK)";
             btnInstall.style.display = "block";
-            btnInstall.style.background = "#FF9800"; // Πορτοκαλί για ξεχωρίζει
+            btnInstall.style.background = "#FF9800";
         } else {
-            // Για iOS / PC περιμένουμε το PWA prompt
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
@@ -178,18 +174,12 @@
 
         window.handleInstall = async () => {
             if (isAndroid) {
-                // Απευθείας Link στο APK του Github
                 window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/download/v.1.5.0/app-release.apk";
-            } else {
-                // PWA Install Logic
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    if (outcome === 'accepted') {
-                        btnInstall.style.display = 'none';
-                    }
-                    deferredPrompt = null;
-                }
+            } else if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') btnInstall.style.display = 'none';
+                deferredPrompt = null;
             }
         };
 
@@ -211,6 +201,18 @@
         let tempPin = '';
         let pinValue = '';
         let adminUser = null; 
+        let adminPlan = 'basic'; // Default fallback
+
+        // ✅ AUTO-CHECK STRIPE RETURN
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const emailParam = urlParams.get('email');
+            if (emailParam) {
+                document.getElementById('adminEmailInp').value = emailParam;
+                // Auto trigger login check
+                Admin.manualLogin();
+            }
+        };
 
         window.switchTab = (tab) => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -225,68 +227,69 @@
         };
 
         window.PIN = {
-            add: (n) => {
-                if (pinValue.length < 4) {
-                    pinValue += n;
-                    PIN.updateDisplay();
-                }
-            },
-            clear: () => {
-                pinValue = '';
-                PIN.updateDisplay();
-            },
-            updateDisplay: () => {
-                document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length);
-            },
+            add: (n) => { if (pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
+            clear: () => { pinValue = ''; PIN.updateDisplay(); },
+            updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
             resetFlow: () => {
                 if(!confirm("Θέλετε να ορίσετε νέο κωδικό;")) return;
-                currentPinMode = 'create';
-                pinValue = '';
-                PIN.updateDisplay();
+                currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay();
                 document.getElementById('pinTitle').innerText = "ΝΕΟ PIN";
                 document.getElementById('pinSub').innerText = "Ορίστε νέο 4-ψήφιο κωδικό";
                 document.getElementById('btnForgot').style.display = 'none';
             },
             submit: () => {
                 if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-                
                 if (currentPinMode === 'enter') {
                     socket.emit('verify-pin', pinValue);
                 } else if (currentPinMode === 'create') {
-                    tempPin = pinValue;
-                    pinValue = '';
-                    PIN.updateDisplay();
+                    tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
                     currentPinMode = 'confirm';
                     document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
                     document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
                 } else if (currentPinMode === 'confirm') {
-                    if (pinValue === tempPin) {
-                        socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
-                    } else {
-                        alert("Οι κωδικοί δεν ταιριάζουν.");
-                        currentPinMode = 'create';
-                        pinValue = '';
-                        tempPin = '';
-                        PIN.updateDisplay();
-                    }
+                    if (pinValue === tempPin) socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
+                    else { alert("Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); }
                 }
             }
         };
 
-        // --- STAFF LOGIC ---
+        // --- STAFF LOGIC (Modified for Plan Check) ---
         window.Staff = {
             login: () => {
                 const name = document.getElementById('stName').value.trim();
                 const pin = document.getElementById('stPin').value.trim();
                 const role = document.getElementById('stRole').value;
-                if (!name || !pin) return alert("Συμπληρώστε τα πεδία!");
+                const adminEmail = document.getElementById('stStore').value.trim(); // Store Email
+
+                if (!name || !pin || !adminEmail) return alert("Συμπληρώστε τα πεδία!");
+                
+                // 1. Verify PIN First
                 socket.emit('verify-pin', pin);
                 
-                socket.once('pin-verified', (res) => {
+                socket.once('pin-verified', async (res) => {
                     if (res.success) {
-                        const sessionData = { name: name, store: res.storeId, role: role };
-                        localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-                        window.location.href = "stafpremium.html";
+                        // 2. PIN OK -> Check Admin's Plan
+                        try {
+                            const subRes = await fetch('/check-subscription', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: adminEmail })
+                            });
+                            const subData = await subRes.json();
+                            
+                            // Save Session
+                            const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan || 'basic' };
+                            localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
+
+                            // 3. Redirect based on Plan
+                            if (subData.active && subData.plan === 'premium') {
+                                window.location.href = "stafpremium.html"; // Premium Staff
+                            } else {
+                                window.location.href = "index.html"; // Basic Staff
+                            }
+                        } catch (e) {
+                            alert("Σφάλμα ελέγχου συνδρομής.");
+                        }
                     } else {
                         alert("Λάθος Κωδικός Καταστήματος (PIN)!");
                         PIN.clear();
@@ -302,6 +305,7 @@
                 if(!email) return alert("Παρακαλώ εισάγετε email.");
 
                 try {
+                    // 1. Check Subscription
                     const response = await fetch('/check-subscription', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -310,22 +314,37 @@
                     const data = await response.json();
 
                     if (data.active) {
+                        // 2. Active -> Set Plan & Proceed to PIN
                         adminUser = { email: email, displayName: "Admin" };
+                        adminPlan = data.plan; // Save plan for later redirect
                         socket.emit('check-pin-status');
                     } else {
-                        alert("Δεν βρέθηκε ενεργή συνδρομή. Παρακαλώ αγοράστε πακέτο.");
+                        alert("Δεν βρέθηκε ενεργή συνδρομή. Παρακαλώ επιλέξτε πακέτο.");
                     }
                 } catch (e) { alert("Σφάλμα σύνδεσης."); }
             },
 
             googleLogin: () => {
-                signInWithPopup(auth, provider).then((result) => {
-                    adminUser = result.user;
-                    socket.emit('check-pin-status');
+                signInWithPopup(auth, provider).then(async (result) => {
+                    // Similar check for Google Login
+                    const email = result.user.email;
+                    const response = await fetch('/check-subscription', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    const data = await response.json();
+                    
+                    if(data.active) {
+                        adminUser = result.user;
+                        adminPlan = data.plan;
+                        socket.emit('check-pin-status');
+                    } else {
+                        alert("Το Google Email δεν έχει ενεργή συνδρομή.");
+                    }
                 }).catch((error) => alert(error.message));
             },
 
-            // ✅ BUY PACKAGE FUNCTION
             buyPackage: async (plan) => {
                 const email = document.getElementById('adminEmailInp').value.trim();
                 if(!email) return alert("Βάλτε το email σας στο πεδίο από πάνω!");
@@ -341,7 +360,7 @@
             }
         };
 
-        // --- SOCKET LISTENERS ---
+        // --- SOCKET LISTENERS (REDIRECTS MODIFIED) ---
         socket.on('pin-status', (data) => {
             document.getElementById('pinModal').style.display = 'flex';
             if (data.hasPin) {
@@ -358,17 +377,23 @@
         });
 
         socket.on('pin-success', (data) => {
-            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
+            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-            window.location.href = "premium.html";
+            
+            // REDIRECT BASED ON PLAN
+            if(adminPlan === 'premium') window.location.href = "premium.html";
+            else window.location.href = "index.html";
         });
 
         socket.on('pin-verified', (res) => {
             if (document.getElementById('pinModal').style.display === 'flex' && currentPinMode === 'enter') {
                 if (res.success) {
-                    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email };
+                    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-                    window.location.href = "premium.html";
+                    
+                    // REDIRECT BASED ON PLAN
+                    if(adminPlan === 'premium') window.location.href = "premium.html";
+                    else window.location.href = "index.html";
                 } else {
                     alert("Λάθος PIN!");
                     PIN.clear();
@@ -376,10 +401,18 @@
             }
         });
 
+        // AUTO-REDIRECT IF LOGGED IN
         if (localStorage.getItem('bellgo_session')) {
             const saved = JSON.parse(localStorage.getItem('bellgo_session'));
-            if (saved.role === 'admin') window.location.href = "premium.html";
-            else window.location.href = "stafpremium.html";
+            const plan = saved.plan || 'basic';
+            if (saved.role === 'admin') {
+                if(plan === 'premium') window.location.href = "premium.html";
+                else window.location.href = "index.html";
+            } else {
+                // Staff
+                if(plan === 'premium') window.location.href = "stafpremium.html";
+                else window.location.href = "index.html";
+            }
         }
     </script>
 </body>
