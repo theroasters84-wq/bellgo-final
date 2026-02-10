@@ -7,7 +7,7 @@ const fs = require('fs');
 
 // ✅ STRIPE SETUP (Χρησιμοποίησε το Secret Key σου εδώ)
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
-const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; // Βάλε το σωστό Domain σου
+const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 try {
@@ -23,7 +23,7 @@ try {
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+app.use(express.static(path.join(__dirname, 'public'))); 
 
 const server = http.createServer(app);
 
@@ -52,7 +52,8 @@ let storeSettings = {
     adminEmail: "", 
     statusCustomer: true, 
     statusStaff: true,
-    resetTime: "04:00"
+    resetTime: "04:00",
+    stripeConnectId: "" // ✅ Store Stripe Connect ID
 }; 
 
 // LOAD DATA
@@ -62,9 +63,7 @@ try {
         try { 
             masterMenu = JSON.parse(raw); 
             liveMenu = JSON.parse(JSON.stringify(masterMenu));
-        } catch { 
-            masterMenu = []; liveMenu = []; 
-        }
+        } catch { masterMenu = []; liveMenu = []; }
     }
     if (fs.existsSync(SETTINGS_FILE)) {
         const loaded = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
@@ -80,7 +79,7 @@ function saveOrdersToDisk() { try { fs.writeFileSync(ORDERS_FILE, JSON.stringify
 function saveSettingsToDisk() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings, null, 2), 'utf8'); } catch (e) {} }
 function saveMenuToDisk() { try { fs.writeFileSync(MENU_FILE, JSON.stringify(masterMenu, null, 2), 'utf8'); } catch (e) {} }
 
-/* ---------------- VIRTUAL ROUTES (PWA FIX) ---------------- */
+/* ---------------- VIRTUAL ROUTES ---------------- */
 app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'order.html')); });
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
@@ -101,7 +100,7 @@ app.get('/manifest.json', (req, res) => {
         startUrl = `/shop/${safeStoreId}?name=${encodeURIComponent(appName)}`;
     } else {
         iconFile = "admin.png";
-        startUrl = `/login.html`; // ✅ CORRECT PWA START URL
+        startUrl = `/login.html`; 
     }
 
     res.set('Content-Type', 'application/manifest+json');
@@ -122,18 +121,13 @@ app.get('/manifest.json', (req, res) => {
 });
 
 /* ---------------- STRIPE PAYMENTS ---------------- */
-app.post('/check-subscription', async (req, res) => {
-    // Mock check for now - In production check Stripe API
-    res.json({ active: true, plan: 'premium' }); 
-});
+app.post('/check-subscription', async (req, res) => { res.json({ active: true, plan: 'premium' }); });
 
 app.post('/create-checkout-session', async (req, res) => {
     const { email, plan } = req.body;
     let priceId = ''; 
-    
-    // ✅ ΟΡΙΣΕ ΤΑ PRICE IDs ΑΠΟ ΤΟ STRIPE DASHBOARD ΣΟΥ
-    if (plan === 'basic') priceId = 'price_1Q...'; // 4€
-    else if (plan === 'pro') priceId = 'price_1Q...'; // 10€
+    if (plan === 'basic') priceId = 'price_1Q...'; 
+    else if (plan === 'pro') priceId = 'price_1Q...'; 
 
     try {
         const session = await stripe.checkout.sessions.create({
@@ -144,36 +138,47 @@ app.post('/create-checkout-session', async (req, res) => {
             cancel_url: `${YOUR_DOMAIN}/login.html`,
         });
         res.json({ url: session.url });
-    } catch(e) {
-        res.status(500).json({ error: e.message });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/create-order-payment', async (req, res) => {
+    const { amount, storeName } = req.body; 
+    const shopStripeId = storeSettings.stripeConnectId; 
+
+    if (!shopStripeId) {
+        return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." });
     }
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'eur',
+                    product_data: { name: 'Παραγγελία Delivery', description: `Κατάστημα: ${storeName}` },
+                    unit_amount: Math.round(amount * 100),
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            payment_intent_data: { transfer_data: { destination: shopStripeId } },
+            success_url: `${YOUR_DOMAIN}/shop/${storeName}?payment_status=success`,
+            cancel_url: `${YOUR_DOMAIN}/shop/${storeName}?payment_status=cancel`,
+        });
+        res.json({ url: session.url });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
-// ✅ Sends payload compatible with your sw.js
-function sendPushNotification(target, title, body) {
+function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
     if (target && target.fcmToken) {
         const msg = {
             token: target.fcmToken,
-            // 🔴 DATA PAYLOAD: This triggers 'setBackgroundMessageHandler' in sw.js
-            data: {
-                title: title,
-                body: body,
-                type: "alarm",
-                url: "/premium.html"
-            },
-            // Android specific high priority
-            android: { 
-                priority: "high" 
-            },
-            // WebPush headers for Chrome background wake-up
-            webpush: { 
-                headers: { "Urgency": "high" } 
-            }
+            data: { ...dataPayload, title: title, body: body, url: "/premium.html" },
+            android: { priority: "high" },
+            webpush: { headers: { "Urgency": "high" } }
         };
-        admin.messaging().send(msg)
-            .then(() => console.log("📲 Notification sent to", target.username))
-            .catch(e => console.log("❌ Push Error:", e.message));
+        admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
     }
 }
 
@@ -193,7 +198,6 @@ function updateStore(store) {
 /* ---------------- SOCKET.IO ---------------- */
 io.on('connection', (socket) => {
 
-    // --- PIN ---
     socket.on('check-pin-status', () => { socket.emit('pin-status', { hasPin: !!storeSettings.pin }); });
     socket.on('set-new-pin', (data) => {
         storeSettings.pin = data.pin;
@@ -209,13 +213,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- TOKEN UPDATE ---
     socket.on('update-token', (data) => {
         const key = `${socket.store}_${data.username}`;
-        if (activeUsers[key]) {
-            activeUsers[key].fcmToken = data.token;
-            console.log("🔔 Token updated for:", data.username);
-        }
+        if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
     });
 
     socket.on('toggle-status', (data) => {
@@ -253,14 +253,10 @@ io.on('connection', (socket) => {
         socket.emit('store-settings-update', storeSettings);
     });
 
-    socket.on('save-store-name', (newName) => {
-        storeSettings.name = newName;
-        saveSettingsToDisk();
-        io.to(socket.store).emit('store-settings-update', storeSettings);
-    });
-
+    socket.on('save-store-name', (newName) => { storeSettings.name = newName; saveSettingsToDisk(); io.to(socket.store).emit('store-settings-update', storeSettings); });
     socket.on('save-store-settings', (data) => {
         if(data.resetTime) storeSettings.resetTime = data.resetTime;
+        if(data.stripeConnectId) storeSettings.stripeConnectId = data.stripeConnectId;
         saveSettingsToDisk();
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
@@ -276,9 +272,7 @@ io.on('connection', (socket) => {
                 masterMenu = JSON.parse(JSON.stringify(newMenuData));
                 liveMenu = JSON.parse(JSON.stringify(newMenuData));
                 saveMenuToDisk();
-            } else {
-                liveMenu = newMenuData;
-            }
+            } else { liveMenu = newMenuData; }
             io.to(socket.store).emit('menu-update', liveMenu);
         } catch (e) { }
     });
@@ -297,7 +291,6 @@ io.on('connection', (socket) => {
         activeOrders.push(newOrder);
         updateStore(socket.store);
 
-        // 🔔 NOTIFY ADMINS
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
             if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
             sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
@@ -305,38 +298,55 @@ io.on('connection', (socket) => {
     });
 
     socket.on('accept-order', (id) => { const o = activeOrders.find(x => x.id === id); if(o){ o.status = 'cooking'; updateStore(socket.store); } });
-    
     socket.on('ready-order', (id) => { 
         const o = activeOrders.find(x => x.id === id); 
         if(o){ 
-            o.status = 'ready'; 
-            updateStore(socket.store); 
-            // Notify Customer
-            const tKey = `${socket.store}_${o.from}`; 
-            const tUser = activeUsers[tKey]; 
+            o.status = 'ready'; updateStore(socket.store); 
+            const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; 
             if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
         } 
     });
-    
     socket.on('pay-order', (id) => { activeOrders = activeOrders.filter(x => x.id !== Number(id)); updateStore(socket.store); });
     
-    // 🔔 ALARM LOGIC (STAFF CALL)
+    // 🔔 STAFF ALARM
     socket.on('trigger-alarm', (tName) => { 
-        const key = `${socket.store}_${tName}`; 
-        const t = activeUsers[key]; 
+        const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
         if(t){ 
-            t.isRinging = true; 
-            updateStore(socket.store); 
+            t.isRinging = true; updateStore(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
             sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
         } 
+    });
+
+    // ✅✅✅ ΕΔΩ ΕΙΝΑΙ Η ΛΕΙΤΟΥΡΓΙΑ ΠΟΥ ΕΛΕΙΠΕ ΓΙΑ ΤΟ "ΕΡΧΕΤΑΙ" ✅✅✅
+    socket.on('alarm-accepted', (data) => {
+        // Αυτό το στέλνει το Staff App όταν πατήσει αποδοχή
+        // Προσπαθούμε να βρούμε τον χρήστη
+        let userKey = null;
+        
+        // 1. Ψάχνουμε με βάση το store & username που έστειλε
+        const directKey = `${data.store}_${data.username}`;
+        if (activeUsers[directKey]) userKey = directKey;
+        
+        // 2. Αν δεν βρεθεί (π.χ. λάθος store name), ψάχνουμε ποιος έχει αυτό το socket
+        if (!userKey) {
+            for (const [key, user] of Object.entries(activeUsers)) {
+                if (user.socketId === socket.id) { userKey = key; break; }
+            }
+        }
+
+        if (userKey) {
+            activeUsers[userKey].isRinging = false; // Σταματάμε το κουδούνισμα
+            console.log(`✅ Alarm Accepted by ${activeUsers[userKey].username}`);
+            updateStore(activeUsers[userKey].store); // Στέλνουμε το update στο premium.html για να δείξει "ΕΡΧΕΤΑΙ"
+        }
     });
 
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStore(socket.store); } });
     socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStore(socket.store); } });
 });
 
-// CRON JOB: RESET MENU
+// CRON JOBS
 setInterval(() => {
     try {
         if (!storeSettings.resetTime) return;
@@ -344,11 +354,7 @@ setInterval(() => {
         if (nowInGreece === storeSettings.resetTime) {
             const liveStr = JSON.stringify(liveMenu);
             const masterStr = JSON.stringify(masterMenu);
-            if (liveStr !== masterStr) {
-                console.log(`↻ Auto-Reset Menu at ${nowInGreece}`);
-                liveMenu = JSON.parse(masterStr); 
-                io.emit('menu-update', liveMenu); 
-            }
+            if (liveStr !== masterStr) { liveMenu = JSON.parse(masterStr); io.emit('menu-update', liveMenu); }
         }
     } catch (e) {}
 }, 60000); 
