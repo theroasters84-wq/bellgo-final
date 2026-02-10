@@ -143,50 +143,50 @@
             
             #desktopArea { flex: 1; min-height: 50%; } 
             
-            /* ✅ STAFF TABS LAYOUT (Grid: Top Left -> Down -> Next Column) */
+            /* ✅ STAFF TABS - GRID LAYOUT (3 ROWS FIXED) */
             #adminStaffSidebar { 
                 width: 100%; 
-                height: 150px; /* Fixed height so items wrap */
+                height: 170px; /* Fixed height to fit 3 items + gaps */
                 border-left: none; 
                 border-top: 2px solid #333; 
                 overflow-x: auto; /* Scroll horizontally */
-                overflow-y: hidden;
+                overflow-y: hidden; /* Hide vertical overflow to force wrapping */
             }
             #staffList { 
-                display: flex; 
-                flex-direction: column; /* Start stacking vertically */
-                flex-wrap: wrap; /* Wrap to next column when height is full */
-                gap: 5px; 
-                padding: 5px;
-                height: 100%; /* Fill the 150px */
-                align-content: flex-start; /* Start from left */
+                display: grid;
+                grid-template-rows: repeat(3, 1fr); /* ✅ Force exactly 3 rows */
+                grid-auto-flow: column; /* ✅ Flow to the next column */
+                gap: 5px;
+                padding: 10px;
+                height: 100%;
+                justify-content: start;
             }
             .staff-row { 
                 width: auto; 
                 margin: 0; 
+                display: contents; /* Let buttons be direct grid children */
             }
             
-            /* ✅ STAFF BUTTON STYLE (Matches Categories) */
+            /* ✅ STAFF BUTTON STYLE (Tabs) */
             .btn-staff { 
-                width: 130px; /* Same as category-box */
+                width: 130px; /* Fixed width */
                 height: 45px;
-                padding: 5px; 
+                padding: 2px; 
                 background: #333;
                 border: 2px solid #FFD700; 
                 border-radius: 6px;
                 color: #FFD700;
                 font-weight: bold;
-                flex-direction: row; /* Horizontal text */
+                flex-direction: column; 
                 align-items: center;
                 justify-content: center;
                 text-align: center;
-                gap: 5px;
+                gap: 2px;
             }
-            
-            /* Clean up style */
+            /* Clean borders */
             .btn-staff.waiter, .btn-staff.driver { border-left: 2px solid #FFD700; }
-            .btn-staff span:first-child { font-size: 13px; }
-            .btn-staff span:last-child { font-size: 9px; color: #fff; display: block; } /* Status below name */
+            .btn-staff span:first-child { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+            .btn-staff span:last-child { font-size: 9px; color: #fff; } /* Status */
             
             .order-folder { width: 70px; height: 90px; }
             .folder-icon { font-size: 35px; }
@@ -761,8 +761,16 @@
                 container.innerHTML = '';
                 list.forEach(u => {
                     if (u.role === 'admin' || u.role === 'customer') return;
+                    
+                    // For CSS Grid, we don't need a wrapper div for each button in this specific layout
+                    // unless we want to group things. But to keep it simple and working with the grid:
+                    // We will append the button directly to the container which is a grid.
+                    // BUT, the existing logic appends a 'row' div. Let's adapt.
+                    // The CSS I gave sets display: contents on .staff-row so it doesn't affect grid.
+                    
                     const row = document.createElement('div');
                     row.className = 'staff-row';
+                    
                     const btn = document.createElement('button');
                     const isAway = u.status === 'away';
                     
