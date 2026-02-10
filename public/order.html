@@ -379,7 +379,8 @@
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
                 App.connectSocket();
-                App.checkStripeReturn(); 
+                // ⚠️ REMOVED DIRECT CHECK HERE - MOVED TO SOCKET CONNECT
+                // App.checkStripeReturn(); 
             },
 
             checkActiveOrderStorage: () => {
@@ -395,7 +396,7 @@
                 }
             },
 
-            // --- STRIPE RETURN HANDLER ---
+            // --- STRIPE RETURN HANDLER (MODIFIED) ---
             checkStripeReturn: () => {
                 const urlP = new URLSearchParams(window.location.search);
                 const status = urlP.get('payment_status');
@@ -403,7 +404,7 @@
                     const saved = localStorage.getItem('bellgo_temp_card_order');
                     if (saved) {
                         const orderData = JSON.parse(saved);
-                        // ✅ FLOW: Send Order -> Pending -> (Admin Accepts) -> Cooking
+                        // ✅ SEND ORDER ONLY IF SOCKET IS CONNECTED
                         App.sendOrder(orderData.items, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
                         localStorage.removeItem('bellgo_temp_card_order');
                         
@@ -424,6 +425,11 @@
                 socket.on('connect', () => {
                     const mySocketUsername = customerDetails.name + " (Πελάτης)";
                     socket.emit('join-store', { storeName: TARGET_STORE, username: mySocketUsername, role: 'customer', isNative: false });
+                    
+                    // ✅ ✅ CLIENT-SIDE FIX: Wait 1s and then check for pending orders
+                    setTimeout(() => {
+                        App.checkStripeReturn();
+                    }, 1000);
                 });
 
                 socket.on('menu-update', (data) => { App.renderMenu(data); });
