@@ -381,6 +381,29 @@ io.on('connection', (socket) => {
         });
     });
 
+    // ✅ UPDATE ORDER (NEW: ΠΡΟΣΘΗΚΗ ΣΕ ΥΠΑΡΧΟΥΣΑ)
+    socket.on('update-order', (data) => {
+        // 1. Βρίσκουμε την παραγγελία με βάση το ID
+        const order = activeOrders.find(o => o.id === Number(data.id));
+        
+        if (order) {
+            // 2. Προσθέτουμε τα νέα προϊόντα με το σύμβολο ++
+            order.text += `\n++ ${data.addText}`;
+
+            // 3. Αλλάζουμε το status ξανά σε 'pending' για να αναβοσβήνει ο φάκελος στον Admin
+            order.status = 'pending';
+
+            // 4. Ενημερώνουμε όλους (Admin & Staff)
+            updateStore(socket.store);
+
+            // 5. Χτυπάμε το κουδούνι στους Admins
+            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
+                if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
+                sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
+            });
+        }
+    });
+
     socket.on('accept-order', (id) => { const o = activeOrders.find(x => x.id === id); if(o){ o.status = 'cooking'; updateStore(socket.store); } });
     socket.on('ready-order', (id) => { 
         const o = activeOrders.find(x => x.id === id); 
