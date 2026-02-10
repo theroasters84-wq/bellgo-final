@@ -5,9 +5,9 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V7)
+   2. CONFIGURATION & CACHE (V8)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v7'; 
+const CACHE_NAME = 'bellgo-v8'; // ✅ Updated Version
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -39,46 +39,46 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 /* -----------------------------------------------------------
-   4. BACKGROUND HANDLER (Τρέχει όταν είναι κλειστό/background)
+   4. BACKGROUND HANDLER
+   Τρέχει όταν η σελίδα είναι κλειστή ΚΑΙ το μήνυμα είναι Data-only.
+   (Αν το μήνυμα έχει "notification" block, το χειρίζεται το σύστημα,
+    αλλά αυτός ο κώδικας είναι η ασφάλειά μας).
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[sw.js] Background message received:', payload);
+  console.log('[sw.js] Background message:', payload);
   
-  // Διαβάζουμε τα δεδομένα από το payload του server
   const title = payload.data.title || payload.notification?.title || '🚨 ΚΛΗΣΗ!';
   const body = payload.data.body || payload.notification?.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
-  
-  // Το URL έρχεται δυναμικά από τον Server (premium.html ή stafpremium.html)
+  // ✅ Default σε login αν δεν βρει URL, για ασφάλεια
   const url = payload.data.url || '/login.html';
 
-  // Εμφάνιση της ειδοποίησης συστήματος
   return self.registration.showNotification(title, {
     body: body,
-    icon: '/admin.png', // Generic icon, θα μπορούσε να είναι δυναμικό
-    tag: 'bellgo-alarm',      // Το ίδιο tag αντικαθιστά το προηγούμενο (για να μην γεμίζει η μπάρα)
-    renotify: true,           // Ξανακάνει δόνηση/ήχο παρόλο που υπάρχει ήδη
-    requireInteraction: true, // Μένει στην οθόνη μέχρι να το πατήσει ο χρήστης
+    icon: '/admin.png',
+    tag: 'bellgo-alarm',      // Το ίδιο tag αντικαθιστά το προηγούμενο
+    renotify: true,           // Ξανακάνει δόνηση/ήχο
+    requireInteraction: true, // Μένει στην οθόνη
     vibrate: [500, 200, 500, 200, 500],
-    data: { url: url }        // Αποθηκεύουμε το URL για το click event
+    data: { url: url }        // Αποθηκεύουμε το URL για το κλικ
   });
 });
 
 /* -----------------------------------------------------------
-   5. CLICK HANDLER (Τρέχει όταν πατάς την ειδοποίηση)
+   5. CLICK HANDLER (Διαχείριση Κλικ στην Ειδοποίηση)
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
-  event.notification.close(); // Κλείνει την ειδοποίηση
+  event.notification.close();
   
-  // Παίρνουμε το URL που αποθηκεύσαμε στο data
-  const urlToOpen = event.notification.data.url || '/login.html';
+  // Παίρνουμε το URL από τα δεδομένα της ειδοποίησης
+  // Αν δεν υπάρχει, πάμε στο login
+  const urlToOpen = event.notification.data?.url || '/login.html';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // 1. Ψάχνουμε αν υπάρχει ήδη ανοιχτή καρτέλα με αυτό το URL
+      // 1. Ψάχνουμε αν υπάρχει ήδη ανοιχτή καρτέλα που ταιριάζει
       for (const client of clientsArr) {
-        // Ελέγχουμε αν το URL ταιριάζει (π.χ. αν περιέχει "premium.html")
         if (client.url.includes(urlToOpen) && 'focus' in client) {
-            return client.focus(); // Αν υπάρχει, απλά την φέρνουμε μπροστά
+            return client.focus();
         }
       }
       // 2. Αν δεν υπάρχει, ανοίγουμε νέα
@@ -118,10 +118,10 @@ self.addEventListener('activate', (event) => {
 
 // NETWORK FIRST, THEN CACHE
 self.addEventListener('fetch', (event) => {
+  // Αγνοούμε δυναμικά αιτήματα
   if (event.request.url.includes('socket.io') || 
       event.request.url.includes('manifest.json') ||
-      event.request.url.includes('firestore') ||
-      event.request.url.includes('googleapis') ||
+      event.request.url.includes('firebase') || 
       event.request.method !== 'GET') {
     return;
   }
