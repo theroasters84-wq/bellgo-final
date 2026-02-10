@@ -472,6 +472,7 @@
 
                 socket.on('menu-update', (data) => { App.renderMenu(data); });
 
+                // ✅✅✅ ΕΛΕΓΧΟΣ ΚΛΕΙΣΤΟΥ ΚΑΤΑΣΤΗΜΑΤΟΣ (Status Customer) ✅✅✅
                 socket.on('store-settings-update', (settings) => {
                     if (settings) {
                         if (settings.name) {
@@ -484,14 +485,22 @@
                                 window.history.replaceState({}, '', `${window.location.pathname}?${currentParams.toString()}`);
                             }
                         }
+                        
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
+                        
                         if (settings.statusCustomer === false) {
                             closedOverlay.style.display = 'flex';
-                            if(btnSend) { btnSend.disabled = true; btnSend.innerText = "⛔ ΤΟ ΚΑΤΑΣΤΗΜΑ ΕΙΝΑΙ ΚΛΕΙΣΤΟ"; }
+                            if(btnSend) { 
+                                btnSend.disabled = true; 
+                                btnSend.innerText = "⛔ ΤΟ ΚΑΤΑΣΤΗΜΑ ΕΙΝΑΙ ΚΛΕΙΣΤΟ"; 
+                            }
                         } else {
                             closedOverlay.style.display = 'none';
-                            if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; }
+                            if(btnSend) { 
+                                btnSend.disabled = false; 
+                                btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; 
+                            }
                         }
                     }
                 });
