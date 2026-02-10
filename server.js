@@ -120,15 +120,11 @@ app.get('/stripe-connect-callback', async (req, res) => {
 
 /* ---------------- DYNAMIC MANIFEST (✅ PWA SEPARATION FIX) ---------------- */
 app.get('/manifest.json', (req, res) => {
-    // 1. Παίρνουμε παραμέτρους από το URL
     const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
     
-    // 2. Καθαρίζουμε το όνομα του καταστήματος για χρήση σε ID
     const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
     
-    // 3. Καθορισμός Ονόματος App
-    // Αν είναι shop, προσπαθούμε να πάρουμε το όνομα από το query, αλλιώς από τα settings, αλλιώς default
     let appName = "BellGo App";
     if (iconType === 'shop') {
         appName = req.query.name || storeSettings.name || `Shop ${safeStoreId}`;
@@ -136,19 +132,14 @@ app.get('/manifest.json', (req, res) => {
         appName = storeSettings.name || "BellGo Admin";
     }
 
-    // 4. Καθορισμός ID για να είναι ΞΕΧΩΡΙΣΤΟ App
-    // Προσθέτουμε το safeStoreId στο ID για να μην μπερδεύονται τα μαγαζιά μεταξύ τους
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
-
     let iconFile = "admin.png"; 
     let startUrl = ".";  
     let scopeUrl = "/";        
 
     if (iconType === 'shop') {
-        iconFile = "shop.png"; // ✅ Το εικονίδιο του καταστήματος
-        // ✅ To start_url πρέπει να κρατάει το όνομα για να ανοίγει σωστά την επόμενη φορά
+        iconFile = "shop.png"; 
         startUrl = `/shop/${safeStoreId}?name=${encodeURIComponent(appName)}`;
-        // ✅ Το scope περιορίζει το PWA μόνο σε αυτό το μαγαζί (βοηθάει στο διαχωρισμό)
         scopeUrl = `/shop/${safeStoreId}`; 
     } else {
         iconFile = "admin.png";
@@ -158,11 +149,11 @@ app.get('/manifest.json', (req, res) => {
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId,             // ✅ Κλειδί για το ξεχωριστό Install
-        "name": appName,         // ✅ Ο τίτλος που θα φαίνεται κάτω από το εικονίδιο
+        "id": appId,             
+        "name": appName,         
         "short_name": appName,
-        "start_url": startUrl,   // ✅ Πού ανοίγει όταν πατάς το εικονίδιο
-        "scope": scopeUrl,       // ✅ Περιοχή λειτουργίας
+        "start_url": startUrl,   
+        "scope": scopeUrl,       
         "display": "standalone",
         "background_color": "#121212",
         "theme_color": "#121212",
@@ -176,7 +167,7 @@ app.get('/manifest.json', (req, res) => {
 
 /* ---------------- STRIPE PAYMENTS (SUBSCRIPTIONS & ORDERS) ---------------- */
 
-// 1. Έλεγχος Συνδρομής (Active Check)
+// 1. Έλεγχος Συνδρομής
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
@@ -204,7 +195,7 @@ app.post('/check-subscription', async (req, res) => {
     }
 });
 
-// 2. Αγορά Συνδρομής (Checkout)
+// 2. Αγορά Συνδρομής
 app.post('/create-checkout-session', async (req, res) => {
     const { email, plan } = req.body;
     let priceId = PRICE_BASIC; 
@@ -222,7 +213,7 @@ app.post('/create-checkout-session', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// 3. Πληρωμή Παραγγελίας (Customer -> Store)
+// 3. Πληρωμή Παραγγελίας
 app.post('/create-order-payment', async (req, res) => {
     const { amount, storeName } = req.body; 
     const shopStripeId = storeSettings.stripeConnectId; 
@@ -359,7 +350,6 @@ io.on('connection', (socket) => {
         } catch (e) { }
     });
 
-    // ✅ CHAT MESSAGE (Προστέθηκε)
     socket.on('chat-message', (data) => {
         if(socket.store) {
             io.to(socket.store).emit('chat-message', { sender: socket.username, text: data.text });
@@ -367,7 +357,12 @@ io.on('connection', (socket) => {
     });
 
     socket.on('new-order', (orderText) => {
-        if (!socket.store) return;
+        // ✅ SERVER-SIDE DEBUG FIX: Ελέγχουμε αν υπάρχει store
+        if (!socket.store) {
+            console.log(`⚠️ DEBUG: Rejected Order from ${socket.id} (No Store Joined)`);
+            return; 
+        }
+
         if (!storeSettings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
 
         const newOrder = {
@@ -397,7 +392,6 @@ io.on('connection', (socket) => {
     });
     socket.on('pay-order', (id) => { activeOrders = activeOrders.filter(x => x.id !== Number(id)); updateStore(socket.store); });
     
-    // 🔔 STAFF ALARM
     socket.on('trigger-alarm', (tName) => { 
         const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
         if(t){ 
@@ -407,30 +401,22 @@ io.on('connection', (socket) => {
         } 
     });
 
-    // ✅✅✅ SMART ALARM ACCEPTED (ANDROID FIX) ✅✅✅
     socket.on('alarm-accepted', (data) => {
         let userKey = null;
-        
-        // 1. Try explicit data (Web)
         if (data && data.store && data.username) {
             const directKey = `${data.store}_${data.username}`;
             if (activeUsers[directKey]) userKey = directKey;
         }
-        
-        // 2. Fallback: Search by Socket ID (Native App)
         if (!userKey) {
             for (const [key, user] of Object.entries(activeUsers)) {
                 if (user.socketId === socket.id) { userKey = key; break; }
             }
         }
-
         if (userKey) {
             const user = activeUsers[userKey];
             user.isRinging = false; 
             console.log(`✅ Alarm Accepted by ${user.username}`);
-            
             updateStore(user.store); 
-            // 🔴 ΕΙΔΙΚΟ ΜΗΝΥΜΑ ΓΙΑ ANDROID
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
