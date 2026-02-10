@@ -7,7 +7,12 @@ const fs = require('fs');
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
+const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; // ✅ ΤΟ ΚΛΕΙΔΙ ΣΟΥ
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
+
+// ✅ ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΣΥΝΔΡΟΜΩΝ (Price IDs)
+const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
+const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 try {
@@ -84,6 +89,35 @@ app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'p
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 
+/* ---------------- STRIPE CONNECT OAUTH (TO KOYMPI) ---------------- */
+// 1. Έναρξη σύνδεσης
+app.get('/connect-stripe', (req, res) => {
+    const state = "BellGo_Store"; 
+    const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&state=${state}`;
+    res.redirect(url);
+});
+
+// 2. Callback από το Stripe
+app.get('/stripe-connect-callback', async (req, res) => {
+    const { code, error } = req.query;
+    if (error || !code) {
+        return res.send("<h1>❌ Σφάλμα σύνδεσης με Stripe.</h1><a href='/premium.html'>Επιστροφή</a>");
+    }
+    try {
+        const response = await stripe.oauth.token({
+            grant_type: 'authorization_code',
+            code: code,
+        });
+        storeSettings.stripeConnectId = response.stripe_user_id;
+        saveSettingsToDisk();
+        io.emit('store-settings-update', storeSettings);
+        res.send("<h1>✅ Επιτυχία!</h1><p>Ο λογαριασμός συνδέθηκε.</p><script>setTimeout(() => window.location.href='/premium.html', 2000);</script>");
+    } catch (err) {
+        console.error("Stripe Connect Error:", err);
+        res.status(500).send("Error connecting Stripe account: " + err.message);
+    }
+});
+
 /* ---------------- DYNAMIC MANIFEST ---------------- */
 app.get('/manifest.json', (req, res) => {
     const appName = req.query.name || storeSettings.name || "BellGo App";
@@ -120,27 +154,55 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-/* ---------------- STRIPE PAYMENTS ---------------- */
-app.post('/check-subscription', async (req, res) => { res.json({ active: true, plan: 'premium' }); });
+/* ---------------- STRIPE PAYMENTS (SUBSCRIPTIONS & ORDERS) ---------------- */
 
+// 1. Έλεγχος Συνδρομής (Active Check)
+app.post('/check-subscription', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.json({ active: false });
+
+    try {
+        const customers = await stripe.customers.search({ query: `email:'${email}'` });
+        if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
+
+        const subscriptions = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: 'active',
+        });
+
+        if (subscriptions.data.length > 0) {
+            const planId = subscriptions.data[0].items.data[0].price.id;
+            let planType = 'basic';
+            if (planId === PRICE_PREMIUM) planType = 'premium';
+            return res.json({ active: true, plan: planType });
+        } else {
+            return res.json({ active: false });
+        }
+    } catch (e) {
+        console.error("Stripe Check Error:", e);
+        res.json({ active: false, error: e.message });
+    }
+});
+
+// 2. Αγορά Συνδρομής (Checkout)
 app.post('/create-checkout-session', async (req, res) => {
     const { email, plan } = req.body;
-    let priceId = ''; 
-    if (plan === 'basic') priceId = 'price_1Q...'; 
-    else if (plan === 'pro') priceId = 'price_1Q...'; 
+    let priceId = PRICE_BASIC; 
+    if (plan === 'premium') priceId = PRICE_PREMIUM; 
 
     try {
         const session = await stripe.checkout.sessions.create({
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'subscription',
             customer_email: email,
-            success_url: `${YOUR_DOMAIN}/login.html?session_id={CHECKOUT_SESSION_ID}`,
+            success_url: `${YOUR_DOMAIN}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
             cancel_url: `${YOUR_DOMAIN}/login.html`,
         });
         res.json({ url: session.url });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// 3. Πληρωμή Παραγγελίας (Customer -> Store)
 app.post('/create-order-payment', async (req, res) => {
     const { amount, storeName } = req.body; 
     const shopStripeId = storeSettings.stripeConnectId; 
@@ -277,6 +339,13 @@ io.on('connection', (socket) => {
         } catch (e) { }
     });
 
+    // ✅ CHAT MESSAGE (Προστέθηκε)
+    socket.on('chat-message', (data) => {
+        if(socket.store) {
+            io.to(socket.store).emit('chat-message', { sender: socket.username, text: data.text });
+        }
+    });
+
     socket.on('new-order', (orderText) => {
         if (!socket.store) return;
         if (!storeSettings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
@@ -318,17 +387,17 @@ io.on('connection', (socket) => {
         } 
     });
 
-    // ✅✅✅ NEW "SMART" ALARM ACCEPTED FOR NATIVE APP ✅✅✅
+    // ✅✅✅ SMART ALARM ACCEPTED (ANDROID FIX) ✅✅✅
     socket.on('alarm-accepted', (data) => {
         let userKey = null;
         
-        // 1. Try explicit data (Web App style)
+        // 1. Try explicit data (Web)
         if (data && data.store && data.username) {
             const directKey = `${data.store}_${data.username}`;
             if (activeUsers[directKey]) userKey = directKey;
         }
         
-        // 2. Fallback: Search by Socket ID (Native App style - sends empty data)
+        // 2. Fallback: Search by Socket ID (Native App)
         if (!userKey) {
             for (const [key, user] of Object.entries(activeUsers)) {
                 if (user.socketId === socket.id) { userKey = key; break; }
@@ -338,12 +407,10 @@ io.on('connection', (socket) => {
         if (userKey) {
             const user = activeUsers[userKey];
             user.isRinging = false; 
-            console.log(`✅ Alarm Accepted by ${user.username} (Source: ${data ? 'Web' : 'Native'})`);
+            console.log(`✅ Alarm Accepted by ${user.username}`);
             
-            // Notify Admin (Update Grid)
             updateStore(user.store); 
-            
-            // Send specific signal for Android UI sync
+            // 🔴 ΕΙΔΙΚΟ ΜΗΝΥΜΑ ΓΙΑ ANDROID
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
