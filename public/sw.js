@@ -1,7 +1,13 @@
+/* -----------------------------------------------------------
+   1. IMPORTS
+----------------------------------------------------------- */
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-const CACHE_NAME = 'bellgo-v5'; 
+/* -----------------------------------------------------------
+   2. CONFIGURATION & CACHE (V6)
+----------------------------------------------------------- */
+const CACHE_NAME = 'bellgo-v6'; 
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -19,6 +25,9 @@ const ASSETS_TO_CACHE = [
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
 ];
 
+/* -----------------------------------------------------------
+   3. FIREBASE INITIALIZATION
+----------------------------------------------------------- */
 firebase.initializeApp({
   apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
   projectId: "bellgo-5dbe5",
@@ -29,7 +38,9 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// BACKGROUND HANDLER
+/* -----------------------------------------------------------
+   4. BACKGROUND HANDLER (NAGGING LOOP)
+----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
   console.log('[sw.js] Background:', payload);
   const title = payload.data.title || '🚨 ΚΛΗΣΗ!';
@@ -39,28 +50,31 @@ messaging.setBackgroundMessageHandler(function(payload) {
   return self.registration.showNotification(title, {
     body: body,
     icon: '/staff.png',
-    tag: 'bellgo-alarm',      // Keeps replacing the same notification
-    renotify: true,           // Vibrates every time
-    requireInteraction: true, // Stays on screen
+    tag: 'bellgo-alarm',      // ⚠️ ΣΗΜΑΝΤΙΚΟ: Το ίδιο tag αντικαθιστά το προηγούμενο
+    renotify: true,           // ⚠️ ΣΗΜΑΝΤΙΚΟ: Ξανακάνει δόνηση/ήχο παρόλο που υπάρχει ήδη
+    requireInteraction: true, // Μένει στην οθόνη
     vibrate: [500, 200, 500, 200, 500],
     data: { url: url }
   });
 });
 
-// CLICK HANDLER
+/* -----------------------------------------------------------
+   5. CLICK HANDLER
+----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   const urlToOpen = event.notification.data.url || '/stafpremium.html';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // Check if tab exists
+      // 1. Ψάχνουμε αν είναι ήδη ανοιχτό
       for (const client of clientsArr) {
+        // Ελέγχουμε αν το URL ταιριάζει με αυτό που θέλουμε να ανοίξουμε
         if (client.url.includes('stafpremium.html') && 'focus' in client) {
-            return client.focus(); // Just focus if open
+            return client.focus();
         }
       }
-      // If not open, open new
+      // 2. Αν δεν είναι, ανοίγουμε νέο
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
@@ -68,24 +82,55 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
-// INSTALL
+/* -----------------------------------------------------------
+   6. PWA CACHING (Network First Strategy)
+----------------------------------------------------------- */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
 });
 
-// ACTIVATE
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then((keyList) => Promise.all(keyList.map((key) => {
-    if (key !== CACHE_NAME) return caches.delete(key);
-  }))));
+  event.waitUntil(
+    caches.keys().then((keyList) => {
+      return Promise.all(
+        keyList.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
   return self.clients.claim();
 });
 
-// FETCH
+// NETWORK FIRST, THEN CACHE
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('socket.io') || event.request.url.includes('manifest.json')) return;
+  // Αγνοούμε τα δυναμικά calls
+  if (event.request.url.includes('socket.io') || 
+      event.request.url.includes('manifest.json') ||
+      event.request.url.includes('firestore') ||
+      event.request.url.includes('googleapis')) {
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request)
+      .then((networkResponse) => {
+        // Αν πετύχει η σύνδεση, αποθήκευσε το νέο αρχείο στην cache
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // Αν δεν έχει ίντερνετ, δώσε το παλιό από τη μνήμη
+        return caches.match(event.request);
+      })
   );
 });
