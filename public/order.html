@@ -3,25 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>Delivery</title>
     
-    <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=shop">
+    <title>Delivery</title>
+    <link rel="icon" type="image/png" href="shop.png">
+    <link rel="apple-touch-icon" href="shop.png">
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="shop.png"> 
-    
+    <meta name="apple-mobile-web-app-title" content="Delivery">
+
+    <link rel="manifest" id="dynamicManifest">
+
     <script src="https://js.stripe.com/v3/"></script>
-    
+
     <script>
         (function() {
-            // ✅ MANIFEST LOGIC
+            // 1. Βρίσκουμε ποιο μαγαζί είναι (από URL ή Link)
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             let pStore = params.get('store');
-            
-            // Fallback for URL path detection
+
+            // Fallback: Αν δεν υπάρχει ?store=, ψάχνουμε στο path
             if (!pStore) {
                 const pathParts = window.location.pathname.split('/');
                 const shopIndex = pathParts.indexOf('shop');
@@ -30,17 +33,23 @@
                 }
             }
 
-            const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=shop`;
-
-            if (pStore) url += `&store=${pStore}`;
-
+            // 2. Ορίζουμε Τίτλο (ΠΡΙΝ φορτώσει η σελίδα)
             if (pName) {
-                url += `&name=${encodeURIComponent(pName)}`;
                 document.title = decodeURIComponent(pName);
+                // Για iOS Home Screen Title
+                let metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+                if(metaTitle) metaTitle.setAttribute('content', decodeURIComponent(pName));
             }
+
+            // 3. Φτιάχνουμε το Μοναδικό Manifest URL
+            // Το icon=shop αναγκάζει τον server να δώσει το shop.png
+            const manifestLink = document.getElementById('dynamicManifest');
+            let manifestUrl = `manifest.json?icon=shop`; // 👈 ΣΗΜΑΝΤΙΚΟ: Ζητάμε shop icon
+
+            if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
+            if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
             
-            manifestLink.setAttribute('href', url);
+            manifestLink.setAttribute('href', manifestUrl);
         })();
     </script>
 
@@ -229,24 +238,22 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // SW
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
         }
 
-        // INSTALL LOGIC
+        // --- INSTALL LOGIC ---
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Show buttons
             const btnLogin = document.getElementById('btnInstallLogin');
             if(btnLogin) btnLogin.style.display = 'block';
             const btnHeader = document.getElementById('btnInstallHeader');
             if(btnHeader) btnHeader.style.display = 'block';
         });
 
-        // iOS Check
+        // iOS Detection
         const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         if (isIos() && !window.navigator.standalone) {
              document.getElementById('btnInstallLogin').style.display = 'block';
@@ -324,7 +331,6 @@
                         document.getElementById('inpName').value = currentUser.displayName;
                     }
                 } else {
-                    // ✅ DIRECT START (Removed Start Screen)
                     App.startApp();
                 }
             },
@@ -338,8 +344,6 @@
                 customerDetails = { name, address, floor, phone };
                 localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
                 document.getElementById('detailsOverlay').style.display = 'none';
-                
-                // ✅ DIRECT START
                 App.startApp();
             },
 
@@ -355,7 +359,7 @@
             startApp: () => {
                 document.getElementById('appContent').style.display = 'flex';
                 
-                // ✅ SILENT AUDIO UNLOCK (On first click)
+                // SILENT AUDIO UNLOCK
                 document.body.addEventListener('click', () => {
                     const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
                     audio.play().catch(()=>{});
@@ -391,6 +395,7 @@
                 }
             },
 
+            // --- STRIPE RETURN HANDLER ---
             checkStripeReturn: () => {
                 const urlP = new URLSearchParams(window.location.search);
                 const status = urlP.get('payment_status');
@@ -398,8 +403,11 @@
                     const saved = localStorage.getItem('bellgo_temp_card_order');
                     if (saved) {
                         const orderData = JSON.parse(saved);
+                        // ✅ FLOW: Send Order -> Pending -> (Admin Accepts) -> Cooking
                         App.sendOrder(orderData.items, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
                         localStorage.removeItem('bellgo_temp_card_order');
+                        
+                        // Clear URL
                         const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]payment_status=[^&]+/, '');
                         window.history.replaceState({}, document.title, cleanUrl);
                     }
@@ -448,17 +456,16 @@
                     const mySocketUsername = customerDetails.name + " (Πελάτης)";
                     const myOrder = orders.find(o => o.from === mySocketUsername);
                     if (myOrder) {
+                        // ✅ SYNC STATUS FROM SERVER
                         if (!activeOrderState || activeOrderState.status !== myOrder.status) {
                             activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                             App.updateStatusUI(myOrder.status);
                         }
                     } else {
+                        // Logic if order removed from server (e.g., ready)
                         if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
-                            activeOrderState.status = 'ready';
-                            activeOrderState.timestamp = Date.now();
-                            localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                            App.updateStatusUI('ready');
+                            // Optionally set to ready or clear
                         }
                     }
                 });
@@ -509,7 +516,6 @@
                 let found = false;
                 const { name } = parseItem(item);
                 for (let i = 0; i < lines.length; i++) {
-                    const safeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     if (lines[i].includes(name)) {
                         const match = lines[i].match(/^(\d+)?\s*(.+)$/);
                         if(match && match[2].includes(name)) {
@@ -596,7 +602,7 @@
                 activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
                 localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                 window.socket.emit('new-order', fullText);
-                App.showStatus('pending');
+                App.showStatus('pending'); // ✅ Wait for Admin (Cooking)
                 document.getElementById('orderText').value = ''; 
                 document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
             },
