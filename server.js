@@ -7,10 +7,10 @@ const fs = require('fs');
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
-const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; // ✅ ΤΟ ΚΛΕΙΔΙ ΣΟΥ
+const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
-// ✅ ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΣΥΝΔΡΟΜΩΝ (Price IDs)
+// ✅ PRICE LIST
 const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
 const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
@@ -221,7 +221,7 @@ app.post('/create-order-payment', async (req, res) => {
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    // ✅ FIX: ΜΗΝ ΣΤΕΛΝΕΙΣ ΣΕ NATIVE APPS
+    // ✅ ONLY SEND PUSH IF NOT NATIVE (Avoid Double Notification on App)
     if (target && target.fcmToken && !target.isNative) {
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
@@ -248,7 +248,7 @@ function updateStore(store) {
             username: u.username, 
             role: u.role, 
             status: u.status, 
-            isRinging: u.isRinging // Μεταφέρουμε το ringing status στο front
+            isRinging: u.isRinging 
         }));
 
     io.to(store).emit('staff-list-update', list);
@@ -305,21 +305,27 @@ io.on('connection', (socket) => {
         socket.join(store);
 
         const key = `${store}_${username}`;
-        // Preserve isRinging state if user rejoins quickly
         const wasRinging = activeUsers[key]?.isRinging || false;
+
+        // ✅ FIX LAG: Check if user exists and nothing changed to avoid spamming updateStore
+        const existing = activeUsers[key];
+        if (existing && existing.socketId === socket.id && existing.status === 'online') {
+            // Already online, just update token if needed
+            if (data.token) existing.fcmToken = data.token;
+            return; 
+        }
 
         activeUsers[key] = {
             store, username, role: socket.role, socketId: socket.id,
             fcmToken: data.token, status: "online", lastSeen: Date.now(),
             isRinging: wasRinging, 
-            isNative: data.isNative // ✅ Save Native Flag
+            isNative: data.isNative 
         };
 
         updateStore(store);
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
         
-        // ✅ SYNC STATUS ON JOIN (Για να ανοίξει το overlay αν χτυπούσε πριν)
         if(wasRinging) {
              socket.emit('ring-bell'); 
         }
@@ -370,8 +376,8 @@ io.on('connection', (socket) => {
         updateStore(socket.store);
 
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
-            adm.isRinging = true; // Trigger loop for Admin
-            updateStore(socket.store); // Update UI
+            adm.isRinging = true; 
+            updateStore(socket.store); 
             if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
             sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
         });
@@ -384,7 +390,7 @@ io.on('connection', (socket) => {
             order.status = 'pending';
             updateStore(socket.store);
             Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
-                adm.isRinging = true; // Trigger loop for Admin
+                adm.isRinging = true; 
                 updateStore(socket.store);
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
@@ -440,8 +446,7 @@ io.on('connection', (socket) => {
             console.log(`✅ Alarm Accepted by ${user.username}`);
             updateStore(user.store); 
             
-            // 🔥 ΕΙΔΙΚΟ EVENT ΓΙΑ ΝΑ ΞΕΡΕΙ Ο ADMIN OTI ΑΠΑΝΤΗΣΕ
-            // Στέλνουμε broadcast στον Admin
+            // ✅ BROADCAST TO EVERYONE IN STORE (So Admin UI updates immediately)
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
@@ -480,7 +485,7 @@ setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if 
 setInterval(() => {
     for (const key in activeUsers) {
         const user = activeUsers[key];
-        // ✅ FIX: Check NOT Native app
+        // Check Ringing AND NOT Native (Native handles its own loop locally or via push)
         if (user.isRinging && user.fcmToken && !user.isNative) {
             console.log(`🔁 Looping Alarm for ${user.username}`);
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!";
