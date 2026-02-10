@@ -315,9 +315,18 @@
             <div style="text-align:left; color:#ccc; font-size:14px;">
                 <label>Ώρα Αναπαλήρωσης Menu (Reset):</label>
                 <input type="time" id="inpResetTime" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:5px; margin-top:5px; font-size:18px;">
-                <small style="color:#777;">Ώρα που επαναφέρονται αυτόματα τα προϊόντα.</small>
+                
+                <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
+                
+                <label style="display:block; margin-bottom:5px;">Σύνδεση Πληρωμών:</label>
+                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;">
+                    <span>🔗</span> Συνδεθείτε με Stripe
+                </button>
+                <p id="stripeStatus" style="font-size:11px; color:#aaa; margin-top:5px; text-align:center;">
+                    (Για να λαμβάνετε πληρωμές με κάρτα)
+                </p>
             </div>
-            <button class="modal-btn" style="background:#00E676;" onclick="App.saveSettings()">ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveSettings()">ΑΠΟΘΗΚΕΥΣΗ</button>
             <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
@@ -483,6 +492,16 @@
                         document.getElementById('switchCust').checked = settings.statusCustomer;
                         document.getElementById('switchStaff').checked = settings.statusStaff;
                         if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
+                        
+                        // 🟢 ΕΝΗΜΕΡΩΣΗ STATUS ΣΥΝΔΕΣΗΣ STRIPE 🟢
+                        const statusEl = document.getElementById('stripeStatus');
+                        if (settings.stripeConnectId) {
+                            statusEl.innerHTML = "✅ <b>Συνδέθηκε επιτυχώς!</b><br>ID: " + settings.stripeConnectId;
+                            statusEl.style.color = "#00E676";
+                        } else {
+                            statusEl.innerText = "(Για να λαμβάνετε πληρωμές με κάρτα)";
+                            statusEl.style.color = "#aaa";
+                        }
                     }
                 });
 
@@ -522,6 +541,7 @@
             saveSettings: () => {
                 const time = document.getElementById('inpResetTime').value;
                 if(time) {
+                    // Στέλνουμε μόνο την ώρα reset. Το Stripe ID αποθηκεύεται αυτόματα από το κουμπί σύνδεσης.
                     window.socket.emit('save-store-settings', { resetTime: time });
                     document.getElementById('settingsModal').style.display = 'none';
                 } else {
@@ -761,12 +781,6 @@
                 container.innerHTML = '';
                 list.forEach(u => {
                     if (u.role === 'admin' || u.role === 'customer') return;
-                    
-                    // For CSS Grid, we don't need a wrapper div for each button in this specific layout
-                    // unless we want to group things. But to keep it simple and working with the grid:
-                    // We will append the button directly to the container which is a grid.
-                    // BUT, the existing logic appends a 'row' div. Let's adapt.
-                    // The CSS I gave sets display: contents on .staff-row so it doesn't affect grid.
                     
                     const row = document.createElement('div');
                     row.className = 'staff-row';
