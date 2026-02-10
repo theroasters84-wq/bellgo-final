@@ -5,7 +5,7 @@ const path = require('path');
 const admin = require("firebase-admin");
 const fs = require('fs');
 
-// ✅ STRIPE SETUP (Χρησιμοποίησε το Secret Key σου εδώ)
+// ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
@@ -53,7 +53,7 @@ let storeSettings = {
     statusCustomer: true, 
     statusStaff: true,
     resetTime: "04:00",
-    stripeConnectId: "" // ✅ Store Stripe Connect ID
+    stripeConnectId: "" 
 }; 
 
 // LOAD DATA
@@ -318,17 +318,17 @@ io.on('connection', (socket) => {
         } 
     });
 
-    // ✅✅✅ ΕΔΩ ΕΙΝΑΙ Η ΛΕΙΤΟΥΡΓΙΑ ΠΟΥ ΕΛΕΙΠΕ ΓΙΑ ΤΟ "ΕΡΧΕΤΑΙ" ✅✅✅
+    // ✅✅✅ NEW "SMART" ALARM ACCEPTED FOR NATIVE APP ✅✅✅
     socket.on('alarm-accepted', (data) => {
-        // Αυτό το στέλνει το Staff App όταν πατήσει αποδοχή
-        // Προσπαθούμε να βρούμε τον χρήστη
         let userKey = null;
         
-        // 1. Ψάχνουμε με βάση το store & username που έστειλε
-        const directKey = `${data.store}_${data.username}`;
-        if (activeUsers[directKey]) userKey = directKey;
+        // 1. Try explicit data (Web App style)
+        if (data && data.store && data.username) {
+            const directKey = `${data.store}_${data.username}`;
+            if (activeUsers[directKey]) userKey = directKey;
+        }
         
-        // 2. Αν δεν βρεθεί (π.χ. λάθος store name), ψάχνουμε ποιος έχει αυτό το socket
+        // 2. Fallback: Search by Socket ID (Native App style - sends empty data)
         if (!userKey) {
             for (const [key, user] of Object.entries(activeUsers)) {
                 if (user.socketId === socket.id) { userKey = key; break; }
@@ -336,9 +336,15 @@ io.on('connection', (socket) => {
         }
 
         if (userKey) {
-            activeUsers[userKey].isRinging = false; // Σταματάμε το κουδούνισμα
-            console.log(`✅ Alarm Accepted by ${activeUsers[userKey].username}`);
-            updateStore(activeUsers[userKey].store); // Στέλνουμε το update στο premium.html για να δείξει "ΕΡΧΕΤΑΙ"
+            const user = activeUsers[userKey];
+            user.isRinging = false; 
+            console.log(`✅ Alarm Accepted by ${user.username} (Source: ${data ? 'Web' : 'Native'})`);
+            
+            // Notify Admin (Update Grid)
+            updateStore(user.store); 
+            
+            // Send specific signal for Android UI sync
+            io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
 
