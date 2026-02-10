@@ -343,6 +343,166 @@
         <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
     </div>
 
+    <script>
+        const AudioEngine = {
+            keepAlivePlayer: null, 
+            alarmPlayer: null,     
+            isRinging: false,
+            wakeLock: null,
+            vibInt: null,
+
+            async init() {
+                console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
+
+                if (!this.keepAlivePlayer) {
+                    this.keepAlivePlayer = document.createElement("audio");
+                    this.keepAlivePlayer.id = 'keepAlive';
+                    this.keepAlivePlayer.src = "tone19hz.wav"; 
+                    this.keepAlivePlayer.loop = true;
+                    this.keepAlivePlayer.volume = 1.0; 
+                    document.body.appendChild(this.keepAlivePlayer);
+                }
+
+                if (!this.alarmPlayer) {
+                    this.alarmPlayer = document.createElement("audio");
+                    this.alarmPlayer.id = 'alarmSound';
+                    this.alarmPlayer.src = "alert.mp3"; 
+                    this.alarmPlayer.loop = true;
+                    this.alarmPlayer.volume = 1.0;
+                    document.body.appendChild(this.alarmPlayer);
+                }
+
+                this.requestWakeLock();
+                this.setupMediaSession();
+
+                try {
+                    await this.keepAlivePlayer.play();
+                    this.updateDisplay("online");
+                    console.log("✅ Keep-Alive Running");
+                } catch (e) {
+                    console.log("⏳ Waiting for interaction...");
+                }
+            },
+
+            setupMediaSession() {
+                if (!("mediaSession" in navigator)) return;
+
+                const handleNotificationClick = () => {
+                    console.log("👆 Notification Button Clicked");
+                    if (this.isRinging) {
+                        if (window.App && window.App.acceptAlarm) {
+                            window.App.acceptAlarm(); 
+                        } else {
+                            this.stopAlarm(); 
+                        }
+                    } else {
+                        this.keepAlivePlayer.play();
+                    }
+                };
+
+                navigator.mediaSession.setActionHandler('play', handleNotificationClick);
+                navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
+                navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
+                navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
+                navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
+            },
+
+            async triggerAlarm() {
+                if (this.isRinging) return;
+                this.isRinging = true;
+                console.log("🚨 ALARM TRIGGERED");
+
+                this.updateDisplay("alarm");
+
+                this.alarmPlayer.currentTime = 0;
+                try {
+                    await this.alarmPlayer.play();
+                } catch(e) { console.error(e); }
+
+                this.vibrate(true);
+                
+                // ✅ SEND NOTIFICATION IF IN BACKGROUND (AND NOT NATIVE)
+                if (document.hidden && !window.Capacitor) {
+                    this.sendNotification();
+                }
+            },
+
+            stopAlarm() {
+                if (!this.isRinging) return; 
+                this.isRinging = false;
+                console.log("✅ ALARM STOPPED (Audio Engine)");
+
+                this.alarmPlayer.pause();
+                this.alarmPlayer.currentTime = 0;
+
+                this.updateDisplay("online");
+                this.vibrate(false);
+            },
+
+            updateDisplay(state) {
+                if (!("mediaSession" in navigator)) return;
+
+                if (state === "alarm") {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                        artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
+                        album: "BellGo Alert",
+                        artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                    });
+                } else {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: "BellGo Online",
+                        artist: "Σύστημα Ενεργό",
+                        album: "Αναμονή...",
+                        artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                    });
+                }
+                navigator.mediaSession.playbackState = "playing";
+            },
+
+            vibrate(active) {
+                if (!navigator.vibrate) return;
+                if (active) {
+                    navigator.vibrate([1000, 500]);
+                    if (this.vibInt) clearInterval(this.vibInt);
+                    this.vibInt = setInterval(() => navigator.vibrate([1000, 500]), 1600);
+                } else {
+                    if (this.vibInt) clearInterval(this.vibInt);
+                    navigator.vibrate(0);
+                }
+            },
+
+            async requestWakeLock() {
+                if ('wakeLock' in navigator) {
+                    try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+                }
+            },
+
+            sendNotification() {
+                if (Notification.permission === "granted") {
+                    try {
+                        const notif = new Notification("🚨 ΚΛΗΣΗ!", { 
+                            icon: "/admin.png", 
+                            tag: 'bellgo-alarm',
+                            renotify: true,
+                            requireInteraction: true 
+                        });
+                        
+                        notif.onclick = () => { 
+                            window.focus(); 
+                            if (window.App && window.App.acceptAlarm) {
+                                window.App.acceptAlarm();
+                            }
+                            notif.close(); 
+                        };
+                    } catch (e) {}
+                }
+            }
+        };
+
+        window.AudioEngine = AudioEngine;
+    </script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
@@ -363,9 +523,6 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
         
-        let orderAlertSound = new Audio('alert.mp3');
-        orderAlertSound.loop = true; 
-
         const calculateTotal = (text) => {
             let total = 0;
             const lines = text.split('\n');
@@ -421,10 +578,7 @@
                 
                 // ✅ UNLOCK AUDIO ON FIRST TAP (ANYWHERE)
                 document.body.addEventListener('click', () => { 
-                    orderAlertSound.play().then(() => {
-                        orderAlertSound.pause();
-                        orderAlertSound.currentTime = 0;
-                    }).catch(()=>{});
+                    if(window.AudioEngine) window.AudioEngine.init();
                 }, {once:true});
                 
                 const nameInput = document.getElementById('inpStoreName');
@@ -493,7 +647,6 @@
                         document.getElementById('switchStaff').checked = settings.statusStaff;
                         if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
                         
-                        // 🟢 ΕΝΗΜΕΡΩΣΗ STATUS ΣΥΝΔΕΣΗΣ STRIPE 🟢
                         const statusEl = document.getElementById('stripeStatus');
                         if (settings.stripeConnectId) {
                             statusEl.innerHTML = "✅ <b>Συνδέθηκε επιτυχώς!</b><br>ID: " + settings.stripeConnectId;
@@ -515,8 +668,7 @@
                     App.renderDesktopIcons(orders);
                 });
                 socket.on('ring-bell', () => {
-                    orderAlertSound.currentTime = 0;
-                    orderAlertSound.play().catch(e => console.log(e));
+                    if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                 });
             },
             
@@ -525,6 +677,13 @@
                     ? document.getElementById('switchCust').checked 
                     : document.getElementById('switchStaff').checked;
                 window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
+            },
+
+            // ✅ ACCEPT ALARM (Called by Play/Pause or Click)
+            acceptAlarm: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                // Admin stops the sound locally. Logic for notifying staff belongs to staff panel mostly,
+                // but if Admin wants to stop it, they just stop it locally.
             },
 
             // --- MODALS ---
@@ -541,7 +700,6 @@
             saveSettings: () => {
                 const time = document.getElementById('inpResetTime').value;
                 if(time) {
-                    // Στέλνουμε μόνο την ώρα reset. Το Stripe ID αποθηκεύεται αυτόματα από το κουμπί σύνδεσης.
                     window.socket.emit('save-store-settings', { resetTime: time });
                     document.getElementById('settingsModal').style.display = 'none';
                 } else {
@@ -689,8 +847,7 @@
                 });
             },
             openOrderWindow: (order) => {
-                orderAlertSound.pause();
-                orderAlertSound.currentTime = 0;
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
                 let win = document.getElementById(`win-${order.id}`);
                 if (!win) {
                     win = document.createElement('div');
@@ -736,7 +893,7 @@
             },
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
             acceptOrder: (id) => {
-                orderAlertSound.pause(); orderAlertSound.currentTime = 0;
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
                 window.socket.emit('accept-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
@@ -754,27 +911,20 @@
                 }
             },
             
-            // ✅ UPDATED RENDER STAFF LIST WITH "COMING" LOGIC
             renderStaffList: (list) => {
                 const container = document.getElementById('staffList');
                 if (!container) return;
                 
-                // Track temp status for 5 seconds
                 const now = Date.now();
-                
-                // Keep local state for temporary visual feedback
                 if(!App.tempComingState) App.tempComingState = {};
 
                 list.forEach(u => {
-                    // Logic: If user WAS ringing and now IS NOT ringing -> They are coming
                     const wasRinging = App.lastRingingState[u.username];
                     const isRinging = u.isRinging;
                     
                     if (wasRinging && !isRinging) {
-                        App.tempComingState[u.username] = now; // Mark as coming now
+                        App.tempComingState[u.username] = now; 
                     }
-                    
-                    // Update state for next cycle
                     App.lastRingingState[u.username] = isRinging;
                 });
 
@@ -791,24 +941,20 @@
                     let stTxt = isAway ? "AWAY" : "IDLE";
                     let stCol = isAway ? "#FF9800" : "white";
                     
-                    // Priority 1: Ringing
                     if(u.isRinging) { 
                         stTxt = "📞 ..."; 
                         stCol = "yellow"; 
                     } 
-                    // Priority 2: Coming (Temporary)
                     else if (App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 5000)) {
                         stTxt = "🚀 ΕΡΧΕΤΑΙ";
-                        stCol = "#00E676"; // Green
+                        stCol = "#00E676";
                     }
 
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    // Split name and status into spans for flex styling
                     btn.innerHTML = `<span>${u.username}</span><span style="color:${stCol};">${stTxt}</span>`;
                     
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
-                        // Immediate feedback
                         const spans = btn.getElementsByTagName('span');
                         if(spans.length > 1) {
                              spans[1].innerText = "📞 ...";
@@ -827,7 +973,6 @@
                     container.appendChild(row);
                 });
                 
-                // Refresh list shortly if someone is "coming" to clear the message
                 if(Object.keys(App.tempComingState).length > 0) {
                     setTimeout(() => App.renderStaffList(list), 5000);
                 }
