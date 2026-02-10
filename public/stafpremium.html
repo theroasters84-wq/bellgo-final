@@ -51,16 +51,16 @@
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
         
-        /* BELL BTN (Διακριτικό κουδουνάκι) */
+        /* BELL BTN */
         #staffBellBtn { 
             background: #FFD700; 
             color: black; 
             border: 2px solid #FFD700; 
-            display: none; /* Κρυφό αρχικά */
+            display: none; 
         }
         #staffBellBtn.ringing { 
             display: flex; 
-            animation: shake 0.5s infinite; /* Κουνιέται όταν χτυπάει */
+            animation: shake 0.5s infinite; 
             box-shadow: 0 0 15px #FFD700;
         }
 
@@ -95,7 +95,7 @@
         .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; }
 
         /* CLOSED OVERLAY */
-        #closedOverlay { position: fixed; top: 60px; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0,0,0,0.8); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        #closedOverlay { position: fixed; top: 60px; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0,0,0,0.9); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .closed-text { font-size: 24px; color: #D32F2F; font-weight: bold; text-transform: uppercase; border: 2px solid #D32F2F; padding: 10px 20px; border-radius: 10px; background: #121212; }
 
         .orders-box-container { width: 95%; max-width: 500px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; height: 85vh; overflow:hidden; }
@@ -139,6 +139,12 @@
     <div id="startScreen">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Staff 🔔</h1>
         <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+    </div>
+
+    <div id="alarmOverlay">
+        <h1 style="color:white; margin-bottom:30px; font-size:30px;">📞 ΣΕ ΚΑΛΟΥΝ!</h1>
+        <button class="alarm-btn-accept" onclick="App.acceptAlarmStaff()">✅ ΕΡΧΟΜΑΙ</button>
+        <button class="alarm-btn-close" onclick="App.muteAlarm()">❌ ΚΛΕΙΣΙΜΟ</button>
     </div>
 
     <div id="mainApp">
@@ -222,13 +228,10 @@
                     <button class="tab-btn active" id="tabMyOrders" onclick="App.switchTab('my')">Οι Παραγγελίες μου</button>
                     <button class="tab-btn" id="tabAllOrders" onclick="App.switchTab('all')">📂 ΓΕΝΙΚΕΣ</button>
                 </div>
-                
                 <div class="search-bar">
                     <input type="number" id="searchTable" class="search-inp" placeholder="🔍 Αρ. Τραπεζιού" oninput="UI.filterOrders()">
                 </div>
-
                 <div id="ordersList" class="orders-list"></div>
-                
                 <div class="orders-footer" style="padding:15px; border-top:1px solid #333;">
                     <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
                 </div>
@@ -254,7 +257,6 @@
         wakeLock: null,
         
         async init() {
-            console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
             if (!this.keepAlivePlayer) {
                 this.keepAlivePlayer = document.createElement("audio");
                 this.keepAlivePlayer.src = "tone19hz.wav"; 
@@ -316,7 +318,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
-        // ✅ PWA SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log('✅ Staff Service Worker Registered'))
@@ -354,45 +355,28 @@
                 const b = document.getElementById('ordersBadge');
                 if (count > 0) { b.style.display = 'flex'; b.innerText = count; } else { b.style.display = 'none'; }
             },
-            
             renderOrders: (orders, mode = 'my') => {
                 const list = document.getElementById('ordersList');
                 const searchVal = document.getElementById('searchTable').value.trim();
                 list.innerHTML = '';
-
                 let filtered = orders;
-                
-                if (mode === 'my') {
-                    filtered = orders.filter(o => o.from === userData.name);
-                }
-
-                if (searchVal) {
-                    filtered = filtered.filter(o => o.text.includes(`ΤΡ: ${searchVal}`) || o.text.includes(`ΤΡ:${searchVal}`));
-                }
-
-                if(filtered.length === 0) {
-                    list.innerHTML = '<div style="color:#777; text-align:center; padding:20px;">Καμία παραγγελία</div>';
-                    return;
-                }
-
+                if (mode === 'my') { filtered = orders.filter(o => o.from === userData.name); }
+                if (searchVal) { filtered = filtered.filter(o => o.text.includes(`ΤΡ: ${searchVal}`) || o.text.includes(`ΤΡ:${searchVal}`)); }
+                if(filtered.length === 0) { list.innerHTML = '<div style="color:#777; text-align:center; padding:20px;">Καμία παραγγελία</div>'; return; }
                 filtered.sort((a,b) => b.id - a.id);
-
                 filtered.forEach(o => {
                     let statusTxt = '⏳ Pending'; let statusClass = 'pending';
                     if(o.status === 'cooking') { statusTxt = '🍳 Cooking'; statusClass = 'cooking'; }
                     if(o.status === 'ready') { statusTxt = '✅ Ready'; statusClass = 'ready'; }
-
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
                     
                     let total = 0;
                     const lines = o.text.split('\n');
                     let displayLines = [];
-                    
                     lines.forEach(line => {
                         line = line.trim();
                         if (line.startsWith('[')) { displayLines.push(line); return; } 
-                        
                         const match = line.match(/^(\d+)\s+(.*)/);
                         if (match) {
                             let qty = parseInt(match[1]);
@@ -401,32 +385,21 @@
                                 const parts = rest.split(':');
                                 const priceVal = parseFloat(parts[parts.length - 1]);
                                 const cleanName = parts.slice(0, -1).join(':').trim();
-                                if(!isNaN(priceVal)) {
-                                    total += qty * priceVal;
-                                    displayLines.push(`${qty} ${cleanName} (${priceVal}€)`);
-                                } else { displayLines.push(line); }
+                                if(!isNaN(priceVal)) { total += qty * priceVal; displayLines.push(`${qty} ${cleanName} (${priceVal}€)`); } 
+                                else { displayLines.push(line); }
                             } else { displayLines.push(line); }
                         } else { displayLines.push(line); }
                     });
 
                     div.innerHTML = `
-                        <div class="order-meta">
-                            <span>${o.from}</span>
-                            <span>${new Date(o.id).toLocaleTimeString()} • ${statusTxt}</span>
-                        </div>
+                        <div class="order-meta"><span>${o.from}</span><span>${new Date(o.id).toLocaleTimeString()} • ${statusTxt}</span></div>
                         <div class="order-content">${displayLines.join('\n')}</div>
                         ${total > 0 ? `<div class="order-total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>` : ''}
                     `;
-                    
-                    div.onclick = () => {
-                        App.selectedOrderId = o.id;
-                        document.getElementById('actionModal').style.display = 'flex';
-                    };
-
+                    div.onclick = () => { App.selectedOrderId = o.id; document.getElementById('actionModal').style.display = 'flex'; };
                     list.appendChild(div);
                 });
             },
-
             filterOrders: () => {
                 const mode = document.getElementById('tabMyOrders').classList.contains('active') ? 'my' : 'all';
                 UI.renderOrders(App.allActiveOrders, mode);
@@ -444,7 +417,6 @@
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
-                // ✅ UNIFIED APP: Volume Button Listener for Acceptance
                 document.addEventListener('keydown', (e) => {
                     if (['AudioVolumeUp', 'AudioVolumeDown'].includes(e.code) || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                         if(window.AudioEngine && window.AudioEngine.isRinging) {
@@ -463,7 +435,6 @@
                     const permission = await Notification.requestPermission();
                     if (permission === "granted") {
                         const registration = await navigator.serviceWorker.ready;
-                        // ✅✅✅ YOUR VAPID KEY HERE ✅✅✅
                         const token = await getToken(messaging, { 
                             vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
                             serviceWorkerRegistration: registration 
@@ -498,16 +469,29 @@
                     });
                 });
 
-                // ✅ 🔔 SHOW BELL BUTTON ON RING
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     bell.classList.add('ringing');
+                    document.getElementById('alarmOverlay').style.display = 'flex'; // Optional: Show overlay again if desired
+                });
+
+                // ✅ NEW: Handle Store Settings (Open/Closed)
+                socket.on('store-settings-update', (settings) => {
+                    if(settings) {
+                        // Check if Staff Status is CLOSED (false)
+                        if(settings.statusStaff === false) {
+                            document.getElementById('closedOverlay').style.display = 'flex';
+                            document.getElementById('btnSendOrder').style.display = 'none';
+                        } else {
+                            document.getElementById('closedOverlay').style.display = 'none';
+                            document.getElementById('btnSendOrder').style.display = 'block';
+                        }
+                    }
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
-                
                 socket.on('menu-update', (data) => {
                     const container = document.getElementById('waiterMenuRead');
                     container.innerHTML = '';
@@ -526,18 +510,13 @@
                             title.innerText = cat.name;
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
-
                             cat.items.forEach(itemStr => {
                                 if(itemStr && itemStr.trim()) {
                                     const { name, price } = parseItem(itemStr);
                                     const box = document.createElement('div');
                                     box.className = 'menu-item-box';
                                     box.innerText = name; 
-                                    
-                                    box.addEventListener('dblclick', (e) => { 
-                                        e.preventDefault(); 
-                                        App.addToOrder(itemStr.trim()); 
-                                    });
+                                    box.addEventListener('dblclick', (e) => { e.preventDefault(); App.addToOrder(itemStr.trim()); });
                                     itemsDiv.appendChild(box);
                                 }
                             });
@@ -551,7 +530,6 @@
                 });
 
                 socket.on('chat-message', (data) => App.appendChat(data));
-                
                 socket.on('orders-update', (orders) => {
                     App.allActiveOrders = orders;
                     const myCount = orders.filter(o => o.from === userData.name).length;
@@ -560,15 +538,18 @@
                 });
             },
 
-            // ✅ ACCEPT (Hide Bell, Notify Server)
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                
+                document.getElementById('alarmOverlay').style.display = 'none';
                 const bell = document.getElementById('staffBellBtn');
                 bell.style.display = 'none';
                 bell.classList.remove('ringing');
-                
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
+            },
+
+            muteAlarm: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                document.getElementById('alarmOverlay').style.display = 'none';
             },
 
             sendOrder: () => {
@@ -583,11 +564,9 @@
                      App.cancelUpdate();
                      return;
                 }
-
                 if(!txt) return alert("Κενή παραγγελία");
                 const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
                 window.socket.emit('new-order', `${header}\n${txt}`);
-                
                 document.getElementById('inpTable').value = '';
                 document.getElementById('inpCovers').value = '';
                 document.getElementById('inpOrderText').value = '';
@@ -615,15 +594,37 @@
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href="login.html"; },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(),500); },
-            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000),
+            
+            addToOrder: (item) => {
+                const txt = document.getElementById('inpOrderText');
+                let lines = txt.value.split('\n').filter(l => l.trim() !== '');
+                let found = false;
+                const { name } = parseItem(item); 
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].includes(name)) {
+                        const match = lines[i].match(/^(\d+)\s+(.*)$/);
+                        if(match && match[2].includes(name)) {
+                             let currentQty = parseInt(match[1] || '1');
+                             lines[i] = `${currentQty + 1} ${item}`;
+                             found = true;
+                             break;
+                        }
+                    }
+                }
+                if (!found) lines.push(`1 ${item}`);
+                txt.value = lines.join('\n');
+                txt.scrollTop = txt.scrollHeight;
+            }
         };
 
         window.onload = App.init;
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log("✅ Admin Service Worker Registered"))
-                .catch(err => console.log("❌ Admin SW Error:", err));
+                .then(() => console.log('✅ Staff Service Worker Registered'))
+                .catch(err => console.log('❌ Staff SW Error:', err));
         }
     </script>
 </body>
