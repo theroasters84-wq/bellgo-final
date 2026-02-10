@@ -51,9 +51,18 @@
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
         
-        /* BELL BTN (Hidden now, handled by overlay) */
-        #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
-        #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; }
+        /* BELL BTN (Διακριτικό κουδουνάκι) */
+        #staffBellBtn { 
+            background: #FFD700; 
+            color: black; 
+            border: 2px solid #FFD700; 
+            display: none; /* Κρυφό αρχικά */
+        }
+        #staffBellBtn.ringing { 
+            display: flex; 
+            animation: shake 0.5s infinite; /* Κουνιέται όταν χτυπάει */
+            box-shadow: 0 0 15px #FFD700;
+        }
 
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
@@ -81,23 +90,6 @@
         /* OVERLAYS */
         .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
         
-        /* ALARM OVERLAY (GREY) */
-        #alarmOverlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: #333333; /* Mono Gri requested */
-            z-index: 99999; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-        }
-        .alarm-btn-accept { padding: 25px 50px; background: #00E676; color: black; border: none; border-radius: 50px; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px #00E676; animation: pulse 1s infinite; margin-bottom: 30px; }
-        .alarm-btn-close { padding: 10px 20px; background: transparent; border: 2px solid #aaa; color: #aaa; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 16px; }
-
         /* START SCREEN */
         #startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; }
@@ -147,12 +139,6 @@
     <div id="startScreen">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Staff 🔔</h1>
         <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
-    </div>
-
-    <div id="alarmOverlay">
-        <h1 style="color:white; margin-bottom:30px; font-size:30px;">📞 ΣΕ ΚΑΛΟΥΝ!</h1>
-        <button class="alarm-btn-accept" onclick="App.acceptAlarmStaff()">✅ ΕΡΧΟΜΑΙ</button>
-        <button class="alarm-btn-close" onclick="App.muteAlarm()">❌ ΚΛΕΙΣΙΜΟ</button>
     </div>
 
     <div id="mainApp">
@@ -266,13 +252,11 @@
         alarmPlayer: null,     
         isRinging: false,
         wakeLock: null,
-        vibInt: null,
-
+        
         async init() {
             console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
             if (!this.keepAlivePlayer) {
                 this.keepAlivePlayer = document.createElement("audio");
-                this.keepAlivePlayer.id = 'keepAlive';
                 this.keepAlivePlayer.src = "tone19hz.wav"; 
                 this.keepAlivePlayer.loop = true;
                 this.keepAlivePlayer.volume = 1.0; 
@@ -280,7 +264,6 @@
             }
             if (!this.alarmPlayer) {
                 this.alarmPlayer = document.createElement("audio");
-                this.alarmPlayer.id = 'alarmSound';
                 this.alarmPlayer.src = "alert.mp3"; 
                 this.alarmPlayer.loop = true;
                 this.alarmPlayer.volume = 1.0;
@@ -288,7 +271,7 @@
             }
             this.requestWakeLock();
             this.setupMediaSession();
-            try { await this.keepAlivePlayer.play(); this.updateDisplay("online"); } catch (e) {}
+            try { await this.keepAlivePlayer.play(); } catch (e) {}
         },
 
         setupMediaSession() {
@@ -301,20 +284,15 @@
                     this.keepAlivePlayer.play();
                 }
             };
-            navigator.mediaSession.setActionHandler('play', handleNotificationClick);
-            navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
-            navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
-            navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
-            navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
+            ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handleNotificationClick));
         },
 
         async triggerAlarm() {
             if (this.isRinging) return;
             this.isRinging = true;
-            this.updateDisplay("alarm");
             this.alarmPlayer.currentTime = 0;
             try { await this.alarmPlayer.play(); } catch(e) {}
-            this.vibrate(true);
+            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
         },
 
         stopAlarm() {
@@ -322,40 +300,7 @@
             this.isRinging = false;
             this.alarmPlayer.pause();
             this.alarmPlayer.currentTime = 0;
-            this.updateDisplay("online");
-            this.vibrate(false);
-        },
-
-        updateDisplay(state) {
-            if (!("mediaSession" in navigator)) return;
-            if (state === "alarm") {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
-                    artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
-                    album: "BellGo Alert",
-                    artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
-                });
-            } else {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: "BellGo Online",
-                    artist: "Σύστημα Ενεργό",
-                    album: "Αναμονή...",
-                    artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
-                });
-            }
-            navigator.mediaSession.playbackState = "playing";
-        },
-
-        vibrate(active) {
-            if (!navigator.vibrate) return;
-            if (active) {
-                navigator.vibrate([1000, 500]);
-                if (this.vibInt) clearInterval(this.vibInt);
-                this.vibInt = setInterval(() => navigator.vibrate([1000, 500]), 1600);
-            } else {
-                if (this.vibInt) clearInterval(this.vibInt);
-                navigator.vibrate(0);
-            }
+            if (navigator.vibrate) navigator.vibrate(0);
         },
 
         async requestWakeLock() {
@@ -499,7 +444,7 @@
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
-                // Volume Button Listener
+                // ✅ UNIFIED APP: Volume Button Listener for Acceptance
                 document.addEventListener('keydown', (e) => {
                     if (['AudioVolumeUp', 'AudioVolumeDown'].includes(e.code) || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                         if(window.AudioEngine && window.AudioEngine.isRinging) {
@@ -553,16 +498,60 @@
                     });
                 });
 
-                // 🔔 RING BELL (Show Grey Overlay)
+                // ✅ 🔔 SHOW BELL BUTTON ON RING
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
-                    document.getElementById('alarmOverlay').style.display = 'flex';
+                    const bell = document.getElementById('staffBellBtn');
+                    bell.style.display = 'flex';
+                    bell.classList.add('ringing');
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 
-                socket.on('menu-update', (data) => { /* ...existing menu logic... */ }); // Keeping logic simple for brevity, full logic above
+                socket.on('menu-update', (data) => {
+                    const container = document.getElementById('waiterMenuRead');
+                    container.innerHTML = '';
+                    let menu = [];
+                    try {
+                        if(typeof data === 'string' && data.startsWith('[')) { menu = JSON.parse(data); } 
+                        else if (typeof data === 'object') { menu = data; } 
+                        else { const items = (data || "ΜΕΝΟΥ").split('\n'); menu = [{ name: "ΓΕΝΙΚΑ", items: items }]; }
+                    } catch(e) { menu = []; }
+
+                    if(Array.isArray(menu)) {
+                        menu.sort((a,b) => (a.order || 99) - (b.order || 99));
+                        menu.forEach(cat => {
+                            const title = document.createElement('div');
+                            title.className = 'category-title';
+                            title.innerText = cat.name;
+                            const itemsDiv = document.createElement('div');
+                            itemsDiv.className = 'category-items';
+
+                            cat.items.forEach(itemStr => {
+                                if(itemStr && itemStr.trim()) {
+                                    const { name, price } = parseItem(itemStr);
+                                    const box = document.createElement('div');
+                                    box.className = 'menu-item-box';
+                                    box.innerText = name; 
+                                    
+                                    box.addEventListener('dblclick', (e) => { 
+                                        e.preventDefault(); 
+                                        App.addToOrder(itemStr.trim()); 
+                                    });
+                                    itemsDiv.appendChild(box);
+                                }
+                            });
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'category-block';
+                            wrapper.appendChild(title);
+                            wrapper.appendChild(itemsDiv);
+                            container.appendChild(wrapper);
+                        });
+                    }
+                });
+
                 socket.on('chat-message', (data) => App.appendChat(data));
+                
                 socket.on('orders-update', (orders) => {
                     App.allActiveOrders = orders;
                     const myCount = orders.filter(o => o.from === userData.name).length;
@@ -571,17 +560,15 @@
                 });
             },
 
-            // ✅ ACCEPT (Notify Server)
+            // ✅ ACCEPT (Hide Bell, Notify Server)
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                document.getElementById('alarmOverlay').style.display = 'none';
+                
+                const bell = document.getElementById('staffBellBtn');
+                bell.style.display = 'none';
+                bell.classList.remove('ringing');
+                
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
-            },
-
-            // ❌ MUTE (Local Only)
-            muteAlarm: () => {
-                if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                document.getElementById('alarmOverlay').style.display = 'none';
             },
 
             sendOrder: () => {
@@ -608,7 +595,6 @@
                 alert("Εστάλη!");
             },
             
-            // ... (Rest of existing functions like toggleMyOrders, etc. kept same)
             setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
             cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText="ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
             prepareUpdateOrder: () => { 
@@ -633,6 +619,12 @@
         };
 
         window.onload = App.init;
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log("✅ Admin Service Worker Registered"))
+                .catch(err => console.log("❌ Admin SW Error:", err));
+        }
     </script>
 </body>
 </html>
