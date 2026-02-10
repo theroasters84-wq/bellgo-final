@@ -348,6 +348,7 @@
             // ✅ TRACK RINGING STATE
             lastRingingState: {}, 
             tempComingState: {},
+            lastStaffList: [], // To avoid re-rendering if data hasn't changed
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -368,6 +369,14 @@
                 App.connectSocket();
                 App.startHeartbeat();
                 App.requestNotifyPermission(); 
+                
+                // ✅ NEW: Start local Coming Cleanup Loop (instead of setTimeout in render)
+                setInterval(() => {
+                    // Re-render only if there are active "Coming" states to clear them eventually
+                    if (Object.keys(App.tempComingState).length > 0 && App.lastStaffList.length > 0) {
+                        App.renderStaffList(App.lastStaffList);
+                    }
+                }, 1000);
             },
             
             requestNotifyPermission: async () => {
@@ -375,6 +384,7 @@
                     const permission = await Notification.requestPermission();
                     if (permission === "granted") {
                         const registration = await navigator.serviceWorker.ready;
+                        // 👇 ΕΔΩ ΒΑΖΕΙΣ ΤΟ VAPID KEY ΣΟΥ 👇
                         const token = await getToken(messaging, { 
                             vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
                             serviceWorkerRegistration: registration 
@@ -438,13 +448,18 @@
                 socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
                 socket.on('chat-message', (data) => App.appendChat(data));
                 
-                socket.on('staff-list-update', (list) => App.renderStaffList(list));
+                socket.on('staff-list-update', (list) => {
+                    App.lastStaffList = list; // Cache list
+                    App.renderStaffList(list);
+                });
                 
                 // ✅ HANDLE "STAFF ACCEPTED ALARM" FOR ADMIN
                 socket.on('staff-accepted-alarm', (data) => {
                     if(!App.tempComingState) App.tempComingState = {};
                     // Force the "Coming" state immediately for this user
                     App.tempComingState[data.username] = Date.now();
+                    // Force re-render to show green immediately
+                    App.renderStaffList(App.lastStaffList);
                 });
                 
                 socket.on('orders-update', (orders) => {
@@ -466,8 +481,6 @@
             // ✅ ACCEPT ALARM (Called by Play/Pause or Click)
             acceptAlarm: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                // Admin stops the sound locally. Logic for notifying staff belongs to staff panel mostly,
-                // but if Admin wants to stop it, they just stop it locally.
                 window.socket.emit('admin-stop-ringing'); // 👈 ADDED: Stop loop for Admin
             },
 
@@ -775,11 +788,7 @@
                     }
                     container.appendChild(row);
                 });
-                
-                // Keep refreshing if someone is "Coming" to clear the status eventually
-                if(Object.keys(App.tempComingState).length > 0) {
-                    setTimeout(() => App.renderStaffList(list), 5000);
-                }
+                // No recursion here anymore!
             },
             
             toggleAdminChat: () => { 
