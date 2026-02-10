@@ -31,115 +31,99 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* HEADER - CLEANER */
+        /* HEADER */
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
-        .user-info { display: flex; flex-direction: column; max-width: 120px; }
-        .header-actions { display: flex; align-items: center; gap: 15px; }
-        
+        .store-identity { display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden; }
+        .status-dot { width: 12px; height: 12px; background: red; border-radius: 50%; box-shadow: 0 0 5px red; flex-shrink: 0; transition: background 0.3s; }
+        .header-store-input { background: transparent; border: none; border-bottom: 1px solid #444; color: #FFD700; font-size: 18px; font-weight: bold; width: 100%; max-width: 200px; padding: 5px; }
+        .header-store-input:focus { outline: none; border-bottom-color: #FFD700; }
+        .header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         .btn-icon { background: transparent; border: 1px solid #444; color: #ccc; width: 40px; height: 40px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
         .btn-icon:active { background: #333; transform: scale(0.95); }
         .btn-icon.menu-active { background: #FFD700; color: black; border-color: #FFD700; }
-
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
 
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
-        
-        /* MENU FULL PANEL (Hidden by default) */
-        #menuFullPanel { 
-            display: none; 
-            flex-direction: column; 
-            position: absolute; 
-            top: 60px; left: 0; width: 100%; height: calc(100% - 60px); 
-            background: #121212; z-index: 500; 
-            padding: 10px; 
-        }
-        
-        .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
-        .store-name-input { background: #222; border: 1px solid #444; color: #FFD700; padding: 8px; border-radius: 6px; font-weight: bold; width: 100%; text-align: center; font-size: 16px; }
+        .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: column; }
+
+        /* MENU FULL PANEL */
+        #menuFullPanel { display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 500; padding: 10px; }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .menu-title { font-size: 20px; font-weight: bold; color: #FFD700; }
         #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; overflow-y: auto; padding-bottom: 20px; }
         
+        /* MENU ITEMS */
         .category-box { background: #222; border: 2px solid #FFD700; color: #FFD700; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; width: 48%; text-align: center; cursor: pointer; position: relative; min-height: 60px; display:flex; align-items:center; justify-content:center; }
         .category-order { position: absolute; top: 2px; left: 5px; font-size: 10px; color: #777; }
         .btn-delete-cat { position: absolute; top: -8px; right: -8px; background: #D32F2F; color: white; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
         
-        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; width: 48%; }
-        .menu-input-box { background: #333; border: 1px solid #555; color: white; padding: 10px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; }
+        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; width: 48%; position:relative; }
+        .menu-input-box { background: #333; border: 1px solid #555; color: white; padding: 10px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; padding-right: 35px; }
         .btn-item-del { background: #D32F2F; color: white; border: none; width: 30px; height: 35px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        /* EXTRAS BUTTON IN MENU */
+        .btn-item-extras { 
+            position: absolute; right: 35px; top: 2px; 
+            background: #2196F3; color: white; border: none; 
+            width: 28px; height: 31px; border-radius: 4px; 
+            font-size: 18px; font-weight: bold; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .has-extras { background: #00E676 !important; color: black !important; }
+
         .btn-add { background: #2196F3; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 18px; }
         .btn-back { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; display: none; }
 
-        /* ORDERS DESKTOP AREA */
-        .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: column; }
+        /* DESKTOP AREA */
         #desktopArea { flex: 1; position: relative; background: #181818; padding: 15px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 15px; overflow-y: auto; }
-        
         .order-folder { width: 100px; height: 120px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; }
         .order-folder.ringing { animation: shake 0.5s infinite; }
         .folder-icon { font-size: 60px; }
         .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; margin-top: 5px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-time { font-size: 11px; color: #000; background: #FFD700; padding: 2px 6px; border-radius: 10px; margin-top: -10px; font-weight: bold; z-index: 2; position: relative; }
 
-        /* STAFF SIDEBAR (Improved) */
-        #adminStaffSidebar { 
-            height: 160px; /* Increased height */
-            background: #202020; 
-            border-top: 2px solid #333; 
-            display: flex; 
-            flex-direction: column; 
-            flex-shrink: 0; 
-        }
-        .sidebar-title { padding: 5px; background: #252525; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 11px; }
-        #staffList { 
-            flex: 1; 
-            overflow-x: auto; 
-            overflow-y: hidden; 
-            padding: 10px; 
-            display: grid; 
-            grid-template-rows: repeat(2, 1fr); /* 2 rows explicitly */
-            grid-auto-flow: column; 
-            gap: 8px; 
-            justify-content: start;
-        }
-        .btn-staff { 
-            width: 140px; 
-            height: 100%; 
-            padding: 5px; 
-            background: #333; 
-            border: 2px solid #555; 
-            border-radius: 8px; 
-            color: white; 
-            font-weight: bold; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            text-align: center; 
-            cursor: pointer; 
-            position: relative;
-        }
-        .btn-staff.waiter { border-left: 4px solid #64B5F6; }
-        .btn-staff.driver { border-left: 4px solid #FF5252; }
-        .btn-delete { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; background: #D32F2F; color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* STAFF SIDEBAR */
+        #staffContainer { background: #202020; border-top: 2px solid #333; display: flex; flex-direction: column; flex-shrink: 0; transition: height 0.3s ease; height: 180px; position: relative; }
+        #staffContainer.minimized { height: 30px; overflow: hidden; }
+        .sidebar-header { padding: 5px; background: #252525; border-bottom: 1px solid #333; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+        .sidebar-toggle-icon { margin-left: 8px; font-size: 12px; color: #FFD700; }
+        #staffList { flex: 1; overflow-x: auto; overflow-y: hidden; padding: 10px; display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; justify-content: start; }
+        .btn-staff { width: 130px; height: 100%; padding: 5px; border-radius: 8px; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; position: relative; border: 2px solid transparent; }
+        .btn-staff.waiter { background: #1565C0; border-color: #64B5F6; }
+        .btn-staff.driver { background: #C62828; border-color: #FF5252; }
+        .btn-delete { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* MODALS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
-        .modal-box { background: #222; padding: 25px; border-radius: 15px; border: 1px solid #444; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
-        .modal-title { color: #FFD700; font-size: 22px; font-weight: bold; margin: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .modal-btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; color: white; }
+        .modal-box { background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 12px; max-height: 90vh; overflow-y: auto; }
+        .modal-title { color: #FFD700; font-size: 20px; font-weight: bold; margin: 0; border-bottom: 1px solid #444; padding-bottom: 8px; }
+        .modal-btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: white; width: 100%; }
         
-        /* SETTINGS SPECIFIC */
+        /* EXTRAS MODAL STYLES */
+        .extras-list { text-align: left; max-height: 200px; overflow-y: auto; margin-bottom: 10px; }
+        .extra-item-row { display: flex; justify-content: space-between; align-items: center; background: #333; padding: 8px; margin-bottom: 5px; border-radius: 4px; }
+        .extra-inputs { display: flex; gap: 5px; margin-bottom: 10px; }
+        .extra-name-inp { flex: 2; background: #111; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; }
+        .extra-price-inp { flex: 1; background: #111; border: 1px solid #444; color: #00E676; padding: 8px; border-radius: 4px; text-align: center; }
+
+        /* SETTINGS */
         .settings-section { background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: left; }
-        .settings-label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; }
-        
-        /* SWITCHES INSIDE MODAL */
-        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 5px 0; border-bottom: 1px solid #333; }
+        .settings-label { color: #aaa; font-size: 11px; margin-bottom: 5px; display: block; text-transform: uppercase; }
+        .inp-settings { width:100%; padding:8px; background:#111; color:white; border:1px solid #555; border-radius:5px; font-size:14px; }
+        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 4px 0; border-bottom: 1px solid #333; }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; transition: .4s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #00E676; }
         input:checked + .slider:before { transform: translateX(20px); }
+
+        /* WEEK SCHEDULE */
+        .day-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .day-label { width: 40px; font-size: 12px; color: #ccc; font-weight: bold; }
+        .day-input { flex: 1; background: #333; border: 1px solid #555; color: white; padding: 5px; border-radius: 4px; font-size: 12px; text-align: center; }
 
         /* ORDER WINDOW */
         #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
@@ -150,6 +134,7 @@
         .order-items-section { color: #fff; font-weight: bold; font-size: 20px; line-height: 1.5; white-space: pre-wrap; }
         .win-footer { padding: 20px; border-top: 2px solid #333; background: #1a1a1a; }
         .btn-win-action { width: 100%; padding: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 22px; }
+        .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
         /* PIN PAD */
         .pin-display { font-size: 30px; letter-spacing: 10px; margin: 10px 0; font-weight: bold; color: #00E676; min-height: 40px; }
@@ -178,13 +163,11 @@
 <body>
     <div id="mainApp">
         <div class="header">
-            <div style="display:flex; align-items:center;">
-                <span id="connDot" style="width:8px; height:8px; background:red; border-radius:50%; display:inline-block; margin-right:8px;" onclick="App.forceReconnect()"></span>
-                <div class="user-info">
-                    <span id="headerName" style="font-weight:bold; font-size:14px; color:#FFD700;">ADMIN</span>
-                    <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
-                </div>
+            <div class="store-identity">
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
+                <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
             </div>
+            
             <div class="header-actions">
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -199,10 +182,8 @@
         <div class="admin-main-area">
             <div id="menuFullPanel">
                 <div class="menu-header">
-                    <div style="flex:1;">
-                        <input type="text" id="inpStoreName" class="store-name-input" placeholder="Όνομα Καταστήματος...">
-                    </div>
-                    <div style="display:flex; gap:10px; margin-left:10px;">
+                    <span class="menu-title">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
+                    <div style="display:flex; gap:10px;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 ΠΙΣΩ</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
                     </div>
@@ -214,8 +195,11 @@
             
             <div id="windowsContainer"></div>
             
-            <div id="adminStaffSidebar">
-                <div class="sidebar-title">ΠΡΟΣΩΠΙΚΟ (ONLINE)</div>
+            <div id="staffContainer">
+                <div class="sidebar-header" onclick="App.toggleStaffPanel()">
+                    <span style="font-size:11px; font-weight:bold; color:#aaa;">ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
+                    <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
+                </div>
                 <div id="staffList"></div>
             </div>
         </div>
@@ -235,12 +219,31 @@
         </div>
     </div>
 
+    <div id="extrasModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" id="extrasModalTitle">EXTRA ΥΛΙΚΑ</h3>
+            <div id="extrasListContainer" class="extras-list"></div>
+            
+            <div style="border-top:1px solid #444; padding-top:10px;">
+                <div class="settings-label">ΝΕΟ EXTRA</div>
+                <div class="extra-inputs">
+                    <input type="text" id="inpExtraName" class="extra-name-inp" placeholder="Περιγραφή (π.χ. Γλυκός)">
+                    <input type="number" id="inpExtraPrice" class="extra-price-inp" placeholder="€" step="0.10">
+                </div>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()">➕ ΠΡΟΣΘΗΚΗ</button>
+            </div>
+            
+            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveExtras()">💾 ΕΤΟΙΜΟ</button>
+            <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
             
             <div class="settings-section">
-                <div class="settings-label">ΚΑΤΑΣΤΑΣΗ ΚΑΤΑΣΤΗΜΑΤΟΣ</div>
+                <div class="settings-label">ΔΙΑΚΟΠΤΕΣ ΛΕΙΤΟΥΡΓΙΑΣ</div>
                 <div class="switch-row">
                     <span>ΠΕΛΑΤΕΣ (Delivery)</span>
                     <label class="switch">
@@ -257,31 +260,41 @@
                 </div>
             </div>
 
+            <div class="settings-section">
+                <div class="settings-label">ΓΕΝΙΚΑ</div>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="time" id="inpResetTime" class="inp-settings" title="Ώρα Αναπαλήρωσης Μενού" onchange="App.autoSaveSettings()">
+                    <input type="text" id="inpHours" class="inp-settings" placeholder="Ωράριο (π.χ. 12:00-00:00)" onblur="App.autoSaveSettings()">
+                </div>
+                <button class="modal-btn" style="background:#444; font-size:13px; margin-top:5px;" onclick="App.openScheduleModal()">📅 ΠΡΟΓΡΑΜΜΑ ΔΙΑΝΟΜΗΣ</button>
+            </div>
+
             <div class="settings-section" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="modal-btn" style="background:#FFD700; color:black; font-size:14px;" onclick="App.openPinModal()">
-                    🔑 Αλλαγή PIN
-                </button>
-                <button class="modal-btn" style="background:#2196F3; font-size:14px;" onclick="App.showLink()">
-                    🔗 Share Link
-                </button>
+                <button class="modal-btn" style="background:#FFD700; color:black; font-size:13px;" onclick="App.openPinModal()">🔑 PIN</button>
+                <button class="modal-btn" style="background:#2196F3; font-size:13px;" onclick="App.showLink()">🔗 Link</button>
             </div>
 
             <div class="settings-section">
-                <div class="settings-label">ΩΡΑ RESET & ΠΛΗΡΩΜΕΣ</div>
-                <input type="time" id="inpResetTime" style="width:100%; padding:8px; background:#111; color:white; border:1px solid #555; border-radius:5px; margin-bottom:10px;">
-                
-                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:8px; border-radius:5px; font-weight:bold; cursor:pointer;">
+                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">
                     💳 Σύνδεση Stripe
                 </button>
                 <div id="stripeStatus" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">Checking...</div>
             </div>
 
-            <button class="modal-btn" style="background:#00E676; margin-top:5px;" onclick="App.saveSettings()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-            <button class="modal-btn" style="background:#D32F2F;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ (EXIT)</button>
+            <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ (EXIT)</button>
             <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
     
+    <div id="scheduleModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">📅 ΠΡΟΓΡΑΜΜΑ</h3>
+            <div id="weekDaysContainer" style="text-align:left;"></div>
+            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveSchedule()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button onclick="document.getElementById('scheduleModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΠΙΣΩ</button>
+        </div>
+    </div>
+
     <div id="pinChangeModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title">ΑΛΛΑΓΗ PIN</h3>
@@ -388,21 +401,17 @@
             lastRingingState: {}, 
             tempComingState: {},
             lastStaffList: [],
+            scheduleData: {},
+            
+            // EXTRAS STATE
+            currentExtrasItemIndex: null,
+            currentExtrasCatIndex: null,
+            tempExtras: [],
 
             init: () => {
-                document.getElementById('headerName').innerText = userData.name;
-                document.getElementById('headerStore').innerText = userData.store;
-                
                 document.body.addEventListener('click', () => { 
                     if(window.AudioEngine) window.AudioEngine.init();
                 }, {once:true});
-                
-                const nameInput = document.getElementById('inpStoreName');
-                nameInput.addEventListener('blur', () => {
-                    const newName = nameInput.value.trim();
-                    if(newName) window.socket.emit('save-store-name', newName);
-                });
-                nameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') nameInput.blur(); });
                 
                 App.connectSocket();
                 App.startHeartbeat();
@@ -464,10 +473,12 @@
                 
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
-                        if(settings.name) document.getElementById('inpStoreName').value = settings.name;
+                        if(settings.name) document.getElementById('inpStoreNameHeader').value = settings.name;
                         document.getElementById('switchCust').checked = settings.statusCustomer;
                         document.getElementById('switchStaff').checked = settings.statusStaff;
                         if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
+                        if(settings.hours) document.getElementById('inpHours').value = settings.hours;
+                        if(settings.schedule) App.scheduleData = settings.schedule;
                         
                         const statusEl = document.getElementById('stripeStatus');
                         if (settings.stripeConnectId) {
@@ -503,6 +514,11 @@
                 });
             },
             
+            saveStoreName: () => {
+                const newName = document.getElementById('inpStoreNameHeader').value.trim();
+                if(newName) window.socket.emit('save-store-name', newName);
+            },
+
             toggleStatus: (type) => {
                 const isOpen = (type === 'customer') 
                     ? document.getElementById('switchCust').checked 
@@ -515,7 +531,6 @@
                 window.socket.emit('admin-stop-ringing'); 
             },
 
-            // --- MENU TOGGLE ---
             toggleMenuMode: () => {
                 const panel = document.getElementById('menuFullPanel');
                 const btn = document.getElementById('btnMenuToggle');
@@ -527,34 +542,74 @@
                     btn.classList.add('menu-active');
                 }
             },
+            
+            toggleStaffPanel: () => {
+                const el = document.getElementById('staffContainer');
+                const icon = document.getElementById('staffToggleIcon');
+                if (el.classList.contains('minimized')) {
+                    el.classList.remove('minimized');
+                    icon.innerText = "▼";
+                } else {
+                    el.classList.add('minimized');
+                    icon.innerText = "▲";
+                }
+            },
 
             // --- MODALS ---
             openPinModal: () => {
-                document.getElementById('settingsModal').style.display = 'none'; // Close Settings
+                document.getElementById('settingsModal').style.display = 'none'; 
                 pinValue = '';
                 PIN.updateDisplay();
                 document.getElementById('pinChangeModal').style.display = 'flex';
             },
             closePinModal: () => { 
                 document.getElementById('pinChangeModal').style.display = 'none'; 
-                document.getElementById('settingsModal').style.display = 'flex'; // Reopen Settings
+                document.getElementById('settingsModal').style.display = 'flex'; 
             },
-            
             openSettingsModal: () => { document.getElementById('settingsModal').style.display = 'flex'; },
             
-            saveSettings: () => {
+            autoSaveSettings: () => {
                 const time = document.getElementById('inpResetTime').value;
-                if(time) window.socket.emit('save-store-settings', { resetTime: time });
+                const hours = document.getElementById('inpHours').value;
+                window.socket.emit('save-store-settings', { resetTime: time, hours: hours });
+            },
+            saveSettings: () => {
+                App.autoSaveSettings();
                 document.getElementById('settingsModal').style.display = 'none';
             },
 
+            openScheduleModal: () => {
+                document.getElementById('settingsModal').style.display = 'none';
+                const days = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
+                const container = document.getElementById('weekDaysContainer');
+                container.innerHTML = '';
+                days.forEach(day => {
+                    const row = document.createElement('div');
+                    row.className = 'day-row';
+                    const val = App.scheduleData[day] || '';
+                    row.innerHTML = `<span class="day-label">${day.substring(0,3)}</span>
+                                     <input type="text" class="day-input" data-day="${day}" value="${val}" placeholder="π.χ. 18:00 - 23:00">`;
+                    container.appendChild(row);
+                });
+                document.getElementById('scheduleModal').style.display = 'flex';
+            },
+            saveSchedule: () => {
+                const inputs = document.querySelectorAll('.day-input');
+                let newSched = {};
+                inputs.forEach(inp => { newSched[inp.dataset.day] = inp.value; });
+                App.scheduleData = newSched;
+                window.socket.emit('save-store-settings', { schedule: newSched });
+                document.getElementById('scheduleModal').style.display = 'none';
+                document.getElementById('settingsModal').style.display = 'flex';
+            },
+
             showLink: () => {
-                document.getElementById('settingsModal').style.display = 'none'; // Close Settings
+                document.getElementById('settingsModal').style.display = 'none'; 
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
                 const qrEl = document.getElementById('qrcode');
                 const baseUrl = window.location.origin;
-                const customName = document.getElementById('inpStoreName').value.trim();
+                const customName = document.getElementById('inpStoreNameHeader').value.trim();
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
                 if(customName) fullLink += `&name=${encodeURIComponent(customName)}`;
                 
@@ -614,11 +669,33 @@
                 const container = document.getElementById('menuInputContainer');
                 const wrapper = document.createElement('div');
                 wrapper.className = 'item-wrapper';
+                
+                // Determine display values
+                let displayText = "";
+                let itemObj = null;
+
+                if (typeof val === 'object' && val !== null) {
+                    itemObj = val;
+                    displayText = `${itemObj.name}:${itemObj.price}`;
+                } else {
+                    displayText = val; // Assuming string "Name:Price"
+                }
+
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'menu-input-box';
-                input.value = val;
+                input.value = displayText;
                 input.placeholder = "Προϊόν:Τιμή"; 
+                
+                // EXTRAS BUTTON
+                const extrasBtn = document.createElement('button');
+                extrasBtn.className = 'btn-item-extras';
+                extrasBtn.innerHTML = '+';
+                if (itemObj && itemObj.extras && itemObj.extras.length > 0) {
+                    extrasBtn.classList.add('has-extras');
+                }
+                extrasBtn.onclick = () => { App.openExtrasModal(App.currentCategoryIndex, index); };
+
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-item-del';
                 delBtn.innerText = 'X';
@@ -630,29 +707,124 @@
                     };
                     App.openSaveModal();
                 };
+                
                 input.addEventListener('blur', () => {
                     const newVal = input.value.trim();
+                    if (!newVal) return;
+                    
                     const cat = App.menuData[App.currentCategoryIndex];
-                    if(newVal !== '' && newVal !== val) { 
-                        App.pendingAction = () => {
-                            if(index === null && !cat.items.includes(newVal)) cat.items.push(newVal); 
-                            else if (index !== null) cat.items[index] = newVal;
-                        };
-                        App.openSaveModal();
+                    
+                    // Parse Name:Price
+                    const parts = newVal.split(':');
+                    let price = 0; 
+                    let name = newVal;
+                    if(parts.length > 1) {
+                         name = parts.slice(0, -1).join(':').trim();
+                         price = parseFloat(parts[parts.length-1]) || 0;
                     }
+
+                    // Preserve existing object structure if it exists
+                    let newItem;
+                    if (index !== null && typeof cat.items[index] === 'object') {
+                        newItem = { ...cat.items[index], name: name, price: price };
+                    } else {
+                        newItem = { name: name, price: price, extras: [] };
+                    }
+
+                    App.pendingAction = () => {
+                        if(index === null) cat.items.push(newItem); 
+                        else cat.items[index] = newItem;
+                    };
+                    App.openSaveModal();
                 });
+                
                 wrapper.appendChild(input);
+                wrapper.appendChild(extrasBtn);
                 if (index !== null) wrapper.appendChild(delBtn); 
                 container.appendChild(wrapper);
                 if(index === null) input.focus();
             },
-            goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             
+            // --- EXTRAS LOGIC ---
+            openExtrasModal: (catIdx, itemIdx) => {
+                if (itemIdx === null) return alert("Αποθηκεύστε πρώτα το προϊόν!");
+                App.currentExtrasCatIndex = catIdx;
+                App.currentExtrasItemIndex = itemIdx;
+                
+                const item = App.menuData[catIdx].items[itemIdx];
+                // Ensure item is an object
+                if (typeof item === 'string') {
+                    const parts = item.split(':');
+                    let p = 0, n = item;
+                    if(parts.length > 1) { n = parts.slice(0,-1).join(':'); p = parseFloat(parts[parts.length-1])||0; }
+                    App.tempExtras = []; // No extras yet
+                } else {
+                    App.tempExtras = JSON.parse(JSON.stringify(item.extras || []));
+                }
+
+                document.getElementById('extrasModalTitle').innerText = "EXTRAS: " + (typeof item==='string'?item.split(':')[0]:item.name);
+                App.renderExtrasList();
+                document.getElementById('extrasModal').style.display = 'flex';
+            },
+
+            renderExtrasList: () => {
+                const container = document.getElementById('extrasListContainer');
+                container.innerHTML = '';
+                App.tempExtras.forEach((ex, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'extra-item-row';
+                    div.innerHTML = `<span>${ex.name} ${ex.price>0 ? `(+${ex.price}€)`:''}</span>
+                                     <button class="btn-del-extra" onclick="App.removeExtra(${idx})">X</button>`;
+                    container.appendChild(div);
+                });
+            },
+
+            addExtraRow: () => {
+                const name = document.getElementById('inpExtraName').value.trim();
+                const price = parseFloat(document.getElementById('inpExtraPrice').value) || 0;
+                if(!name) return;
+                App.tempExtras.push({ name, price });
+                document.getElementById('inpExtraName').value = '';
+                document.getElementById('inpExtraPrice').value = '';
+                App.renderExtrasList();
+            },
+
+            removeExtra: (idx) => {
+                App.tempExtras.splice(idx, 1);
+                App.renderExtrasList();
+            },
+
+            saveExtras: () => {
+                const catIdx = App.currentExtrasCatIndex;
+                const itemIdx = App.currentExtrasItemIndex;
+                const item = App.menuData[catIdx].items[itemIdx];
+                
+                // Convert string item to object if needed
+                if (typeof item === 'string') {
+                    const parts = item.split(':');
+                    let p = 0, n = item;
+                    if(parts.length > 1) { n = parts.slice(0,-1).join(':'); p = parseFloat(parts[parts.length-1])||0; }
+                    App.menuData[catIdx].items[itemIdx] = { name: n, price: p, extras: App.tempExtras };
+                } else {
+                    App.menuData[catIdx].items[itemIdx].extras = App.tempExtras;
+                }
+                
+                App.executeSave('permanent'); // Auto save immediately
+                document.getElementById('extrasModal').style.display = 'none';
+            },
+
+            goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             openSaveModal: () => { document.getElementById('saveModeModal').style.display = 'flex'; },
             
             executeSave: (mode) => {
                 if (App.pendingAction) { App.pendingAction(); App.pendingAction = null; }
-                App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i && i.trim() !== ''); });
+                // Clean empty items
+                App.menuData.forEach(cat => { 
+                    cat.items = cat.items.filter(i => {
+                        if(typeof i === 'string') return i.trim() !== '';
+                        return i.name && i.name.trim() !== '';
+                    }); 
+                });
                 window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
                 document.getElementById('saveModeModal').style.display = 'none';
                 App.renderMenu(); 
@@ -769,12 +941,15 @@
                     else if (App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000)) { stTxt = "🚀 ΕΡΧΕΤΑΙ"; stCol = "#00E676"; }
                     else if (isAway) { stTxt = "AWAY"; stCol = "#FF9800"; }
 
-                    btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
+                    // Apply Color Classes
+                    let roleClass = 'waiter'; // Default blue
+                    if (u.role === 'driver') roleClass = 'driver'; // Red for driver
+
+                    btn.className = `btn-staff ${roleClass} ${isAway ? 'ghost' : ''}`;
                     btn.innerHTML = `<span>${u.username}</span><span style="color:${stCol}; font-weight:bold;">${stTxt}</span>`;
                     
                     if (stCol === 'yellow') btn.style.borderColor = 'yellow';
                     else if (stCol === '#00E676') btn.style.borderColor = '#00E676';
-                    else btn.style.borderColor = '#555'; 
                     
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
