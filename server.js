@@ -219,51 +219,44 @@ app.post('/create-order-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ---------------- NOTIFICATION LOGIC (SYSTEM MESSAGE) ---------------- */
+/* ---------------- NOTIFICATION LOGIC (SYSTEM NOTIFICATIONS FIXED) ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    // Μην στέλνεις σε Native apps (αυτά το χειρίζονται μόνα τους)
+    // Check if user has token and is NOT native app
     if (target && target.fcmToken && !target.isNative) {
         
-        // Καθορισμός URL ανάλογα με τον ρόλο
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
 
         const msg = {
             token: target.fcmToken,
-            
-            // ✅ CRITICAL: Αυτό το κομμάτι εμφανίζει την ειδοποίηση ακόμα και με κλειστό Chrome
+            // ✅ "notification" block: Εμφανίζει ειδοποίηση ακόμα και αν η καρτέλα είναι ΚΛΕΙΣΤΗ
             notification: {
                 title: title,
                 body: body,
             },
-
-            // Android Settings
+            // Android Specifics
             android: { 
                 priority: "high",
                 notification: {
                     sound: "default",
-                    tag: "bellgo-alarm", // Για να μην στοιβάζονται
-                    clickAction: `${YOUR_DOMAIN}${targetUrl}` // Για να ανοίγει η εφαρμογή στο κλικ
+                    tag: "bellgo-alarm",
+                    clickAction: `${YOUR_DOMAIN}${targetUrl}`
                 }
             },
-
-            // Web Push Settings (Chrome Desktop/Android)
+            // WebPush (Desktop/Chrome Android)
             webpush: { 
                 headers: { "Urgency": "high" },
-                fcm_options: { 
-                    link: `${YOUR_DOMAIN}${targetUrl}` 
-                },
+                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
                 notification: {
                     title: title,
                     body: body,
                     icon: '/admin.png',
-                    requireInteraction: true, // Να μένει στην οθόνη
+                    requireInteraction: true,
                     tag: 'bellgo-alarm',
                     vibrate: [500, 200, 500]
                 }
             },
-
-            // Data payload για το Service Worker (αν είναι ανοιχτό)
+            // Data Payload (For Service Worker logic)
             data: { 
                 ...dataPayload, 
                 title: title, 
@@ -317,11 +310,13 @@ io.on('connection', (socket) => {
         if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
     });
 
+    // ✅ FIXED: GLOBAL BROADCAST FOR TOGGLE STATUS
     socket.on('toggle-status', (data) => {
         if (data.type === 'customer') storeSettings.statusCustomer = data.isOpen;
         if (data.type === 'staff') storeSettings.statusStaff = data.isOpen;
         saveSettingsToDisk();
-        io.to(socket.store).emit('store-settings-update', storeSettings);
+        console.log(`🔄 Status Update: Cust=${storeSettings.statusCustomer}, Staff=${storeSettings.statusStaff}`);
+        io.emit('store-settings-update', storeSettings); // <-- Changed from io.to().emit()
     });
 
     socket.on('join-store', (data) => {
