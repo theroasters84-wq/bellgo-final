@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
-const fs = require('fs');
+// const fs = require('fs'); // ❌ Δεν χρειάζεται πλέον
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
@@ -15,12 +15,14 @@ const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
 const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
+let db;
 try {
     const serviceAccount = require("./serviceAccountKey.json");
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    console.log("✅ Firebase Admin Initialized");
+    db = admin.firestore(); // ✅ Firestore Database Reference
+    console.log("✅ Firebase Admin & Firestore Initialized");
 } catch (e) {
     console.log("⚠️ Firebase Warning: serviceAccountKey.json not found.");
 }
@@ -38,16 +40,9 @@ const io = new Server(server, {
     pingInterval: 25000
 });
 
-/* ---------------- DATA STORE ---------------- */
+/* ---------------- DATA STORE (MEMORY) ---------------- */
 let activeUsers = {};
 let activeOrders = [];
-
-// Files
-const MENU_FILE = path.join(__dirname, 'saved_menu.json');
-const SETTINGS_FILE = path.join(__dirname, 'store_settings.json');
-const ORDERS_FILE = path.join(__dirname, 'active_orders.json');
-
-// Menu Memory
 let masterMenu = []; 
 let liveMenu = [];   
 
@@ -61,28 +56,57 @@ let storeSettings = {
     stripeConnectId: "" 
 }; 
 
-// LOAD DATA
-try {
-    if (fs.existsSync(MENU_FILE)) {
-        const raw = fs.readFileSync(MENU_FILE, 'utf8');
-        try { 
-            masterMenu = JSON.parse(raw); 
-            liveMenu = JSON.parse(JSON.stringify(masterMenu));
-        } catch { masterMenu = []; liveMenu = []; }
-    }
-    if (fs.existsSync(SETTINGS_FILE)) {
-        const loaded = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-        storeSettings = { ...storeSettings, ...loaded };
-    }
-    if (fs.existsSync(ORDERS_FILE)) {
-        activeOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
-    }
-} catch (e) { console.log("Load Error", e); }
+/* ---------------- FIREBASE LOAD/SAVE LOGIC ---------------- */
+const STORE_DOC_ID = 'main_store'; // Single store for now
 
-// SAVE HELPERS
-function saveOrdersToDisk() { try { fs.writeFileSync(ORDERS_FILE, JSON.stringify(activeOrders, null, 2), 'utf8'); } catch (e) {} }
-function saveSettingsToDisk() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(storeSettings, null, 2), 'utf8'); } catch (e) {} }
-function saveMenuToDisk() { try { fs.writeFileSync(MENU_FILE, JSON.stringify(masterMenu, null, 2), 'utf8'); } catch (e) {} }
+async function loadDataFromFirebase() {
+    try {
+        const doc = await db.collection('stores').doc(STORE_DOC_ID).get();
+        if (doc.exists) {
+            const data = doc.data();
+            if (data.settings) storeSettings = { ...storeSettings, ...data.settings };
+            if (data.menu) {
+                masterMenu = data.menu;
+                liveMenu = JSON.parse(JSON.stringify(masterMenu));
+            }
+            if (data.orders) {
+                // Φιλτράρουμε παλιές παραγγελίες (>24h) για να μην γεμίζει η μνήμη
+                const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+                activeOrders = (data.orders || []).filter(o => o.id > yesterday);
+            }
+            console.log("📥 Data Loaded from Firebase");
+        } else {
+            console.log("🆕 No data in Firebase. Creating new store doc...");
+            saveAllToFirebase();
+        }
+    } catch (e) {
+        console.error("❌ Firebase Load Error:", e.message);
+    }
+}
+
+// Helper to save specific parts
+async function saveSettingsToFirebase() {
+    try { await db.collection('stores').doc(STORE_DOC_ID).set({ settings: storeSettings }, { merge: true }); } catch(e){console.error(e);}
+}
+async function saveMenuToFirebase() {
+    try { await db.collection('stores').doc(STORE_DOC_ID).set({ menu: masterMenu }, { merge: true }); } catch(e){console.error(e);}
+}
+async function saveOrdersToFirebase() {
+    try { await db.collection('stores').doc(STORE_DOC_ID).set({ orders: activeOrders }, { merge: true }); } catch(e){console.error(e);}
+}
+async function saveAllToFirebase() {
+    try { 
+        await db.collection('stores').doc(STORE_DOC_ID).set({
+            settings: storeSettings,
+            menu: masterMenu,
+            orders: activeOrders
+        }); 
+    } catch(e){console.error(e);}
+}
+
+// 🚀 INITIAL LOAD
+loadDataFromFirebase();
+
 
 /* ---------------- VIRTUAL ROUTES ---------------- */
 app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'order.html')); });
@@ -107,7 +131,7 @@ app.get('/stripe-connect-callback', async (req, res) => {
             code: code,
         });
         storeSettings.stripeConnectId = response.stripe_user_id;
-        saveSettingsToDisk();
+        saveSettingsToFirebase(); // ✅ Firebase Save
         io.emit('store-settings-update', storeSettings);
         res.send("<h1>✅ Επιτυχία!</h1><p>Ο λογαριασμός συνδέθηκε.</p><script>setTimeout(() => window.location.href='/premium.html', 2000);</script>");
     } catch (err) {
@@ -219,7 +243,7 @@ app.post('/create-order-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ---------------- NOTIFICATION LOGIC (SYSTEM MESSAGE FIXED) ---------------- */
+/* ---------------- NOTIFICATION LOGIC ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
     if (target && target.fcmToken && !target.isNative) {
         let targetUrl = "/stafpremium.html";
@@ -227,7 +251,6 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ✅ SYSTEM NOTIFICATION (Wake up device)
             notification: {
                 title: title,
                 body: body,
@@ -249,7 +272,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                     icon: '/admin.png',
                     requireInteraction: true, 
                     tag: 'bellgo-alarm',
-                    renotify: true, // ✅ KEY FOR LOOPING WITH CLOSED BROWSER
+                    renotify: true,
                     vibrate: [500, 200, 500]
                 }
             },
@@ -280,7 +303,8 @@ function updateStore(store) {
     io.to(store).emit('orders-update', activeOrders.filter(o => o.store === store));
     io.to(store).emit('menu-update', liveMenu);
     io.to(store).emit('store-settings-update', storeSettings);
-    saveOrdersToDisk();
+    // saveOrdersToDisk(); // ❌ REMOVED DISK SAVE
+    saveOrdersToFirebase(); // ✅ ADDED FIREBASE SAVE
 }
 
 /* ---------------- SOCKET.IO ---------------- */
@@ -290,7 +314,7 @@ io.on('connection', (socket) => {
     socket.on('set-new-pin', (data) => {
         storeSettings.pin = data.pin;
         if(data.email) storeSettings.adminEmail = data.email; 
-        saveSettingsToDisk();
+        saveSettingsToFirebase(); // ✅ Firebase Save
         socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
     });
     socket.on('verify-pin', (pin) => {
@@ -306,13 +330,12 @@ io.on('connection', (socket) => {
         if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
     });
 
-    // ✅ FIXED: GLOBAL BROADCAST FOR TOGGLE STATUS
     socket.on('toggle-status', (data) => {
         if (data.type === 'customer') storeSettings.statusCustomer = data.isOpen;
         if (data.type === 'staff') storeSettings.statusStaff = data.isOpen;
-        saveSettingsToDisk();
+        saveSettingsToFirebase(); // ✅ Firebase Save
         console.log(`🔄 Status Update: Cust=${storeSettings.statusCustomer}, Staff=${storeSettings.statusStaff}`);
-        io.emit('store-settings-update', storeSettings); // <-- Changed from io.to().emit()
+        io.emit('store-settings-update', storeSettings); 
     });
 
     socket.on('join-store', (data) => {
@@ -355,11 +378,16 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('save-store-name', (newName) => { storeSettings.name = newName; saveSettingsToDisk(); io.to(socket.store).emit('store-settings-update', storeSettings); });
+    socket.on('save-store-name', (newName) => { 
+        storeSettings.name = newName; 
+        saveSettingsToFirebase(); // ✅ Firebase Save
+        io.to(socket.store).emit('store-settings-update', storeSettings); 
+    });
+    
     socket.on('save-store-settings', (data) => {
         if(data.resetTime) storeSettings.resetTime = data.resetTime;
         if(data.stripeConnectId) storeSettings.stripeConnectId = data.stripeConnectId;
-        saveSettingsToDisk();
+        saveSettingsToFirebase(); // ✅ Firebase Save
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
@@ -373,7 +401,7 @@ io.on('connection', (socket) => {
             if (mode === 'permanent') {
                 masterMenu = JSON.parse(JSON.stringify(newMenuData));
                 liveMenu = JSON.parse(JSON.stringify(newMenuData));
-                saveMenuToDisk();
+                saveMenuToFirebase(); // ✅ Firebase Save
             } else { liveMenu = newMenuData; }
             io.to(socket.store).emit('menu-update', liveMenu);
         } catch (e) { }
@@ -397,7 +425,7 @@ io.on('connection', (socket) => {
             store: socket.store
         };
         activeOrders.push(newOrder);
-        updateStore(socket.store);
+        updateStore(socket.store); // Saves to Firebase inside updateStore
 
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
             adm.isRinging = true; 
@@ -412,7 +440,7 @@ io.on('connection', (socket) => {
         if (order) {
             order.text += `\n++ ${data.addText}`;
             order.status = 'pending';
-            updateStore(socket.store);
+            updateStore(socket.store); // Saves to Firebase
             Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
                 adm.isRinging = true; 
                 updateStore(socket.store);
