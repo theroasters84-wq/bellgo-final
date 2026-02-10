@@ -30,45 +30,54 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
         
-        .header { height: 70px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
-        .user-info { display: flex; flex-direction: column; max-width: 120px; }
-        .header-actions { display: flex; align-items: center; gap: 8px; }
-        .btn-logout { background: #D32F2F; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 5px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
+        .user-info { display: flex; flex-direction: column; max-width: 100px; }
+        .header-actions { display: flex; align-items: center; gap: 5px; }
+        
+        .btn-logout { background: #D32F2F; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; }
+        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
         .btn-icon:active { background: #333; }
-        .btn-link { background: #9C27B0; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight:bold; }
+        
+        /* ✅ SHRINK LINK BUTTON */
+        .btn-link { background: #9C27B0; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight:bold; }
+
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
 
-        .switches-container { display: flex; flex-direction: column; gap: 2px; margin-right: 10px; }
-        .switch-row { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #aaa; }
-        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+        .switches-container { display: flex; flex-direction: column; gap: 2px; margin-right: 5px; }
+        .switch-row { display: flex; align-items: center; gap: 3px; font-size: 9px; color: #aaa; }
+        .switch { position: relative; display: inline-block; width: 28px; height: 16px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px; background-color: white; transition: .4s; }
         input:checked + .slider { background-color: #00E676; }
-        input:checked + .slider:before { transform: translateX(16px); }
+        input:checked + .slider:before { transform: translateX(12px); }
         .slider.round { border-radius: 34px; }
         .slider.round:before { border-radius: 50%; }
 
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
         #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
-        .menu-section { height: 180px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
+        
+        .menu-section { height: 160px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
         .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px; }
-        .category-box { background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 140px; text-align: center; cursor: pointer; position: relative; }
+        
+        .category-box { background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 130px; text-align: center; cursor: pointer; position: relative; }
         .category-order { position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555; }
         .btn-delete-cat { position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
         .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
-        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 120px; text-align: center; font-style: italic; }
+        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 110px; text-align: center; font-style: italic; }
         .btn-item-del { background: #D32F2F; color: white; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .store-name-input { background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 200px; text-align: center; margin-left: 10px; }
+        .store-name-input { background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 150px; text-align: center; margin-left: 10px; }
         .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-save { background: #00E676; border: none; padding: 5px 10px; font-weight: bold; cursor: pointer; border-radius: 4px; color: black; font-size: 12px;}
         .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
 
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
-        #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-end; align-items: flex-end; gap: 20px; overflow-y: auto; }
+        
+        /* DESKTOP AREA (Folders) */
+        #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px; overflow-y: auto; }
+        
+        /* STAFF SIDEBAR (Desktop) */
         #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
         .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
         #staffList { flex: 1; overflow-y: auto; padding: 10px; }
@@ -126,22 +135,49 @@
 
         /* ✅ RESPONSIVE MOBILE CSS */
         @media screen and (max-width: 768px) {
-            .header { padding: 0 5px; height: 60px; }
+            .header { padding: 0 5px; height: 55px; }
             .user-info { display: none; } 
-            .btn-logout { font-size: 10px; padding: 4px 8px; }
-            .btn-icon { width: 30px; height: 30px; font-size: 16px; }
+            
             .menu-section { height: 140px; }
             .admin-main-area { flex-direction: column; }
-            #adminStaffSidebar { width: 100%; height: 120px; border-left: none; border-top: 2px solid #333; flex-direction: row; overflow-x: auto; }
-            .sidebar-title { width: 100px; font-size: 10px; white-space: normal; display: flex; align-items: center; }
-            #staffList { display: flex; flex-direction: row; gap: 10px; }
-            .staff-row { width: 120px; flex-shrink: 0; }
+            
+            /* ✅ NO BLACK SPACE: Flex factors adjusted */
+            #desktopArea { flex: 1; min-height: 50%; } 
+            
+            /* ✅ COMPACT STAFF TABS */
+            #adminStaffSidebar { 
+                width: 100%; 
+                flex: 1; /* Take remaining space */
+                border-left: none; 
+                border-top: 2px solid #333; 
+                overflow-y: auto; 
+            }
+            #staffList { 
+                display: flex; 
+                flex-wrap: wrap; /* Grid-like */
+                gap: 5px; 
+                padding: 5px;
+                align-content: flex-start;
+            }
+            .staff-row { 
+                width: auto; 
+                margin: 0; 
+                flex-grow: 1; /* Expand to fill gaps */
+            }
+            .btn-staff { 
+                padding: 6px 10px; 
+                font-size: 12px; 
+                width: 100%; /* Fill the row wrapper */
+                min-width: 80px;
+                justify-content: center;
+                gap: 5px;
+            }
+            .btn-staff span:last-child { font-size: 9px; } /* Smaller status text */
+            
             .order-folder { width: 70px; height: 90px; }
             .folder-icon { font-size: 35px; }
             .folder-label { font-size: 10px; }
             .modal-box { width: 95%; padding: 15px; }
-            .pin-display { font-size: 24px; letter-spacing: 5px; }
-            .num-btn { padding: 10px; font-size: 18px; }
             .order-window { width: 100% !important; height: 100% !important; }
             .btn-win-action { font-size: 16px; padding: 15px; }
         }
@@ -151,14 +187,13 @@
     <div id="mainApp">
         <div class="header">
             <div style="display:flex; align-items:center;">
-                <span id="connDot" style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block; margin-right:10px;" onclick="App.forceReconnect()"></span>
+                <span id="connDot" style="width:8px; height:8px; background:red; border-radius:50%; display:inline-block; margin-right:8px;" onclick="App.forceReconnect()"></span>
                 <div class="user-info">
                     <span id="headerName" style="font-weight:bold; font-size:14px; color:#FFD700;">ADMIN</span>
                     <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn-icon" onclick="App.requestNotifyPermission()" title="Ενεργοποίηση Ειδοποιήσεων" style="color:cyan;">🔔</button>
                 <div class="switches-container">
                     <div class="switch-row">
                         <span>ΠΕΛΑΤΕΣ:</span>
@@ -199,7 +234,6 @@
                     <div style="display:flex; gap:10px; align-items:center;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
-                    
                     </div>
                 </div>
                 <div id="menuInputContainer"></div>
@@ -352,13 +386,18 @@
             menuData: [], 
             currentCategoryIndex: null,
             isChatOpen: false, 
-            pendingAction: null, // ✅ NEW: Αποθηκεύει την ενέργεια που περιμένει επιβεβαίωση
+            pendingAction: null, 
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
+                
+                // ✅ UNLOCK AUDIO ON FIRST TAP (ANYWHERE)
                 document.body.addEventListener('click', () => { 
-                    orderAlertSound.play().then(() => orderAlertSound.pause());
+                    orderAlertSound.play().then(() => {
+                        orderAlertSound.pause();
+                        orderAlertSound.currentTime = 0;
+                    }).catch(()=>{});
                 }, {once:true});
                 
                 const nameInput = document.getElementById('inpStoreName');
@@ -370,6 +409,7 @@
                 
                 App.connectSocket();
                 App.startHeartbeat();
+                App.requestNotifyPermission(); // Auto-ask on load too
             },
             
             requestNotifyPermission: async () => {
@@ -378,16 +418,13 @@
                     if (permission === "granted") {
                         const registration = await navigator.serviceWorker.ready;
                         const token = await getToken(messaging, { 
-                            vapidKey: "BMw-sFq... (Your Vapid Key if needed or just use default)", 
+                            vapidKey: "BMw-sFq... (Your Vapid Key)", 
                             serviceWorkerRegistration: registration 
                         }); 
                         if (token) {
                             localStorage.setItem('fcm_token', token);
-                            alert("Ειδοποιήσεις ενεργοποιήθηκαν!");
                             window.socket.emit('update-token', { token: token, username: userData.name });
                         }
-                    } else {
-                        alert("Δεν δόθηκε άδεια για ειδοποιήσεις.");
                     }
                 } catch (error) { console.error("Notification Error:", error); }
             },
@@ -489,7 +526,6 @@
                 el.style.display = 'flex';
             },
 
-            // ✅ NEW: LOGIC TO ASK EVERY TIME
             handlePlusButton: () => {
                 if (App.currentCategoryIndex === null) {
                     let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
@@ -497,11 +533,10 @@
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
                     if(!name) return;
                     
-                    // Αποθηκεύουμε την ενέργεια για μετά
                     App.pendingAction = () => {
                         App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
                     };
-                    App.openSaveModal(); // Ρωτάμε ΑΜΕΣΩΣ
+                    App.openSaveModal(); 
                 } else {
                     App.addItemInput('');
                 }
@@ -523,7 +558,6 @@
                         delBtn.innerText = 'X';
                         delBtn.onclick = (e) => {
                             e.stopPropagation();
-                            // ✅ NEW: Ρωτάμε πριν διαγράψουμε κατηγορία
                             App.pendingAction = () => { App.menuData.splice(index, 1); };
                             App.openSaveModal();
                         };
@@ -555,8 +589,7 @@
                 delBtn.className = 'btn-item-del';
                 delBtn.innerText = 'X';
                 delBtn.onclick = () => {
-                    // ✅ NEW: Διαγραφή προϊόντος -> Ερώτηση
-                    wrapper.remove(); // Το κρύβουμε οπτικά αμέσως
+                    wrapper.remove();
                     App.pendingAction = () => {
                         const cat = App.menuData[App.currentCategoryIndex];
                         if (index !== null) cat.items.splice(index, 1);
@@ -567,8 +600,7 @@
                 input.addEventListener('blur', () => {
                     const newVal = input.value.trim();
                     const cat = App.menuData[App.currentCategoryIndex];
-                    if(newVal !== '' && newVal !== val) { // Αν άλλαξε κάτι
-                        // ✅ NEW: Προσθήκη/Αλλαγή προϊόντος -> Ερώτηση
+                    if(newVal !== '' && newVal !== val) { 
                         App.pendingAction = () => {
                             if(index === null && !cat.items.includes(newVal)) cat.items.push(newVal); 
                             else if (index !== null) cat.items[index] = newVal;
@@ -590,17 +622,13 @@
                 document.getElementById('saveModeModal').style.display = 'flex';
             },
             
-            // ✅ NEW: Εκτελεί την ενέργεια ΚΑΙ σώζει
             executeSave: (mode) => {
                 if (App.pendingAction) {
-                    App.pendingAction(); // Τρέξε αυτό που ήθελε να κάνει ο χρήστης
+                    App.pendingAction();
                     App.pendingAction = null;
                 }
-                
-                // Καθαρισμός και αποστολή
                 App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i && i.trim() !== ''); });
                 window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
-                
                 document.getElementById('saveModeModal').style.display = 'none';
                 App.renderMenu(); 
             },
@@ -696,10 +724,10 @@
                     const btn = document.createElement('button');
                     const isAway = u.status === 'away';
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    let stTxt = isAway ? "⚠️ AWAY" : "IDLE";
+                    let stTxt = isAway ? "AWAY" : "IDLE";
                     let stCol = isAway ? "#FF9800" : "white";
                     if(u.isRinging) { stTxt = "📞 ..."; stCol = "yellow"; }
-                    btn.innerHTML = `<span>${u.username}</span><span id="status-${u.username}" style="color:${stCol}; font-size:10px;">${stTxt}</span>`;
+                    btn.innerHTML = `<span>${u.username}</span><span id="status-${u.username}" style="color:${stCol};">${stTxt}</span>`;
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
                         const span = document.getElementById(`status-${u.username}`);
