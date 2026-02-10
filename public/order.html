@@ -12,6 +12,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="shop.png"> 
     
+    <script src="https://js.stripe.com/v3/"></script>
+    
     <script>
         (function() {
             const params = new URLSearchParams(window.location.search);
@@ -373,6 +375,7 @@
 
                 App.checkActiveOrderStorage();
                 App.connectSocket();
+                App.checkStripeReturn(); // ✅ CHECK IF PAYMENT RETURNED
             },
 
             checkActiveOrderStorage: () => {
@@ -385,6 +388,29 @@
                     } else {
                         App.updateStatusUI(activeOrderState.status);
                     }
+                }
+            },
+
+            // ✅ NEW: STRIPE RETURN HANDLER
+            checkStripeReturn: () => {
+                const urlP = new URLSearchParams(window.location.search);
+                const status = urlP.get('payment_status');
+
+                if (status === 'success') {
+                    const saved = localStorage.getItem('bellgo_temp_card_order');
+                    if (saved) {
+                        const orderData = JSON.parse(saved);
+                        // Send order marked as PAID
+                        App.sendOrder(orderData.items, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
+                        
+                        localStorage.removeItem('bellgo_temp_card_order');
+                        
+                        // Clean URL
+                        const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]payment_status=[^&]+/, '');
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    }
+                } else if (status === 'cancel') {
+                    alert("Η πληρωμή ακυρώθηκε.");
                 }
             },
 
@@ -574,6 +600,9 @@
                     btnCard.disabled = true;
                     btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
                 }
+                
+                // ✅ CRITICAL FIX: Return total for payment logic
+                return total;
             },
 
             requestPayment: () => {
@@ -584,9 +613,46 @@
             },
 
             confirmPayment: (method) => {
-                document.getElementById('paymentOverlay').style.display = 'none';
                 const items = document.getElementById('orderText').value.trim();
+                
+                if(method === '💳 ΚΑΡΤΑ') {
+                    // ✅ TRIGGER CARD PAYMENT
+                    App.payWithCard(items);
+                } else {
+                    // STANDARD CASH ORDER
+                    App.sendOrder(items, method);
+                    document.getElementById('paymentOverlay').style.display = 'none';
+                }
+            },
 
+            // ✅ NEW: PAYMENT FUNCTION
+            payWithCard: async (items) => {
+                const totalAmount = App.handleInput(); // Needs the fix in handleInput
+                if(totalAmount <= 0) return alert("Σφάλμα ποσού ή μη έγκυρα προϊόντα.");
+
+                // 1. Save temp order
+                localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
+
+                // 2. Request Session
+                try {
+                    const res = await fetch('/create-order-payment', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })
+                    });
+                    const data = await res.json();
+                    
+                    if(data.url) {
+                        window.location.href = data.url;
+                    } else {
+                        alert("Σφάλμα πληρωμής: " + (data.error || "Άγνωστο"));
+                    }
+                } catch(e) {
+                    alert("Σφάλμα σύνδεσης με τον Server.");
+                }
+            },
+
+            sendOrder: (items, method) => {
                 const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
                 
                 activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
