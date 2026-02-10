@@ -219,31 +219,27 @@ app.post('/create-order-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* ---------------- NOTIFICATION LOGIC (SYSTEM NOTIFICATIONS FIXED) ---------------- */
+/* ---------------- NOTIFICATION LOGIC (SYSTEM MESSAGE FIXED) ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    // Check if user has token and is NOT native app
     if (target && target.fcmToken && !target.isNative) {
-        
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
 
         const msg = {
             token: target.fcmToken,
-            // ✅ "notification" block: Εμφανίζει ειδοποίηση ακόμα και αν η καρτέλα είναι ΚΛΕΙΣΤΗ
+            // ✅ SYSTEM NOTIFICATION (Wake up device)
             notification: {
                 title: title,
                 body: body,
             },
-            // Android Specifics
             android: { 
                 priority: "high",
                 notification: {
                     sound: "default",
-                    tag: "bellgo-alarm",
+                    tag: "bellgo-alarm", 
                     clickAction: `${YOUR_DOMAIN}${targetUrl}`
                 }
             },
-            // WebPush (Desktop/Chrome Android)
             webpush: { 
                 headers: { "Urgency": "high" },
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
@@ -251,12 +247,12 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                     title: title,
                     body: body,
                     icon: '/admin.png',
-                    requireInteraction: true,
+                    requireInteraction: true, 
                     tag: 'bellgo-alarm',
+                    renotify: true, // ✅ KEY FOR LOOPING WITH CLOSED BROWSER
                     vibrate: [500, 200, 500]
                 }
             },
-            // Data Payload (For Service Worker logic)
             data: { 
                 ...dataPayload, 
                 title: title, 
