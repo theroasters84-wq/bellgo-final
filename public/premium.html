@@ -30,108 +30,149 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 5px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
-        .user-info { display: flex; flex-direction: column; max-width: 90px; }
-        .header-actions { display: flex; align-items: center; gap: 4px; }
-        .btn-logout { background: #D32F2F; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 10px; }
-        .btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 30px; height: 30px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .btn-icon:active { background: #333; }
-        .btn-link { background: #9C27B0; color: white; border: none; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight:bold; }
+        
+        /* HEADER - CLEANER */
+        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
+        .user-info { display: flex; flex-direction: column; max-width: 120px; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+        
+        .btn-icon { background: transparent; border: 1px solid #444; color: #ccc; width: 40px; height: 40px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
+        .btn-icon:active { background: #333; transform: scale(0.95); }
+        .btn-icon.menu-active { background: #FFD700; color: black; border-color: #FFD700; }
+
         .btn-icon-wrapper { position: relative; display: inline-block; }
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
-        .switches-container { display: flex; flex-direction: column; gap: 2px; margin-right: 2px; }
-        .switch-row { display: flex; align-items: center; gap: 2px; font-size: 9px; color: #aaa; }
-        .switch { position: relative; display: inline-block; width: 26px; height: 14px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 10px; width: 10px; left: 2px; bottom: 2px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #00E676; }
-        input:checked + .slider:before { transform: translateX(12px); }
-        .slider.round { border-radius: 34px; }
-        .slider.round:before { border-radius: 50%; }
-        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
-        #adminPanel { display: flex; flex-direction: column; height: 100%; position: relative; flex: 1; }
-        .menu-section { height: 160px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; flex-shrink: 0; }
-        .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-        #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 5px; padding: 5px; }
-        .category-box { background: #333; border: 2px solid #FFD700; color: #FFD700; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; width: 130px; text-align: center; cursor: pointer; position: relative; }
-        .category-order { position: absolute; top: 2px; left: 2px; font-size: 10px; color: #555; }
-        .btn-delete-cat { position: absolute; top: -5px; right: -5px; background: red; color: white; width: 15px; height: 15px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
-        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
-        .menu-input-box { background: #222; border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; font-size: 14px; width: 110px; text-align: center; font-style: italic; }
-        .btn-item-del { background: #D32F2F; color: white; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .store-name-input { background: #111; border: 1px solid #444; color: #00E676; padding: 5px 10px; border-radius: 4px; font-weight: bold; width: 150px; text-align: center; margin-left: 10px; }
-        .btn-add { background: #2196F3; color: white; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-back { background: #555; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; display: none; }
-        .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; }
-        #desktopArea { flex: 1; position: relative; background: #222; padding: 20px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px; overflow-y: auto; }
-        #adminStaffSidebar { width: 220px; background: #181818; border-left: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-title { padding: 10px; background: #222; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 12px; }
-        #staffList { flex: 1; overflow-y: auto; padding: 10px; }
-        .staff-row { display: flex; width: 100%; gap: 5px; margin-bottom: 10px; }
-        .btn-staff { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 14px; color: white; text-align: left; background: #333; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .btn-staff.waiter { background: #1565C0; border-left: 4px solid #64B5F6; }
-        .btn-staff.driver { background: #C62828; border-left: 4px solid #FF5252; }
-        .btn-staff.ghost { opacity: 0.6; border: 1px solid #555; background: #222 !important; color: #999; }
-        .btn-delete { width: 30px; background: #D32F2F; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .order-folder { width: 90px; height: 110px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; margin-bottom: 10px; }
+
+        /* MAIN LAYOUT */
+        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
+        
+        /* MENU FULL PANEL (Hidden by default) */
+        #menuFullPanel { 
+            display: none; 
+            flex-direction: column; 
+            position: absolute; 
+            top: 60px; left: 0; width: 100%; height: calc(100% - 60px); 
+            background: #121212; z-index: 500; 
+            padding: 10px; 
+        }
+        
+        .menu-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .store-name-input { background: #222; border: 1px solid #444; color: #FFD700; padding: 8px; border-radius: 6px; font-weight: bold; width: 100%; text-align: center; font-size: 16px; }
+        #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; overflow-y: auto; padding-bottom: 20px; }
+        
+        .category-box { background: #222; border: 2px solid #FFD700; color: #FFD700; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; width: 48%; text-align: center; cursor: pointer; position: relative; min-height: 60px; display:flex; align-items:center; justify-content:center; }
+        .category-order { position: absolute; top: 2px; left: 5px; font-size: 10px; color: #777; }
+        .btn-delete-cat { position: absolute; top: -8px; right: -8px; background: #D32F2F; color: white; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+        
+        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; width: 48%; }
+        .menu-input-box { background: #333; border: 1px solid #555; color: white; padding: 10px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; }
+        .btn-item-del { background: #D32F2F; color: white; border: none; width: 30px; height: 35px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #2196F3; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 18px; }
+        .btn-back { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; display: none; }
+
+        /* ORDERS DESKTOP AREA */
+        .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: column; }
+        #desktopArea { flex: 1; position: relative; background: #181818; padding: 15px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 15px; overflow-y: auto; }
+        
+        .order-folder { width: 100px; height: 120px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; }
         .order-folder.ringing { animation: shake 0.5s infinite; }
-        .folder-icon { font-size: 50px; }
-        .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .folder-time { font-size: 11px; color: #FFD700; background: #000; padding: 2px 5px; border-radius: 10px; margin-top: 2px; font-weight: bold; }
-        #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
-        .order-window { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100dvh !important; background: #000 !important; display: none; flex-direction: column; pointer-events: auto; z-index: 10000 !important; }
-        .win-header { background: #1a1a1a; padding: 15px 20px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .win-body { padding: 20px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; gap: 15px; }
-        .order-info-section { background: #252525; border-left: 8px solid #00E676; padding: 15px; color: #fff; font-size: 22px; font-weight: bold; text-align: left; line-height: 1.4; border-radius: 4px; }
-        .order-items-section { flex: 1; color: #fff; font-weight: bold; font-size: 22px; text-align: left; padding: 10px; white-space: pre-wrap; line-height: 1.5; }
-        .win-footer { padding: 25px; border-top: 2px solid #333; display: flex; gap: 20px; background: #1a1a1a; flex-shrink: 0; }
-        .btn-win-action { flex: 1; padding: 25px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 24px; }
-        .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .folder-icon { font-size: 60px; }
+        .folder-label { font-size: 12px; text-align: center; color: white; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; margin-top: 5px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .folder-time { font-size: 11px; color: #000; background: #FFD700; padding: 2px 6px; border-radius: 10px; margin-top: -10px; font-weight: bold; z-index: 2; position: relative; }
+
+        /* STAFF SIDEBAR (Improved) */
+        #adminStaffSidebar { 
+            height: 160px; /* Increased height */
+            background: #202020; 
+            border-top: 2px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0; 
+        }
+        .sidebar-title { padding: 5px; background: #252525; border-bottom: 1px solid #333; font-weight: bold; text-align: center; color: #aaa; font-size: 11px; }
+        #staffList { 
+            flex: 1; 
+            overflow-x: auto; 
+            overflow-y: hidden; 
+            padding: 10px; 
+            display: grid; 
+            grid-template-rows: repeat(2, 1fr); /* 2 rows explicitly */
+            grid-auto-flow: column; 
+            gap: 8px; 
+            justify-content: start;
+        }
+        .btn-staff { 
+            width: 140px; 
+            height: 100%; 
+            padding: 5px; 
+            background: #333; 
+            border: 2px solid #555; 
+            border-radius: 8px; 
+            color: white; 
+            font-weight: bold; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            cursor: pointer; 
+            position: relative;
+        }
+        .btn-staff.waiter { border-left: 4px solid #64B5F6; }
+        .btn-staff.driver { border-left: 4px solid #FF5252; }
+        .btn-delete { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; background: #D32F2F; color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* MODALS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
-        .modal-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 15px; }
-        .modal-title { color: #FFD700; font-size: 20px; font-weight: bold; margin: 0; }
-        .modal-btn { padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; color: black; }
+        .modal-box { background: #222; padding: 25px; border-radius: 15px; border: 1px solid #444; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 15px; max-height: 90vh; overflow-y: auto; }
+        .modal-title { color: #FFD700; font-size: 22px; font-weight: bold; margin: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .modal-btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; color: white; }
+        
+        /* SETTINGS SPECIFIC */
+        .settings-section { background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: left; }
+        .settings-label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; }
+        
+        /* SWITCHES INSIDE MODAL */
+        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 5px 0; border-bottom: 1px solid #333; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00E676; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* ORDER WINDOW */
+        #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
+        .order-window { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; pointer-events: auto; z-index: 10000; }
+        .win-header { background: #1a1a1a; padding: 15px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .win-body { padding: 20px; flex: 1; overflow-y: auto; }
+        .order-info-section { background: #252525; border-left: 6px solid #00E676; padding: 15px; color: #fff; font-size: 18px; font-weight: bold; margin-bottom: 15px; border-radius: 4px; }
+        .order-items-section { color: #fff; font-weight: bold; font-size: 20px; line-height: 1.5; white-space: pre-wrap; }
+        .win-footer { padding: 20px; border-top: 2px solid #333; background: #1a1a1a; }
+        .btn-win-action { width: 100%; padding: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 22px; }
+
+        /* PIN PAD */
         .pin-display { font-size: 30px; letter-spacing: 10px; margin: 10px 0; font-weight: bold; color: #00E676; min-height: 40px; }
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
+
+        /* CHAT */
         #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
-        .overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
-        .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 15px; word-wrap: break-word; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-msg { max-width: 80%; padding: 10px; border-radius: 12px; font-size: 15px; }
         .chat-msg.me { align-self: flex-end; background: #00E676; color: black; }
         .chat-msg.other { align-self: flex-start; background: #333; color: white; }
-        .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; flex-shrink: 0; }
-        .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; font-size: 16px; }
-        .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; cursor: pointer; font-size: 20px; }
-        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; }
-        #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; }
+        .chat-input-area { display: flex; padding: 10px; background: #1e1e1e; border-top: 1px solid #333; }
+        .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; }
+        .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; font-size: 20px; }
+
+        /* UTILS */
+        #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; color: #333; }
+        #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 7000; flex-direction: column; align-items: center; justify-content: center; }
         .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
-        #qrcode { margin-top: 10px; }
-        .qr-link { color: #333; font-size: 12px; word-break: break-all; text-align: center; margin-top: 10px; }
+
         @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
         @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-        @media screen and (max-width: 768px) {
-            .header { padding: 0 5px; height: 55px; }
-            .user-info { display: none; } 
-            .menu-section { height: 140px; }
-            .admin-main-area { flex-direction: column; }
-            #desktopArea { flex: 1; min-height: 50%; } 
-            #adminStaffSidebar { width: 100%; height: 170px; border-left: none; border-top: 2px solid #333; overflow-x: auto; overflow-y: hidden; }
-            #staffList { display: grid; grid-template-rows: repeat(3, 1fr); grid-auto-flow: column; gap: 5px; padding: 10px; height: 100%; justify-content: start; }
-            .staff-row { width: auto; margin: 0; display: contents; }
-            .btn-staff { width: 130px; height: 45px; padding: 2px; background: #333; border: 2px solid #FFD700; border-radius: 6px; color: #FFD700; font-weight: bold; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; }
-            .btn-staff.waiter, .btn-staff.driver { border-left: 2px solid #FFD700; }
-            .btn-staff span:first-child { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-            .btn-staff span:last-child { font-size: 9px; color: #fff; } 
-            .order-folder { width: 70px; height: 90px; }
-            .folder-icon { font-size: 35px; }
-            .folder-label { font-size: 10px; }
-            .modal-box { width: 95%; padding: 15px; }
-            .order-window { width: 100% !important; height: 100% !important; }
-            .btn-win-action { font-size: 16px; padding: 15px; }
-        }
     </style>
 </head>
 <body>
@@ -145,89 +186,110 @@
                 </div>
             </div>
             <div class="header-actions">
-                <div class="switches-container">
-                    <div class="switch-row">
-                        <span>ΠΕΛΑΤΕΣ:</span>
-                        <label class="switch">
-                            <input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="switch-row">
-                        <span>STAFF:</span>
-                        <label class="switch">
-                            <input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                </div>
-                <button class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
-                <button class="btn-icon" onclick="App.openPinModal()" title="Αλλαγή PIN">🔑</button>
-                <button class="btn-link" onclick="App.showLink()" title="Link Παραγγελιών">🔗 LINK</button>
+                <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
-                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Άνοιγμα Chat">📁</button>
+                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
-                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
-                <button class="btn-logout" onclick="App.logout()">EXIT</button>
+                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
+                <button class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
             </div>
         </div>
-        <div id="adminPanel">
-            <div class="menu-section">
+
+        <div class="admin-main-area">
+            <div id="menuFullPanel">
                 <div class="menu-header">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span id="menuTitle" style="color:#FFD700; font-weight:bold;">📜 ΜΕΝΟΥ</span>
-                        <div style="display:flex; flex-direction:column;">
-                            <label style="font-size:9px; color:#aaa;">ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ</label>
-                            <input type="text" id="inpStoreName" class="store-name-input" placeholder="Όνομα...">
-                        </div>
+                    <div style="flex:1;">
+                        <input type="text" id="inpStoreName" class="store-name-input" placeholder="Όνομα Καταστήματος...">
                     </div>
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙</button>
+                    <div style="display:flex; gap:10px; margin-left:10px;">
+                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 ΠΙΣΩ</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
                     </div>
                 </div>
                 <div id="menuInputContainer"></div>
             </div>
-            <div class="admin-main-area">
-                <div id="desktopArea"></div>
-                <div id="windowsContainer"></div>
-                <div id="adminStaffSidebar">
-                    <div class="sidebar-title">ΠΡΟΣΩΠΙΚΟ (ONLINE)</div>
-                    <div id="staffList"></div>
+
+            <div id="desktopArea"></div>
+            
+            <div id="windowsContainer"></div>
+            
+            <div id="adminStaffSidebar">
+                <div class="sidebar-title">ΠΡΟΣΩΠΙΚΟ (ONLINE)</div>
+                <div id="staffList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="adminChatOverlay">
+        <div class="overlay-header">
+            <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
+            <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
+        </div>
+        <div class="chat-container">
+            <div id="adminChatBox" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
+                <button class="chat-btn" onclick="App.sendChat()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            
+            <div class="settings-section">
+                <div class="settings-label">ΚΑΤΑΣΤΑΣΗ ΚΑΤΑΣΤΗΜΑΤΟΣ</div>
+                <div class="switch-row">
+                    <span>ΠΕΛΑΤΕΣ (Delivery)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="switch-row">
+                    <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
-            <div id="adminChatOverlay">
-                <div class="overlay-header">
-                    <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
-                    <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
-                </div>
-                <div class="chat-container">
-                    <div id="adminChatBox" class="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
-                        <button class="chat-btn" onclick="App.sendChat()">➤</button>
-                    </div>
-                </div>
+
+            <div class="settings-section" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="modal-btn" style="background:#FFD700; color:black; font-size:14px;" onclick="App.openPinModal()">
+                    🔑 Αλλαγή PIN
+                </button>
+                <button class="modal-btn" style="background:#2196F3; font-size:14px;" onclick="App.showLink()">
+                    🔗 Share Link
+                </button>
             </div>
+
+            <div class="settings-section">
+                <div class="settings-label">ΩΡΑ RESET & ΠΛΗΡΩΜΕΣ</div>
+                <input type="time" id="inpResetTime" style="width:100%; padding:8px; background:#111; color:white; border:1px solid #555; border-radius:5px; margin-bottom:10px;">
+                
+                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:8px; border-radius:5px; font-weight:bold; cursor:pointer;">
+                    💳 Σύνδεση Stripe
+                </button>
+                <div id="stripeStatus" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">Checking...</div>
+            </div>
+
+            <button class="modal-btn" style="background:#00E676; margin-top:5px;" onclick="App.saveSettings()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button class="modal-btn" style="background:#D32F2F;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ (EXIT)</button>
+            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
     
     <div id="pinChangeModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title">ΑΛΛΑΓΗ PIN</h3>
-            <p id="pinSub" style="font-size:12px; color:#aaa; margin:0;">Εισάγετε νέο 4-ψήφιο κωδικό</p>
             <div id="pinDisplay" class="pin-display"></div>
             <div class="numpad">
-                <button class="num-btn" onclick="PIN.add(1)">1</button>
-                <button class="num-btn" onclick="PIN.add(2)">2</button>
-                <button class="num-btn" onclick="PIN.add(3)">3</button>
-                <button class="num-btn" onclick="PIN.add(4)">4</button>
-                <button class="num-btn" onclick="PIN.add(5)">5</button>
-                <button class="num-btn" onclick="PIN.add(6)">6</button>
-                <button class="num-btn" onclick="PIN.add(7)">7</button>
-                <button class="num-btn" onclick="PIN.add(8)">8</button>
-                <button class="num-btn" onclick="PIN.add(9)">9</button>
+                <button class="num-btn" onclick="PIN.add(1)">1</button><button class="num-btn" onclick="PIN.add(2)">2</button><button class="num-btn" onclick="PIN.add(3)">3</button>
+                <button class="num-btn" onclick="PIN.add(4)">4</button><button class="num-btn" onclick="PIN.add(5)">5</button><button class="num-btn" onclick="PIN.add(6)">6</button>
+                <button class="num-btn" onclick="PIN.add(7)">7</button><button class="num-btn" onclick="PIN.add(8)">8</button><button class="num-btn" onclick="PIN.add(9)">9</button>
                 <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
                 <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
@@ -238,44 +300,23 @@
 
     <div id="saveModeModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">ΑΠΟΘΗΚΕΥΣΗ ΑΛΛΑΓΗΣ</h3>
-            <p style="color:#aaa; font-size:13px;">Πώς θέλετε να αποθηκευτεί αυτή η αλλαγή;</p>
-            <button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.executeSave('temporary')">📅 ΓΙΑ ΣΗΜΕΡΑ ΜΟΝΟ<br><span style="font-size:10px; font-weight:normal;">(Θα επανέλθουν το πρωί)</span></button>
-            <button class="modal-btn" style="background:#D32F2F; color:white;" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ / ΓΕΝΙΚΑ<br><span style="font-size:10px; font-weight:normal;">(Οριστική αλλαγή)</span></button>
-            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΑΚΥΡΟ</button>
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
-            <div style="text-align:left; color:#ccc; font-size:14px;">
-                <label>Ώρα Αναπαλήρωσης Menu (Reset):</label>
-                <input type="time" id="inpResetTime" style="width:100%; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:5px; margin-top:5px; font-size:18px;">
-                
-                <hr style="border:0; border-top:1px solid #444; margin: 15px 0;">
-                
-                <label style="display:block; margin-bottom:5px;">Σύνδεση Πληρωμών:</label>
-                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;">
-                    <span>🔗</span> Συνδεθείτε με Stripe
-                </button>
-                <p id="stripeStatus" style="font-size:11px; color:#aaa; margin-top:5px; text-align:center;">
-                    (Για να λαμβάνετε πληρωμές με κάρτα)
-                </p>
-            </div>
-            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveSettings()">ΑΠΟΘΗΚΕΥΣΗ</button>
-            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+            <h3 class="modal-title">ΑΠΟΘΗΚΕΥΣΗ</h3>
+            <p style="color:#aaa; margin:0;">Πώς θέλετε να αποθηκευτεί;</p>
+            <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')">📅 ΣΗΜΕΡΑ ΜΟΝΟ</button>
+            <button class="modal-btn" style="background:#D32F2F;" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
+            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <div id="qrOverlay" onclick="this.style.display='none'">
         <div class="qr-box" onclick="event.stopPropagation()">
-            <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Παραγγελίας</div>
+            <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Καταστήματος</div>
             <div id="qrcode"></div>
             <a id="storeLink" href="#" target="_blank" class="qr-link">...</a>
             <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:10px; padding:8px 20px; background:#D32F2F; color:white; border:none; border-radius:5px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
+
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
         <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
     </div>
@@ -344,17 +385,14 @@
             currentCategoryIndex: null,
             isChatOpen: false, 
             pendingAction: null, 
-            
-            // ✅ TRACK RINGING STATE
             lastRingingState: {}, 
             tempComingState: {},
-            lastStaffList: [], // To avoid re-rendering if data hasn't changed
+            lastStaffList: [],
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
-                // ✅ UNLOCK AUDIO ON FIRST TAP (ANYWHERE)
                 document.body.addEventListener('click', () => { 
                     if(window.AudioEngine) window.AudioEngine.init();
                 }, {once:true});
@@ -370,9 +408,7 @@
                 App.startHeartbeat();
                 App.requestNotifyPermission(); 
                 
-                // ✅ NEW: Start local Coming Cleanup Loop (instead of setTimeout in render)
                 setInterval(() => {
-                    // Re-render only if there are active "Coming" states to clear them eventually
                     if (Object.keys(App.tempComingState).length > 0 && App.lastStaffList.length > 0) {
                         App.renderStaffList(App.lastStaffList);
                     }
@@ -384,7 +420,6 @@
                     const permission = await Notification.requestPermission();
                     if (permission === "granted") {
                         const registration = await navigator.serviceWorker.ready;
-                        // 👇 ΕΔΩ ΒΑΖΕΙΣ ΤΟ VAPID KEY ΣΟΥ 👇
                         const token = await getToken(messaging, { 
                             vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
                             serviceWorkerRegistration: registration 
@@ -436,10 +471,10 @@
                         
                         const statusEl = document.getElementById('stripeStatus');
                         if (settings.stripeConnectId) {
-                            statusEl.innerHTML = "✅ <b>Συνδέθηκε επιτυχώς!</b><br>ID: " + settings.stripeConnectId;
+                            statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId;
                             statusEl.style.color = "#00E676";
                         } else {
-                            statusEl.innerText = "(Για να λαμβάνετε πληρωμές με κάρτα)";
+                            statusEl.innerText = "Μη συνδεδεμένο";
                             statusEl.style.color = "#aaa";
                         }
                     }
@@ -449,16 +484,13 @@
                 socket.on('chat-message', (data) => App.appendChat(data));
                 
                 socket.on('staff-list-update', (list) => {
-                    App.lastStaffList = list; // Cache list
+                    App.lastStaffList = list; 
                     App.renderStaffList(list);
                 });
                 
-                // ✅ HANDLE "STAFF ACCEPTED ALARM" FOR ADMIN
                 socket.on('staff-accepted-alarm', (data) => {
                     if(!App.tempComingState) App.tempComingState = {};
-                    // Force the "Coming" state immediately for this user
                     App.tempComingState[data.username] = Date.now();
-                    // Force re-render to show green immediately
                     App.renderStaffList(App.lastStaffList);
                 });
                 
@@ -478,43 +510,54 @@
                 window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
             },
 
-            // ✅ ACCEPT ALARM (Called by Play/Pause or Click)
             acceptAlarm: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                window.socket.emit('admin-stop-ringing'); // 👈 ADDED: Stop loop for Admin
+                window.socket.emit('admin-stop-ringing'); 
+            },
+
+            // --- MENU TOGGLE ---
+            toggleMenuMode: () => {
+                const panel = document.getElementById('menuFullPanel');
+                const btn = document.getElementById('btnMenuToggle');
+                if (panel.style.display === 'flex') {
+                    panel.style.display = 'none';
+                    btn.classList.remove('menu-active');
+                } else {
+                    panel.style.display = 'flex';
+                    btn.classList.add('menu-active');
+                }
             },
 
             // --- MODALS ---
             openPinModal: () => {
+                document.getElementById('settingsModal').style.display = 'none'; // Close Settings
                 pinValue = '';
                 PIN.updateDisplay();
                 document.getElementById('pinChangeModal').style.display = 'flex';
             },
-            closePinModal: () => { document.getElementById('pinChangeModal').style.display = 'none'; },
-            
-            openSettingsModal: () => {
-                document.getElementById('settingsModal').style.display = 'flex';
+            closePinModal: () => { 
+                document.getElementById('pinChangeModal').style.display = 'none'; 
+                document.getElementById('settingsModal').style.display = 'flex'; // Reopen Settings
             },
+            
+            openSettingsModal: () => { document.getElementById('settingsModal').style.display = 'flex'; },
+            
             saveSettings: () => {
                 const time = document.getElementById('inpResetTime').value;
-                if(time) {
-                    window.socket.emit('save-store-settings', { resetTime: time });
-                    document.getElementById('settingsModal').style.display = 'none';
-                } else {
-                    alert("Παρακαλώ επιλέξτε ώρα.");
-                }
+                if(time) window.socket.emit('save-store-settings', { resetTime: time });
+                document.getElementById('settingsModal').style.display = 'none';
             },
 
             showLink: () => {
+                document.getElementById('settingsModal').style.display = 'none'; // Close Settings
                 const el = document.getElementById('qrOverlay');
                 const linkEl = document.getElementById('storeLink');
                 const qrEl = document.getElementById('qrcode');
                 const baseUrl = window.location.origin;
                 const customName = document.getElementById('inpStoreName').value.trim();
                 let fullLink = `${baseUrl}/order.html?store=${userData.store}`;
-                if(customName) {
-                    fullLink += `&name=${encodeURIComponent(customName)}`;
-                }
+                if(customName) fullLink += `&name=${encodeURIComponent(customName)}`;
+                
                 linkEl.href = fullLink;
                 linkEl.innerText = fullLink;
                 qrEl.innerHTML = "";
@@ -528,7 +571,6 @@
                     if(!order) return;
                     let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
                     if(!name) return;
-                    
                     App.pendingAction = () => {
                         App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
                     };
@@ -543,7 +585,6 @@
                 container.innerHTML = '';
                 App.menuData.sort((a,b) => a.order - b.order);
                 if (App.currentCategoryIndex === null) {
-                    document.getElementById('menuTitle').innerText = "📜 ΚΑΤΗΓΟΡΙΕΣ";
                     document.getElementById('btnBackCat').style.display = 'none';
                     App.menuData.forEach((cat, index) => {
                         const div = document.createElement('div');
@@ -564,7 +605,6 @@
                 } else {
                     const cat = App.menuData[App.currentCategoryIndex];
                     if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
-                    document.getElementById('menuTitle').innerText = `📂 ${cat.name}`;
                     document.getElementById('btnBackCat').style.display = 'block';
                     cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
                 }
@@ -574,13 +614,11 @@
                 const container = document.getElementById('menuInputContainer');
                 const wrapper = document.createElement('div');
                 wrapper.className = 'item-wrapper';
-                
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'menu-input-box';
                 input.value = val;
                 input.placeholder = "Προϊόν:Τιμή"; 
-                
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-item-del';
                 delBtn.innerText = 'X';
@@ -592,7 +630,6 @@
                     };
                     App.openSaveModal();
                 };
-
                 input.addEventListener('blur', () => {
                     const newVal = input.value.trim();
                     const cat = App.menuData[App.currentCategoryIndex];
@@ -604,8 +641,6 @@
                         App.openSaveModal();
                     }
                 });
-                input.addEventListener('keydown', (e) => { if(e.key==='Enter') input.blur(); });
-                
                 wrapper.appendChild(input);
                 if (index !== null) wrapper.appendChild(delBtn); 
                 container.appendChild(wrapper);
@@ -613,16 +648,10 @@
             },
             goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
             
-            // --- SAVE LOGIC ---
-            openSaveModal: () => {
-                document.getElementById('saveModeModal').style.display = 'flex';
-            },
+            openSaveModal: () => { document.getElementById('saveModeModal').style.display = 'flex'; },
             
             executeSave: (mode) => {
-                if (App.pendingAction) {
-                    App.pendingAction();
-                    App.pendingAction = null;
-                }
+                if (App.pendingAction) { App.pendingAction(); App.pendingAction = null; }
                 App.menuData.forEach(cat => { cat.items = cat.items.filter(i => i && i.trim() !== ''); });
                 window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
                 document.getElementById('saveModeModal').style.display = 'none';
@@ -694,8 +723,7 @@
             minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
             acceptOrder: (id) => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                window.socket.emit('admin-stop-ringing'); // 👈 Notify server to stop loop
-
+                window.socket.emit('admin-stop-ringing'); 
                 window.socket.emit('accept-order', Number(id));
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
@@ -713,23 +741,16 @@
                 }
             },
             
-            // ✅ CORRECTED RENDER LOGIC FOR STAFF TABS ✅
             renderStaffList: (list) => {
                 const container = document.getElementById('staffList');
                 if (!container) return;
-                
                 const now = Date.now();
                 if(!App.tempComingState) App.tempComingState = {};
 
-                // Update "Coming" logic first based on incoming data
                 list.forEach(u => {
                     const wasRinging = App.lastRingingState[u.username];
                     const isRinging = u.isRinging;
-                    
-                    if (wasRinging && !isRinging) {
-                        // User stopped ringing -> assuming they accepted
-                        App.tempComingState[u.username] = now; 
-                    }
+                    if (wasRinging && !isRinging) { App.tempComingState[u.username] = now; }
                     App.lastRingingState[u.username] = isRinging;
                 });
 
@@ -739,41 +760,24 @@
                     
                     const row = document.createElement('div');
                     row.className = 'staff-row';
-                    
                     const btn = document.createElement('button');
                     const isAway = u.status === 'away';
-                    
                     let stTxt = isAway ? "AWAY" : "IDLE";
-                    let stCol = isAway ? "#FF9800" : "white"; // ORANGE if away, WHITE if idle
+                    let stCol = isAway ? "#FF9800" : "white"; 
                     
-                    // --- STRICT PRIORITY FOR COLORS ---
-                    // 1. RINGING (Yellow) - Top Priority
-                    if(u.isRinging) { 
-                        stTxt = "📞 ..."; 
-                        stCol = "yellow"; 
-                    } 
-                    // 2. COMING (Green) - Second Priority (Lasts 15s)
-                    else if (App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000)) {
-                        stTxt = "🚀 ΕΡΧΕΤΑΙ";
-                        stCol = "#00E676";
-                    }
-                    // 3. AWAY (Orange) - If background & not ringing
-                    else if (isAway) {
-                        stTxt = "AWAY";
-                        stCol = "#FF9800";
-                    }
-                    // 4. IDLE (White/Blue Border) - Default
+                    if(u.isRinging) { stTxt = "📞 ..."; stCol = "yellow"; } 
+                    else if (App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000)) { stTxt = "🚀 ΕΡΧΕΤΑΙ"; stCol = "#00E676"; }
+                    else if (isAway) { stTxt = "AWAY"; stCol = "#FF9800"; }
 
                     btn.className = `btn-staff ${u.role} ${isAway ? 'ghost' : ''}`;
-                    // Force color override
                     btn.innerHTML = `<span>${u.username}</span><span style="color:${stCol}; font-weight:bold;">${stTxt}</span>`;
+                    
                     if (stCol === 'yellow') btn.style.borderColor = 'yellow';
                     else if (stCol === '#00E676') btn.style.borderColor = '#00E676';
-                    else btn.style.borderColor = '#FFD700'; // Default gold
+                    else btn.style.borderColor = '#555'; 
                     
                     btn.onclick = () => {
                         window.socket.emit('trigger-alarm', u.username);
-                        // Immediate visual feedback
                         btn.innerHTML = `<span>${u.username}</span><span style="color:yellow;">📞 ...</span>`;
                         btn.style.borderColor = 'yellow';
                     };
@@ -783,12 +787,11 @@
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-delete';
                         delBtn.innerText = 'X';
-                        delBtn.onclick = () => { if(confirm("Διαγραφή;")) window.socket.emit('manual-logout', { targetUser: u.username }); };
+                        delBtn.onclick = (e) => { e.stopPropagation(); if(confirm("Διαγραφή;")) window.socket.emit('manual-logout', { targetUser: u.username }); };
                         row.appendChild(delBtn);
                     }
                     container.appendChild(row);
                 });
-                // No recursion here anymore!
             },
             
             toggleAdminChat: () => { 
