@@ -7,10 +7,10 @@ const fs = require('fs');
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
-const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; // ✅ YOUR KEY
+const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; // ✅ ΤΟ ΚΛΕΙΔΙ ΣΟΥ
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
-// ✅ PRICE LIST
+// ✅ ΤΙΜΟΚΑΤΑΛΟΓΟΣ ΣΥΝΔΡΟΜΩΝ (Price IDs)
 const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
 const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
@@ -89,15 +89,13 @@ app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'p
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 
-/* ---------------- STRIPE CONNECT OAUTH (THE BUTTON) ---------------- */
-// 1. Start Connection
+/* ---------------- STRIPE CONNECT OAUTH ---------------- */
 app.get('/connect-stripe', (req, res) => {
     const state = "BellGo_Store"; 
     const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&state=${state}`;
     res.redirect(url);
 });
 
-// 2. Callback from Stripe
 app.get('/stripe-connect-callback', async (req, res) => {
     const { code, error } = req.query;
     if (error || !code) {
@@ -122,7 +120,6 @@ app.get('/stripe-connect-callback', async (req, res) => {
 app.get('/manifest.json', (req, res) => {
     const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
-    
     const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
     
     let appName = "BellGo App";
@@ -165,42 +162,27 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-/* ---------------- STRIPE PAYMENTS (SUBSCRIPTIONS & ORDERS) ---------------- */
-
-// 1. Subscription Check
+/* ---------------- STRIPE PAYMENTS ---------------- */
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
-
     try {
         const customers = await stripe.customers.search({ query: `email:'${email}'` });
         if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
-
-        const subscriptions = await stripe.subscriptions.list({
-            customer: customers.data[0].id,
-            status: 'active',
-        });
-
+        const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
         if (subscriptions.data.length > 0) {
             const planId = subscriptions.data[0].items.data[0].price.id;
             let planType = 'basic';
             if (planId === PRICE_PREMIUM) planType = 'premium';
             return res.json({ active: true, plan: planType });
-        } else {
-            return res.json({ active: false });
-        }
-    } catch (e) {
-        console.error("Stripe Check Error:", e);
-        res.json({ active: false, error: e.message });
-    }
+        } else { return res.json({ active: false }); }
+    } catch (e) { res.json({ active: false, error: e.message }); }
 });
 
-// 2. Buy Subscription
 app.post('/create-checkout-session', async (req, res) => {
     const { email, plan } = req.body;
     let priceId = PRICE_BASIC; 
     if (plan === 'premium') priceId = PRICE_PREMIUM; 
-
     try {
         const session = await stripe.checkout.sessions.create({
             line_items: [{ price: priceId, quantity: 1 }],
@@ -213,15 +195,10 @@ app.post('/create-checkout-session', async (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// 3. Pay Order (Customer -> Store)
 app.post('/create-order-payment', async (req, res) => {
     const { amount, storeName } = req.body; 
     const shopStripeId = storeSettings.stripeConnectId; 
-
-    if (!shopStripeId) {
-        return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." });
-    }
-
+    if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -244,14 +221,18 @@ app.post('/create-order-payment', async (req, res) => {
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    if (target && target.fcmToken) {
+    // ✅ FIX: ΜΗΝ ΣΤΕΛΝΕΙΣ ΣΕ NATIVE APPS
+    if (target && target.fcmToken && !target.isNative) {
+        let targetUrl = "/stafpremium.html";
+        if (target.role === 'admin') targetUrl = "/premium.html";
+
         const msg = {
             token: target.fcmToken,
-            data: { ...dataPayload, title: title, body: body, url: "/stafpremium.html" },
+            data: { ...dataPayload, title: title, body: body, url: targetUrl },
             android: { priority: "high" },
             webpush: { 
                 headers: { "Urgency": "high" },
-                fcm_options: { link: `${YOUR_DOMAIN}/stafpremium.html` } 
+                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` } 
             }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
@@ -262,7 +243,13 @@ function updateStore(store) {
     if (!store) return;
     const list = Object.values(activeUsers)
         .filter(u => u.store === store && u.role !== 'customer')
-        .map(u => ({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging }));
+        .map(u => ({ 
+            name: u.username, 
+            username: u.username, 
+            role: u.role, 
+            status: u.status, 
+            isRinging: u.isRinging // Μεταφέρουμε το ringing status στο front
+        }));
 
     io.to(store).emit('staff-list-update', list);
     io.to(store).emit('orders-update', activeOrders.filter(o => o.store === store));
@@ -318,20 +305,24 @@ io.on('connection', (socket) => {
         socket.join(store);
 
         const key = `${store}_${username}`;
-        
-        // ⚠️ PRESERVE RINGING STATE ON RECONNECT (Fix for Status Glitch)
+        // Preserve isRinging state if user rejoins quickly
         const wasRinging = activeUsers[key]?.isRinging || false;
 
         activeUsers[key] = {
             store, username, role: socket.role, socketId: socket.id,
             fcmToken: data.token, status: "online", lastSeen: Date.now(),
-            isRinging: wasRinging, // Restore status
-            isNative: data.isNative
+            isRinging: wasRinging, 
+            isNative: data.isNative // ✅ Save Native Flag
         };
 
         updateStore(store);
         socket.emit('menu-update', liveMenu);
         socket.emit('store-settings-update', storeSettings);
+        
+        // ✅ SYNC STATUS ON JOIN (Για να ανοίξει το overlay αν χτυπούσε πριν)
+        if(wasRinging) {
+             socket.emit('ring-bell'); 
+        }
     });
 
     socket.on('save-store-name', (newName) => { storeSettings.name = newName; saveSettingsToDisk(); io.to(socket.store).emit('store-settings-update', storeSettings); });
@@ -365,12 +356,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('new-order', (orderText) => {
-        // ✅ SERVER-SIDE DEBUG FIX
-        if (!socket.store) {
-            console.log(`⚠️ DEBUG: Rejected Order from ${socket.id} (No Store Joined)`);
-            return; 
-        }
-
+        if (!socket.store) return;
         if (!storeSettings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
 
         const newOrder = {
@@ -384,6 +370,8 @@ io.on('connection', (socket) => {
         updateStore(socket.store);
 
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
+            adm.isRinging = true; // Trigger loop for Admin
+            updateStore(socket.store); // Update UI
             if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
             sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
         });
@@ -396,9 +384,19 @@ io.on('connection', (socket) => {
             order.status = 'pending';
             updateStore(socket.store);
             Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
+                adm.isRinging = true; // Trigger loop for Admin
+                updateStore(socket.store);
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
             });
+        }
+    });
+
+    socket.on('admin-stop-ringing', () => {
+        const key = `${socket.store}_${socket.username}`;
+        if (activeUsers[key]) {
+            activeUsers[key].isRinging = false;
+            updateStore(socket.store);
         }
     });
 
@@ -417,10 +415,9 @@ io.on('connection', (socket) => {
     socket.on('trigger-alarm', (tName) => { 
         const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
         if(t){ 
-            t.isRinging = true; // Set Ringing State
+            t.isRinging = true; 
             updateStore(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
-            // First immediate notification
             sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
         } 
     });
@@ -439,29 +436,26 @@ io.on('connection', (socket) => {
         }
         if (userKey) {
             const user = activeUsers[userKey];
-            user.isRinging = false; // Stop Ringing
+            user.isRinging = false; 
             console.log(`✅ Alarm Accepted by ${user.username}`);
             updateStore(user.store); 
+            
+            // 🔥 ΕΙΔΙΚΟ EVENT ΓΙΑ ΝΑ ΞΕΡΕΙ Ο ADMIN OTI ΑΠΑΝΤΗΣΕ
+            // Στέλνουμε broadcast στον Admin
             io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
         }
     });
 
-    // 🔴 MANUAL LOGOUT (Permanent exit)
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
         const tKey = `${socket.store}_${tUser}`; 
-        if (activeUsers[tKey]) { 
-            delete activeUsers[tKey]; 
-            updateStore(socket.store); 
-        } 
+        if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStore(socket.store); } 
     });
 
-    // ⚠️ DISCONNECT (Temp offline)
     socket.on('disconnect', () => { 
         const key = `${socket.store}_${socket.username}`; 
         if (activeUsers[key] && activeUsers[key].socketId === socket.id) { 
             activeUsers[key].status = 'away'; 
-            // ❌ DO NOT DELETE USER HERE. Keep in memory for notifications loop.
             updateStore(socket.store); 
         } 
     });
@@ -482,17 +476,19 @@ setInterval(() => {
 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) delete activeUsers[key]; } }, 60000);
 
-// 🔥🔥🔥 NAGGING LOOP: 2 SECONDS (Fix Applied) 🔥🔥🔥
+// 🔥🔥🔥 FAST LOOP (2 SECONDS) 🔥🔥🔥
 setInterval(() => {
     for (const key in activeUsers) {
         const user = activeUsers[key];
-        // Send loop only if ringing AND has token
-        if (user.isRinging && user.fcmToken) {
+        // ✅ FIX: Check NOT Native app
+        if (user.isRinging && user.fcmToken && !user.isNative) {
             console.log(`🔁 Looping Alarm for ${user.username}`);
-            sendPushNotification(user, "📞 ΣΕ ΚΑΛΟΥΝ!", "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"); 
+            const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!";
+            const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!";
+            sendPushNotification(user, msg, body);
         }
     }
-}, 2000); // ✅ Changed to 2000ms
+}, 2000); 
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
