@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V14)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v14'; // ✅ Updated Version
+const CACHE_NAME = 'bellgo-v15'; // ✅ Updated Version
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
