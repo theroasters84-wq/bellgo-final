@@ -31,17 +31,19 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
             background-color: #121212; 
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100dvh; 
+            height: 100%; /* Αλλαγή από 100dvh για σταθερότητα με keyboard */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Κλείδωμα για iOS */
+            position: fixed; 
+            top: 0; left: 0; right: 0; bottom: 0;
         }
         
         /* HEADER */
@@ -62,7 +64,7 @@
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         
-        /* MENU CONTAINER - SCROLLING FIX */
+        /* MENU CONTAINER - PERFECT SCROLL */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -71,12 +73,13 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            padding-bottom: 80px; 
+            padding-bottom: 350px; /* Τεράστιο padding για να φαίνεται το τέλος της λίστας όταν γράφεις */
             
-            /* Native Momentum Scrolling */
+            /* Native Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
-            /* touch-action: pan-y; */ /* Αφαιρέθηκε για καλύτερη συμβατότητα */
+            touch-action: pan-y;
+            will-change: scroll-position;
         }
         
         .category-block { width: 100%; }
@@ -92,22 +95,22 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL */
+        /* ORDER PANEL - SLIDING */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
-            height: 50%; /* Default height */
-            transition: height 0.2s ease-out; /* Fast animation */
+            height: 50%; 
+            transition: height 0.2s ease-out; 
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
-            height: 70% !important; 
-            transition: none !important; /* Άμεση αλλαγή χωρίς animation */
+            height: 45% !important; /* Μικρότερο ύψος για να φαίνεται το μενού από πάνω */
+            transition: none !important;
         }
         
         /* Κρύβουμε τα στοιχεία όταν γράφει */
@@ -121,7 +124,6 @@
 
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
         
-        /* Το Textarea πιάνει όλο τον χώρο */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
@@ -533,11 +535,21 @@
                     panel.classList.add('writing-mode');
                 });
                 
+                // 🔥 MOBILE KEYBOARD FIX (Detect Resize)
+                let lastHeight = window.innerHeight;
+                window.addEventListener('resize', () => {
+                    const currentHeight = window.innerHeight;
+                    if (currentHeight > lastHeight) {
+                        // Keyboard closed
+                        panel.classList.remove('writing-mode');
+                        txt.blur();
+                    }
+                    lastHeight = currentHeight;
+                });
+                
+                // Fallback Blur
                 txt.addEventListener('blur', () => {
-                     // Using setTimeout to allow click events to register before mode change
-                     setTimeout(() => {
-                         panel.classList.remove('writing-mode');
-                     }, 200);
+                     setTimeout(() => panel.classList.remove('writing-mode'), 100);
                 });
 
                 App.connectSocket();
