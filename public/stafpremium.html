@@ -62,11 +62,6 @@
             gap: 15px; 
             padding-bottom: 80px; 
             transition: all 0.3s ease; 
-
-            /* 🔥 SCROLLING PHYSICS 🔥 */
-            -webkit-overflow-scrolling: touch; /* Native feel */
-            scroll-behavior: smooth;
-            overscroll-behavior: contain; /* Prevents body scroll */
         }
         
         .category-block { width: 100%; }
@@ -82,7 +77,7 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING & FIXED TO BOTTOM */
+        /* ORDER PANEL - SLIDING */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
@@ -95,7 +90,7 @@
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
         /* WRITING MODE (When typing) */
-        .order-panel.writing-mode { height: 70% !important; }
+        .order-panel.writing-mode { height: 60% !important; }
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
         .order-panel.writing-mode #cancelUpdateBtn,
@@ -104,11 +99,7 @@
             display: none !important;
         }
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
-        .order-panel.writing-mode textarea.order-text { 
-            height: 100% !important; 
-            margin: 0; 
-            border: 2px solid #00E676;
-        }
+        .order-panel.writing-mode textarea.order-text { height: 100%; margin-bottom: 0; }
 
         /* Panel Header (Toggle) */
         .panel-header-bar {
@@ -515,9 +506,10 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     requestAnimationFrame(() => {
+                     // Small delay to prevent flickering
+                     setTimeout(() => {
                          panel.classList.remove('writing-mode');
-                     });
+                     }, 100);
                 });
 
                 App.connectSocket();
@@ -701,13 +693,33 @@
                 else txt.value += `\n1 ${entry}`;
                 
                 txt.scrollTop = txt.scrollHeight;
-                App.handleInput(); // Update total immediately
+                App.handleInput(); // Update total
                 
                 // If adding via modal, make sure panel is visible
                 const panel = document.getElementById('orderPanel');
                 if (panel.classList.contains('minimized')) {
                     App.toggleOrderPanel();
                 }
+            },
+            
+            handleInput: () => {
+                const text = document.getElementById('inpOrderText').value.trim();
+                const lines = text.split('\n');
+                let total = 0;
+                
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    let qty = 1; let rest = line;
+                    const qtyMatch = line.match(/^(\d+)\s+(.*)/);
+                    if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
+
+                    if(rest.includes(':')) {
+                        const parts = rest.split(':');
+                        const priceVal = parseFloat(parts[parts.length-1]);
+                        if(!isNaN(priceVal)) { total += qty * priceVal; } 
+                    }
+                }
+                document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
             },
 
             // --- TOGGLE ORDER PANEL ---
@@ -725,131 +737,76 @@
                 }
             },
 
-            handleInput: () => {
-                const text = document.getElementById('inpOrderText').value.trim();
-                const lines = text.split('\n');
-                let validForCard = true;
-                let total = 0;
-                if (text.length === 0) validForCard = false;
+            acceptAlarmStaff: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                document.getElementById('alarmOverlay').style.display = 'none';
+                const bell = document.getElementById('staffBellBtn');
+                bell.style.display = 'none';
+                bell.classList.remove('ringing');
+                window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
+            },
 
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    let qty = 1; let rest = line;
-                    const qtyMatch = line.match(/^(\d+)\s+(.*)/);
-                    if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
+            muteAlarm: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                document.getElementById('alarmOverlay').style.display = 'none';
+            },
 
-                    if(rest.includes(':')) {
-                        const parts = rest.split(':');
-                        const priceVal = parseFloat(parts[parts.length-1]);
-                        if(!isNaN(priceVal)) { total += qty * priceVal; } 
-                        else { validForCard = false; }
-                    } else if (line.trim().startsWith('+')) {
-                         // Extra item 
-                    } else { 
-                         validForCard = false; 
-                    }
+            sendOrder: () => {
+                const txt = document.getElementById('inpOrderText').value;
+                const tbl = document.getElementById('inpTable').value;
+                const payIcon = App.payMethod === 'card' ? '💳' : '💵';
+                const cv = document.getElementById('inpCovers').value;
+                
+                if (App.updatingOrderId) {
+                     window.socket.emit('update-order', { id: App.updatingOrderId, addText: txt });
+                     alert("Ενημερώθηκε! 📝");
+                     App.cancelUpdate();
+                     return;
                 }
-                document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
-                const btnCard = document.getElementById('payCard');
-                if (validForCard && total > 0) {
-                    btnCard.disabled = false;
-                    btnCard.innerHTML = "💳 ΚΑΡΤΑ";
-                } else {
-                    btnCard.disabled = true;
-                    btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
-                }
-                return total;
-            },
-
-            requestPayment: () => {
-                const items = document.getElementById('inpOrderText').value.trim();
-                if (!items) return alert("Το καλάθι είναι άδειο!");
-                App.handleInput();
-                document.getElementById('paymentOverlay').style.display = 'flex';
-            },
-
-            confirmPayment: (method) => {
-                const items = document.getElementById('inpOrderText').value.trim();
-                if(method === '💳 ΚΑΡΤΑ') {
-                    App.payWithCard(items);
-                } else {
-                    App.sendOrder(items, method);
-                    document.getElementById('paymentOverlay').style.display = 'none';
-                }
-            },
-
-            payWithCard: async (items) => {
-                const totalAmount = App.handleInput();
-                if(totalAmount <= 0) return alert("Σφάλμα ποσού.");
-                localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
-                try {
-                    const res = await fetch('/create-order-payment', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })
-                    });
-                    const data = await res.json();
-                    if(data.url) { window.location.href = data.url; } 
-                    else { alert("Σφάλμα πληρωμής: " + (data.error || "Άγνωστο")); }
-                } catch(e) { alert("Σφάλμα σύνδεσης με τον Server."); }
-            },
-
-            sendOrder: (items, method) => {
-                const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
-                activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
-                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                window.socket.emit('new-order', fullText);
-                App.showStatus('pending'); 
-                document.getElementById('inpOrderText').value = ''; 
+                if(!txt) return alert("Κενή παραγγελία");
+                const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
+                window.socket.emit('new-order', `${header}\n${txt}`);
+                document.getElementById('inpTable').value = '';
+                document.getElementById('inpCovers').value = '';
+                document.getElementById('inpOrderText').value = '';
                 document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+                App.setPayment('cash');
+                alert("Εστάλη!");
             },
-
-            minimizeStatus: () => { document.getElementById('statusOverlay').style.height = '0'; },
-
-            showStatus: (status) => {
-                const overlay = document.getElementById('statusOverlay');
-                const icon = document.getElementById('statusIcon');
-                const text = document.getElementById('statusText');
-                const sub = document.getElementById('statusSub');
-                const btnNew = document.getElementById('btnNewOrder');
-
-                overlay.style.height = '100%'; 
-                btnNew.style.display = 'none'; 
-
-                let timeString = "";
-                if (activeOrderState && activeOrderState.timestamp) {
-                    const date = new Date(activeOrderState.timestamp);
-                    timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
-                }
-
-                if (status === 'pending') {
-                    icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
-                } else if (status === 'cooking') {
-                    icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
-                } else if (status === 'ready') {
-                    icon.innerText = '🛵'; text.innerText = `Η παραγγελία (${timeString}) έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
-                    btnNew.style.display = 'block'; 
-                }
+            
+            setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
+            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText="ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
+            prepareUpdateOrder: () => { 
+                document.getElementById('actionModal').style.display='none'; document.getElementById('myOrdersOverlay').style.display='none';
+                const o = App.allActiveOrders.find(x=>x.id===App.selectedOrderId); if(!o)return;
+                App.updatingOrderId=o.id; 
+                const t=o.text.match(/ΤΡ:\s*(\d+)/); if(t)document.getElementById('inpTable').value=t[1];
+                const c=o.text.match(/AT:\s*(\d+)/); if(c)document.getElementById('inpCovers').value=c[1];
+                const btn=document.getElementById('btnSendOrder'); btn.innerText="➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
+                document.getElementById('cancelUpdateBtn').style.display='block';
+                // Open panel if minimized
+                const p = document.getElementById('orderPanel');
+                if(p.classList.contains('minimized')) App.toggleOrderPanel();
             },
-
-            updateStatusUI: (status) => { App.showStatus(status); },
-
-            resetForNewOrder: () => {
-                if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
-                    localStorage.removeItem('bellgo_active_order');
-                    activeOrderState = null;
-                    document.getElementById('statusOverlay').style.height = '0';
-                    document.getElementById('inpOrderText').value = '';
-                }
-            },
-
-            resetUI: () => { document.getElementById('statusOverlay').style.height = '0'; }
+            handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
+            toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
+            switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },
+            toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },
+            sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
+            appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
+            toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href="login.html"; },
+            forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(),500); },
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) { currentUser = user; App.checkDetails(); } 
-            else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContent').style.display = 'none'; }
-        });
+        window.onload = App.init;
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('✅ Staff Service Worker Registered'))
+                .catch(err => console.log('❌ Staff SW Error:', err));
+        }
     </script>
 </body>
 </html>
