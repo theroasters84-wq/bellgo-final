@@ -1,4 +1,4 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
 <html lang="el">
 <head>
     <meta charset="UTF-8">
@@ -49,7 +49,20 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        
+        body { 
+            background-color: #121212; 
+            color: #fff; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            height: 100dvh; /* Dynamic viewport height specifically for mobile */
+            width: 100vw; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            position: fixed; /* Lock body scrolling specifically on iOS */
+            top: 0; left: 0; right: 0; bottom: 0;
+        }
 
         /* HEADER */
         .header { 
@@ -116,7 +129,7 @@
         .btn-install-app { display: none; margin-top: 20px; background: transparent; border: 2px solid #FFD700; color: #FFD700; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 14px; }
 
         /* OVERLAYS */
-        .overlay-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
         .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
         .inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; width: 100%; }
         .btn-save-details { padding: 12px; background: #00E676; color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; }
@@ -129,6 +142,7 @@
         /* MAIN LAYOUT */
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; position: relative; }
 
+        /* MENU CONTAINER - FIXED SCROLLING */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -141,10 +155,11 @@
             opacity: 1;
             transition: opacity 0.3s ease, filter 0.3s ease;
             
-            /* 🔥 SCROLLING PHYSICS 🔥 */
+            /* 🔥 MOMENTUM SCROLLING 🔥 */
             -webkit-overflow-scrolling: touch; 
-            scroll-behavior: smooth;
-            overscroll-behavior: contain;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            will-change: scroll-position;
         }
 
         /* ANIMATION CLASSES FOR MENU */
@@ -175,12 +190,15 @@
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
             height: 45%; 
-            transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: height 0.2s ease-out;
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
 
         /* WRITING MODE (Clean & Fast) */
-        .order-panel.writing-mode { height: 70% !important; transition: none !important; }
+        .order-panel.writing-mode { 
+            height: 70% !important; 
+            transition: none !important; 
+        }
         
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .address-bar,
@@ -448,7 +466,7 @@
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
                 
-                // Writing Mode Listeners
+                // Writing Mode Listeners with Mobile Fix
                 const txt = document.getElementById('orderText');
                 const panel = document.getElementById('orderPanel');
                 
@@ -456,10 +474,19 @@
                     panel.classList.add('writing-mode');
                 });
                 
+                // DETECT KEYBOARD CLOSING
+                let lastHeight = window.innerHeight;
+                window.addEventListener('resize', () => {
+                    const currentHeight = window.innerHeight;
+                    if (currentHeight > lastHeight) {
+                        panel.classList.remove('writing-mode');
+                        txt.blur();
+                    }
+                    lastHeight = currentHeight;
+                });
+                
                 txt.addEventListener('blur', () => {
-                     requestAnimationFrame(() => {
-                         panel.classList.remove('writing-mode');
-                     });
+                     setTimeout(() => panel.classList.remove('writing-mode'), 200);
                 });
 
                 App.connectSocket();
@@ -820,7 +847,7 @@
                 if (status === 'pending') {
                     icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
                 } else if (status === 'cooking') {
-                    icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
+                    icon.innerText = '👨‍🍳'; text.innerText = 'Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
                     icon.innerText = '🛵'; text.innerText = `Η παραγγελία (${timeString}) έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
