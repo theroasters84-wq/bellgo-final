@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
     
     <title>Delivery</title>
     <link rel="icon" type="image/png" href="shop.png">
@@ -46,6 +46,7 @@
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
+            // ID unique for Customer App
             let manifestUrl = `manifest.json?icon=shop&id=customer_app`; 
             if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
             if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
@@ -58,12 +59,16 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
+        :root {
+            --app-height: 100vh; /* Fallback */
+        }
+
         body { 
             background-color: #121212; 
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100vh; 
+            height: var(--app-height); /* VISUAL VIEWPORT HEIGHT */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -150,7 +155,9 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            padding-bottom: 350px; 
+            
+            /* IMPORTANT: Huge padding so content isn't hidden by keyboard */
+            padding-bottom: 400px; 
             
             /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
@@ -176,7 +183,7 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING */
+        /* ORDER PANEL - FIXED BOTTOM */
         .order-panel { 
             position: fixed; 
             bottom: 0; left: 0; width: 100%;
@@ -185,19 +192,19 @@
             display: flex; 
             flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
-            z-index: 20; 
+            z-index: 50; 
             height: 45%; 
             transition: height 0.2s ease-out;
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
 
-        /* WRITING MODE (Simplified) */
+        /* WRITING MODE (Simplified for Stability) */
         .order-panel.writing-mode { 
-            height: 45% !important; /* Σταθερό ύψος */
-            /* Αφαιρέσαμε το transition για να μην laggarει */
+            height: 45% !important; /* Keep compact to see menu behind */
             transition: none !important; 
         }
         
+        /* Elements to hide when writing */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .address-bar,
         .order-panel.writing-mode #liveTotal,
@@ -207,6 +214,7 @@
         
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
         
+        /* Textarea takes full space of panel */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
@@ -326,7 +334,6 @@
             </div>
             <div class="header-actions">
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 APP</button>
-                <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
 
@@ -409,23 +416,11 @@
 
         const params = new URLSearchParams(window.location.search);
         let TARGET_STORE = params.get('store');
-        
-        // 🔹 STORE ID PERSISTENCE 🔹
-        if (TARGET_STORE) {
-            localStorage.setItem('bellgo_target_store', TARGET_STORE);
-        } else {
-            TARGET_STORE = localStorage.getItem('bellgo_target_store');
-        }
-
         if (!TARGET_STORE) {
             const pathParts = window.location.pathname.split('/');
             const shopIndex = pathParts.indexOf('shop');
-            if (shopIndex !== -1 && pathParts[shopIndex + 1]) { 
-                TARGET_STORE = pathParts[shopIndex + 1];
-                localStorage.setItem('bellgo_target_store', TARGET_STORE);
-            }
+            if (shopIndex !== -1 && pathParts[shopIndex + 1]) { TARGET_STORE = pathParts[shopIndex + 1]; }
         }
-        
         const PRELOADED_NAME = params.get('name'); 
 
         let currentUser = null;
@@ -433,6 +428,28 @@
         let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
         const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
         let storeSchedule = {};
+
+        // --- VISUAL VIEWPORT LOGIC (FIX FOR MOBILE/WEB LAYOUT) ---
+        function handleViewport() {
+            if (window.visualViewport) {
+                // Set custom CSS variable for true visible height
+                document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                
+                // If keyboard closes (height increases), close writing mode
+                if (window.visualViewport.height > (window.screen.height * 0.8)) {
+                    document.getElementById('orderPanel').classList.remove('writing-mode');
+                    document.getElementById('orderText').blur();
+                }
+            }
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleViewport);
+            window.visualViewport.addEventListener('scroll', handleViewport);
+        }
+        window.addEventListener('resize', handleViewport);
+        // Call once on load
+        handleViewport();
+
 
         window.App = {
             // ... (Install, Login, Logout remain same)
@@ -477,7 +494,7 @@
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
                 
-                // 🔹 SIMPLIFIED WRITING MODE (Fix for Web & Mobile)
+                // Writing Mode Listeners
                 const txt = document.getElementById('orderText');
                 const panel = document.getElementById('orderPanel');
                 
@@ -485,19 +502,7 @@
                     panel.classList.add('writing-mode');
                 });
                 
-                txt.addEventListener('blur', () => {
-                     // Using timeout to prevent flicker
-                     setTimeout(() => {
-                         panel.classList.remove('writing-mode');
-                     }, 150);
-                });
-                
-                // Prevent blur when clicking panel area
-                panel.addEventListener('mousedown', (e) => {
-                    if (document.activeElement === txt) {
-                        e.preventDefault(); 
-                    }
-                });
+                // Note: Blur is handled by VisualViewport resize to avoid conflicts
 
                 App.connectSocket();
                 App.requestNotifyPermission(); 
@@ -550,13 +555,12 @@
                 const socket = window.socket;
 
                 socket.on('connect', () => {
-                    // Ensure TARGET_STORE is used
-                    const storeID = TARGET_STORE || localStorage.getItem('bellgo_target_store');
-                    socket.emit('join-store', { storeName: storeID, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: localStorage.getItem('fcm_token'), isNative: false });
+                    socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: localStorage.getItem('fcm_token'), isNative: false });
                     setTimeout(() => { App.checkStripeReturn(); }, 1000);
                 });
 
                 socket.on('menu-update', (data) => { 
+                    // Visual Fade Out Effect before render
                     const container = document.getElementById('menuContainer');
                     container.classList.add('menu-fade-out');
                     setTimeout(() => {
@@ -587,6 +591,7 @@
                             if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; }
                         }
                         
+                        // Schedule Logic
                         if (settings.schedule) {
                             storeSchedule = settings.schedule;
                             App.updateTodayHours();
@@ -594,22 +599,18 @@
                     }
                 });
 
-                // 🔹 3. FIXED STATUS UPDATES (Loose Equality for IDs)
                 socket.on('orders-update', (orders) => {
                     if (!activeOrderState) return;
                     
-                    // Use loose equality (==) because socket ID might be string vs number
+                    // Match by ID (Using loose equality == just in case socket sends string)
                     const myOrder = orders.find(o => o.id == activeOrderState.id);
                     
                     if (myOrder) {
-                        console.log("Order found update:", myOrder.status); // Debug log
                         if (activeOrderState.status !== myOrder.status) {
                             activeOrderState.status = myOrder.status;
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                             App.updateStatusUI(myOrder.status);
                         }
-                    } else {
-                        console.log("Order not found in list:", activeOrderState.id);
                     }
                 });
             },
@@ -674,7 +675,7 @@
 
                             if(itemName) {
                                 const box = document.createElement('div');
-                                box.className = 'item-box menu-fade-in';
+                                box.className = 'item-box menu-fade-in'; // Animation Class
                                 box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
                                 box.addEventListener('click', (e) => { e.preventDefault(); App.handleItemClick(itemName, itemPrice, itemExtras); });
                                 itemsDiv.appendChild(box);
@@ -746,9 +747,10 @@
                 if (panel.classList.contains('minimized')) {
                     App.toggleOrderPanel();
                 }
-                App.handleInput(); 
+                App.handleInput(); // Update total immediately
             },
 
+            // --- TOGGLE ORDER PANEL ---
             toggleOrderPanel: () => {
                 const p = document.getElementById('orderPanel');
                 const icon = document.getElementById('panelIcon');
@@ -865,7 +867,7 @@
                 } else if (status === 'cooking') {
                     icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
-                    icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται! (${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
+                    icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
                 }
             },
