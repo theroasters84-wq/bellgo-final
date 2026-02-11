@@ -153,6 +153,7 @@ app.get('/manifest.json', (req, res) => {
         appName = storeSettings.name || "BellGo Admin";
     }
 
+    // 🔥 FIX: Include store ID in appId to make it unique per shop
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
     let iconFile = "admin.png"; 
     let startUrl = ".";  
@@ -353,6 +354,7 @@ io.on('connection', (socket) => {
         if (data.role === 'customer') socket.role = 'customer';
 
         socket.join(store);
+        console.log(`📡 User ${username} joined room: ${store}`); // Log for debugging
 
         const key = `${store}_${username}`;
         const wasRinging = activeUsers[key]?.isRinging || false;
@@ -425,6 +427,7 @@ io.on('connection', (socket) => {
             store: socket.store
         };
         activeOrders.push(newOrder);
+        console.log(`📦 New order in room ${socket.store} from ${socket.username}`);
         updateStore(socket.store); // Saves to Firebase inside updateStore
 
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
@@ -462,14 +465,19 @@ io.on('connection', (socket) => {
     // 🔥 FIX: Use loose equality (==) here too
     socket.on('accept-order', (id) => { 
         const o = activeOrders.find(x => x.id == id); 
-        if(o){ o.status = 'cooking'; updateStore(socket.store); } 
+        if(o){ 
+            o.status = 'cooking'; 
+            console.log(`👨‍🍳 Order ${id} accepted in room ${socket.store}`);
+            updateStore(socket.store); 
+        } 
     });
     
     // 🔥 FIX: Use loose equality (==) here too
     socket.on('ready-order', (id) => { 
         const o = activeOrders.find(x => x.id == id); 
         if(o){ 
-            o.status = 'ready'; updateStore(socket.store); 
+            o.status = 'ready'; 
+            updateStore(socket.store); 
             const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; 
             if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
         } 
