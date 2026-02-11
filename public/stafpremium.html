@@ -14,10 +14,11 @@
 
     <script>
         (function() {
-            // PWA LOGIC
+            // PWA LOGIC: Δυναμικό Manifest με ξεχωριστό ID (staff_app)
             const saved = localStorage.getItem('bellgo_session');
             const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=admin`;
+            // Προσθέτουμε &id=staff_app για να μην μπερδεύεται με το Order App
+            let url = `manifest.json?icon=admin&id=staff_app`;
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
@@ -41,12 +42,12 @@
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100dvh; 
+            height: 100vh; /* Fixed height for stability */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; 
+            position: fixed; /* Lock for iOS */
             top: 0; left: 0; right: 0; bottom: 0;
         }
         
@@ -61,15 +62,26 @@
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
         
-        /* BELL BTN */
-        #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
-        #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; box-shadow: 0 0 15px #FFD700; }
+        /* BELL BTN - Τώρα εμφανίζεται μόνο όταν χτυπάει (ή είναι κρυφό και εμφανίζεται) */
+        #staffBellBtn { 
+            background: #FFD700; 
+            color: black; 
+            border: 2px solid #FFD700; 
+            display: none; /* Κρυφό αρχικά */
+        }
+        
+        #staffBellBtn.ringing { 
+            display: flex; 
+            animation: shake 0.5s infinite; 
+            box-shadow: 0 0 15px #FFD700; 
+            background: #FFD700;
+        }
 
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 
-        /* MENU CONTAINER - PERFECT SCROLL */
+        /* MENU CONTAINER - FIXED SCROLLING */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -79,10 +91,10 @@
             flex-direction: column; 
             gap: 15px; 
             
-            /* HUGE PADDING BOTTOM */
+            /* HUGE PADDING: Για να σκρολάρεις πάνω από το πληκτρολόγιο */
             padding-bottom: 350px; 
             
-            /* Native Scrolling */
+            /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -116,11 +128,10 @@
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
-            height: 45% !important; 
+            height: 45% !important; /* 45% για να βλέπεις και το μενού */
             transition: none !important;
         }
         
-        /* Hide extra elements when writing */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -226,12 +237,6 @@
     <div id="startScreen">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Staff 🔔</h1>
         <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
-    </div>
-
-    <div id="alarmOverlay" class="overlay-screen">
-        <h1 style="color:white; margin-bottom:30px; font-size:30px;">📞 ΣΕ ΚΑΛΟΥΝ!</h1>
-        <button class="btn-start" onclick="App.acceptAlarmStaff()">✅ ΕΡΧΟΜΑΙ</button>
-        <button style="margin-top:20px; background:transparent; border:none; color:#aaa; font-size:16px;" onclick="App.muteAlarm()">❌ ΚΛΕΙΣΙΜΟ</button>
     </div>
 
     <div id="userExtrasModal" class="overlay-screen">
@@ -542,7 +547,7 @@
                     panel.classList.add('writing-mode');
                 });
                 
-                // DETECT KEYBOARD CLOSING
+                // 🔥 MOBILE KEYBOARD FIX (Detect Resize)
                 let lastHeight = window.innerHeight;
                 window.addEventListener('resize', () => {
                     const currentHeight = window.innerHeight;
@@ -601,12 +606,13 @@
                     });
                 });
 
+                // ✅ NEW LOGIC: Only shake the bell, no overlay
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     bell.classList.add('ringing');
-                    document.getElementById('alarmOverlay').style.display = 'flex'; 
+                    // NO OVERLAY HERE
                 });
 
                 socket.on('store-settings-update', (settings) => {
@@ -701,6 +707,8 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
+                        
+                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
@@ -782,7 +790,7 @@
 
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                document.getElementById('alarmOverlay').style.display = 'none';
+                // document.getElementById('alarmOverlay').style.display = 'none'; // Removed
                 const bell = document.getElementById('staffBellBtn');
                 bell.style.display = 'none';
                 bell.classList.remove('ringing');
@@ -791,7 +799,7 @@
 
             muteAlarm: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                document.getElementById('alarmOverlay').style.display = 'none';
+                // document.getElementById('alarmOverlay').style.display = 'none'; // Removed
             },
 
             sendOrder: () => {
