@@ -19,21 +19,18 @@
 
     <script>
         (function() {
-            // PWA LOGIC: Δυναμικό Manifest
+            // PWA LOGIC
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             let pStore = params.get('store');
 
-            // Αποθήκευση Store ID για να μην χάνεται στο PWA
             if (pStore) {
                 localStorage.setItem('bellgo_target_store', pStore);
             } else {
-                // Αν δεν υπάρχει στο URL, το παίρνουμε από τη μνήμη
                 pStore = localStorage.getItem('bellgo_target_store');
             }
 
             if (!pStore) {
-                // Fallback από URL path
                 const pathParts = window.location.pathname.split('/');
                 const shopIndex = pathParts.indexOf('shop');
                 if (shopIndex !== -1 && pathParts[shopIndex + 1]) {
@@ -66,7 +63,7 @@
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100vh; /* Fixed height */
+            height: 100vh; 
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -153,11 +150,9 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            
-            /* HUGE PADDING BOTTOM: Για να σκρολάρεις πίσω από το keyboard */
             padding-bottom: 350px; 
             
-            /* Native Scrolling */
+            /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -183,26 +178,26 @@
 
         /* ORDER PANEL - SLIDING */
         .order-panel { 
-            position: fixed; /* FIXED για να μένει κολλημένο κάτω */
+            position: fixed; 
             bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; 
             border-top: 2px solid #333; 
             display: flex; 
             flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
-            z-index: 50; /* Υψηλό z-index για να είναι πάνω από όλα */
+            z-index: 20; 
             height: 45%; 
             transition: height 0.2s ease-out;
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
 
-        /* WRITING MODE */
+        /* WRITING MODE (Simplified) */
         .order-panel.writing-mode { 
             height: 45% !important; /* Σταθερό ύψος */
+            /* Αφαιρέσαμε το transition για να μην laggarει */
             transition: none !important; 
         }
         
-        /* Elements to hide when writing */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .address-bar,
         .order-panel.writing-mode #liveTotal,
@@ -212,7 +207,6 @@
         
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
         
-        /* Textarea takes full space */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
@@ -416,7 +410,7 @@
         const params = new URLSearchParams(window.location.search);
         let TARGET_STORE = params.get('store');
         
-        // 🔹 1. PERSIST STORE ID (Fix for PWA)
+        // 🔹 STORE ID PERSISTENCE 🔹
         if (TARGET_STORE) {
             localStorage.setItem('bellgo_target_store', TARGET_STORE);
         } else {
@@ -483,7 +477,7 @@
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
                 
-                // 🔹 2. SIMPLIFIED WRITING MODE (Fix for Web)
+                // 🔹 SIMPLIFIED WRITING MODE (Fix for Web & Mobile)
                 const txt = document.getElementById('orderText');
                 const panel = document.getElementById('orderPanel');
                 
@@ -491,20 +485,17 @@
                     panel.classList.add('writing-mode');
                 });
                 
-                // Removed the complex 'resize' listener that broke Web view
-                
                 txt.addEventListener('blur', () => {
-                     // Safety timeout - cancelled if Send is clicked
+                     // Using timeout to prevent flicker
                      setTimeout(() => {
-                         // Only remove if not clicking the send button (handled by click event order)
                          panel.classList.remove('writing-mode');
                      }, 150);
                 });
                 
-                // Prevent blur when touching panel (helps on mobile)
+                // Prevent blur when clicking panel area
                 panel.addEventListener('mousedown', (e) => {
                     if (document.activeElement === txt) {
-                        e.preventDefault(); // Keeps focus on text
+                        e.preventDefault(); 
                     }
                 });
 
@@ -559,7 +550,7 @@
                 const socket = window.socket;
 
                 socket.on('connect', () => {
-                    // Ensure TARGET_STORE is valid from localStorage
+                    // Ensure TARGET_STORE is used
                     const storeID = TARGET_STORE || localStorage.getItem('bellgo_target_store');
                     socket.emit('join-store', { storeName: storeID, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: localStorage.getItem('fcm_token'), isNative: false });
                     setTimeout(() => { App.checkStripeReturn(); }, 1000);
@@ -580,7 +571,6 @@
                             const newName = settings.name;
                             document.getElementById('storeNameHeader').innerText = newName;
                             document.title = newName;
-                            // Persist name in URL without refreshing
                             if (!new URLSearchParams(window.location.search).get('name')) {
                                 const currentParams = new URLSearchParams(window.location.search);
                                 currentParams.set('name', newName);
@@ -604,16 +594,22 @@
                     }
                 });
 
+                // 🔹 3. FIXED STATUS UPDATES (Loose Equality for IDs)
                 socket.on('orders-update', (orders) => {
                     if (!activeOrderState) return;
-                    // 🔹 3. BULLETPROOF ID MATCHING
-                    const myOrder = orders.find(o => o.id === activeOrderState.id);
+                    
+                    // Use loose equality (==) because socket ID might be string vs number
+                    const myOrder = orders.find(o => o.id == activeOrderState.id);
+                    
                     if (myOrder) {
+                        console.log("Order found update:", myOrder.status); // Debug log
                         if (activeOrderState.status !== myOrder.status) {
                             activeOrderState.status = myOrder.status;
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                             App.updateStatusUI(myOrder.status);
                         }
+                    } else {
+                        console.log("Order not found in list:", activeOrderState.id);
                     }
                 });
             },
@@ -869,7 +865,7 @@
                 } else if (status === 'cooking') {
                     icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
-                    icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
+                    icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται! (${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
                 }
             },
