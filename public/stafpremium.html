@@ -31,7 +31,18 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+        body { 
+            background-color: #121212; 
+            color: #fff; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            height: 100dvh; 
+            width: 100vw; 
+            overflow: hidden; /* Κλειδώνει το body */
+            display: flex; 
+            flex-direction: column; 
+            position: fixed; /* Extra κλείδωμα για iOS */
+        }
         
         /* HEADER */
         .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
@@ -51,22 +62,22 @@
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         
-        /* MENU CONTAINER - SCROLLING FIX */
+        /* MENU CONTAINER - FIXED SCROLLING PHYSICS */
         #menuContainer { 
             flex: 1; 
-            overflow-y: auto; 
+            overflow-y: auto; /* Επιτρέπει το κάθετο scroll */
             padding: 10px; 
             background: #121212; 
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
             padding-bottom: 80px; 
-            transition: all 0.3s ease; 
-
-            /* Native Momentum Scrolling */
+            
+            /* 🔥 ΤΟ ΜΥΣΤΙΚΟ ΓΙΑ ΤΟ ΡΟΛΑΡΙΣΜΑ 🔥 */
             -webkit-overflow-scrolling: touch; 
-            scroll-behavior: smooth;
-            overscroll-behavior-y: contain; /* Prevents bouncing/refreshing */
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            will-change: scroll-position;
         }
         
         .category-block { width: 100%; }
@@ -82,24 +93,25 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING & FIXED TO BOTTOM */
+        /* ORDER PANEL - SLIDING */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
-            height: 50%; /* Default 50% */
-            transition: height 0.2s ease-out; /* Fast transition */
+            height: 50%; 
+            transition: height 0.2s ease-out;
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
-        /* WRITING MODE (When typing) */
+        /* WRITING MODE */
         .order-panel.writing-mode { 
             height: 70% !important; 
-            transition: none !important; /* No animation when typing */
+            transition: none !important; 
         }
         
+        /* Κρύβουμε τα πάντα όταν γράφει */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -109,6 +121,8 @@
         }
 
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
+        
+        /* Το Textarea πιάνει όλο τον χώρο και έχει πράσινο περίγραμμα */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
@@ -116,7 +130,7 @@
             border-radius: 4px;
         }
 
-        /* Panel Header (Toggle) */
+        /* Panel Header */
         .panel-header-bar {
             height: 50px; background: #252525; border-bottom: 1px solid #333;
             display: flex; align-items: center; justify-content: center;
@@ -521,10 +535,9 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     // Using requestAnimationFrame to allow click events to register before mode change
-                     requestAnimationFrame(() => {
+                     setTimeout(() => {
                          panel.classList.remove('writing-mode');
-                     });
+                     }, 100);
                 });
 
                 App.connectSocket();
@@ -566,7 +579,7 @@
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
-                        token: localStorage.getItem('fcm_token'), 
+                        token: localStorage.getItem('fcm_token'),
                         isNative: !!window.Capacitor
                     });
                 });
@@ -671,6 +684,8 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
+                        
+                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
