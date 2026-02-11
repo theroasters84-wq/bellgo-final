@@ -5,9 +5,9 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V14)
+   2. CONFIGURATION & CACHE (V20)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v16'; // ✅ Updated Version
+const CACHE_NAME = 'bellgo-v20'; // ✅ Νέα έκδοση για να καθαρίσει τα παλιά
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -15,6 +15,10 @@ const ASSETS_TO_CACHE = [
   '/login.html',
   '/premium.html',
   '/stafpremium.html',
+  '/style.css',          // ✅ Προσθήκη για να βλέπει τα χρώματα
+  '/menu-presets.js',    // ✅ Προσθήκη για τους καταλόγους
+  '/admin-core.js',      // ✅ Προσθήκη για τη λογική admin
+  '/audio-engine.js',    // ✅ Προσθήκη για τον ήχο
   '/admin.png',
   '/shop.png',
   '/staff.png',
@@ -40,48 +44,40 @@ const messaging = firebase.messaging();
 
 /* -----------------------------------------------------------
    4. BACKGROUND HANDLER
-   Τρέχει όταν η σελίδα είναι κλειστή ΚΑΙ το μήνυμα είναι Data-only.
-   (Αν το μήνυμα έχει "notification" block, το χειρίζεται το σύστημα,
-    αλλά αυτός ο κώδικας είναι η ασφάλειά μας).
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
   console.log('[sw.js] Background message:', payload);
   
   const title = payload.data.title || payload.notification?.title || '🚨 ΚΛΗΣΗ!';
   const body = payload.data.body || payload.notification?.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
-  // ✅ Default σε login αν δεν βρει URL, για ασφάλεια
   const url = payload.data.url || '/login.html';
 
   return self.registration.showNotification(title, {
     body: body,
     icon: '/admin.png',
-    tag: 'bellgo-alarm',      // Το ίδιο tag αντικαθιστά το προηγούμενο
-    renotify: true,           // Ξανακάνει δόνηση/ήχο
-    requireInteraction: true, // Μένει στην οθόνη
+    tag: 'bellgo-alarm',      
+    renotify: true,           
+    requireInteraction: true, 
     vibrate: [500, 200, 500, 200, 500],
-    data: { url: url }        // Αποθηκεύουμε το URL για το κλικ
+    data: { url: url }        
   });
 });
 
 /* -----------------------------------------------------------
-   5. CLICK HANDLER (Διαχείριση Κλικ στην Ειδοποίηση)
+   5. CLICK HANDLER
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   
-  // Παίρνουμε το URL από τα δεδομένα της ειδοποίησης
-  // Αν δεν υπάρχει, πάμε στο login
   const urlToOpen = event.notification.data?.url || '/login.html';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      // 1. Ψάχνουμε αν υπάρχει ήδη ανοιχτή καρτέλα που ταιριάζει
       for (const client of clientsArr) {
         if (client.url.includes(urlToOpen) && 'focus' in client) {
             return client.focus();
         }
       }
-      // 2. Αν δεν υπάρχει, ανοίγουμε νέα
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
@@ -107,6 +103,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keyList.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[sw.js] Cleaning old cache:', key);
             return caches.delete(key);
           }
         })
@@ -118,7 +115,6 @@ self.addEventListener('activate', (event) => {
 
 // NETWORK FIRST, THEN CACHE
 self.addEventListener('fetch', (event) => {
-  // Αγνοούμε δυναμικά αιτήματα
   if (event.request.url.includes('socket.io') || 
       event.request.url.includes('manifest.json') ||
       event.request.url.includes('firebase') || 
@@ -129,12 +125,17 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        });
+        // Αν το αρχείο ήρθε σωστά από το ίντερνετ, το βάζουμε στο cache
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
       })
       .catch(() => {
+        // Αν δεν έχουμε ίντερνετ, το φέρνουμε από το cache
         return caches.match(event.request);
       })
   );
