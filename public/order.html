@@ -24,9 +24,11 @@
             const pName = params.get('name');
             let pStore = params.get('store');
 
+            // ✅ ISOLATION FIX: If URL has a store, FORCE update localStorage immediately
             if (pStore) {
                 localStorage.setItem('bellgo_target_store', pStore);
             } else {
+                // Only if no URL param, try to remember last store
                 pStore = localStorage.getItem('bellgo_target_store');
             }
 
@@ -444,11 +446,19 @@
 
         const params = new URLSearchParams(window.location.search);
         let TARGET_STORE = params.get('store');
+        
+        // ✅ ISOLATION LOGIC: Strictly define TARGET_STORE
         if (!TARGET_STORE) {
             const pathParts = window.location.pathname.split('/');
             const shopIndex = pathParts.indexOf('shop');
             if (shopIndex !== -1 && pathParts[shopIndex + 1]) { TARGET_STORE = pathParts[shopIndex + 1]; }
         }
+        
+        // ✅ BACKUP: If no URL param, use LocalStorage, but URL param always wins
+        if (!TARGET_STORE) {
+            TARGET_STORE = localStorage.getItem('bellgo_target_store');
+        }
+
         const PRELOADED_NAME = params.get('name'); 
 
         let currentUser = null;
@@ -584,6 +594,25 @@
                           App.renderMenu(data);
                           container.classList.remove('menu-fade-out');
                     }, 250); 
+                });
+
+                // ✅ NEW: Listen specifically for status changes from the server
+                // This fixes the issue where the user gets stuck on "Pending"
+                socket.on('order-changed', (data) => {
+                     if (!activeOrderState) return;
+                     // Loose equality check for ID safety
+                     if (data.id == activeOrderState.id) {
+                         console.log("⚡ Order status changed:", data.status);
+                         activeOrderState.status = data.status;
+                         
+                         // ✅ Save Start Time if provided (Fix for "oute vlepei to h paragelia ksekinhse")
+                         if (data.startTime) {
+                             activeOrderState.startTime = data.startTime;
+                         }
+                         
+                         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+                         App.updateStatusUI(data.status);
+                     }
                 });
 
                 socket.on('store-settings-update', (settings) => {
@@ -829,6 +858,7 @@
                 const miniText = document.getElementById('miniStatusText');
                 overlay.style.height = '100%'; 
                 btnNew.style.display = 'none'; 
+                
                 let timeString = "--:--";
                 if (activeOrderState && activeOrderState.timestamp) {
                     const date = new Date(activeOrderState.timestamp);
@@ -836,12 +866,21 @@
                 }
                 if(btnMini) btnMini.style.display = 'flex';
                 let statusLabel = "";
+                
                 if (status === 'pending') {
                     statusLabel = "Αναμονή";
                     icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
                 } else if (status === 'cooking') {
                     statusLabel = "Ετοιμάζεται";
-                    icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
+                    
+                    // ✅ DISPLAY START TIME LOGIC
+                    let startStr = "";
+                    if(activeOrderState.startTime) {
+                        const d = new Date(activeOrderState.startTime);
+                        startStr = " (" + d.toLocaleTimeString('el-GR', {hour:'2-digit', minute:'2-digit'}) + ")";
+                    }
+                    
+                    icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!' + startStr; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
                     statusLabel = "Έρχεται";
                     icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
