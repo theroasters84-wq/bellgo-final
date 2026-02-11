@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
     <title>BellGo Staff</title>
     
     <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
@@ -38,12 +38,16 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
+        :root {
+            --app-height: 100vh; /* Fallback */
+        }
+
         body { 
             background-color: #121212; 
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100vh; /* Fixed height for stability on Web */
+            height: var(--app-height); /* VISUAL VIEWPORT HEIGHT */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -104,7 +108,8 @@
 
         /* ORDER PANEL */
         .order-panel { 
-            position: absolute; bottom: 0; left: 0; width: 100%;
+            position: fixed; 
+            bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
@@ -116,10 +121,11 @@
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
-            height: 45% !important; /* Smaller to see menu */
+            height: 45% !important; 
             transition: none !important;
         }
         
+        /* Hide extra elements when writing */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -527,27 +533,36 @@
                     }
                 });
                 
-                // Focus Logic for Writing Mode
+                // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix)
                 const txt = document.getElementById('inpOrderText');
                 const panel = document.getElementById('orderPanel');
+
+                function handleViewport() {
+                    if (window.visualViewport) {
+                        document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                        if (window.visualViewport.height > (window.screen.height * 0.8)) {
+                            // Keyboard Closed
+                            panel.classList.remove('writing-mode');
+                            txt.blur();
+                        }
+                    }
+                }
+                
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', handleViewport);
+                    window.visualViewport.addEventListener('scroll', handleViewport);
+                }
+                window.addEventListener('resize', handleViewport);
                 
                 txt.addEventListener('focus', () => {
                     panel.classList.add('writing-mode');
                 });
                 
-                // Removed complex resize listener for Web stability
                 txt.addEventListener('blur', () => {
-                     // Using setTimeout to allow click events to register before mode change
+                     // Using setTimeout to allow click events
                      setTimeout(() => {
                          panel.classList.remove('writing-mode');
                      }, 150);
-                });
-                
-                // Prevent blur when clicking panel area (helps on mobile)
-                panel.addEventListener('mousedown', (e) => {
-                    if (document.activeElement === txt) {
-                        e.preventDefault(); 
-                    }
                 });
 
                 App.connectSocket();
@@ -599,7 +614,7 @@
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     bell.classList.add('ringing');
-                    // NO OVERLAY
+                    // No Overlay
                 });
 
                 socket.on('store-settings-update', (settings) => {
@@ -637,7 +652,6 @@
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
                             cat.items.forEach(item => {
-                                // Parse item object
                                 let itemName = "", itemPrice = 0, itemExtras = [];
                                 if (typeof item === 'string') {
                                     const parts = item.split(':');
@@ -653,7 +667,6 @@
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
                                     box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
-                                    // ✅ DOUBLE CLICK (DOUBLE TAP) FOR MAIN ITEMS
                                     box.addEventListener('dblclick', (e) => { 
                                         e.preventDefault(); 
                                         App.handleItemClick(itemName, itemPrice, itemExtras); 
@@ -694,8 +707,6 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
-                        
-                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
@@ -722,7 +733,6 @@
 
             addToOrder: (item, price = 0) => {
                 const txt = document.getElementById('inpOrderText');
-                // Flash effect
                 txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
                 
                 const entry = price > 0 ? `${item}:${price}` : item;
@@ -731,16 +741,14 @@
                 else txt.value += `\n1 ${entry}`;
                 
                 txt.scrollTop = txt.scrollHeight;
-                App.handleInput(); // Update total immediately
+                App.handleInput(); 
                 
-                // If adding via modal, make sure panel is visible
                 const panel = document.getElementById('orderPanel');
                 if (panel.classList.contains('minimized')) {
                     App.toggleOrderPanel();
                 }
             },
 
-            // --- TOGGLE ORDER PANEL ---
             toggleOrderPanel: () => {
                 const p = document.getElementById('orderPanel');
                 const icon = document.getElementById('panelIcon');
@@ -777,16 +785,10 @@
 
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                // document.getElementById('alarmOverlay').style.display = 'none'; // Removed
                 const bell = document.getElementById('staffBellBtn');
                 bell.style.display = 'none';
                 bell.classList.remove('ringing');
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
-            },
-
-            muteAlarm: () => {
-                if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                // document.getElementById('alarmOverlay').style.display = 'none'; // Removed
             },
 
             sendOrder: () => {
@@ -822,7 +824,6 @@
                 const c=o.text.match(/AT:\s*(\d+)/); if(c)document.getElementById('inpCovers').value=c[1];
                 const btn=document.getElementById('btnSendOrder'); btn.innerText="➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
                 document.getElementById('cancelUpdateBtn').style.display='block';
-                // Open panel if minimized
                 const p = document.getElementById('orderPanel');
                 if(p.classList.contains('minimized')) App.toggleOrderPanel();
             },
