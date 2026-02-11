@@ -142,6 +142,11 @@
             padding-bottom: 120px; 
             opacity: 1;
             transition: opacity 0.3s ease, filter 0.3s ease;
+            
+            /* 🔥 SCROLLING PHYSICS 🔥 */
+            -webkit-overflow-scrolling: touch; /* Native feel */
+            scroll-behavior: smooth;
+            overscroll-behavior: contain; /* Prevents body scroll */
         }
 
         /* ANIMATION CLASSES FOR MENU */
@@ -188,7 +193,7 @@
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
-            border: 2px solid #00E676; /* Visual cue */
+            border: 2px solid #00E676;
         }
 
         /* Panel Header (Toggle) */
@@ -450,8 +455,11 @@
                 txt.addEventListener('focus', () => {
                     panel.classList.add('writing-mode');
                 });
+                
                 txt.addEventListener('blur', () => {
-                     setTimeout(() => { panel.classList.remove('writing-mode'); }, 100);
+                     requestAnimationFrame(() => {
+                         panel.classList.remove('writing-mode');
+                     });
                 });
 
                 App.connectSocket();
@@ -694,6 +702,7 @@
                 if (panel.classList.contains('minimized')) {
                     App.toggleOrderPanel();
                 }
+                App.handleInput(); // Update total immediately
             },
 
             // --- TOGGLE ORDER PANEL ---
