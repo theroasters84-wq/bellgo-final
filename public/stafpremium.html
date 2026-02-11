@@ -51,7 +51,7 @@
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         
-        /* MENU CONTAINER - ROLLING SCROLL */
+        /* MENU CONTAINER - SCROLLING FIX */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -63,10 +63,10 @@
             padding-bottom: 80px; 
             transition: all 0.3s ease; 
 
-            /* 🔥 MOMENTUM SCROLLING 🔥 */
+            /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             scroll-behavior: smooth;
-            overscroll-behavior: contain;
+            overscroll-behavior-y: contain; /* Prevents bouncing/refreshing */
         }
         
         .category-block { width: 100%; }
@@ -82,19 +82,19 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING */
+        /* ORDER PANEL - SLIDING & FIXED TO BOTTOM */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
-            height: 50%; 
+            height: 50%; /* Default 50% */
             transition: height 0.2s ease-out; /* Fast transition */
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
-        /* WRITING MODE (Clean & Fast) */
+        /* WRITING MODE (When typing) */
         .order-panel.writing-mode { 
             height: 70% !important; 
             transition: none !important; /* No animation when typing */
@@ -521,10 +521,10 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     // Using setTimeout to allow click events to register before mode change
-                     setTimeout(() => {
+                     // Using requestAnimationFrame to allow click events to register before mode change
+                     requestAnimationFrame(() => {
                          panel.classList.remove('writing-mode');
-                     }, 100);
+                     });
                 });
 
                 App.connectSocket();
@@ -566,7 +566,7 @@
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
-                        token: localStorage.getItem('fcm_token'),
+                        token: localStorage.getItem('fcm_token'), 
                         isNative: !!window.Capacitor
                     });
                 });
@@ -671,8 +671,6 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
-                        
-                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
