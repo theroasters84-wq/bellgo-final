@@ -38,10 +38,10 @@
             margin: 0; 
             height: 100dvh; 
             width: 100vw; 
-            overflow: hidden; /* Κλειδώνει το body */
+            overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Extra κλείδωμα για iOS */
+            position: fixed; /* Κλείδωμα για iOS */
         }
         
         /* HEADER */
@@ -62,24 +62,21 @@
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         
-        /* MENU CONTAINER - FIXED SCROLLING PHYSICS */
+        /* MENU CONTAINER - SCROLLING FIX */
         #menuContainer { 
             flex: 1; 
-            overflow-y: auto; /* Επιτρέπει το κάθετο scroll */
+            overflow-y: auto; 
             padding: 10px; 
             background: #121212; 
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
             padding-bottom: 80px; 
-            transition: all 0.3s ease; 
-
-            /* 🔥 ΤΟ ΜΥΣΤΙΚΟ ΓΙΑ ΤΟ ΡΟΛΑΡΙΣΜΑ (Native Feel) 🔥 */
+            
+            /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
-            touch-action: pan-y;
-            will-change: scroll-position;
-            /* Αφαιρέθηκε το scroll-behavior: smooth για να μην κολλάει */
+            /* touch-action: pan-y; */ /* Αφαιρέθηκε για καλύτερη συμβατότητα */
         }
         
         .category-block { width: 100%; }
@@ -95,25 +92,25 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING */
+        /* ORDER PANEL */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
-            height: 50%; 
-            transition: height 0.2s ease-out; /* Fast transition */
+            height: 50%; /* Default height */
+            transition: height 0.2s ease-out; /* Fast animation */
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
             height: 70% !important; 
-            transition: none !important; /* No animation when typing */
+            transition: none !important; /* Άμεση αλλαγή χωρίς animation */
         }
         
-        /* Κρύβουμε τα πάντα όταν γράφει */
+        /* Κρύβουμε τα στοιχεία όταν γράφει */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -124,7 +121,7 @@
 
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
         
-        /* Το Textarea πιάνει όλο τον χώρο και έχει πράσινο περίγραμμα */
+        /* Το Textarea πιάνει όλο τον χώρο */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
@@ -537,10 +534,10 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     // Using requestAnimationFrame to allow click events to register before mode change
-                     requestAnimationFrame(() => {
+                     // Using setTimeout to allow click events to register before mode change
+                     setTimeout(() => {
                          panel.classList.remove('writing-mode');
-                     });
+                     }, 200);
                 });
 
                 App.connectSocket();
@@ -687,6 +684,8 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
+                        
+                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
