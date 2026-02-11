@@ -136,6 +136,10 @@
             cursor: pointer; animation: popIn 0.4s; position: relative; 
         }
         .order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); }
+        
+        /* ✅ NEW: Visual style for Cooking/Accepted orders */
+        .order-folder.cooking { border: 2px dashed #FFD700; border-radius: 10px; background: rgba(255, 215, 0, 0.05); }
+        
         .folder-icon { font-size: 50px; color: #555; transition: 0.2s; }
         .folder-label { 
             font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.5); 
@@ -419,7 +423,7 @@
     <script>
     const AudioEngine = {
         keepAlivePlayer: null, 
-        alarmPlayer: null,     
+        alarmPlayer: null,      
         isRinging: false,
         wakeLock: null,
         
@@ -703,10 +707,22 @@
                     App.renderStaffList(App.lastStaffList);
                 });
                 
+                // ✅ Update Full Order List
                 socket.on('orders-update', (orders) => {
                     App.activeOrders = orders;
                     App.renderDesktopIcons(orders);
                 });
+
+                // ✅ IMMEDIATE STATUS CHANGE (Fixes delays)
+                socket.on('order-changed', (data) => {
+                    const existing = App.activeOrders.find(o => o.id == data.id);
+                    if (existing) {
+                        existing.status = data.status;
+                        if (data.startTime) existing.startTime = data.startTime;
+                        App.renderDesktopIcons(App.activeOrders);
+                    }
+                });
+
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                 });
@@ -1052,9 +1068,14 @@
                 orders.sort((a,b) => a.id - b.id);
                 orders.forEach(order => {
                     const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const style = order.status === 'ready' ? 'border: 2px solid #00E676;' : '';
+                    let style = '';
+                    if (order.status === 'ready') style = 'border: 2px solid #00E676;';
+                    
                     const icon = document.createElement('div');
                     icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
+                    // ✅ Apply Cooking style
+                    if (order.status === 'cooking') icon.classList.add('cooking');
+                    
                     icon.style = style;
                     icon.innerHTML = `<div class="folder-icon">📂</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
                     icon.onclick = () => App.openOrderWindow(order);
@@ -1081,14 +1102,19 @@
                 } else {
                     itemsText = order.text;
                 }
+                
+                // ✅ Add Time Info
+                let timeInfo = `<div style="font-size:12px; color:#aaa; margin-top:5px;">Λήψη: ${new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`;
+                if(order.startTime) {
+                    timeInfo += `<div style="font-size:12px; color:#FFD700; font-weight:bold;">Έναρξη: ${new Date(order.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`;
+                }
+
                 const total = calculateTotal(order.text);
                 const displayItems = itemsText.replace(/\n/g, '<br>');
                 let actions = '';
                 if (order.status === 'pending') {
-                    // ID AS NUMBER FOR COMPATIBILITY
                     actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else if (order.status === 'cooking') {
-                    // ID AS NUMBER FOR COMPATIBILITY
                     actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
                 } else {
                     actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
@@ -1102,7 +1128,10 @@
                         </div>
                     </div>
                     <div class="win-body">
-                        <div class="order-info-section">${infoText}</div>
+                        <div class="order-info-section">
+                            ${infoText}
+                            ${timeInfo}
+                        </div>
                         <div class="order-items-section">${displayItems}</div>
                         <div style="font-size:24px; color:#FFD700; font-weight:bold; text-align:right; margin-top:20px;">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
                     </div>
