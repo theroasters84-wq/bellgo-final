@@ -24,11 +24,14 @@
                     if (data.store) {
                         url += `&store=${encodeURIComponent(data.store)}`;
                         if (data.name) url += `&name=${encodeURIComponent(data.name)} (Staff)`;
+                        
+                        // 🔥 ΑΛΛΑΓΗ 1: Unique PWA Identity
+                        url += `&id=staff_${encodeURIComponent(data.store)}`;
                     }
                 } catch(e) {}
+            } else {
+                url += "&id=staff_app_general";
             }
-            // Add ID to separate from Order App
-            url += "&id=staff_app";
             manifestLink.href = url;
         })();
     </script>
@@ -75,7 +78,7 @@
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 
-        /* MENU CONTAINER - PERFECT SCROLL */
+        /* MENU CONTAINER */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -85,8 +88,6 @@
             flex-direction: column; 
             gap: 15px; 
             padding-bottom: 350px; 
-            
-            /* Native Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -125,7 +126,6 @@
             transition: none !important;
         }
         
-        /* Hide extra elements when writing */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -143,7 +143,6 @@
             border-radius: 4px;
         }
 
-        /* Panel Header */
         .panel-header-bar {
             height: 50px; background: #252525; border-bottom: 1px solid #333;
             display: flex; align-items: center; justify-content: center;
@@ -154,7 +153,6 @@
 
         .panel-content { padding: 15px; display: flex; flex-direction: column; flex: 1; height: 100%; overflow: hidden; }
 
-        /* FORM ELEMENTS */
         .form-row { display: flex; gap: 10px; flex-shrink: 0; align-items: flex-end; margin-bottom: 8px; }
         .input-group { flex: 1; }
         .input-group label { display: block; font-size: 11px; color: #888; margin-bottom: 3px; }
@@ -163,30 +161,18 @@
         .pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
         .pay-btn.active { background: #00E676; color: black; }
         
-        textarea.order-text { flex: 1; width: 100%; padding: 10px; background: #222; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; resize: none; margin-bottom: 8px; }
+        textarea.order-text { flex: 1; width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: white; font-size: 16px; resize: none; margin-bottom: 8px; }
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
         .btn-send.update-mode { background: #2196F3; color: white; }
 
         #liveTotal { text-align: right; color: #00E676; font-size: 18px; font-weight: bold; margin-bottom: 5px; flex-shrink: 0; }
 
-        /* EXTRAS MODAL */
-        .extras-grid { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0; }
-        .extra-option { 
-            background: #333; border: 1px solid #555; padding: 10px; border-radius: 6px; 
-            color: white; font-size: 14px; cursor: pointer; user-select: none; flex: 1 1 45%; 
-            display: flex; justify-content: space-between;
-        }
-        .extra-option.selected { background: #00E676; color: black; border-color: #00E676; font-weight: bold; }
-
-        /* OVERLAYS */
         .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
         .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
         
-        /* START SCREEN */
         #startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-start { padding: 15px 35px; background: #00E676; color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; }
 
-        /* CLOSED OVERLAY */
         #closedOverlay { position: fixed; top: 60px; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0,0,0,0.9); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .closed-text { font-size: 24px; color: #D32F2F; font-weight: bold; text-transform: uppercase; border: 2px solid #D32F2F; padding: 10px 20px; border-radius: 10px; background: #121212; }
 
@@ -269,8 +255,7 @@
         </div>
 
         <div id="waiterPanel">
-            <div id="menuContainer">
-                </div>
+            <div id="menuContainer"></div>
 
             <div id="orderPanel" class="order-panel minimized">
                 <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
@@ -349,82 +334,14 @@
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'">ΑΚΥΡΟ</button>
             </div>
         </div>
-
     </div>
-
-    <script>
-    const AudioEngine = {
-        keepAlivePlayer: null, 
-        alarmPlayer: null,     
-        isRinging: false,
-        wakeLock: null,
-        
-        async init() {
-            if (!this.keepAlivePlayer) {
-                this.keepAlivePlayer = document.createElement("audio");
-                this.keepAlivePlayer.src = "tone19hz.wav"; 
-                this.keepAlivePlayer.loop = true;
-                this.keepAlivePlayer.volume = 1.0; 
-                document.body.appendChild(this.keepAlivePlayer);
-            }
-            if (!this.alarmPlayer) {
-                this.alarmPlayer = document.createElement("audio");
-                this.alarmPlayer.src = "alert.mp3"; 
-                this.alarmPlayer.loop = true;
-                this.alarmPlayer.volume = 1.0;
-                document.body.appendChild(this.alarmPlayer);
-            }
-            this.requestWakeLock();
-            this.setupMediaSession();
-            try { await this.keepAlivePlayer.play(); } catch (e) {}
-        },
-
-        setupMediaSession() {
-            if (!("mediaSession" in navigator)) return;
-            const handleNotificationClick = () => {
-                if (this.isRinging) {
-                    if (window.App && window.App.acceptAlarmStaff) window.App.acceptAlarmStaff(); 
-                    else this.stopAlarm(); 
-                } else {
-                    this.keepAlivePlayer.play();
-                }
-            };
-            ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handleNotificationClick));
-        },
-
-        async triggerAlarm() {
-            if (this.isRinging) return;
-            this.isRinging = true;
-            this.alarmPlayer.currentTime = 0;
-            try { await this.alarmPlayer.play(); } catch(e) {}
-            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-        },
-
-        stopAlarm() {
-            if (!this.isRinging) return; 
-            this.isRinging = false;
-            this.alarmPlayer.pause();
-            this.alarmPlayer.currentTime = 0;
-            if (navigator.vibrate) navigator.vibrate(0);
-        },
-
-        async requestWakeLock() {
-            if ('wakeLock' in navigator) {
-                try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
-            }
-        }
-    };
-    window.AudioEngine = AudioEngine;
-    </script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('✅ Staff Service Worker Registered'))
-                .catch(err => console.log('❌ Staff SW Error:', err));
+            navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ Staff SW Error:', err));
         }
 
         const savedSession = localStorage.getItem('bellgo_session');
@@ -441,17 +358,6 @@
         };
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-
-        const parseItem = (str) => {
-            const parts = str.split(':');
-            let name = parts[0];
-            let price = 0;
-            if (parts.length > 1) {
-                name = parts.slice(0, -1).join(':').trim();
-                price = parseFloat(parts[parts.length - 1]);
-            } else { name = str.trim(); }
-            return { name, price: isNaN(price) ? 0 : price };
-        };
 
         window.UI = {
             updateBadge: (count) => {
@@ -473,7 +379,6 @@
                     if(o.status === 'ready') { statusTxt = '✅ Ready'; statusClass = 'ready'; }
                     const div = document.createElement('div');
                     div.className = `my-order-item ${statusClass}`;
-                    
                     let total = 0;
                     const lines = o.text.split('\n');
                     let displayLines = [];
@@ -493,7 +398,6 @@
                             } else { displayLines.push(line); }
                         } else { displayLines.push(line); }
                     });
-
                     div.innerHTML = `
                         <div class="order-meta"><span>${o.from}</span><span>${new Date(o.id).toLocaleTimeString()} • ${statusTxt}</span></div>
                         <div class="order-content">${displayLines.join('\n')}</div>
@@ -515,8 +419,6 @@
             updatingOrderId: null,
             payMethod: 'cash',
             isChatOpen: false,
-            
-            // EXTRAS LOGIC
             menuData: [],
             currentItem: null,
             tempSelectedExtras: [],
@@ -525,45 +427,25 @@
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
                 
-                document.addEventListener('keydown', (e) => {
-                    if (['AudioVolumeUp', 'AudioVolumeDown'].includes(e.code) || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                        if(window.AudioEngine && window.AudioEngine.isRinging) {
-                            App.acceptAlarmStaff();
-                        }
-                    }
-                });
-                
-                // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix)
+                // 🔥 ΑΛΛΑΓΗ 4: Visual Viewport (Λύση για πληκτρολόγιο)
                 const txt = document.getElementById('inpOrderText');
                 const panel = document.getElementById('orderPanel');
-
                 function handleViewport() {
                     if (window.visualViewport) {
                         document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
                         if (window.visualViewport.height > (window.screen.height * 0.8)) {
-                            // Keyboard Closed
                             panel.classList.remove('writing-mode');
                             txt.blur();
                         }
                     }
                 }
-                
                 if (window.visualViewport) {
                     window.visualViewport.addEventListener('resize', handleViewport);
                     window.visualViewport.addEventListener('scroll', handleViewport);
                 }
                 window.addEventListener('resize', handleViewport);
-                
-                txt.addEventListener('focus', () => {
-                    panel.classList.add('writing-mode');
-                });
-                
-                txt.addEventListener('blur', () => {
-                     // Using setTimeout to allow click events
-                     setTimeout(() => {
-                         panel.classList.remove('writing-mode');
-                     }, 150);
-                });
+                txt.addEventListener('focus', () => { panel.classList.add('writing-mode'); });
+                txt.addEventListener('blur', () => { setTimeout(() => { panel.classList.remove('writing-mode'); }, 150); });
 
                 App.connectSocket();
                 App.startHeartbeat();
@@ -589,17 +471,15 @@
                 } catch (e) { console.error(e); }
             },
 
-            unlockAudio: () => {
-                if(window.AudioEngine) window.AudioEngine.init();
-                document.getElementById('startScreen').style.display = 'none';
-            },
+            unlockAudio: () => { if(window.AudioEngine) window.AudioEngine.init(); document.getElementById('startScreen').style.display = 'none'; },
 
             connectSocket: () => {
+                if (window.socket && window.socket.connected) return;
                 window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
                 const socket = window.socket;
-
                 socket.on('connect', () => {
                     document.getElementById('connDot').style.background = '#00E676';
+                    // 🔥 ΑΛΛΑΓΗ 2: Room Sync (Συγχρονισμός Δωματίου)
                     socket.emit('join-store', { 
                         storeName: userData.store, 
                         username: userData.name, 
@@ -608,15 +488,11 @@
                         isNative: !!window.Capacitor
                     });
                 });
-
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
-                    bell.style.display = 'flex';
-                    bell.classList.add('ringing');
-                    // No Overlay
+                    bell.style.display = 'flex'; bell.classList.add('ringing');
                 });
-
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
                         const closedOverlay = document.getElementById('closedOverlay');
@@ -630,9 +506,7 @@
                         }
                     }
                 });
-
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
-                
                 socket.on('menu-update', (data) => {
                     const container = document.getElementById('menuContainer');
                     container.innerHTML = '';
@@ -642,47 +516,36 @@
                         else if (typeof data === 'object') { menu = data; } 
                         else { const items = (data || "ΜΕΝΟΥ").split('\n'); menu = [{ name: "ΓΕΝΙΚΑ", items: items }]; }
                     } catch(e) { menu = []; }
-
                     if(Array.isArray(menu)) {
                         menu.sort((a,b) => (a.order || 99) - (b.order || 99));
                         menu.forEach(cat => {
                             const title = document.createElement('div');
-                            title.className = 'category-title';
-                            title.innerText = cat.name;
+                            title.className = 'category-title'; title.innerText = cat.name;
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
                             cat.items.forEach(item => {
                                 let itemName = "", itemPrice = 0, itemExtras = [];
                                 if (typeof item === 'string') {
-                                    const parts = item.split(':');
-                                    itemName = parts[0].trim();
+                                    const parts = item.split(':'); itemName = parts[0].trim();
                                     if(parts.length > 1) itemPrice = parseFloat(parts[parts.length-1]) || 0;
-                                } else {
-                                    itemName = item.name;
-                                    itemPrice = item.price;
-                                    itemExtras = item.extras || [];
+                                } else { 
+                                    itemName = item.name; itemPrice = item.price; itemExtras = item.extras || []; 
                                 }
-
                                 if(itemName) {
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
                                     box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
-                                    box.addEventListener('dblclick', (e) => { 
-                                        e.preventDefault(); 
-                                        App.handleItemClick(itemName, itemPrice, itemExtras); 
-                                    });
+                                    box.addEventListener('dblclick', (e) => { e.preventDefault(); App.handleItemClick(itemName, itemPrice, itemExtras); });
                                     itemsDiv.appendChild(box);
                                 }
                             });
                             const wrapper = document.createElement('div');
                             wrapper.className = 'category-block';
-                            wrapper.appendChild(title);
-                            wrapper.appendChild(itemsDiv);
+                            wrapper.appendChild(title); wrapper.appendChild(itemsDiv);
                             container.appendChild(wrapper);
                         });
                     }
                 });
-
                 socket.on('chat-message', (data) => App.appendChat(data));
                 socket.on('orders-update', (orders) => {
                     App.allActiveOrders = orders;
@@ -692,142 +555,90 @@
                 });
             },
 
-            // --- MENU INTERACTION ---
             handleItemClick: (name, price, extras) => {
-                if (!extras || extras.length === 0) {
-                    App.addToOrder(name, price);
-                } else {
-                    App.currentItem = { name, price };
-                    App.tempSelectedExtras = [];
-                    const list = document.getElementById('userExtrasList');
-                    list.innerHTML = '';
+                if (!extras || extras.length === 0) { App.addToOrder(name, price); } 
+                else {
+                    App.currentItem = { name, price }; App.tempSelectedExtras = [];
+                    const list = document.getElementById('userExtrasList'); list.innerHTML = '';
                     document.getElementById('userExtrasTitle').innerText = name;
-                    
-                    extras.forEach((ex, idx) => {
-                        const btn = document.createElement('div');
-                        btn.className = 'extra-option';
+                    extras.forEach((ex) => {
+                        const btn = document.createElement('div'); btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
                         btn.onclick = () => {
-                            if (btn.classList.contains('selected')) {
-                                btn.classList.remove('selected');
-                                App.tempSelectedExtras = App.tempSelectedExtras.filter(e => e.name !== ex.name);
-                            } else {
-                                btn.classList.add('selected');
-                                App.tempSelectedExtras.push(ex);
-                            }
+                            if (btn.classList.contains('selected')) { btn.classList.remove('selected'); App.tempSelectedExtras = App.tempSelectedExtras.filter(e => e.name !== ex.name); } 
+                            else { btn.classList.add('selected'); App.tempSelectedExtras.push(ex); }
                         };
                         list.appendChild(btn);
                     });
                     document.getElementById('userExtrasModal').style.display = 'flex';
                 }
             },
-            
             confirmExtras: () => {
-                if (!App.currentItem) return;
-                App.addToOrder(App.currentItem.name, App.currentItem.price);
-                App.tempSelectedExtras.forEach(ex => {
-                     App.addToOrder(`  + ${ex.name}`, ex.price);
-                });
+                if (!App.currentItem) return; App.addToOrder(App.currentItem.name, App.currentItem.price);
+                App.tempSelectedExtras.forEach(ex => { App.addToOrder(`  + ${ex.name}`, ex.price); });
                 document.getElementById('userExtrasModal').style.display = 'none';
             },
-
             addToOrder: (item, price = 0) => {
                 const txt = document.getElementById('inpOrderText');
-                txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
-                
                 const entry = price > 0 ? `${item}:${price}` : item;
-                
-                if (txt.value.trim() === '') txt.value = `1 ${entry}`;
-                else txt.value += `\n1 ${entry}`;
-                
-                txt.scrollTop = txt.scrollHeight;
-                App.handleInput(); 
-                
-                const panel = document.getElementById('orderPanel');
-                if (panel.classList.contains('minimized')) {
-                    App.toggleOrderPanel();
-                }
+                if (txt.value.trim() === '') txt.value = `1 ${entry}`; else txt.value += `\n1 ${entry}`;
+                txt.scrollTop = txt.scrollHeight; App.handleInput();
+                const panel = document.getElementById('orderPanel'); if (panel.classList.contains('minimized')) App.toggleOrderPanel();
             },
-
             toggleOrderPanel: () => {
-                const p = document.getElementById('orderPanel');
-                const icon = document.getElementById('panelIcon');
-                if(p.classList.contains('minimized')) {
-                    p.classList.remove('minimized');
-                    icon.style.transform = 'rotate(0deg)';
-                    icon.innerText = '▼';
-                } else {
-                    p.classList.add('minimized');
-                    icon.style.transform = 'rotate(180deg)';
-                    icon.innerText = '▲';
-                }
+                const p = document.getElementById('orderPanel'); const icon = document.getElementById('panelIcon');
+                if(p.classList.contains('minimized')) { p.classList.remove('minimized'); icon.innerText = '▼'; } 
+                else { p.classList.add('minimized'); icon.innerText = '▲'; }
             },
-
             handleInput: () => {
                 const text = document.getElementById('inpOrderText').value.trim();
-                const lines = text.split('\n');
-                let total = 0;
-                
+                const lines = text.split('\n'); let total = 0;
                 for (const line of lines) {
-                    if (!line.trim()) continue;
-                    let qty = 1; let rest = line;
-                    const qtyMatch = line.match(/^(\d+)\s+(.*)/);
-                    if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
-
-                    if(rest.includes(':')) {
-                        const parts = rest.split(':');
-                        const priceVal = parseFloat(parts[parts.length-1]);
-                        if(!isNaN(priceVal)) { total += qty * priceVal; } 
-                    }
+                    if (!line.trim()) continue; let qty = 1; let rest = line;
+                    const qtyMatch = line.match(/^(\d+)\s+(.*)/); if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
+                    if(rest.includes(':')) { const parts = rest.split(':'); const priceVal = parseFloat(parts[parts.length-1]); if(!isNaN(priceVal)) total += qty * priceVal; }
                 }
                 document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
             },
-
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
-                const bell = document.getElementById('staffBellBtn');
-                bell.style.display = 'none';
-                bell.classList.remove('ringing');
+                const bell = document.getElementById('staffBellBtn'); bell.style.display = 'none'; bell.classList.remove('ringing');
                 window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
             },
-
             sendOrder: () => {
-                const txt = document.getElementById('inpOrderText').value;
-                const tbl = document.getElementById('inpTable').value;
-                const payIcon = App.payMethod === 'card' ? '💳' : '💵';
-                const cv = document.getElementById('inpCovers').value;
+                const txt = document.getElementById('inpOrderText').value; const tbl = document.getElementById('inpTable').value;
+                const payIcon = App.payMethod === 'card' ? '💳' : '💵'; const cv = document.getElementById('inpCovers').value;
                 
-                if (App.updatingOrderId) {
-                     window.socket.emit('update-order', { id: App.updatingOrderId, addText: txt });
-                     alert("Ενημερώθηκε! 📝");
-                     App.cancelUpdate();
-                     return;
+                if (App.updatingOrderId) { 
+                    // 🔥 ΑΛΛΑΓΗ 3α: Order ID Fix (ID as Number)
+                    window.socket.emit('update-order', { id: Number(App.updatingOrderId), addText: txt }); 
+                    App.cancelUpdate(); return; 
                 }
                 if(!txt) return alert("Κενή παραγγελία");
                 const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
                 window.socket.emit('new-order', `${header}\n${txt}`);
-                document.getElementById('inpTable').value = '';
-                document.getElementById('inpCovers').value = '';
-                document.getElementById('inpOrderText').value = '';
-                document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+                document.getElementById('inpTable').value = ''; document.getElementById('inpCovers').value = '';
+                document.getElementById('inpOrderText').value = ''; document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
                 App.setPayment('cash');
-                alert("Εστάλη!");
             },
-            
             setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
-            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText="ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
+            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText="ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
             prepareUpdateOrder: () => { 
                 document.getElementById('actionModal').style.display='none'; document.getElementById('myOrdersOverlay').style.display='none';
                 const o = App.allActiveOrders.find(x=>x.id===App.selectedOrderId); if(!o)return;
                 App.updatingOrderId=o.id; 
                 const t=o.text.match(/ΤΡ:\s*(\d+)/); if(t)document.getElementById('inpTable').value=t[1];
                 const c=o.text.match(/AT:\s*(\d+)/); if(c)document.getElementById('inpCovers').value=c[1];
-                const btn=document.getElementById('btnSendOrder'); btn.innerText="➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
-                document.getElementById('cancelUpdateBtn').style.display='block';
-                const p = document.getElementById('orderPanel');
-                if(p.classList.contains('minimized')) App.toggleOrderPanel();
+                document.getElementById('btnSendOrder').innerText="➕ ΕΝΗΜΕΡΩΣΗ"; document.getElementById('cancelUpdateBtn').style.display='block';
+                const p = document.getElementById('orderPanel'); if(p.classList.contains('minimized')) App.toggleOrderPanel();
             },
-            handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
+            handlePayOrder: () => { 
+                document.getElementById('actionModal').style.display='none'; 
+                if(confirm("Εξόφληση;")) {
+                    // 🔥 ΑΛΛΑΓΗ 3β: Order ID Fix (ID as Number)
+                    window.socket.emit('pay-order', Number(App.selectedOrderId)); 
+                }
+            },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
             switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },
             toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },
@@ -840,12 +651,6 @@
         };
 
         window.onload = App.init;
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('✅ Staff Service Worker Registered'))
-                .catch(err => console.log('❌ Staff SW Error:', err));
-        }
     </script>
 </body>
 </html>
