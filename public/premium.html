@@ -28,175 +28,180 @@
     </script>
 
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
-        
+        /* --- 2026 MODERN CSS THEME --- */
+        :root {
+            --bg-dark: #0a0a0a;
+            --surface: #141414;
+            --primary: #00E676; 
+            --accent: #FFD700;
+            --danger: #FF5252;
+            --text-main: #ffffff;
+            --border-glass: 1px solid rgba(255, 255, 255, 0.08);
+            --radius-box: 16px;
+            --radius-btn: 12px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { 
+            background-color: var(--bg-dark); color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; 
+        }
+
         /* HEADER */
-        .header { height: 60px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-bottom: 1px solid #333; flex-shrink: 0; z-index: 1000; }
-        .store-identity { display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden; }
-        .status-dot { width: 12px; height: 12px; background: red; border-radius: 50%; box-shadow: 0 0 5px red; flex-shrink: 0; transition: background 0.3s; }
-        .header-store-input { background: transparent; border: none; border-bottom: 1px solid #444; color: #FFD700; font-size: 18px; font-weight: bold; width: 100%; max-width: 200px; padding: 5px; }
-        .header-store-input:focus { outline: none; border-bottom-color: #FFD700; }
-        .header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .header { 
+            height: 70px; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 15px; 
+            border-bottom: var(--border-glass); flex-shrink: 0; z-index: 1000; 
+        }
         
-        .btn-icon { background: transparent; border: 1px solid #444; color: #ccc; width: 40px; height: 40px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: 0.2s; }
-        .btn-icon:active { background: #333; transform: scale(0.95); }
-        .btn-icon.menu-active { background: #FFD700; color: black; border-color: #FFD700; }
+        .store-identity { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .status-dot { width: 10px; height: 10px; background: red; border-radius: 50%; box-shadow: 0 0 8px red; cursor: pointer; }
+        
+        .header-store-input { 
+            background: transparent; border: none; border-bottom: 1px solid #333; 
+            color: var(--accent); font-size: 18px; font-weight: 800; width: 100%; max-width: 200px; 
+            text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .btn-icon { 
+            background: rgba(255, 255, 255, 0.05); border: none; color: #ccc; 
+            width: 42px; height: 42px; border-radius: 50%; font-size: 20px; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .btn-icon:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.15); }
+        .btn-icon.menu-active { background: var(--accent); color: black; box-shadow: 0 0 15px var(--accent); }
+        .chat-badge { position: absolute; top: 0; right: 0; width: 10px; height: 10px; background: var(--danger); border-radius: 50%; display: none; }
 
-        .btn-icon-wrapper { position: relative; display: inline-block; }
-        .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
-
-        /* MAIN LAYOUT */
-        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
+        /* MAIN AREA */
         .admin-main-area { flex: 1; display: flex; overflow: hidden; position: relative; flex-direction: column; }
 
-        /* MENU FULL PANEL */
-        #menuFullPanel { display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 500; padding: 10px; }
-        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #333; }
-        .menu-title { font-size: 20px; font-weight: bold; color: #FFD700; }
-        #menuInputContainer { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; overflow-y: auto; padding-bottom: 20px; }
+        /* MENU EDITOR (Overlay) */
+        #menuFullPanel { 
+            display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg-dark); z-index: 500; padding: 15px; 
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: var(--border-glass); }
+        .menu-title { font-size: 22px; font-weight: 900; color: var(--text-main); letter-spacing: 1px; }
         
-        /* MENU ITEMS */
-        .category-box { background: #222; border: 2px solid #FFD700; color: #FFD700; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; width: 48%; text-align: center; cursor: pointer; position: relative; min-height: 60px; display:flex; align-items:center; justify-content:center; }
-        .category-order { position: absolute; top: 2px; left: 5px; font-size: 10px; color: #777; }
-        .btn-delete-cat { position: absolute; top: -8px; right: -8px; background: #D32F2F; color: white; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }
+        #menuInputContainer { display: flex; flex-direction: column; gap: 15px; padding-bottom: 50px; }
         
-        .item-wrapper { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; width: 48%; position:relative; }
-        .menu-input-box { background: #333; border: 1px solid #555; color: white; padding: 10px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; padding-right: 35px; }
-        .btn-item-del { background: #D32F2F; color: white; border: none; width: 30px; height: 35px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        
-        /* EXTRAS BUTTON IN MENU */
+        .category-box { 
+            background: var(--surface); border: 1px solid #333; padding: 20px; 
+            border-radius: var(--radius-box); font-size: 18px; font-weight: 800; 
+            text-align: center; cursor: pointer; position: relative; color: var(--accent);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.2s;
+        }
+        .category-box:active { transform: scale(0.98); }
+        .btn-delete-cat { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; width: 25px; height: 25px; border-radius: 50%; font-size: 12px; border:none; display:flex; align-items:center; justify-content:center; }
+
+        .item-wrapper { display: flex; align-items: center; gap: 10px; width: 100%; position: relative; animation: fadeInUp 0.3s ease; }
+        .menu-input-box { 
+            flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; 
+            border-radius: var(--radius-btn); font-size: 15px; padding-right: 40px; 
+        }
         .btn-item-extras { 
-            position: absolute; right: 35px; top: 2px; 
-            background: #2196F3; color: white; border: none; 
-            width: 28px; height: 31px; border-radius: 4px; 
-            font-size: 18px; font-weight: bold; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center;
+            position: absolute; right: 45px; top: 5px; 
+            background: #2196F3; color: white; border: none; width: 25px; height: 25px; 
+            border-radius: 6px; font-weight: bold; cursor: pointer;
         }
-        .has-extras { background: #00E676 !important; color: black !important; }
+        .has-extras { background: var(--primary) !important; color: black !important; }
+        .btn-item-del { background: #333; color: var(--danger); border: 1px solid #333; width: 35px; height: 35px; border-radius: 8px; font-weight: bold; }
 
-        .btn-add { background: #2196F3; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 18px; }
-        .btn-back { background: #555; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; display: none; }
+        .btn-add { background: var(--primary); color: black; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 800; cursor: pointer; }
+        .btn-back { background: #333; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; }
 
-        /* DESKTOP AREA & SMALLER FOLDERS */
-        #desktopArea { flex: 1; position: relative; background: #181818; padding: 15px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px; overflow-y: auto; }
+        /* DESKTOP ORDERS AREA */
+        #desktopArea { 
+            flex: 1; background: var(--surface); padding: 20px; 
+            display: flex; flex-wrap: wrap; align-content: flex-start; gap: 15px; 
+            overflow-y: auto; 
+        }
+        
         .order-folder { 
-            width: 80px;  /* Smaller Width */
-            height: 95px; /* Smaller Height */
-            display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: bounceIn 0.5s; 
+            width: 85px; height: 100px; display: flex; flex-direction: column; align-items: center; 
+            cursor: pointer; animation: popIn 0.4s; position: relative; 
         }
-        .order-folder.ringing { animation: shake 0.5s infinite; }
-        .folder-icon { font-size: 45px; /* Smaller Icon */ }
-        .folder-label { font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 6px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .folder-time { font-size: 10px; color: #000; background: #FFD700; padding: 1px 5px; border-radius: 10px; margin-top: -8px; font-weight: bold; z-index: 2; position: relative; }
+        .order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); }
+        .folder-icon { font-size: 50px; color: #555; transition: 0.2s; }
+        .folder-label { 
+            font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.5); 
+            padding: 2px 6px; border-radius: 6px; margin-top: 5px; width: 100%; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+        }
+        .folder-time { 
+            font-size: 10px; color: #000; background: var(--primary); 
+            padding: 2px 6px; border-radius: 10px; position: absolute; top: 0; right: 0; font-weight: bold; 
+        }
 
         /* STAFF SIDEBAR */
         #staffContainer { 
-            background: #202020; 
-            border-top: 2px solid #333; 
-            display: flex; 
-            flex-direction: column; 
-            flex-shrink: 0; 
-            transition: height 0.3s ease; 
-            height: 210px; 
-            position: relative; 
+            background: #1a1a1a; border-top: 1px solid #333; 
+            display: flex; flex-direction: column; flex-shrink: 0; 
+            height: 210px; transition: height 0.3s ease; 
         }
-        #staffContainer.minimized { height: 35px; overflow: hidden; }
+        #staffContainer.minimized { height: 35px; }
+        .sidebar-header { padding: 8px; background: #222; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #aaa; font-size: 11px; font-weight: bold; }
         
-        .sidebar-header { 
-            padding: 8px; background: #252525; border-bottom: 1px solid #333; 
-            display: flex; justify-content: center; align-items: center; cursor: pointer; 
-        }
-        .sidebar-toggle-icon { margin-left: 8px; font-size: 14px; color: #FFD700; transition: transform 0.3s; }
-        #staffContainer.minimized .sidebar-toggle-icon { transform: rotate(180deg); }
-
         #staffList { 
-            flex: 1; 
-            overflow-x: auto; 
-            overflow-y: hidden; 
-            padding: 10px; 
-            display: grid; 
-            grid-template-rows: repeat(2, 1fr); 
-            grid-auto-flow: column; 
-            gap: 8px; 
-            justify-content: start; 
+            flex: 1; overflow-x: auto; padding: 10px; 
+            display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; 
         }
-        .btn-staff { width: 130px; height: 100%; padding: 5px; border-radius: 8px; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; position: relative; border: 2px solid transparent; }
-        .btn-staff.waiter { background: #1565C0; border-color: #64B5F6; }
-        .btn-staff.driver { background: #C62828; border-color: #FF5252; }
-        .btn-delete { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-staff { 
+            width: 130px; height: 100%; padding: 5px; border-radius: 12px; 
+            color: white; font-weight: bold; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; background: #333; border: 2px solid transparent; 
+        }
+        .btn-staff.waiter { border-color: #2196F3; background: rgba(33, 150, 243, 0.1); }
+        .btn-staff.driver { border-color: var(--danger); background: rgba(255, 82, 82, 0.1); }
 
         /* MODALS */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; align-items: center; justify-content: center; flex-direction: column; }
-        .modal-box { background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; text-align: center; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 12px; max-height: 90vh; overflow-y: auto; }
-        .modal-title { color: #FFD700; font-size: 20px; font-weight: bold; margin: 0; border-bottom: 1px solid #444; padding-bottom: 8px; }
-        .modal-btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: white; width: 100%; }
-        
-        /* EXTRAS MODAL */
-        .extras-list { text-align: left; max-height: 200px; overflow-y: auto; margin-bottom: 10px; }
-        .extra-item-row { display: flex; justify-content: space-between; align-items: center; background: #333; padding: 8px; margin-bottom: 5px; border-radius: 4px; }
-        .extra-inputs { display: flex; gap: 5px; margin-bottom: 10px; }
-        .extra-name-inp { flex: 2; background: #111; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; }
-        .extra-price-inp { flex: 1; background: #111; border: 1px solid #444; color: #00E676; padding: 8px; border-radius: 4px; text-align: center; }
-
-        /* SETTINGS */
-        .settings-section { background: #2a2a2a; padding: 10px; border-radius: 8px; text-align: left; }
-        .settings-label { color: #aaa; font-size: 11px; margin-bottom: 5px; display: block; text-transform: uppercase; }
-        .inp-settings { width:100%; padding:8px; background:#111; color:white; border:1px solid #555; border-radius:5px; font-size:14px; }
-        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 4px 0; border-bottom: 1px solid #333; }
-        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D32F2F; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #00E676; }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        /* WEEK SCHEDULE */
-        .day-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
-        .day-label { width: 40px; font-size: 12px; color: #ccc; font-weight: bold; }
-        .day-input { flex: 1; background: #333; border: 1px solid #555; color: white; padding: 5px; border-radius: 4px; font-size: 12px; text-align: center; }
-
-        /* ORDER WINDOW */
-        #windowsContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000; }
-        .order-window { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; pointer-events: auto; z-index: 10000; }
-        .win-header { background: #1a1a1a; padding: 15px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .win-body { padding: 20px; flex: 1; overflow-y: auto; }
-        .order-info-section { background: #252525; border-left: 6px solid #00E676; padding: 15px; color: #fff; font-size: 18px; font-weight: bold; margin-bottom: 15px; border-radius: 4px; }
-        .order-items-section { color: #fff; font-weight: bold; font-size: 20px; line-height: 1.5; white-space: pre-wrap; }
-        .win-footer { padding: 20px; border-top: 2px solid #333; background: #1a1a1a; }
-        .btn-win-action { width: 100%; padding: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: black; font-size: 22px; }
-        .win-btn-top { border: none; width: 50px; height: 50px; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-
-        /* PIN PAD */
-        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 10px 0; font-weight: bold; color: #00E676; min-height: 40px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
-
-        /* CHAT STICKY BOTTOM */
-        #adminChatOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
-        .chat-container { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; overflow: hidden; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 70px; /* Space for input */ }
-        .chat-msg { max-width: 80%; padding: 10px; border-radius: 12px; font-size: 15px; }
-        .chat-msg.me { align-self: flex-end; background: #00E676; color: black; }
-        .chat-msg.other { align-self: flex-start; background: #333; color: white; }
-        
-        .chat-input-area { 
-            position: absolute; 
-            bottom: 0; left: 0; width: 100%; 
-            display: flex; padding: 10px; 
-            background: #1e1e1e; border-top: 1px solid #333; 
-            z-index: 5;
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 6000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-box { 
+            background: #1a1a1a; padding: 25px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); 
+            width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 15px; 
+            max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
         }
-        .chat-inp { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #111; color: white; }
-        .chat-btn { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: #00E676; font-size: 20px; }
+        .modal-title { color: var(--accent); font-size: 20px; font-weight: 900; margin: 0; text-align: center; }
+        .modal-btn { padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 15px; color: white; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        .settings-section { background: #252525; padding: 15px; border-radius: 16px; text-align: left; }
+        .settings-label { color: #888; font-size: 11px; margin-bottom: 8px; display: block; font-weight: bold; }
+        .inp-settings { width:100%; padding:10px; background:#111; color:white; border:1px solid #444; border-radius: 8px; font-size: 14px; }
+        
+        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(18px); }
+
+        /* EXTRAS EDITOR */
+        .extra-item-row { display: flex; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
+        .extra-inputs { display: flex; gap: 5px; margin-bottom: 10px; }
+        .extra-name-inp { flex: 2; background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; }
+        .extra-price-inp { flex: 1; background: #111; border: 1px solid #444; color: var(--primary); padding: 10px; border-radius: 8px; text-align: center; }
+
+        /* CHAT */
+        #adminChatOverlay { display: none; position: fixed; bottom: 0; right: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 80px; }
+        .chat-input-area { position: absolute; bottom: 0; left: 0; width: 100%; padding: 10px; background: #1a1a1a; border-top: 1px solid #333; display: flex; gap: 10px; }
+        .chat-inp { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #444; background: #000; color: white; }
+        .chat-msg { padding: 10px 14px; border-radius: 12px; font-size: 15px; max-width: 80%; }
+        .chat-msg.me { align-self: flex-end; background: var(--primary); color: black; }
+        .chat-msg.other { align-self: flex-start; background: #333; color: white; }
 
         /* UTILS */
         #fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; color: #333; }
         #qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 7000; flex-direction: column; align-items: center; justify-content: center; }
-        .qr-box { background: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 15px; width: 90%; max-width: 350px; }
 
-        @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 30% { transform: translate(3px, 2px); } 40% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 2px); } 60% { transform: translate(-3px, 1px); } 70% { transform: translate(3px, 1px); } 80% { transform: translate(-1px, -1px); } 90% { transform: translate(1px, 2px); } 100% { transform: translate(1px, -2px); } }
-        @keyframes bounceIn { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -2px); } }
     </style>
 </head>
 <body>
@@ -236,7 +241,7 @@
             
             <div id="staffContainer">
                 <div class="sidebar-header" onclick="App.toggleStaffPanel()">
-                    <span style="font-size:11px; font-weight:bold; color:#aaa;">ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
+                    <span>ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
                     <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
                 </div>
                 <div id="staffList"></div>
@@ -245,16 +250,73 @@
     </div>
     
     <div id="adminChatOverlay">
-        <div class="overlay-header">
-            <span style="font-size:18px; font-weight:bold;">💬 Ομαδικό Chat</span>
+        <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:18px; font-weight:bold; color:var(--text-main);">💬 Ομαδικό Chat</span>
             <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
         </div>
-        <div class="chat-container">
-            <div id="adminChatBox" class="chat-messages"></div>
-            <div class="chat-input-area">
-                <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
-                <button class="chat-btn" onclick="App.sendChat()">➤</button>
+        <div class="chat-messages" id="adminChatBox"></div>
+        <div class="chat-input-area">
+            <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
+            <button class="btn-icon menu-active" onclick="App.sendChat()">➤</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            
+            <div class="settings-section" style="border: 1px solid var(--accent);">
+                <div class="settings-label" style="color:var(--accent);">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
+                <select id="selShopType" class="inp-settings" style="margin-bottom:10px;">
+                    <option value="" disabled selected>Επιλέξτε είδος...</option>
+                    <option value="coffee_takeaway">☕ Cafe Takeaway</option>
+                    <option value="coffee_bar">🍸 Cafe Bar</option>
+                    <option value="pizzeria">🍕 Pizzeria</option>
+                    <option value="souvlaki">🍖 Souvlaki / Grill</option>
+                </select>
+                <button class="modal-btn" style="background:var(--accent); color:black;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ ΠΡΟΤΥΠΟΥ</button>
             </div>
+
+            <div class="settings-section">
+                <div class="settings-label">ΚΑΤΑΣΤΑΣΗ</div>
+                <div class="switch-row">
+                    <span>ΠΕΛΑΤΕΣ (Delivery)</span>
+                    <label class="switch"><input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')"><span class="slider"></span></label>
+                </div>
+                <div class="switch-row">
+                    <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
+                    <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-label">ΩΡΑΡΙΑ</div>
+                <div style="display:flex; gap:10px; margin-bottom:5px;">
+                    <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
+                    <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
+                </div>
+                <button class="modal-btn" style="background:#333; font-size:13px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK</button>
+            </div>
+
+            <button class="modal-btn" style="background:#635BFF;" onclick="window.location.href='/connect-stripe'">💳 CONNECT STRIPE</button>
+            <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center;">Checking...</div>
+
+            <button class="modal-btn" style="background:var(--danger); margin-top:10px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ</button>
+            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <div id="scheduleModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">📅 ΠΡΟΓΡΑΜΜΑ</h3>
+            <div id="weekDaysContainer"></div>
+            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:10px;" onclick="App.saveSchedule()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button onclick="document.getElementById('scheduleModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;">ΠΙΣΩ</button>
         </div>
     </div>
 
@@ -263,129 +325,54 @@
             <h3 class="modal-title" id="extrasModalTitle">EXTRA ΥΛΙΚΑ</h3>
             <div id="extrasListContainer" class="extras-list"></div>
             
-            <div style="border-top:1px solid #444; padding-top:10px;">
-                <div class="settings-label">ΝΕΟ EXTRA</div>
+            <div style="border-top:1px solid #333; padding-top:15px; margin-top:10px;">
+                <div class="settings-label">ΠΡΟΣΘΗΚΗ ΝΕΟΥ</div>
                 <div class="extra-inputs">
-                    <input type="text" id="inpExtraName" class="extra-name-inp" placeholder="Περιγραφή (π.χ. Γλυκός)">
+                    <input type="text" id="inpExtraName" class="extra-name-inp" placeholder="Όνομα (π.χ. Σως)">
                     <input type="number" id="inpExtraPrice" class="extra-price-inp" placeholder="€" step="0.10">
                 </div>
                 <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()">➕ ΠΡΟΣΘΗΚΗ</button>
             </div>
             
-            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveExtras()">💾 ΕΤΟΙΜΟ</button>
-            <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΑΚΥΡΟ</button>
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
-            
-            <div class="settings-section">
-                <div class="settings-label">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
-                <select id="selShopType" class="inp-settings" style="margin-bottom:5px;">
-                    <option value="" disabled selected>Επιλέξτε είδος...</option>
-                    <option value="coffee_takeaway">☕ Cafe Takeaway</option>
-                    <option value="coffee_bar">🍸 Cafe Bar</option>
-                    <option value="pizzeria">🍕 Pizzeria</option>
-                    <option value="souvlaki">🍖 Souvlaki / Grill</option>
-                </select>
-                <button class="modal-btn" style="background:#FF9800; color:black; font-size:13px;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ ΠΡΟΤΥΠΟΥ</button>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-label">ΔΙΑΚΟΠΤΕΣ ΛΕΙΤΟΥΡΓΙΑΣ</div>
-                <div class="switch-row">
-                    <span>ΠΕΛΑΤΕΣ (Delivery)</span>
-                    <label class="switch">
-                        <input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="switch-row">
-                    <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
-                    <label class="switch">
-                        <input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-label">ΩΡΑ ΑΥΤΟΜΑΤΗΣ ΕΠΑΝΑΦΟΡΑΣ ΜΕΝΟΥ (RESET)</div>
-                <small style="color:#777; display:block; margin-bottom:5px;">(Επαναφέρει το μενού στην αρχική κατάσταση)</small>
-                <div style="display:flex; gap:5px; margin-bottom:5px;">
-                    <input type="time" id="inpResetTime" class="inp-settings" title="Ώρα Αναπαλήρωσης Μενού" onchange="App.autoSaveSettings()">
-                </div>
-                <div class="settings-label" style="margin-top:10px;">ΓΕΝΙΚΟ ΩΡΑΡΙΟ</div>
-                <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00 - 00:00" onblur="App.autoSaveSettings()">
-                <button class="modal-btn" style="background:#444; font-size:13px; margin-top:5px;" onclick="App.openScheduleModal()">📅 ΠΡΟΓΡΑΜΜΑ ΔΙΑΝΟΜΗΣ</button>
-            </div>
-
-            <div class="settings-section" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="modal-btn" style="background:#FFD700; color:black; font-size:13px;" onclick="App.openPinModal()">🔑 PIN</button>
-                <button class="modal-btn" style="background:#2196F3; font-size:13px;" onclick="App.showLink()">🔗 Link</button>
-            </div>
-
-            <div class="settings-section">
-                <button onclick="window.location.href='/connect-stripe'" style="width:100%; background:#635BFF; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">
-                    💳 Σύνδεση Stripe
-                </button>
-                <div id="stripeStatus" style="font-size:10px; color:#aaa; margin-top:5px; text-align:center;">Checking...</div>
-            </div>
-
-            <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ (EXIT)</button>
-            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
-        </div>
-    </div>
-    
-    <div id="scheduleModal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 class="modal-title">📅 ΠΡΟΓΡΑΜΜΑ</h3>
-            <div id="weekDaysContainer" style="text-align:left;"></div>
-            <button class="modal-btn" style="background:#00E676; margin-top:10px;" onclick="App.saveSchedule()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-            <button onclick="document.getElementById('scheduleModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:10px;">ΠΙΣΩ</button>
+            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:15px;" onclick="App.saveExtras()">💾 ΕΤΟΙΜΟ</button>
+            <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:5px;">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <div id="pinChangeModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">ΑΛΛΑΓΗ PIN</h3>
-            <div id="pinDisplay" class="pin-display"></div>
-            <div class="numpad">
-                <button class="num-btn" onclick="PIN.add(1)">1</button><button class="num-btn" onclick="PIN.add(2)">2</button><button class="num-btn" onclick="PIN.add(3)">3</button>
-                <button class="num-btn" onclick="PIN.add(4)">4</button><button class="num-btn" onclick="PIN.add(5)">5</button><button class="num-btn" onclick="PIN.add(6)">6</button>
-                <button class="num-btn" onclick="PIN.add(7)">7</button><button class="num-btn" onclick="PIN.add(8)">8</button><button class="num-btn" onclick="PIN.add(9)">9</button>
-                <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
-                <button class="num-btn" onclick="PIN.add(0)">0</button>
-                <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
+            <h3 class="modal-title">PIN</h3>
+            <div id="pinDisplay" style="font-size:30px; letter-spacing:10px; color:var(--primary); font-weight:bold; margin:10px 0;"></div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(3)">3</button>
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(6)">6</button>
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(9)">9</button>
+                <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
             </div>
-            <button onclick="App.closePinModal()" style="background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
+            <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <div id="saveModeModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title">ΑΠΟΘΗΚΕΥΣΗ</h3>
-            <p style="color:#aaa; margin:0;">Πώς θέλετε να αποθηκευτεί;</p>
+            <p style="color:#aaa;">Πώς θέλετε να αποθηκευτεί;</p>
             <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')">📅 ΣΗΜΕΡΑ ΜΟΝΟ</button>
-            <button class="modal-btn" style="background:#D32F2F;" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
-            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#aaa; cursor:pointer;">ΑΚΥΡΟ</button>
+            <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
+            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;">ΑΚΥΡΟ</button>
         </div>
     </div>
 
-    <div id="qrOverlay" onclick="this.style.display='none'">
-        <div class="qr-box" onclick="event.stopPropagation()">
-            <div style="color:black; font-weight:bold; font-size:18px;">📲 Link Καταστήματος</div>
+    <div id="qrOverlay" onclick="this.style.display='none'" class="modal-overlay" style="align-items:center; justify-content:center;">
+        <div class="qr-box" onclick="event.stopPropagation()" style="background:white; padding:20px; border-radius:16px; text-align:center;">
+            <div style="color:black; font-weight:bold; font-size:18px; margin-bottom:10px;">📲 Link Καταστήματος</div>
             <div id="qrcode"></div>
-            <a id="storeLink" href="#" target="_blank" class="qr-link">...</a>
-            <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:10px; padding:8px 20px; background:#D32F2F; color:white; border:none; border-radius:5px;">ΚΛΕΙΣΙΜΟ</button>
+            <a id="storeLink" href="#" target="_blank" style="display:block; margin-top:10px; color:#333; font-size:12px;">...</a>
+            <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:15px; padding:10px 20px; background:var(--danger); color:white; border:none; border-radius:8px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
-    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
-        <div style="color: #333; font-size: 14px;">Tap to Unlock</div>
-    </div>
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Tap to Unlock</div></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -406,20 +393,6 @@
         };
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
-        
-        const calculateTotal = (text) => {
-            let total = 0;
-            const lines = text.split('\n');
-            lines.forEach(line => {
-                const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
-                if (match) {
-                    let qty = parseInt(match[1] || '1');
-                    let price = parseFloat(match[3]);
-                    total += qty * price;
-                }
-            });
-            return total;
-        };
 
         // --- PRESET MENUS (TEMPLATES) ---
         const PRESET_MENUS = {
@@ -487,6 +460,20 @@
                     { name: "Φέτα", price: 3.50, extras: [{name:"Λάδι/Ρίγανη",price:0}] }
                 ]}
             ]
+        };
+
+        const calculateTotal = (text) => {
+            let total = 0;
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
+                if (match) {
+                    let qty = parseInt(match[1] || '1');
+                    let price = parseFloat(match[3]);
+                    total += qty * price;
+                }
+            });
+            return total;
         };
 
         // --- PIN MODULE ---
@@ -670,9 +657,11 @@
                 if (el.classList.contains('minimized')) {
                     el.classList.remove('minimized');
                     icon.innerText = "▼";
+                    icon.style.transform = "rotate(0deg)";
                 } else {
                     el.classList.add('minimized');
                     icon.innerText = "▲";
+                    icon.style.transform = "rotate(180deg)";
                 }
             },
 
@@ -723,20 +712,17 @@
                 document.getElementById('scheduleModal').style.display = 'none';
                 document.getElementById('settingsModal').style.display = 'flex';
             },
-
-            // --- MENU PRESET LOADING ---
+            
+            // --- TEMPLATE LOGIC ---
             applyPresetMenu: () => {
                 const type = document.getElementById('selShopType').value;
                 if (!type) return alert("Παρακαλώ επιλέξτε είδος καταστήματος!");
-                if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού σας. Είστε σίγουρος;")) return;
+                if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού. Συνέχεια;")) return;
                 
                 const newMenu = JSON.parse(JSON.stringify(PRESET_MENUS[type]));
                 App.menuData = newMenu;
-                
-                // Save and render
                 window.socket.emit('save-menu', { menu: newMenu, mode: 'permanent' });
                 App.renderMenu();
-                
                 alert("Το μενού φορτώθηκε επιτυχώς!");
                 document.getElementById('settingsModal').style.display = 'none';
             },
