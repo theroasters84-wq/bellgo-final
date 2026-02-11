@@ -62,11 +62,11 @@
             gap: 15px; 
             padding-bottom: 80px; 
             transition: all 0.3s ease; 
-            
-            /* Scrolling Physics */
-            -webkit-overflow-scrolling: touch; 
+
+            /* 🔥 SCROLLING PHYSICS 🔥 */
+            -webkit-overflow-scrolling: touch; /* Native feel */
             scroll-behavior: smooth;
-            overscroll-behavior: contain;
+            overscroll-behavior: contain; /* Prevents body scroll */
         }
         
         .category-block { width: 100%; }
@@ -82,29 +82,27 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING */
+        /* ORDER PANEL - SLIDING & FIXED TO BOTTOM */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
             display: flex; flex-direction: column; 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
-            height: 50%; /* Normal State */
+            height: 50%; /* Default 50% */
             transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
-        /* WRITING MODE (Clean & Fast) */
-        .order-panel.writing-mode { height: 60% !important; transition: none !important; }
-        
-        .order-panel.writing-mode .panel-header-bar,
+        /* WRITING MODE (When typing) */
+        .order-panel.writing-mode { height: 70% !important; }
         .order-panel.writing-mode .form-row,
+        .order-panel.writing-mode .btn-send,
+        .order-panel.writing-mode #cancelUpdateBtn,
         .order-panel.writing-mode #liveTotal, 
-        .order-panel.writing-mode #btnSendOrder,
-        .order-panel.writing-mode #cancelUpdateBtn {
+        .order-panel.writing-mode .panel-header-bar {
             display: none !important;
         }
-        
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
@@ -508,7 +506,7 @@
                     }
                 });
                 
-                // Focus Logic for Writing Mode (Simplified)
+                // Focus Logic for Writing Mode
                 const txt = document.getElementById('inpOrderText');
                 const panel = document.getElementById('orderPanel');
                 
@@ -517,7 +515,9 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                    panel.classList.remove('writing-mode');
+                     requestAnimationFrame(() => {
+                         panel.classList.remove('writing-mode');
+                     });
                 });
 
                 App.connectSocket();
