@@ -3,7 +3,6 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
-// const fs = require('fs'); // ❌ Δεν χρειάζεται πλέον
 
 // ✅ STRIPE SETUP
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
@@ -157,7 +156,7 @@ app.get('/manifest.json', (req, res) => {
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
     let iconFile = "admin.png"; 
     let startUrl = ".";  
-    let scopeUrl = "/";       
+    let scopeUrl = "/";        
 
     if (iconType === 'shop') {
         iconFile = "shop.png"; 
@@ -172,7 +171,7 @@ app.get('/manifest.json', (req, res) => {
     res.set('Content-Type', 'application/manifest+json');
     res.json({
         "id": appId,              
-        "name": appName,          
+        "name": appName,           
         "short_name": appName,
         "start_url": startUrl,   
         "scope": scopeUrl,        
@@ -341,7 +340,12 @@ io.on('connection', (socket) => {
 
     socket.on('join-store', (data) => {
         let rawStore = data.storeName || '';
-        if (!rawStore && data.role === 'customer') rawStore = storeSettings.name;
+        // ✅ Διόρθωση: Αν είναι πελάτης, ΠΡΕΠΕΙ να μας πει ποιο μαγαζί θέλει, αλλιώς δεν τον βάζουμε στο γενικό
+        if (!rawStore && data.role === 'customer') {
+            console.log("⚠️ Customer tried to join without storeName");
+            return;
+        }
+        if (!rawStore) rawStore = storeSettings.name;
         if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');
         
         const store = rawStore.toLowerCase().trim();
@@ -353,8 +357,8 @@ io.on('connection', (socket) => {
         socket.role = data.role || 'waiter'; 
         if (data.role === 'customer') socket.role = 'customer';
 
-        socket.join(store);
-        console.log(`📡 User ${username} joined room: ${store}`); // Log for debugging
+        socket.join(store); // ✅ Εδώ γίνεται η απομόνωση στο δωμάτιο
+        console.log(`📡 User ${username} joined room: ${store}`); 
 
         const key = `${store}_${username}`;
         const wasRinging = activeUsers[key]?.isRinging || false;
@@ -447,7 +451,7 @@ io.on('connection', (socket) => {
             updateStore(socket.store); // Saves to Firebase
             Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
                 adm.isRinging = true; 
-                updateStore(socket.store);
+                updateStore(socket.store); 
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
             });
@@ -467,8 +471,11 @@ io.on('connection', (socket) => {
         const o = activeOrders.find(x => x.id == id); 
         if(o){ 
             o.status = 'cooking'; 
+            o.startTime = Date.now(); // ✅ Added Start Time for Tracking
             console.log(`👨‍🍳 Order ${id} accepted in room ${socket.store}`);
             updateStore(socket.store); 
+            // ✅ NEW: Notify specific store immediately so UI updates
+            io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime });
         } 
     });
     
@@ -478,6 +485,9 @@ io.on('connection', (socket) => {
         if(o){ 
             o.status = 'ready'; 
             updateStore(socket.store); 
+            // ✅ NEW: Notify specific store immediately
+            io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready' });
+
             const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; 
             if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
         } 
