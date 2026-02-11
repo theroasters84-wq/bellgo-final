@@ -4,24 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo Admin Premium</title>
+    
     <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
+    
     <meta name="theme-color" content="#121212">
     <link rel="apple-touch-icon" href="admin.png"> 
     
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="player.js"></script>
 
     <script>
         (function() {
+            // PWA LOGIC: Μοναδικό ID για το Admin App
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             const pStore = params.get('store');
             const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=admin`;
-            if (pName) url += `&name=${encodeURIComponent(pName)}`;
+            
+            // Προσθήκη &id=admin_app για να ξεχωρίζει
+            let url = `manifest.json?icon=admin&id=admin_app`;
+            
+            if (pName) url += `&name=${encodeURIComponent(pName)} (Admin)`;
             if (pStore) url += `&store=${pStore}`;
+            
             manifestLink.href = url;
             if (pName) document.title = decodeURIComponent(pName) + " (Admin)";
         })();
@@ -45,7 +51,7 @@
         body { 
             background-color: var(--bg-dark); color: var(--text-main); 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; 
+            margin: 0; height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; 
         }
 
         /* HEADER */
@@ -136,6 +142,38 @@
             font-size: 10px; color: #000; background: var(--primary); 
             padding: 2px 6px; border-radius: 10px; position: absolute; top: 0; right: 0; font-weight: bold; 
         }
+
+        /* ORDER WINDOW (Floating) */
+        .order-window {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 400px; height: auto; max-height: 80%;
+            background: #1a1a1a; border: 1px solid #444; border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; z-index: 2000;
+            overflow: hidden; animation: popIn 0.3s;
+        }
+
+        .win-header {
+            background: #252525; padding: 15px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .win-body {
+            flex: 1; overflow-y: auto; padding: 20px; font-size: 16px; line-height: 1.5; color: #eee;
+        }
+
+        .win-footer {
+            padding: 15px; border-top: 1px solid #333; background: #222;
+        }
+
+        .btn-win-action {
+            width: 100%; padding: 15px; border: none; border-radius: 8px; 
+            font-size: 18px; font-weight: bold; cursor: pointer;
+        }
+
+        .order-info-section { color: #aaa; font-size: 14px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+        .order-items-section { font-weight: bold; }
+
 
         /* STAFF SIDEBAR */
         #staffContainer { 
@@ -373,6 +411,54 @@
     </div>
 
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Tap to Unlock</div></div>
+
+    <script>
+    const AudioEngine = {
+        keepAlivePlayer: null, 
+        alarmPlayer: null,     
+        isRinging: false,
+        wakeLock: null,
+        
+        async init() {
+            if (!this.keepAlivePlayer) {
+                this.keepAlivePlayer = document.createElement("audio");
+                this.keepAlivePlayer.src = "tone19hz.wav"; 
+                this.keepAlivePlayer.loop = true;
+                this.keepAlivePlayer.volume = 1.0; 
+                document.body.appendChild(this.keepAlivePlayer);
+            }
+            if (!this.alarmPlayer) {
+                this.alarmPlayer = document.createElement("audio");
+                this.alarmPlayer.src = "alert.mp3"; 
+                this.alarmPlayer.loop = true;
+                this.alarmPlayer.volume = 1.0;
+                document.body.appendChild(this.alarmPlayer);
+            }
+            this.requestWakeLock();
+            try { await this.keepAlivePlayer.play(); } catch (e) {}
+        },
+        async triggerAlarm() {
+            if (this.isRinging) return;
+            this.isRinging = true;
+            this.alarmPlayer.currentTime = 0;
+            try { await this.alarmPlayer.play(); } catch(e) {}
+            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+        },
+        stopAlarm() {
+            if (!this.isRinging) return; 
+            this.isRinging = false;
+            this.alarmPlayer.pause();
+            this.alarmPlayer.currentTime = 0;
+            if (navigator.vibrate) navigator.vibrate(0);
+        },
+        async requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+            }
+        }
+    };
+    window.AudioEngine = AudioEngine;
+    </script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -993,11 +1079,13 @@
                 const displayItems = itemsText.replace(/\n/g, '<br>');
                 let actions = '';
                 if (order.status === 'pending') {
-                    actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder('${order.id}')">🔊 ΑΠΟΔΟΧΗ</button>`;
+                    // ID AS NUMBER FOR COMPATIBILITY
+                    actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;
                 } else if (order.status === 'cooking') {
-                    actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady('${order.id}')">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
+                    // ID AS NUMBER FOR COMPATIBILITY
+                    actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
                 } else {
-                    actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder('${order.id}')">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
+                    actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
                 }
                 win.style.border = `none`;
                 win.innerHTML = `
@@ -1020,12 +1108,12 @@
             acceptOrder: (id) => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
                 window.socket.emit('admin-stop-ringing'); 
-                window.socket.emit('accept-order', Number(id));
+                window.socket.emit('accept-order', Number(id)); // Send as Number
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
             },
             markReady: (id) => {
-                window.socket.emit('ready-order', Number(id));
+                window.socket.emit('ready-order', Number(id)); // Send as Number
                 const win = document.getElementById(`win-${id}`);
                 if(win) win.style.display = 'none';
             },
