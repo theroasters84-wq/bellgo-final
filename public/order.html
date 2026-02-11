@@ -53,11 +53,11 @@
 
         /* HEADER REDESIGNED */
         .header { 
-            height: 70px; /* Λίγο πιο ψηλό για να χωρέσει το ωράριο */
+            height: 70px; 
             background: #1e1e1e; 
             display: flex; 
             align-items: center; 
-            justify-content: center; /* Center Alignment */
+            justify-content: center; 
             padding: 0 15px; 
             border-bottom: 1px solid #333; 
             flex-shrink: 0; 
@@ -141,22 +141,13 @@
             gap: 15px; 
             padding-bottom: 120px; 
             opacity: 1;
-            transition: opacity 0.3s ease, filter 0.3s ease; /* For fade effect */
+            transition: opacity 0.3s ease, filter 0.3s ease;
         }
 
         /* ANIMATION CLASSES FOR MENU */
-        .menu-fade-out {
-            opacity: 0.3;
-            filter: grayscale(100%);
-            transform: scale(0.98);
-        }
-        .menu-fade-in {
-            animation: menuEntry 0.4s ease-out forwards;
-        }
-        @keyframes menuEntry {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .menu-fade-out { opacity: 0.3; filter: grayscale(100%); transform: scale(0.98); }
+        .menu-fade-in { animation: menuEntry 0.4s ease-out forwards; }
+        @keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .category-block { width: 100%; }
         .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
@@ -184,6 +175,21 @@
             position: relative;
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
+
+        /* WRITING MODE */
+        .order-panel.writing-mode { height: 70% !important; }
+        .order-panel.writing-mode .panel-header-bar,
+        .order-panel.writing-mode .address-bar,
+        .order-panel.writing-mode #liveTotal,
+        .order-panel.writing-mode #btnSendOrder {
+            display: none !important;
+        }
+        .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
+        .order-panel.writing-mode textarea.order-text { 
+            height: 100% !important; 
+            margin: 0; 
+            border: 2px solid #00E676; /* Visual cue */
+        }
 
         /* Panel Header (Toggle) */
         .panel-header-bar {
@@ -436,6 +442,18 @@
                 
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
+                
+                // Writing Mode Listeners
+                const txt = document.getElementById('orderText');
+                const panel = document.getElementById('orderPanel');
+                
+                txt.addEventListener('focus', () => {
+                    panel.classList.add('writing-mode');
+                });
+                txt.addEventListener('blur', () => {
+                     setTimeout(() => { panel.classList.remove('writing-mode'); }, 100);
+                });
+
                 App.connectSocket();
                 App.requestNotifyPermission(); 
             },
