@@ -20,7 +20,7 @@ try {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    db = admin.firestore(); // ✅ Firestore Database Reference
+    db = admin.firestore(); 
     console.log("✅ Firebase Admin & Firestore Initialized");
 } catch (e) {
     console.log("⚠️ Firebase Warning: serviceAccountKey.json not found.");
@@ -56,7 +56,7 @@ let storeSettings = {
 }; 
 
 /* ---------------- FIREBASE LOAD/SAVE LOGIC ---------------- */
-const STORE_DOC_ID = 'main_store'; // Single store for now
+const STORE_DOC_ID = 'main_store'; 
 
 async function loadDataFromFirebase() {
     try {
@@ -69,7 +69,6 @@ async function loadDataFromFirebase() {
                 liveMenu = JSON.parse(JSON.stringify(masterMenu));
             }
             if (data.orders) {
-                // Φιλτράρουμε παλιές παραγγελίες (>24h) για να μην γεμίζει η μνήμη
                 const yesterday = Date.now() - (24 * 60 * 60 * 1000);
                 activeOrders = (data.orders || []).filter(o => o.id > yesterday);
             }
@@ -83,7 +82,6 @@ async function loadDataFromFirebase() {
     }
 }
 
-// Helper to save specific parts
 async function saveSettingsToFirebase() {
     try { await db.collection('stores').doc(STORE_DOC_ID).set({ settings: storeSettings }, { merge: true }); } catch(e){console.error(e);}
 }
@@ -103,16 +101,14 @@ async function saveAllToFirebase() {
     } catch(e){console.error(e);}
 }
 
-// 🚀 INITIAL LOAD
 loadDataFromFirebase();
-
 
 /* ---------------- VIRTUAL ROUTES ---------------- */
 app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'order.html')); });
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 
-/* ---------------- STRIPE CONNECT OAUTH ---------------- */
+/* ---------------- STRIPE CONNECT ---------------- */
 app.get('/connect-stripe', (req, res) => {
     const state = "BellGo_Store"; 
     const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&state=${state}`;
@@ -130,7 +126,7 @@ app.get('/stripe-connect-callback', async (req, res) => {
             code: code,
         });
         storeSettings.stripeConnectId = response.stripe_user_id;
-        saveSettingsToFirebase(); // ✅ Firebase Save
+        saveSettingsToFirebase(); 
         io.emit('store-settings-update', storeSettings);
         res.send("<h1>✅ Επιτυχία!</h1><p>Ο λογαριασμός συνδέθηκε.</p><script>setTimeout(() => window.location.href='/premium.html', 2000);</script>");
     } catch (err) {
@@ -152,7 +148,6 @@ app.get('/manifest.json', (req, res) => {
         appName = storeSettings.name || "BellGo Admin";
     }
 
-    // 🔥 FIX: Include store ID in appId to make it unique per shop
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
     let iconFile = "admin.png"; 
     let startUrl = ".";  
@@ -186,7 +181,7 @@ app.get('/manifest.json', (req, res) => {
     });
 });
 
-/* ---------------- STRIPE PAYMENTS ---------------- */
+/* ---------------- PAYMENTS ---------------- */
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
@@ -245,9 +240,10 @@ app.post('/create-order-payment', async (req, res) => {
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    if (target && target.fcmToken && !target.isNative) {
-        let targetUrl = "/stafpremium.html";
+    if (target && target.fcmToken) { // Send even if isNative is true, just in case
+        let targetUrl = "/staff/login"; // Fallback
         if (target.role === 'admin') targetUrl = "/premium.html";
+        if (target.role === 'waiter' || target.role === 'driver') targetUrl = "/staff/login"; // Or staff page
 
         const msg = {
             token: target.fcmToken,
@@ -303,8 +299,7 @@ function updateStore(store) {
     io.to(store).emit('orders-update', activeOrders.filter(o => o.store === store));
     io.to(store).emit('menu-update', liveMenu);
     io.to(store).emit('store-settings-update', storeSettings);
-    // saveOrdersToDisk(); // ❌ REMOVED DISK SAVE
-    saveOrdersToFirebase(); // ✅ ADDED FIREBASE SAVE
+    saveOrdersToFirebase(); 
 }
 
 /* ---------------- SOCKET.IO ---------------- */
@@ -314,7 +309,7 @@ io.on('connection', (socket) => {
     socket.on('set-new-pin', (data) => {
         storeSettings.pin = data.pin;
         if(data.email) storeSettings.adminEmail = data.email; 
-        saveSettingsToFirebase(); // ✅ Firebase Save
+        saveSettingsToFirebase(); 
         socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
     });
     socket.on('verify-pin', (pin) => {
@@ -333,18 +328,15 @@ io.on('connection', (socket) => {
     socket.on('toggle-status', (data) => {
         if (data.type === 'customer') storeSettings.statusCustomer = data.isOpen;
         if (data.type === 'staff') storeSettings.statusStaff = data.isOpen;
-        saveSettingsToFirebase(); // ✅ Firebase Save
-        console.log(`🔄 Status Update: Cust=${storeSettings.statusCustomer}, Staff=${storeSettings.statusStaff}`);
+        saveSettingsToFirebase(); 
         io.emit('store-settings-update', storeSettings); 
     });
 
     socket.on('join-store', (data) => {
         let rawStore = data.storeName || '';
-        // ✅ Διόρθωση: Αν είναι πελάτης, ΠΡΕΠΕΙ να μας πει ποιο μαγαζί θέλει, αλλιώς δεν τον βάζουμε στο γενικό
-        if (!rawStore && data.role === 'customer') {
-            console.log("⚠️ Customer tried to join without storeName");
-            return;
-        }
+        
+        // Critical: Normalize Store Name
+        if (!rawStore && data.role === 'customer') return;
         if (!rawStore) rawStore = storeSettings.name;
         if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');
         
@@ -357,21 +349,17 @@ io.on('connection', (socket) => {
         socket.role = data.role || 'waiter'; 
         if (data.role === 'customer') socket.role = 'customer';
 
-        socket.join(store); // ✅ Εδώ γίνεται η απομόνωση στο δωμάτιο
+        socket.join(store); 
         console.log(`📡 User ${username} joined room: ${store}`); 
 
         const key = `${store}_${username}`;
         const wasRinging = activeUsers[key]?.isRinging || false;
 
-        const existing = activeUsers[key];
-        if (existing && existing.socketId === socket.id && existing.status === 'online') {
-            if (data.token) existing.fcmToken = data.token;
-            return; 
-        }
-
+        // If user reconnects, update their socketId but keep data
         activeUsers[key] = {
             store, username, role: socket.role, socketId: socket.id,
-            fcmToken: data.token, status: "online", lastSeen: Date.now(),
+            fcmToken: data.token || activeUsers[key]?.fcmToken, 
+            status: "online", lastSeen: Date.now(),
             isRinging: wasRinging, isNative: data.isNative 
         };
 
@@ -386,14 +374,14 @@ io.on('connection', (socket) => {
 
     socket.on('save-store-name', (newName) => { 
         storeSettings.name = newName; 
-        saveSettingsToFirebase(); // ✅ Firebase Save
+        saveSettingsToFirebase(); 
         io.to(socket.store).emit('store-settings-update', storeSettings); 
     });
     
     socket.on('save-store-settings', (data) => {
         if(data.resetTime) storeSettings.resetTime = data.resetTime;
         if(data.stripeConnectId) storeSettings.stripeConnectId = data.stripeConnectId;
-        saveSettingsToFirebase(); // ✅ Firebase Save
+        saveSettingsToFirebase(); 
         io.to(socket.store).emit('store-settings-update', storeSettings);
     });
 
@@ -407,7 +395,7 @@ io.on('connection', (socket) => {
             if (mode === 'permanent') {
                 masterMenu = JSON.parse(JSON.stringify(newMenuData));
                 liveMenu = JSON.parse(JSON.stringify(newMenuData));
-                saveMenuToFirebase(); // ✅ Firebase Save
+                saveMenuToFirebase(); 
             } else { liveMenu = newMenuData; }
             io.to(socket.store).emit('menu-update', liveMenu);
         } catch (e) { }
@@ -428,12 +416,14 @@ io.on('connection', (socket) => {
             text: orderText,
             from: socket.username,
             status: 'pending',
-            store: socket.store
+            store: socket.store // ✅ Ensure we save the specific store room
         };
         activeOrders.push(newOrder);
-        console.log(`📦 New order in room ${socket.store} from ${socket.username}`);
-        updateStore(socket.store); // Saves to Firebase inside updateStore
+        console.log(`📦 New order in room ${socket.store}`);
+        
+        updateStore(socket.store); 
 
+        // ✅ Trigger Ringing for Admins in this store
         Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
             adm.isRinging = true; 
             updateStore(socket.store); 
@@ -443,15 +433,15 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update-order', (data) => {
-        // 🔥 FIX: Use loose equality for safety
         const order = activeOrders.find(o => o.id == data.id);
         if (order) {
             order.text += `\n++ ${data.addText}`;
             order.status = 'pending';
-            updateStore(socket.store); // Saves to Firebase
-            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
+            updateStore(order.store); // Use order.store to be safe
+            
+            Object.values(activeUsers).filter(u => u.store === order.store && u.role === 'admin').forEach(adm => {
                 adm.isRinging = true; 
-                updateStore(socket.store); 
+                updateStore(order.store); 
                 if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
                 sendPushNotification(adm, "ΕΝΗΜΕΡΩΣΗ 🔄", `Προσθήκη από: ${socket.username}`);
             });
@@ -466,46 +456,50 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 🔥 FIX: Use loose equality (==) here too
     socket.on('accept-order', (id) => { 
         const o = activeOrders.find(x => x.id == id); 
         if(o){ 
             o.status = 'cooking'; 
-            o.startTime = Date.now(); // ✅ Added Start Time for Tracking
-            console.log(`👨‍🍳 Order ${id} accepted in room ${socket.store}`);
-            updateStore(socket.store); 
-            // ✅ NEW: Notify specific store immediately so UI updates
-            io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime });
+            o.startTime = Date.now(); 
+            console.log(`👨‍🍳 Order ${id} accepted in room ${o.store}`);
+            updateStore(o.store); 
+            // ✅ FIX: Send to the Order's store room, ensuring customer gets it
+            io.to(o.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime });
         } 
     });
     
-    // 🔥 FIX: Use loose equality (==) here too
     socket.on('ready-order', (id) => { 
         const o = activeOrders.find(x => x.id == id); 
         if(o){ 
             o.status = 'ready'; 
-            updateStore(socket.store); 
-            // ✅ NEW: Notify specific store immediately
-            io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready' });
+            updateStore(o.store); 
+            // ✅ FIX: Send to the Order's store room
+            io.to(o.store).emit('order-changed', { id: o.id, status: 'ready' });
 
-            const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; 
+            // Notify Customer specifically
+            const tKey = `${o.store}_${o.from}`; 
+            const tUser = activeUsers[tKey]; 
             if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
         } 
     });
     
-    // 🔥 FIX: Use loose equality (==) here too
     socket.on('pay-order', (id) => { 
-        activeOrders = activeOrders.filter(x => x.id != id); 
-        updateStore(socket.store); 
+        const o = activeOrders.find(x => x.id == id);
+        if(o) {
+            activeOrders = activeOrders.filter(x => x.id != id); 
+            updateStore(o.store);
+        }
     });
     
     // 🔔 STAFF ALARM (TRIGGER)
     socket.on('trigger-alarm', (tName) => { 
-        const key = `${socket.store}_${tName}`; const t = activeUsers[key]; 
+        const key = `${socket.store}_${tName}`; 
+        const t = activeUsers[key]; 
         if(t){ 
             t.isRinging = true; 
             updateStore(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
+            // Initial Push
             sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
         } 
     });
@@ -514,15 +508,15 @@ io.on('connection', (socket) => {
     socket.on('alarm-accepted', (data) => {
         let userKey = null;
         if (data && data.store && data.username) {
-            const directKey = `${data.store}_${data.username}`;
-            if (activeUsers[directKey]) userKey = directKey;
+            userKey = `${data.store}_${data.username}`;
         }
-        if (!userKey) {
+        if (!userKey || !activeUsers[userKey]) {
+            // Try to find by socket id
             for (const [key, user] of Object.entries(activeUsers)) {
                 if (user.socketId === socket.id) { userKey = key; break; }
             }
         }
-        if (userKey) {
+        if (userKey && activeUsers[userKey]) {
             const user = activeUsers[userKey];
             user.isRinging = false; 
             console.log(`✅ Alarm Accepted by ${user.username}`);
@@ -540,7 +534,8 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => { 
         const key = `${socket.store}_${socket.username}`; 
         if (activeUsers[key] && activeUsers[key].socketId === socket.id) { 
-            activeUsers[key].status = 'away'; 
+            activeUsers[key].status = 'away'; // Mark as away but keep in memory for loops
+            activeUsers[key].lastSeen = Date.now();
             updateStore(socket.store); 
         } 
     });
@@ -559,20 +554,25 @@ setInterval(() => {
     } catch (e) {}
 }, 60000); 
 
+// Cleanup old users (1 hour timeout)
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) delete activeUsers[key]; } }, 60000);
 
-// 🔥🔥🔥 FAST LOOP (2 SECONDS) 🔥🔥🔥
+// 🔥🔥🔥 LOOPING ALARM NOTIFICATIONS (3 SECONDS) 🔥🔥🔥
 setInterval(() => {
     for (const key in activeUsers) {
         const user = activeUsers[key];
-        if (user.isRinging && user.fcmToken && !user.isNative) {
-            console.log(`🔁 Looping Alarm for ${user.username}`);
+        // ✅ Condition: Must be ringing, have token.
+        // If status is 'away' (tab closed), we MUST send push loop.
+        if (user.isRinging && user.fcmToken) {
+            console.log(`🔁 Looping Alarm for ${user.username} (${user.status})`);
+            
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!";
             const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!";
+            
             sendPushNotification(user, msg, body);
         }
     }
-}, 2000); 
+}, 3000); // 3 seconds loop for aggressiveness
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
