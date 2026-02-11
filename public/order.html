@@ -51,7 +51,7 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100dvh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* HEADER REDESIGNED */
+        /* HEADER */
         .header { 
             height: 70px; 
             background: #1e1e1e; 
@@ -73,7 +73,6 @@
             width: 100%;
         }
 
-        /* NEON TITLE STYLE */
         #storeNameHeader {
             font-weight: 800; 
             font-size: 22px; 
@@ -90,7 +89,6 @@
             100% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.3); transform: scale(1); }
         }
 
-        /* SCHEDULE BADGE */
         .schedule-badge {
             font-size: 11px;
             color: #ccc;
@@ -144,12 +142,11 @@
             transition: opacity 0.3s ease, filter 0.3s ease;
             
             /* 🔥 SCROLLING PHYSICS 🔥 */
-            -webkit-overflow-scrolling: touch; /* Native feel */
+            -webkit-overflow-scrolling: touch; 
             scroll-behavior: smooth;
-            overscroll-behavior: contain; /* Prevents body scroll */
+            overscroll-behavior: contain;
         }
 
-        /* ANIMATION CLASSES FOR MENU */
         .menu-fade-out { opacity: 0.3; filter: grayscale(100%); transform: scale(0.98); }
         .menu-fade-in { animation: menuEntry 0.4s ease-out forwards; }
         @keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -181,7 +178,7 @@
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
 
-        /* WRITING MODE */
+        /* WRITING MODE FIX */
         .order-panel.writing-mode { height: 70% !important; }
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .address-bar,
@@ -194,6 +191,7 @@
             height: 100% !important; 
             margin: 0; 
             border: 2px solid #00E676;
+            border-radius: 0;
         }
 
         /* Panel Header (Toggle) */
@@ -310,6 +308,7 @@
             </div>
             <div class="header-actions">
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 APP</button>
+                <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
 
@@ -712,9 +711,11 @@
                 if(p.classList.contains('minimized')) {
                     p.classList.remove('minimized');
                     icon.style.transform = 'rotate(0deg)';
+                    icon.innerText = '▼';
                 } else {
                     p.classList.add('minimized');
                     icon.style.transform = 'rotate(180deg)';
+                    icon.innerText = '▲';
                 }
             },
 
