@@ -17,8 +17,7 @@ const ASSETS_TO_CACHE = [
   '/stafpremium.html',
   '/style.css',          // ✅ Προσθήκη για να βλέπει τα χρώματα
   '/menu-presets.js',    // ✅ Προσθήκη για τους καταλόγους
-  '/admin-core.js',      // ✅ Προσθήκη για τη λογική admin
-  '/audio-engine.js',    // ✅ Προσθήκη για τον ήχο
+  
   '/admin.png',
   '/shop.png',
   '/staff.png',
