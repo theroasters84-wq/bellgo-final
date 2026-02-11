@@ -90,7 +90,7 @@
         .folder-label { font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 6px; margin-top: 2px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .folder-time { font-size: 10px; color: #000; background: #FFD700; padding: 1px 5px; border-radius: 10px; margin-top: -8px; font-weight: bold; z-index: 2; position: relative; }
 
-        /* STAFF SIDEBAR (Larger & Collapsible) */
+        /* STAFF SIDEBAR */
         #staffContainer { 
             background: #202020; 
             border-top: 2px solid #333; 
@@ -98,7 +98,7 @@
             flex-direction: column; 
             flex-shrink: 0; 
             transition: height 0.3s ease; 
-            height: 210px; /* Increased Height for 2 rows */
+            height: 210px; 
             position: relative; 
         }
         #staffContainer.minimized { height: 35px; overflow: hidden; }
@@ -282,6 +282,18 @@
             <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
             
             <div class="settings-section">
+                <div class="settings-label">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
+                <select id="selShopType" class="inp-settings" style="margin-bottom:5px;">
+                    <option value="" disabled selected>Επιλέξτε είδος...</option>
+                    <option value="coffee_takeaway">☕ Cafe Takeaway</option>
+                    <option value="coffee_bar">🍸 Cafe Bar</option>
+                    <option value="pizzeria">🍕 Pizzeria</option>
+                    <option value="souvlaki">🍖 Souvlaki / Grill</option>
+                </select>
+                <button class="modal-btn" style="background:#FF9800; color:black; font-size:13px;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ ΠΡΟΤΥΠΟΥ</button>
+            </div>
+
+            <div class="settings-section">
                 <div class="settings-label">ΔΙΑΚΟΠΤΕΣ ΛΕΙΤΟΥΡΓΙΑΣ</div>
                 <div class="switch-row">
                     <span>ΠΕΛΑΤΕΣ (Delivery)</span>
@@ -407,6 +419,74 @@
                 }
             });
             return total;
+        };
+
+        // --- PRESET MENUS (TEMPLATES) ---
+        const PRESET_MENUS = {
+            'coffee_takeaway': [
+                { order: 1, name: "ΚΑΦΕΔΕΣ", items: [
+                    { name: "Freddo Espresso", price: 2.20, extras: [{name:"Μέτριο",price:0},{name:"Γλυκό",price:0},{name:"Σκέτο",price:0},{name:"Γάλα",price:0.30}] },
+                    { name: "Freddo Cappuccino", price: 2.50, extras: [{name:"Μέτριο",price:0},{name:"Γλυκό",price:0},{name:"Σκέτο",price:0},{name:"Κανέλα",price:0}] },
+                    { name: "Frappe", price: 1.80, extras: [{name:"Μέτριο",price:0},{name:"Γλυκό",price:0},{name:"Γάλα",price:0.30}] }
+                ]},
+                { order: 2, name: "ΣΦΟΛΙΑΤΕΣ", items: [
+                    { name: "Τυρόπιτα", price: 2.00, extras: [] },
+                    { name: "Σπανακόπιτα", price: 2.20, extras: [] },
+                    { name: "Μπουγάτσα", price: 2.50, extras: [{name:"Άχνη/Κανέλα",price:0}] }
+                ]},
+                { order: 3, name: "SNACKS", items: [
+                    { name: "Toast", price: 1.80, extras: [{name:"Γαλοπούλα",price:0},{name:"Ζαμπόν",price:0}] },
+                    { name: "Sandwich", price: 3.50, extras: [] }
+                ]}
+            ],
+            'coffee_bar': [
+                { order: 1, name: "ΚΑΦΕΔΕΣ", items: [
+                    { name: "Espresso", price: 2.50, extras: [] },
+                    { name: "Cappuccino", price: 3.50, extras: [] },
+                    { name: "Freddo Espresso", price: 3.50, extras: [] }
+                ]},
+                { order: 2, name: "ΠΟΤΑ", items: [
+                    { name: "Whiskey Simple", price: 7.00, extras: [] },
+                    { name: "Vodka Simple", price: 7.00, extras: [] },
+                    { name: "Gin Tonic", price: 8.00, extras: [] }
+                ]},
+                { order: 3, name: "COCKTAILS", items: [
+                    { name: "Mojito", price: 9.00, extras: [] },
+                    { name: "Margarita", price: 9.00, extras: [] },
+                    { name: "Negroni", price: 9.00, extras: [] }
+                ]}
+            ],
+            'pizzeria': [
+                { order: 1, name: "PIZZA", items: [
+                    { name: "Margherita", price: 8.00, extras: [{name:"Extra Cheese",price:1.50}] },
+                    { name: "Special", price: 10.00, extras: [] },
+                    { name: "Pepperoni", price: 9.00, extras: [] }
+                ]},
+                { order: 2, name: "ΣΑΛΑΤΕΣ", items: [
+                    { name: "Caesar's", price: 7.50, extras: [] },
+                    { name: "Chef", price: 7.00, extras: [] },
+                    { name: "Χωριάτικη", price: 6.50, extras: [] }
+                ]},
+                { order: 3, name: "ΑΝΑΨΥΚΤΙΚΑ", items: [
+                    { name: "Coca Cola 330ml", price: 1.50, extras: [] },
+                    { name: "Beer 500ml", price: 3.50, extras: [] }
+                ]}
+            ],
+            'souvlaki': [
+                { order: 1, name: "ΤΥΛΙΧΤΑ", items: [
+                    { name: "Πίτα Γύρος Χοιρινό", price: 3.50, extras: [{name:"Απ'όλα",price:0},{name:"Χωρίς Κρεμμύδι",price:0},{name:"Χωρίς Τζατζίκι",price:0}] },
+                    { name: "Πίτα Καλαμάκι Κοτόπουλο", price: 3.50, extras: [{name:"Απ'όλα",price:0},{name:"Σως",price:0}] }
+                ]},
+                { order: 2, name: "ΜΕΡΙΔΕΣ", items: [
+                    { name: "Μερίδα Γύρος", price: 9.00, extras: [] },
+                    { name: "Μερίδα Καλαμάκια", price: 9.00, extras: [] }
+                ]},
+                { order: 3, name: "ΟΡΕΚΤΙΚΑ", items: [
+                    { name: "Πατάτες", price: 3.00, extras: [] },
+                    { name: "Τζατζίκι", price: 3.50, extras: [] },
+                    { name: "Φέτα", price: 3.50, extras: [{name:"Λάδι/Ρίγανη",price:0}] }
+                ]}
+            ]
         };
 
         // --- PIN MODULE ---
@@ -590,11 +670,9 @@
                 if (el.classList.contains('minimized')) {
                     el.classList.remove('minimized');
                     icon.innerText = "▼";
-                    icon.style.transform = "rotate(0deg)";
                 } else {
                     el.classList.add('minimized');
                     icon.innerText = "▲";
-                    icon.style.transform = "rotate(180deg)";
                 }
             },
 
@@ -644,6 +722,23 @@
                 window.socket.emit('save-store-settings', { schedule: newSched });
                 document.getElementById('scheduleModal').style.display = 'none';
                 document.getElementById('settingsModal').style.display = 'flex';
+            },
+
+            // --- MENU PRESET LOADING ---
+            applyPresetMenu: () => {
+                const type = document.getElementById('selShopType').value;
+                if (!type) return alert("Παρακαλώ επιλέξτε είδος καταστήματος!");
+                if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού σας. Είστε σίγουρος;")) return;
+                
+                const newMenu = JSON.parse(JSON.stringify(PRESET_MENUS[type]));
+                App.menuData = newMenu;
+                
+                // Save and render
+                window.socket.emit('save-menu', { menu: newMenu, mode: 'permanent' });
+                App.renderMenu();
+                
+                alert("Το μενού φορτώθηκε επιτυχώς!");
+                document.getElementById('settingsModal').style.display = 'none';
             },
 
             showLink: () => {
