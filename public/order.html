@@ -19,7 +19,7 @@
 
     <script>
         (function() {
-            // PWA LOGIC: Δυναμικό Manifest για κάθε μαγαζί
+            // PWA LOGIC
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             let pStore = params.get('store');
@@ -39,7 +39,6 @@
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
-            // Ζητάμε icon=shop για να δείχνει το καλάθι στο εικονίδιο
             let manifestUrl = `manifest.json?icon=shop`; 
             if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
             if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
@@ -62,7 +61,7 @@
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Κλείδωμα για iOS */
+            position: fixed; 
             top: 0; left: 0; right: 0; bottom: 0;
         }
 
@@ -144,7 +143,7 @@
         /* MAIN LAYOUT */
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; position: relative; }
 
-        /* MENU CONTAINER - PERFECT SCROLL */
+        /* MENU CONTAINER - FIXED SCROLLING */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -590,11 +589,15 @@
                 });
 
                 socket.on('orders-update', (orders) => {
-                    const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    const myOrder = orders.find(o => o.from === mySocketUsername);
+                    if (!activeOrderState) return;
+                    
+                    // Match by ID (Bulletproof)
+                    const myOrder = orders.find(o => o.id === activeOrderState.id);
+                    
                     if (myOrder) {
-                        if (!activeOrderState || activeOrderState.status !== myOrder.status) {
-                            activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
+                        // Update status if changed
+                        if (activeOrderState.status !== myOrder.status) {
+                            activeOrderState.status = myOrder.status;
                             localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
                             App.updateStatusUI(myOrder.status);
                         }
@@ -852,9 +855,9 @@
                 if (status === 'pending') {
                     icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
                 } else if (status === 'cooking') {
-                    icon.innerText = '👨‍🍳'; text.innerText = 'Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
+                    icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
-                    icon.innerText = '🛵'; text.innerText = `Η παραγγελία (${timeString}) έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
+                    icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται! (${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
                 }
             },
