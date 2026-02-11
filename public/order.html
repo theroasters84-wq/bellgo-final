@@ -19,6 +19,7 @@
 
     <script>
         (function() {
+            // PWA LOGIC: Δυναμικό Manifest για κάθε μαγαζί
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             let pStore = params.get('store');
@@ -38,6 +39,7 @@
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
+            // Ζητάμε icon=shop για να δείχνει το καλάθι στο εικονίδιο
             let manifestUrl = `manifest.json?icon=shop`; 
             if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
             if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
@@ -55,12 +57,12 @@
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100dvh; /* Dynamic viewport height specifically for mobile */
+            height: 100dvh; 
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Lock body scrolling specifically on iOS */
+            position: fixed; /* Κλείδωμα για iOS */
             top: 0; left: 0; right: 0; bottom: 0;
         }
 
@@ -142,7 +144,7 @@
         /* MAIN LAYOUT */
         #appContent { display: none; flex-direction: column; height: 100%; width: 100%; position: relative; }
 
-        /* MENU CONTAINER - FIXED SCROLLING */
+        /* MENU CONTAINER - PERFECT SCROLL */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -151,11 +153,11 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            padding-bottom: 120px; 
-            opacity: 1;
-            transition: opacity 0.3s ease, filter 0.3s ease;
             
-            /* 🔥 MOMENTUM SCROLLING 🔥 */
+            /* HUGE PADDING BOTTOM: Για να μπορείς να σκρολάρεις το μενού ακόμα και με ανοιχτό keyboard */
+            padding-bottom: 350px; 
+            
+            /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -194,12 +196,13 @@
         }
         .order-panel.minimized { height: 50px; overflow: hidden; }
 
-        /* WRITING MODE (Clean & Fast) */
+        /* WRITING MODE (Compact & Fast) */
         .order-panel.writing-mode { 
-            height: 70% !important; 
+            height: 45% !important; /* Μειωμένο ύψος για να φαίνεται το μενού */
             transition: none !important; 
         }
         
+        /* Κρύβουμε τα περιττά όταν γράφει */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .address-bar,
         .order-panel.writing-mode #liveTotal,
@@ -208,6 +211,8 @@
         }
         
         .order-panel.writing-mode .panel-content { padding: 5px; height: 100%; }
+        
+        /* Το Textarea πιάνει όλο τον χώρο */
         .order-panel.writing-mode textarea.order-text { 
             height: 100% !important; 
             margin: 0; 
