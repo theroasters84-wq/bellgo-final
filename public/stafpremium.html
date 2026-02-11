@@ -72,12 +72,14 @@
             flex-direction: column; 
             gap: 15px; 
             padding-bottom: 80px; 
-            
-            /* 🔥 ΤΟ ΜΥΣΤΙΚΟ ΓΙΑ ΤΟ ΡΟΛΑΡΙΣΜΑ 🔥 */
+            transition: all 0.3s ease; 
+
+            /* 🔥 ΤΟ ΜΥΣΤΙΚΟ ΓΙΑ ΤΟ ΡΟΛΑΡΙΣΜΑ (Native Feel) 🔥 */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
             will-change: scroll-position;
+            /* Αφαιρέθηκε το scroll-behavior: smooth για να μην κολλάει */
         }
         
         .category-block { width: 100%; }
@@ -101,14 +103,14 @@
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
             height: 50%; 
-            transition: height 0.2s ease-out;
+            transition: height 0.2s ease-out; /* Fast transition */
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
             height: 70% !important; 
-            transition: none !important; 
+            transition: none !important; /* No animation when typing */
         }
         
         /* Κρύβουμε τα πάντα όταν γράφει */
@@ -535,9 +537,10 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     setTimeout(() => {
+                     // Using requestAnimationFrame to allow click events to register before mode change
+                     requestAnimationFrame(() => {
                          panel.classList.remove('writing-mode');
-                     }, 100);
+                     });
                 });
 
                 App.connectSocket();
@@ -579,7 +582,7 @@
                         storeName: userData.store, 
                         username: userData.name, 
                         role: userData.role, 
-                        token: localStorage.getItem('fcm_token'),
+                        token: localStorage.getItem('fcm_token'), 
                         isNative: !!window.Capacitor
                     });
                 });
@@ -684,8 +687,6 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
-                        
-                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
