@@ -19,7 +19,7 @@
 
     <script>
         (function() {
-            // PWA LOGIC
+            // PWA LOGIC: Δυναμικό Manifest με ID για διαχωρισμό από το Staff App
             const params = new URLSearchParams(window.location.search);
             const pName = params.get('name');
             let pStore = params.get('store');
@@ -39,7 +39,8 @@
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
-            let manifestUrl = `manifest.json?icon=shop`; 
+            // ΠΡΟΣΟΧΗ: Το &id=customer_app είναι αυτό που το ξεχωρίζει από το Staff
+            let manifestUrl = `manifest.json?icon=shop&id=customer_app`; 
             if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
             if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
             
@@ -56,7 +57,7 @@
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100dvh; 
+            height: 100vh; /* Fixed height για σταθερότητα με keyboard */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
@@ -156,7 +157,7 @@
             /* HUGE PADDING BOTTOM: Για να μπορείς να σκρολάρεις το μενού ακόμα και με ανοιχτό keyboard */
             padding-bottom: 350px; 
             
-            /* Native Momentum Scrolling */
+            /* Native Momentum Scrolling - ΧΩΡΙΣ smooth για να μην κολλάει */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -197,8 +198,8 @@
 
         /* WRITING MODE (Compact & Fast) */
         .order-panel.writing-mode { 
-            height: 45% !important; /* Μειωμένο ύψος για να φαίνεται το μενού */
-            transition: none !important; 
+            height: 45% !important; /* Κρατάμε το ίδιο ύψος για να φαίνεται το μενού */
+            transition: none !important; /* Κλείσιμο χωρίς lag */
         }
         
         /* Κρύβουμε τα περιττά όταν γράφει */
@@ -331,7 +332,6 @@
             </div>
             <div class="header-actions">
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 APP</button>
-                <button class="btn-logout" onclick="App.logout()">EXIT</button>
             </div>
         </div>
 
@@ -591,7 +591,7 @@
                 socket.on('orders-update', (orders) => {
                     if (!activeOrderState) return;
                     
-                    // Match by ID (Bulletproof)
+                    // Match by ID (Bulletproof Logic)
                     const myOrder = orders.find(o => o.id === activeOrderState.id);
                     
                     if (myOrder) {
