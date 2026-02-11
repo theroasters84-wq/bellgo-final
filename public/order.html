@@ -46,9 +46,13 @@
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
-            // ID unique for Customer App
-            let manifestUrl = `manifest.json?icon=shop&id=customer_app`; 
-            if (pStore) manifestUrl += `&store=${encodeURIComponent(pStore)}`;
+            // 🔥 FIX: Unique ID per store so PWAs don't overwrite each other
+            let manifestUrl = `manifest.json?icon=shop`; 
+            if (pStore) {
+                manifestUrl += `&store=${encodeURIComponent(pStore)}&id=cust_${encodeURIComponent(pStore)}`;
+            } else {
+                manifestUrl += `&id=customer_app_general`;
+            }
             if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
             
             manifestLink.setAttribute('href', manifestUrl);
@@ -456,10 +460,7 @@
         // --- VISUAL VIEWPORT LOGIC (FIX FOR MOBILE/WEB LAYOUT) ---
         function handleViewport() {
             if (window.visualViewport) {
-                // Set custom CSS variable for true visible height
                 document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
-                
-                // If keyboard closes (height increases), close writing mode
                 if (window.visualViewport.height > (window.screen.height * 0.8)) {
                     document.getElementById('orderPanel').classList.remove('writing-mode');
                     document.getElementById('orderText').blur();
@@ -471,12 +472,10 @@
             window.visualViewport.addEventListener('scroll', handleViewport);
         }
         window.addEventListener('resize', handleViewport);
-        // Call once on load
         handleViewport();
 
 
         window.App = {
-            // ... (Install, Login, Logout remain same)
             installPWA: async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { document.getElementById('btnInstallLogin').style.display = 'none'; document.getElementById('btnInstallHeader').style.display = 'none'; } deferredPrompt = null; } else if (isIos()) { alert("Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'"); } },
             loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert("Login Error: " + e.message)); },
             logout: () => { signOut(auth).then(() => location.reload()); },
@@ -510,23 +509,16 @@
                     const cleanName = decodeURIComponent(PRELOADED_NAME);
                     document.getElementById('storeNameHeader').innerText = cleanName;
                     document.title = cleanName;
-                    let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
-                    if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
-                    document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
-                } else if(TARGET_STORE) { document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase(); }
+                } else if(TARGET_STORE) { 
+                    document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase(); 
+                }
                 
                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
                 App.checkActiveOrderStorage();
                 
-                // Writing Mode Listeners
                 const txt = document.getElementById('orderText');
                 const panel = document.getElementById('orderPanel');
-                
-                txt.addEventListener('focus', () => {
-                    panel.classList.add('writing-mode');
-                });
-                
-                // Note: Blur is handled by VisualViewport resize to avoid conflicts
+                txt.addEventListener('focus', () => { panel.classList.add('writing-mode'); });
 
                 App.connectSocket();
                 App.requestNotifyPermission(); 
@@ -540,7 +532,9 @@
                         const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: registration }); 
                         if (token) {
                             localStorage.setItem('fcm_token', token);
-                            if(window.socket && window.socket.connected) { window.socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: token, isNative: false }); }
+                            if(window.socket && window.socket.connected) { 
+                                window.socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: token, isNative: false }); 
+                            }
                         }
                     }
                 } catch (error) { console.error("Notification Error:", error); }
@@ -557,7 +551,6 @@
                 }
             },
 
-            // --- STRIPE RETURN HANDLER ---
             checkStripeReturn: () => {
                 const urlP = new URLSearchParams(window.location.search);
                 const status = urlP.get('payment_status');
@@ -579,12 +572,12 @@
                 const socket = window.socket;
 
                 socket.on('connect', () => {
+                    // 🔥 ROOM SYNC: Ensure we join using TARGET_STORE
                     socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: localStorage.getItem('fcm_token'), isNative: false });
                     setTimeout(() => { App.checkStripeReturn(); }, 1000);
                 });
 
                 socket.on('menu-update', (data) => { 
-                    // Visual Fade Out Effect before render
                     const container = document.getElementById('menuContainer');
                     container.classList.add('menu-fade-out');
                     setTimeout(() => {
@@ -599,11 +592,6 @@
                             const newName = settings.name;
                             document.getElementById('storeNameHeader').innerText = newName;
                             document.title = newName;
-                            if (!new URLSearchParams(window.location.search).get('name')) {
-                                const currentParams = new URLSearchParams(window.location.search);
-                                currentParams.set('name', newName);
-                                window.history.replaceState({}, '', `${window.location.pathname}?${currentParams.toString()}`);
-                            }
                         }
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
@@ -614,8 +602,6 @@
                             closedOverlay.style.display = 'none';
                             if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; }
                         }
-                        
-                        // Schedule Logic
                         if (settings.schedule) {
                             storeSchedule = settings.schedule;
                             App.updateTodayHours();
@@ -625,10 +611,8 @@
 
                 socket.on('orders-update', (orders) => {
                     if (!activeOrderState) return;
-                    
-                    // Match by ID (Using loose equality == just in case socket sends string)
+                    // 🔥 FIX: Check room-wide order status
                     const myOrder = orders.find(o => o.id == activeOrderState.id);
-                    
                     if (myOrder) {
                         if (activeOrderState.status !== myOrder.status) {
                             activeOrderState.status = myOrder.status;
@@ -639,7 +623,6 @@
                 });
             },
 
-            // --- SCHEDULE ---
             updateTodayHours: () => {
                 const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
                 const now = new Date();
@@ -654,7 +637,6 @@
                 list.innerHTML = '';
                 const now = new Date();
                 const todayName = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'][now.getDay()];
-
                 daysOrder.forEach(day => {
                     const row = document.createElement('div');
                     row.className = 'schedule-row';
@@ -665,7 +647,6 @@
                 document.getElementById('scheduleViewModal').style.display = 'flex';
             },
 
-            // --- NEW RENDER MENU WITH EXTRAS & ANIMATION ---
             renderMenu: (data) => {
                 const container = document.getElementById('menuContainer');
                 container.innerHTML = '';
@@ -675,7 +656,6 @@
                     else if (typeof data === 'object') { menu = data; } 
                     else { const items = (data || "").split('\n'); menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }]; }
                 } catch(e) { menu = []; }
-
                 if(Array.isArray(menu)) {
                     menu.sort((a,b) => (a.order || 99) - (b.order || 99));
                     menu.forEach(cat => {
@@ -684,7 +664,6 @@
                         title.innerText = cat.name;
                         const itemsDiv = document.createElement('div');
                         itemsDiv.className = 'category-items';
-
                         cat.items.forEach(item => {
                             let itemName = "", itemPrice = 0, itemExtras = [];
                             if (typeof item === 'string') {
@@ -696,10 +675,9 @@
                                 itemPrice = item.price;
                                 itemExtras = item.extras || [];
                             }
-
                             if(itemName) {
                                 const box = document.createElement('div');
-                                box.className = 'item-box menu-fade-in'; // Animation Class
+                                box.className = 'item-box menu-fade-in';
                                 box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
                                 box.addEventListener('click', (e) => { e.preventDefault(); App.handleItemClick(itemName, itemPrice, itemExtras); });
                                 itemsDiv.appendChild(box);
@@ -714,10 +692,8 @@
                 }
             },
 
-            // --- EXTRAS LOGIC ---
             currentItem: null,
             tempSelectedExtras: [],
-
             handleItemClick: (name, price, extras) => {
                 if (!extras || extras.length === 0) {
                     App.addToOrder(name, price);
@@ -727,8 +703,7 @@
                     const list = document.getElementById('userExtrasList');
                     list.innerHTML = '';
                     document.getElementById('userExtrasTitle').innerText = name;
-                    
-                    extras.forEach((ex, idx) => {
+                    extras.forEach((ex) => {
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
@@ -750,41 +725,29 @@
             confirmExtras: () => {
                 if (!App.currentItem) return;
                 App.addToOrder(App.currentItem.name, App.currentItem.price);
-                App.tempSelectedExtras.forEach(ex => {
-                      App.addToOrder(`  + ${ex.name}`, ex.price);
-                });
+                App.tempSelectedExtras.forEach(ex => { App.addToOrder(`  + ${ex.name}`, ex.price); });
                 document.getElementById('userExtrasModal').style.display = 'none';
             },
 
             addToOrder: (item, price = 0) => {
                 const txt = document.getElementById('orderText');
-                txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
-                
                 const entry = price > 0 ? `${item}:${price}` : item;
-                
                 if (txt.value.trim() === '') txt.value = `1 ${entry}`;
                 else txt.value += `\n1 ${entry}`;
-                
                 txt.scrollTop = txt.scrollHeight;
-                
                 const panel = document.getElementById('orderPanel');
-                if (panel.classList.contains('minimized')) {
-                    App.toggleOrderPanel();
-                }
-                App.handleInput(); // Update total immediately
+                if (panel.classList.contains('minimized')) App.toggleOrderPanel();
+                App.handleInput(); 
             },
 
-            // --- TOGGLE ORDER PANEL ---
             toggleOrderPanel: () => {
                 const p = document.getElementById('orderPanel');
                 const icon = document.getElementById('panelIcon');
                 if(p.classList.contains('minimized')) {
                     p.classList.remove('minimized');
-                    icon.style.transform = 'rotate(0deg)';
                     icon.innerText = '▼';
                 } else {
                     p.classList.add('minimized');
-                    icon.style.transform = 'rotate(180deg)';
                     icon.innerText = '▲';
                 }
             },
@@ -795,33 +758,22 @@
                 let validForCard = true;
                 let total = 0;
                 if (text.length === 0) validForCard = false;
-
                 for (const line of lines) {
                     if (!line.trim()) continue;
                     let qty = 1; let rest = line;
                     const qtyMatch = line.match(/^(\d+)\s+(.*)/);
                     if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
-
                     if(rest.includes(':')) {
                         const parts = rest.split(':');
                         const priceVal = parseFloat(parts[parts.length-1]);
                         if(!isNaN(priceVal)) { total += qty * priceVal; } 
                         else { validForCard = false; }
-                    } else if (line.trim().startsWith('+')) {
-                         // Extra item 
-                    } else { 
-                         validForCard = false; 
-                    }
+                    } else if (!line.trim().startsWith('+')) { validForCard = false; }
                 }
                 document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
                 const btnCard = document.getElementById('payCard');
-                if (validForCard && total > 0) {
-                    btnCard.disabled = false;
-                    btnCard.innerHTML = "💳 ΚΑΡΤΑ";
-                } else {
-                    btnCard.disabled = true;
-                    btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
-                }
+                if (validForCard && total > 0) { btnCard.disabled = false; btnCard.innerHTML = "💳 ΚΑΡΤΑ"; } 
+                else { btnCard.disabled = true; btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)"; }
                 return total;
             },
 
@@ -834,12 +786,8 @@
 
             confirmPayment: (method) => {
                 const items = document.getElementById('orderText').value.trim();
-                if(method === '💳 ΚΑΡΤΑ') {
-                    App.payWithCard(items);
-                } else {
-                    App.sendOrder(items, method);
-                    document.getElementById('paymentOverlay').style.display = 'none';
-                }
+                if(method === '💳 ΚΑΡΤΑ') { App.payWithCard(items); } 
+                else { App.sendOrder(items, method); document.getElementById('paymentOverlay').style.display = 'none'; }
             },
 
             payWithCard: async (items) => {
@@ -868,15 +816,8 @@
                 document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
             },
 
-            // --- STATUS LOGIC UPDATED FOR MINI BUTTON ---
-            minimizeStatus: () => { 
-                document.getElementById('statusOverlay').style.height = '0'; 
-                // Mini button stays visible via showStatus logic
-            },
-            
-            maximizeStatus: () => {
-                document.getElementById('statusOverlay').style.height = '100%';
-            },
+            minimizeStatus: () => { document.getElementById('statusOverlay').style.height = '0'; },
+            maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
             showStatus: (status) => {
                 const overlay = document.getElementById('statusOverlay');
@@ -886,21 +827,15 @@
                 const btnNew = document.getElementById('btnNewOrder');
                 const btnMini = document.getElementById('btnStatusMini');
                 const miniText = document.getElementById('miniStatusText');
-
                 overlay.style.height = '100%'; 
                 btnNew.style.display = 'none'; 
-
                 let timeString = "--:--";
                 if (activeOrderState && activeOrderState.timestamp) {
                     const date = new Date(activeOrderState.timestamp);
                     timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
                 }
-
-                // Show mini button
                 if(btnMini) btnMini.style.display = 'flex';
-
                 let statusLabel = "";
-
                 if (status === 'pending') {
                     statusLabel = "Αναμονή";
                     icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
@@ -912,7 +847,6 @@
                     icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
                 }
-                
                 if(miniText) miniText.innerText = `${statusLabel} ${timeString}`;
             },
 
@@ -923,11 +857,10 @@
                     localStorage.removeItem('bellgo_active_order');
                     activeOrderState = null;
                     document.getElementById('statusOverlay').style.height = '0';
-                    document.getElementById('btnStatusMini').style.display = 'none'; // Hide mini button
+                    document.getElementById('btnStatusMini').style.display = 'none';
                     document.getElementById('orderText').value = '';
                 }
             },
-
             resetUI: () => { 
                 document.getElementById('statusOverlay').style.height = '0'; 
                 document.getElementById('btnStatusMini').style.display = 'none';
