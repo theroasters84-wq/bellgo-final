@@ -14,20 +14,13 @@
 
     <script>
         (function() {
-            // Διαβάζουμε το session για να βρούμε το Store ID
             const saved = localStorage.getItem('bellgo_session');
             const manifestLink = document.getElementById('dynamicManifest');
-            
-            // Default URL με Admin Icon
             let url = `manifest.json?icon=admin`;
-            
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    if (data.store) {
-                        // Προσθέτουμε το store ID για μοναδικότητα PWA
-                        url += `&store=${data.store}`;
-                    }
+                    if (data.store) url += `&store=${data.store}`;
                 } catch(e) {}
             }
             manifestLink.href = url;
@@ -52,43 +45,78 @@
         .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
         
         /* BELL BTN */
-        #staffBellBtn { 
-            background: #FFD700; 
-            color: black; 
-            border: 2px solid #FFD700; 
-            display: none; 
-        }
-        #staffBellBtn.ringing { 
-            display: flex; 
-            animation: shake 0.5s infinite; 
-            box-shadow: 0 0 15px #FFD700;
-        }
+        #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
+        #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; box-shadow: 0 0 15px #FFD700; }
 
         /* MAIN LAYOUT */
-        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
-        #waiterPanel { display: flex; flex-direction: column; height: 100%; flex: 1; overflow: hidden; }
-        #waiterMenuRead { padding: 10px; background: #111; border-bottom: 1px solid #333; overflow-y: auto; max-height: 40vh; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; }
+        #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
+        
+        /* MENU CONTAINER (Takes full space minus header/panel) */
+        #menuContainer { flex: 1; overflow-y: auto; padding: 10px; background: #121212; display: flex; flex-direction: column; gap: 15px; padding-bottom: 150px; /* Space for panel */ transition: all 0.3s ease; }
+        
         .category-block { width: 100%; }
         .category-title { color: #FFD700; font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
         .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-        .menu-item-box { background: #222; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; color: #ccc; font-size: 15px; font-style: italic; white-space: nowrap; cursor: pointer; transition: background 0.1s; user-select: none; }
-        .menu-item-box:active { background: #444; border-color: #FFD700; color: white; transform: scale(0.95); }
-
-        /* ORDER FORM */
-        .order-form { padding: 15px; display: flex; flex-direction: column; gap: 10px; flex: 1; height: 100%; overflow: hidden; background: #181818; }
-        .form-row { display: flex; gap: 10px; flex-shrink: 0; align-items: flex-end; }
-        .input-group { flex: 1; }
-        .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
-        .input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; text-align: center; font-weight: bold; }
-        .pay-method-toggle { display: flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; height: 48px; }
-        .pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
-        .pay-btn.active { background: #00E676; color: black; }
-        textarea.order-text { flex-grow: 1; width: 100%; padding: 15px; background: #222; border: 1px solid #444; border-radius: 8px; color: white; font-size: 18px; resize: none; }
-        .btn-send { width: 100%; padding: 20px; background: #FFD700; color: black; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; flex-shrink: 0; margin-top: 5px; }
-        .btn-send.update-mode { background: #2196F3; color: white; }
         
+        .item-box { 
+            background: #222; border: 1px solid #444; padding: 12px 14px; border-radius: 8px; 
+            color: #eee; font-size: 15px; cursor: pointer; transition: transform 0.1s; user-select: none; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .item-box:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
+        .item-name { font-style: italic; }
+        .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
+
+        /* ORDER PANEL - SLIDING */
+        .order-panel { 
+            background: #1a1a1a; 
+            border-top: 2px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
+            z-index: 20; 
+            height: 45%; 
+            transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+        }
+        .order-panel.minimized { height: 50px; overflow: hidden; }
+
+        /* Panel Header (Toggle) */
+        .panel-header-bar {
+            height: 40px; background: #252525; border-bottom: 1px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0;
+        }
+        .toggle-icon { font-size: 20px; color: #aaa; transition: transform 0.3s; }
+        .order-panel.minimized .toggle-icon { transform: rotate(180deg); }
+
+        .panel-content { padding: 10px; display: flex; flex-direction: column; flex: 1; height: 100%; overflow: hidden; }
+
+        /* FORM ELEMENTS */
+        .form-row { display: flex; gap: 10px; flex-shrink: 0; align-items: flex-end; margin-bottom: 8px; }
+        .input-group { flex: 1; }
+        .input-group label { display: block; font-size: 11px; color: #888; margin-bottom: 3px; }
+        .input-box { width: 100%; padding: 10px; background: #333; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; text-align: center; font-weight: bold; }
+        .pay-method-toggle { display: flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; height: 42px; }
+        .pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 18px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+        .pay-btn.active { background: #00E676; color: black; }
+        
+        textarea.order-text { flex: 1; width: 100%; padding: 10px; background: #222; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; resize: none; margin-bottom: 8px; }
+        .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
+        .btn-send.update-mode { background: #2196F3; color: white; }
+
+        /* EXTRAS MODAL */
+        .extras-grid { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0; }
+        .extra-option { 
+            background: #333; border: 1px solid #555; padding: 10px; border-radius: 6px; 
+            color: white; font-size: 14px; cursor: pointer; user-select: none; flex: 1 1 45%; 
+            display: flex; justify-content: space-between;
+        }
+        .extra-option.selected { background: #00E676; color: black; border-color: #00E676; font-weight: bold; }
+
         /* OVERLAYS */
         .overlay-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; text-align: center; }
+        .details-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
         
         /* START SCREEN */
         #startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
@@ -141,10 +169,19 @@
         <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
     </div>
 
-    <div id="alarmOverlay">
+    <div id="alarmOverlay" class="overlay-screen">
         <h1 style="color:white; margin-bottom:30px; font-size:30px;">📞 ΣΕ ΚΑΛΟΥΝ!</h1>
-        <button class="alarm-btn-accept" onclick="App.acceptAlarmStaff()">✅ ΕΡΧΟΜΑΙ</button>
-        <button class="alarm-btn-close" onclick="App.muteAlarm()">❌ ΚΛΕΙΣΙΜΟ</button>
+        <button class="btn-start" onclick="App.acceptAlarmStaff()">✅ ΕΡΧΟΜΑΙ</button>
+        <button style="margin-top:20px; background:transparent; border:none; color:#aaa; font-size:16px;" onclick="App.muteAlarm()">❌ ΚΛΕΙΣΙΜΟ</button>
+    </div>
+
+    <div id="userExtrasModal" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle">Επιλογές</h3>
+            <div id="userExtrasList" class="extras-grid"></div>
+            <button class="btn-send" style="background:#00E676; color:black;" onclick="App.confirmExtras()">ΠΡΟΣΘΗΚΗ</button>
+            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+        </div>
     </div>
 
     <div id="mainApp">
@@ -174,29 +211,35 @@
         </div>
 
         <div id="waiterPanel">
-            <div id="waiterMenuRead"></div>
-
-            <div class="order-form">
-                <div class="form-row">
-                    <div class="input-group">
-                        <label>ΤΡΑΠΕΖΙ</label>
-                        <input type="number" id="inpTable" class="input-box" placeholder="#" inputmode="numeric">
-                    </div>
-                    <div class="input-group">
-                        <label>ΚΟΥΒΕΡ</label>
-                        <input type="number" id="inpCovers" class="input-box" placeholder="0" inputmode="numeric">
-                    </div>
-                    <div class="pay-method-toggle">
-                        <button class="pay-btn active" id="btnCash" onclick="App.setPayment('cash')">💵</button>
-                        <button class="pay-btn" id="btnCard" onclick="App.setPayment('card')">💳</button>
-                    </div>
+            <div id="menuContainer">
                 </div>
-                
-                <label style="color:#888; font-size:12px;">ΠΑΡΑΓΓΕΛΙΑ</label>
-                <textarea id="inpOrderText" class="order-text" placeholder="Προϊόντα..."></textarea>
 
-                <button id="btnSendOrder" class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
-                <button id="cancelUpdateBtn" onclick="App.cancelUpdate()">ΑΚΥΡΩΣΗ ΕΝΗΜΕΡΩΣΗΣ</button>
+            <div id="orderPanel" class="order-panel">
+                <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
+                    <div style="font-size:12px; color:#aaa; margin-right:10px;">ΠΑΡΑΓΓΕΛΙΑ</div>
+                    <div id="panelIcon" class="toggle-icon">▼</div>
+                </div>
+                <div class="panel-content">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>ΤΡΑΠΕΖΙ</label>
+                            <input type="number" id="inpTable" class="input-box" placeholder="#" inputmode="numeric">
+                        </div>
+                        <div class="input-group">
+                            <label>ΚΟΥΒΕΡ</label>
+                            <input type="number" id="inpCovers" class="input-box" placeholder="0" inputmode="numeric">
+                        </div>
+                        <div class="pay-method-toggle">
+                            <button class="pay-btn active" id="btnCash" onclick="App.setPayment('cash')">💵</button>
+                            <button class="pay-btn" id="btnCard" onclick="App.setPayment('card')">💳</button>
+                        </div>
+                    </div>
+                    
+                    <textarea id="inpOrderText" class="order-text" placeholder="Προϊόντα..."></textarea>
+    
+                    <button id="btnSendOrder" class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
+                    <button id="cancelUpdateBtn" onclick="App.cancelUpdate()">ΑΚΥΡΩΣΗ ΕΝΗΜΕΡΩΣΗΣ</button>
+                </div>
             </div>
             
             <div id="closedOverlay">
@@ -412,6 +455,11 @@
             updatingOrderId: null,
             payMethod: 'cash',
             isChatOpen: false,
+            
+            // EXTRAS LOGIC
+            menuData: [],
+            currentItem: null,
+            tempSelectedExtras: [],
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -474,26 +522,27 @@
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     bell.classList.add('ringing');
-                    document.getElementById('alarmOverlay').style.display = 'flex'; // Optional: Show overlay again if desired
+                    document.getElementById('alarmOverlay').style.display = 'flex'; 
                 });
 
-                // ✅ NEW: Handle Store Settings (Open/Closed)
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
-                        // Check if Staff Status is CLOSED (false)
+                        const closedOverlay = document.getElementById('closedOverlay');
+                        const btnSend = document.getElementById('btnSendOrder');
                         if(settings.statusStaff === false) {
-                            document.getElementById('closedOverlay').style.display = 'flex';
-                            document.getElementById('btnSendOrder').style.display = 'none';
+                            closedOverlay.style.display = 'flex';
+                            if(btnSend) { btnSend.disabled = true; btnSend.innerText = "⛔ ΚΛΕΙΣΤΟ"; }
                         } else {
-                            document.getElementById('closedOverlay').style.display = 'none';
-                            document.getElementById('btnSendOrder').style.display = 'block';
+                            closedOverlay.style.display = 'none';
+                            if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ 🚀"; }
                         }
                     }
                 });
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
+                
                 socket.on('menu-update', (data) => {
-                    const container = document.getElementById('waiterMenuRead');
+                    const container = document.getElementById('menuContainer');
                     container.innerHTML = '';
                     let menu = [];
                     try {
@@ -510,13 +559,24 @@
                             title.innerText = cat.name;
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
-                            cat.items.forEach(itemStr => {
-                                if(itemStr && itemStr.trim()) {
-                                    const { name, price } = parseItem(itemStr);
+                            cat.items.forEach(item => {
+                                // Parse item object
+                                let itemName = "", itemPrice = 0, itemExtras = [];
+                                if (typeof item === 'string') {
+                                    const parts = item.split(':');
+                                    itemName = parts[0].trim();
+                                    if(parts.length > 1) itemPrice = parseFloat(parts[parts.length-1]) || 0;
+                                } else {
+                                    itemName = item.name;
+                                    itemPrice = item.price;
+                                    itemExtras = item.extras || [];
+                                }
+
+                                if(itemName) {
                                     const box = document.createElement('div');
-                                    box.className = 'menu-item-box';
-                                    box.innerText = name; 
-                                    box.addEventListener('dblclick', (e) => { e.preventDefault(); App.addToOrder(itemStr.trim()); });
+                                    box.className = 'item-box';
+                                    box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
+                                    box.addEventListener('click', (e) => { e.preventDefault(); App.handleItemClick(itemName, itemPrice, itemExtras); });
                                     itemsDiv.appendChild(box);
                                 }
                             });
@@ -536,6 +596,76 @@
                     UI.updateBadge(myCount);
                     if(document.getElementById('myOrdersOverlay').style.display === 'flex') UI.filterOrders();
                 });
+            },
+
+            // --- MENU INTERACTION ---
+            handleItemClick: (name, price, extras) => {
+                if (!extras || extras.length === 0) {
+                    App.addToOrder(name, price);
+                } else {
+                    App.currentItem = { name, price };
+                    App.tempSelectedExtras = [];
+                    const list = document.getElementById('userExtrasList');
+                    list.innerHTML = '';
+                    document.getElementById('userExtrasTitle').innerText = name;
+                    
+                    extras.forEach((ex, idx) => {
+                        const btn = document.createElement('div');
+                        btn.className = 'extra-option';
+                        btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
+                        btn.onclick = () => {
+                            if (btn.classList.contains('selected')) {
+                                btn.classList.remove('selected');
+                                App.tempSelectedExtras = App.tempSelectedExtras.filter(e => e.name !== ex.name);
+                            } else {
+                                btn.classList.add('selected');
+                                App.tempSelectedExtras.push(ex);
+                            }
+                        };
+                        list.appendChild(btn);
+                    });
+                    document.getElementById('userExtrasModal').style.display = 'flex';
+                }
+            },
+            
+            confirmExtras: () => {
+                if (!App.currentItem) return;
+                App.addToOrder(App.currentItem.name, App.currentItem.price);
+                App.tempSelectedExtras.forEach(ex => {
+                     App.addToOrder(`  + ${ex.name}`, ex.price);
+                });
+                document.getElementById('userExtrasModal').style.display = 'none';
+            },
+
+            addToOrder: (item, price = 0) => {
+                const txt = document.getElementById('inpOrderText');
+                // Flash effect
+                txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
+                
+                const entry = price > 0 ? `${item}:${price}` : item;
+                
+                if (txt.value.trim() === '') txt.value = `1 ${entry}`;
+                else txt.value += `\n1 ${entry}`;
+                
+                txt.scrollTop = txt.scrollHeight;
+                
+                // If adding via modal, make sure panel is visible
+                const panel = document.getElementById('orderPanel');
+                if (panel.classList.contains('minimized')) {
+                    App.toggleOrderPanel();
+                }
+            },
+
+            toggleOrderPanel: () => {
+                const p = document.getElementById('orderPanel');
+                const icon = document.getElementById('panelIcon');
+                if(p.classList.contains('minimized')) {
+                    p.classList.remove('minimized');
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    p.classList.add('minimized');
+                    icon.style.transform = 'rotate(180deg)';
+                }
             },
 
             acceptAlarmStaff: () => {
@@ -584,6 +714,9 @@
                 const c=o.text.match(/AT:\s*(\d+)/); if(c)document.getElementById('inpCovers').value=c[1];
                 const btn=document.getElementById('btnSendOrder'); btn.innerText="➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
                 document.getElementById('cancelUpdateBtn').style.display='block';
+                // Open panel if minimized
+                const p = document.getElementById('orderPanel');
+                if(p.classList.contains('minimized')) App.toggleOrderPanel();
             },
             handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
@@ -594,29 +727,7 @@
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href="login.html"; },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(),500); },
-            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000),
-            
-            addToOrder: (item) => {
-                const txt = document.getElementById('inpOrderText');
-                let lines = txt.value.split('\n').filter(l => l.trim() !== '');
-                let found = false;
-                const { name } = parseItem(item); 
-                
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i].includes(name)) {
-                        const match = lines[i].match(/^(\d+)\s+(.*)$/);
-                        if(match && match[2].includes(name)) {
-                             let currentQty = parseInt(match[1] || '1');
-                             lines[i] = `${currentQty + 1} ${item}`;
-                             found = true;
-                             break;
-                        }
-                    }
-                }
-                if (!found) lines.push(`1 ${item}`);
-                txt.value = lines.join('\n');
-                txt.scrollTop = txt.scrollHeight;
-            }
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
 
         window.onload = App.init;
