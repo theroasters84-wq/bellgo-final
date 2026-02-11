@@ -14,11 +14,10 @@
 
     <script>
         (function() {
-            // PWA LOGIC: Δυναμικό Manifest με ξεχωριστό ID (staff_app)
+            // PWA LOGIC
             const saved = localStorage.getItem('bellgo_session');
             const manifestLink = document.getElementById('dynamicManifest');
-            // Προσθέτουμε &id=staff_app για να μην μπερδεύεται με το Order App
-            let url = `manifest.json?icon=admin&id=staff_app`;
+            let url = `manifest.json?icon=admin`;
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
@@ -28,6 +27,8 @@
                     }
                 } catch(e) {}
             }
+            // Add ID to separate from Order App
+            url += "&id=staff_app";
             manifestLink.href = url;
         })();
     </script>
@@ -42,12 +43,12 @@
             color: #fff; 
             font-family: 'Segoe UI', sans-serif; 
             margin: 0; 
-            height: 100vh; /* Fixed height for stability */
+            height: 100vh; /* Fixed height for stability on Web */
             width: 100vw; 
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Lock for iOS */
+            position: fixed; 
             top: 0; left: 0; right: 0; bottom: 0;
         }
         
@@ -62,26 +63,15 @@
         .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: #D32F2F; border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
         .btn-badge { position: absolute; top: -5px; right: -5px; background: #D32F2F; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; }
         
-        /* BELL BTN - Τώρα εμφανίζεται μόνο όταν χτυπάει (ή είναι κρυφό και εμφανίζεται) */
-        #staffBellBtn { 
-            background: #FFD700; 
-            color: black; 
-            border: 2px solid #FFD700; 
-            display: none; /* Κρυφό αρχικά */
-        }
-        
-        #staffBellBtn.ringing { 
-            display: flex; 
-            animation: shake 0.5s infinite; 
-            box-shadow: 0 0 15px #FFD700; 
-            background: #FFD700;
-        }
+        /* BELL BTN */
+        #staffBellBtn { background: #FFD700; color: black; border: 2px solid #FFD700; display: none; }
+        #staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; box-shadow: 0 0 15px #FFD700; }
 
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         #waiterPanel { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
 
-        /* MENU CONTAINER - FIXED SCROLLING */
+        /* MENU CONTAINER - PERFECT SCROLL */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -90,11 +80,9 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            
-            /* HUGE PADDING: Για να σκρολάρεις πάνω από το πληκτρολόγιο */
             padding-bottom: 350px; 
             
-            /* Native Momentum Scrolling */
+            /* Native Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
             touch-action: pan-y;
@@ -114,7 +102,7 @@
         .item-name { font-style: italic; }
         .item-price { background: #00E676; color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }
 
-        /* ORDER PANEL - SLIDING */
+        /* ORDER PANEL */
         .order-panel { 
             position: absolute; bottom: 0; left: 0; width: 100%;
             background: #1a1a1a; border-top: 2px solid #333; 
@@ -128,7 +116,7 @@
 
         /* WRITING MODE */
         .order-panel.writing-mode { 
-            height: 45% !important; /* 45% για να βλέπεις και το μενού */
+            height: 45% !important; /* Smaller to see menu */
             transition: none !important;
         }
         
@@ -547,19 +535,19 @@
                     panel.classList.add('writing-mode');
                 });
                 
-                // 🔥 MOBILE KEYBOARD FIX (Detect Resize)
-                let lastHeight = window.innerHeight;
-                window.addEventListener('resize', () => {
-                    const currentHeight = window.innerHeight;
-                    if (currentHeight > lastHeight) {
-                        panel.classList.remove('writing-mode');
-                        txt.blur();
-                    }
-                    lastHeight = currentHeight;
+                // Removed complex resize listener for Web stability
+                txt.addEventListener('blur', () => {
+                     // Using setTimeout to allow click events to register before mode change
+                     setTimeout(() => {
+                         panel.classList.remove('writing-mode');
+                     }, 150);
                 });
                 
-                txt.addEventListener('blur', () => {
-                     setTimeout(() => panel.classList.remove('writing-mode'), 200);
+                // Prevent blur when clicking panel area (helps on mobile)
+                panel.addEventListener('mousedown', (e) => {
+                    if (document.activeElement === txt) {
+                        e.preventDefault(); 
+                    }
                 });
 
                 App.connectSocket();
@@ -606,13 +594,12 @@
                     });
                 });
 
-                // ✅ NEW LOGIC: Only shake the bell, no overlay
                 socket.on('ring-bell', () => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     bell.classList.add('ringing');
-                    // NO OVERLAY HERE
+                    // NO OVERLAY
                 });
 
                 socket.on('store-settings-update', (settings) => {
