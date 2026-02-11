@@ -51,7 +51,7 @@
         /* MAIN LAYOUT */
         #mainApp { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; position: relative; }
         
-        /* MENU CONTAINER - UPDATED SCROLLING */
+        /* MENU CONTAINER - ROLLING SCROLL */
         #menuContainer { 
             flex: 1; 
             overflow-y: auto; 
@@ -63,10 +63,10 @@
             padding-bottom: 80px; 
             transition: all 0.3s ease; 
 
-            /* 🔥 Native Momentum Scrolling 🔥 */
+            /* 🔥 MOMENTUM SCROLLING 🔥 */
             -webkit-overflow-scrolling: touch; 
             scroll-behavior: smooth;
-            overscroll-behavior: contain; /* Prevents bouncing the whole page */
+            overscroll-behavior: contain;
         }
         
         .category-block { width: 100%; }
@@ -90,14 +90,16 @@
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5); 
             z-index: 20; 
             height: 50%; 
-            transition: height 0.2s ease-out; /* Faster transition */
+            transition: height 0.2s ease-out; /* Fast transition */
         }
         .order-panel.minimized { height: 60px; overflow: hidden; }
 
-        /* WRITING MODE */
-        .order-panel.writing-mode { height: 70% !important; }
+        /* WRITING MODE (Clean & Fast) */
+        .order-panel.writing-mode { 
+            height: 70% !important; 
+            transition: none !important; /* No animation when typing */
+        }
         
-        /* Hide everything else in writing mode */
         .order-panel.writing-mode .panel-header-bar,
         .order-panel.writing-mode .form-row,
         .order-panel.writing-mode .btn-send,
@@ -143,8 +145,8 @@
         /* EXTRAS MODAL */
         .extras-grid { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0; }
         .extra-option { 
-            background: #333; border: 1px solid #555; padding: 15px; border-radius: 6px; 
-            color: white; font-size: 16px; cursor: pointer; user-select: none; flex: 1 1 45%; 
+            background: #333; border: 1px solid #555; padding: 10px; border-radius: 6px; 
+            color: white; font-size: 14px; cursor: pointer; user-select: none; flex: 1 1 45%; 
             display: flex; justify-content: space-between;
         }
         .extra-option.selected { background: #00E676; color: black; border-color: #00E676; font-weight: bold; }
@@ -519,9 +521,10 @@
                 });
                 
                 txt.addEventListener('blur', () => {
-                     requestAnimationFrame(() => {
+                     // Using setTimeout to allow click events to register before mode change
+                     setTimeout(() => {
                          panel.classList.remove('writing-mode');
-                     });
+                     }, 100);
                 });
 
                 App.connectSocket();
@@ -668,6 +671,8 @@
                         const btn = document.createElement('div');
                         btn.className = 'extra-option';
                         btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
+                        
+                        // ✅ SINGLE CLICK FOR EXTRAS
                         btn.onclick = () => {
                             if (btn.classList.contains('selected')) {
                                 btn.classList.remove('selected');
