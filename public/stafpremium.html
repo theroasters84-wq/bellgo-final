@@ -38,10 +38,10 @@
             margin: 0; 
             height: 100dvh; 
             width: 100vw; 
-            overflow: hidden; 
+            /* ΔΙΟΡΘΩΣΗ ΓΙΑ KEYBOARD: Αφαιρέθηκε το position:fixed και το overflow:hidden */
+            overflow-x: hidden; 
             display: flex; 
             flex-direction: column; 
-            position: fixed; /* Κλείδωμα για iOS */
         }
         
         /* HEADER */
@@ -71,12 +71,11 @@
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
-            padding-bottom: 80px; 
+            padding-bottom: 120px; /* Αυξήθηκε για να μην κρύβονται τα τελευταία items */
             
             /* Native Momentum Scrolling */
             -webkit-overflow-scrolling: touch; 
             overscroll-behavior-y: contain;
-            /* touch-action: pan-y; */ /* Αφαιρέθηκε για καλύτερη συμβατότητα */
         }
         
         .category-block { width: 100%; }
@@ -149,7 +148,7 @@
         .pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
         .pay-btn.active { background: #00E676; color: black; }
         
-        textarea.order-text { flex: 1; width: 100%; padding: 10px; background: #222; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; resize: none; margin-bottom: 8px; }
+        textarea.order-text { flex: 1; width: 100%; padding: 10px; background: #222; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; resize: none; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
         .btn-send { width: 100%; padding: 15px; background: #FFD700; color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; flex-shrink: 0; }
         .btn-send.update-mode { background: #2196F3; color: white; }
 
@@ -347,7 +346,7 @@
     <script>
     const AudioEngine = {
         keepAlivePlayer: null, 
-        alarmPlayer: null,     
+        alarmPlayer: null,      
         isRinging: false,
         wakeLock: null,
         
@@ -525,19 +524,22 @@
                     }
                 });
                 
-                // Focus Logic for Writing Mode
+                // Focus Logic for Writing Mode - ΔΙΟΡΘΩΣΗ ΓΙΑ KEYBOARD
                 const txt = document.getElementById('inpOrderText');
                 const panel = document.getElementById('orderPanel');
                 
                 txt.addEventListener('focus', () => {
                     panel.classList.add('writing-mode');
+                    // Αυτό βοηθάει το κινητό να σκρολάρει στο σωστό σημείο
+                    setTimeout(() => {
+                        txt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
                 });
                 
                 txt.addEventListener('blur', () => {
-                     // Using setTimeout to allow click events to register before mode change
-                     setTimeout(() => {
-                         panel.classList.remove('writing-mode');
-                     }, 200);
+                      setTimeout(() => {
+                          panel.classList.remove('writing-mode');
+                      }, 200);
                 });
 
                 App.connectSocket();
@@ -643,11 +645,13 @@
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
                                     box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
-                                    // ✅ DOUBLE CLICK (DOUBLE TAP) FOR MAIN ITEMS
-                                    box.addEventListener('dblclick', (e) => { 
+                                    
+                                    // ✅ SINGLE CLICK (TAP) ΑΝΤΙ ΓΙΑ DOUBLE CLICK
+                                    box.onclick = (e) => { 
                                         e.preventDefault(); 
                                         App.handleItemClick(itemName, itemPrice, itemExtras); 
-                                    });
+                                    };
+                                    
                                     itemsDiv.appendChild(box);
                                 }
                             });
@@ -705,7 +709,7 @@
                 if (!App.currentItem) return;
                 App.addToOrder(App.currentItem.name, App.currentItem.price);
                 App.tempSelectedExtras.forEach(ex => {
-                     App.addToOrder(`  + ${ex.name}`, ex.price);
+                      App.addToOrder(`  + ${ex.name}`, ex.price);
                 });
                 document.getElementById('userExtrasModal').style.display = 'none';
             },
@@ -786,10 +790,10 @@
                 const cv = document.getElementById('inpCovers').value;
                 
                 if (App.updatingOrderId) {
-                     window.socket.emit('update-order', { id: App.updatingOrderId, addText: txt });
-                     alert("Ενημερώθηκε! 📝");
-                     App.cancelUpdate();
-                     return;
+                      window.socket.emit('update-order', { id: App.updatingOrderId, addText: txt });
+                      alert("Ενημερώθηκε! 📝");
+                      App.cancelUpdate();
+                      return;
                 }
                 if(!txt) return alert("Κενή παραγγελία");
                 const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
