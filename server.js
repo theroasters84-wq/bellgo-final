@@ -44,7 +44,7 @@ const io = new Server(server, {
 let activeUsers = {};
 let activeOrders = [];
 let masterMenu = []; 
-let liveMenu = [];   
+let liveMenu = [];    
 
 let storeSettings = { 
     name: "BellGo Delivery", 
@@ -156,7 +156,7 @@ app.get('/manifest.json', (req, res) => {
     let appId = `bellgo_${iconType}_${safeStoreId}`; 
     let iconFile = "admin.png"; 
     let startUrl = ".";  
-    let scopeUrl = "/";        
+    let scopeUrl = "/";       
 
     if (iconType === 'shop') {
         iconFile = "shop.png"; 
@@ -170,11 +170,11 @@ app.get('/manifest.json', (req, res) => {
 
     res.set('Content-Type', 'application/manifest+json');
     res.json({
-        "id": appId,             
-        "name": appName,         
+        "id": appId,              
+        "name": appName,          
         "short_name": appName,
         "start_url": startUrl,   
-        "scope": scopeUrl,       
+        "scope": scopeUrl,        
         "display": "standalone",
         "background_color": "#121212",
         "theme_color": "#121212",
@@ -436,7 +436,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update-order', (data) => {
-        const order = activeOrders.find(o => o.id === Number(data.id));
+        // 🔥 FIX: Use loose equality for safety
+        const order = activeOrders.find(o => o.id == data.id);
         if (order) {
             order.text += `\n++ ${data.addText}`;
             order.status = 'pending';
@@ -458,16 +459,27 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('accept-order', (id) => { const o = activeOrders.find(x => x.id === id); if(o){ o.status = 'cooking'; updateStore(socket.store); } });
+    // 🔥 FIX: Use loose equality (==) here too
+    socket.on('accept-order', (id) => { 
+        const o = activeOrders.find(x => x.id == id); 
+        if(o){ o.status = 'cooking'; updateStore(socket.store); } 
+    });
+    
+    // 🔥 FIX: Use loose equality (==) here too
     socket.on('ready-order', (id) => { 
-        const o = activeOrders.find(x => x.id === id); 
+        const o = activeOrders.find(x => x.id == id); 
         if(o){ 
             o.status = 'ready'; updateStore(socket.store); 
             const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; 
             if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
         } 
     });
-    socket.on('pay-order', (id) => { activeOrders = activeOrders.filter(x => x.id !== Number(id)); updateStore(socket.store); });
+    
+    // 🔥 FIX: Use loose equality (==) here too
+    socket.on('pay-order', (id) => { 
+        activeOrders = activeOrders.filter(x => x.id != id); 
+        updateStore(socket.store); 
+    });
     
     // 🔔 STAFF ALARM (TRIGGER)
     socket.on('trigger-alarm', (tName) => { 
