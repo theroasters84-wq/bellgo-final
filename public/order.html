@@ -120,6 +120,24 @@
             gap: 4px;
         }
 
+        /* BUTTON STATUS (TOP LEFT) */
+        .header-left { position: absolute; left: 15px; top: 0; height: 100%; display: flex; align-items: center; }
+        .btn-status-mini {
+            display: none; /* Hidden by default until order exists */
+            background: rgba(255, 215, 0, 0.15); 
+            border: 1px solid #FFD700; 
+            color: #FFD700;
+            padding: 6px 10px; 
+            border-radius: 20px; 
+            font-size: 11px; 
+            font-weight: bold;
+            cursor: pointer; 
+            align-items: center; 
+            gap: 5px;
+            animation: pulseMini 2s infinite;
+        }
+        @keyframes pulseMini { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
         .header-actions { position: absolute; right: 15px; top: 15px; }
         
         .btn-header-install { 
@@ -326,6 +344,12 @@
 
     <div id="appContent">
         <div class="header">
+            <div class="header-left">
+                <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
+                    ⏳ <span id="miniStatusText">...</span>
+                </button>
+            </div>
+
             <div class="store-info">
                 <span id="storeNameHeader">...</span>
                 <div id="headerSchedule" class="schedule-badge" onclick="App.showFullSchedule()">
@@ -564,8 +588,8 @@
                     const container = document.getElementById('menuContainer');
                     container.classList.add('menu-fade-out');
                     setTimeout(() => {
-                         App.renderMenu(data);
-                         container.classList.remove('menu-fade-out');
+                          App.renderMenu(data);
+                          container.classList.remove('menu-fade-out');
                     }, 250); 
                 });
 
@@ -727,7 +751,7 @@
                 if (!App.currentItem) return;
                 App.addToOrder(App.currentItem.name, App.currentItem.price);
                 App.tempSelectedExtras.forEach(ex => {
-                     App.addToOrder(`  + ${ex.name}`, ex.price);
+                      App.addToOrder(`  + ${ex.name}`, ex.price);
                 });
                 document.getElementById('userExtrasModal').style.display = 'none';
             },
@@ -844,7 +868,15 @@
                 document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
             },
 
-            minimizeStatus: () => { document.getElementById('statusOverlay').style.height = '0'; },
+            // --- STATUS LOGIC UPDATED FOR MINI BUTTON ---
+            minimizeStatus: () => { 
+                document.getElementById('statusOverlay').style.height = '0'; 
+                // Mini button stays visible via showStatus logic
+            },
+            
+            maximizeStatus: () => {
+                document.getElementById('statusOverlay').style.height = '100%';
+            },
 
             showStatus: (status) => {
                 const overlay = document.getElementById('statusOverlay');
@@ -852,24 +884,36 @@
                 const text = document.getElementById('statusText');
                 const sub = document.getElementById('statusSub');
                 const btnNew = document.getElementById('btnNewOrder');
+                const btnMini = document.getElementById('btnStatusMini');
+                const miniText = document.getElementById('miniStatusText');
 
                 overlay.style.height = '100%'; 
                 btnNew.style.display = 'none'; 
 
-                let timeString = "";
+                let timeString = "--:--";
                 if (activeOrderState && activeOrderState.timestamp) {
                     const date = new Date(activeOrderState.timestamp);
                     timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
                 }
 
+                // Show mini button
+                if(btnMini) btnMini.style.display = 'flex';
+
+                let statusLabel = "";
+
                 if (status === 'pending') {
+                    statusLabel = "Αναμονή";
                     icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
                 } else if (status === 'cooking') {
+                    statusLabel = "Ετοιμάζεται";
                     icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
                 } else if (status === 'ready') {
+                    statusLabel = "Έρχεται";
                     icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
                     btnNew.style.display = 'block'; 
                 }
+                
+                if(miniText) miniText.innerText = `${statusLabel} ${timeString}`;
             },
 
             updateStatusUI: (status) => { App.showStatus(status); },
@@ -879,11 +923,15 @@
                     localStorage.removeItem('bellgo_active_order');
                     activeOrderState = null;
                     document.getElementById('statusOverlay').style.height = '0';
+                    document.getElementById('btnStatusMini').style.display = 'none'; // Hide mini button
                     document.getElementById('orderText').value = '';
                 }
             },
 
-            resetUI: () => { document.getElementById('statusOverlay').style.height = '0'; }
+            resetUI: () => { 
+                document.getElementById('statusOverlay').style.height = '0'; 
+                document.getElementById('btnStatusMini').style.display = 'none';
+            }
         };
 
         onAuthStateChanged(auth, (user) => {
