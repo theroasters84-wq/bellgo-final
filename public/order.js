@@ -144,6 +144,12 @@ window.App = {
         
         document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
         App.checkActiveOrderStorage();
+
+        // ✅ WRITING MODE: Αυτόματη προσαρμογή όταν ανοίγει το πληκτρολόγιο
+        const txt = document.getElementById('orderText');
+        const panel = document.getElementById('orderPanel');
+        txt.addEventListener('focus', () => panel.classList.add('writing-mode'));
+        txt.addEventListener('blur', () => panel.classList.remove('writing-mode'));
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
@@ -426,7 +432,12 @@ window.App = {
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
     },
 
-    minimizeStatus: () => { document.getElementById('statusOverlay').style.height = '0'; },
+    minimizeStatus: () => { 
+        document.getElementById('statusOverlay').style.height = '0'; 
+        document.getElementById('btnStatusMini').style.display = 'flex'; // Εμφάνιση μικρού κουμπιού
+    },
+
+    maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
     showStatus: (status) => {
         const overlay = document.getElementById('statusOverlay');
@@ -437,6 +448,7 @@ window.App = {
 
         overlay.style.height = '100%'; 
         btnNew.style.display = 'none'; 
+        document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
 
         let timeString = "";
         if (activeOrderState && activeOrderState.timestamp) {
@@ -444,13 +456,17 @@ window.App = {
             timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
         }
 
+        const miniText = document.getElementById('miniStatusText');
         if (status === 'pending') {
             icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
+            if(miniText) miniText.innerText = "Αναμονή...";
         } else if (status === 'cooking') {
             icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
+            if(miniText) miniText.innerText = "Ετοιμάζεται";
         } else if (status === 'ready') {
             icon.innerText = '🛵'; text.innerText = `Η παραγγελία (${timeString}) έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
             btnNew.style.display = 'block'; 
+            if(miniText) miniText.innerText = "Έρχεται!";
         }
     },
 
@@ -462,10 +478,14 @@ window.App = {
             activeOrderState = null;
             document.getElementById('statusOverlay').style.height = '0';
             document.getElementById('orderText').value = '';
+            document.getElementById('btnStatusMini').style.display = 'none';
         }
     },
 
-    resetUI: () => { document.getElementById('statusOverlay').style.height = '0'; }
+    resetUI: () => { 
+        document.getElementById('statusOverlay').style.height = '0'; 
+        document.getElementById('btnStatusMini').style.display = 'none';
+    }
 };
 
 onAuthStateChanged(auth, (user) => {
