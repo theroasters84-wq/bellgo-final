@@ -44,13 +44,10 @@ body {
 .chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: var(--danger); border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; }
 
 /* Order Header Specifics */
-/* ΔΙΟΡΘΩΣΗ: Ευθυγράμμιση ώρας δίπλα στο όνομα */
-.store-info { display: flex; flex-direction: row; align-items: center; width: 100%; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.store-info { display: flex; flex-direction: column; align-items: center; width: 100%; justify-content: center; }
 #storeNameHeader { font-weight: 800; font-size: 20px; color: var(--accent); text-align: center; text-transform: uppercase; }
-.schedule-badge { font-size: 11px; color: #ccc; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-
-/* ΔΙΟΡΘΩΣΗ: Κατάσταση παραγγελίας κάτω από το όνομα */
-.header-left { position: absolute; left: 15px; top: 75px; height: auto; display: flex; align-items: center; }
+.schedule-badge { font-size: 11px; color: #ccc; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; margin-top: 3px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.header-left { position: absolute; left: 15px; top: 0; height: 100%; display: flex; align-items: center; }
 .btn-status-mini { display: none; background: rgba(255, 215, 0, 0.15); border: 1px solid var(--accent); color: var(--accent); padding: 6px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; align-items: center; gap: 5px; animation: pulseMini 2s infinite; }
 .btn-header-install { display: none; background: var(--primary); color: black; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
 
@@ -174,18 +171,6 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 /* ADMIN SPECIFICS */
 .header-store-input { background: transparent; border: none; border-bottom: 1px solid #333; color: var(--accent); font-size: 18px; font-weight: 800; width: 100%; max-width: 200px; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
 .status-dot { width: 10px; height: 10px; background: red; border-radius: 50%; box-shadow: 0 0 8px red; cursor: pointer; }
-
-/* ΔΙΟΡΘΩΣΗ: Premium.html - Στοίχιση φακέλων 3 κάθετα και μετά δεξιά */
-.admin-main-area { 
-    display: flex; 
-    flex-direction: column; 
-    flex-wrap: wrap; 
-    align-content: flex-start; 
-    gap: 15px; 
-    padding: 15px;
-    height: 400px; /* Ρύθμισε το ύψος ώστε να χωράνε ακριβώς 3 φάκελοι κάθετα */
-}
-
 .order-folder { width: 85px; height: 100px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: popIn 0.4s; position: relative; }
 .order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); }
 .order-folder.cooking { border: 2px dashed var(--accent); border-radius: 10px; background: rgba(255, 215, 0, 0.05); }
@@ -193,8 +178,8 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 .folder-label { font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 6px; margin-top: 5px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-time { font-size: 10px; color: #000; background: var(--primary); padding: 2px 6px; border-radius: 10px; position: absolute; top: 0; right: 0; font-weight: bold; }
 
-/* Admin Window - ΔΙΟΡΘΩΣΗ: Άνοιγμα ακριβώς στο κέντρο */
-.order-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; height: auto; max-height: 80%; background: #1a1a1a; border: 1px solid #444; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; z-index: 2000; overflow: hidden; animation: popIn 0.3s; }
+/* Admin Window */
+.order-window { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; height: auto; max-height: 80%; background: #1a1a1a; border: 1px solid #444; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; z-index: 2000; overflow: hidden; animation: popIn 0.3s; }
 .win-header { background: #252525; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
 .win-body { flex: 1; overflow-y: auto; padding: 20px; font-size: 16px; line-height: 1.5; color: #eee; }
 .win-footer { padding: 15px; border-top: 1px solid #333; background: #222; }
@@ -211,7 +196,7 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 .btn-staff.waiter { border-color: #2196F3; background: rgba(33, 150, 243, 0.1); }
 .btn-staff.driver { border-color: var(--danger); background: rgba(255, 82, 82, 0.1); }
 
-/* Admin Menu Editor - ΔΙΟΡΘΩΣΗ: Στυλ κουμπιών ίδιο με το Premium */
+/* Admin Menu Editor */
 #menuFullPanel { display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 500; padding: 15px; overflow-y: auto; }
 .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: var(--border-glass); }
 .menu-title { font-size: 22px; font-weight: 900; color: var(--text-main); letter-spacing: 1px; }
@@ -223,10 +208,8 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 .btn-item-extras { position: absolute; right: 45px; top: 5px; background: #2196F3; color: white; border: none; width: 25px; height: 25px; border-radius: 6px; font-weight: bold; cursor: pointer; }
 .has-extras { background: var(--primary) !important; color: black !important; }
 .btn-item-del { background: #333; color: var(--danger); border: 1px solid #333; width: 35px; height: 35px; border-radius: 8px; font-weight: bold; }
-
-/* ΔΙΟΡΘΩΣΗ: Πλήκτρα Add/Back με μοντέρνο στυλ */
-.btn-add { background: var(--primary); color: black; border: none; padding: 12px 24px; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.2); }
-.btn-back { background: var(--surface); color: white; border: var(--border-glass); padding: 12px 24px; border-radius: var(--radius-btn); cursor: pointer; font-weight: bold; }
+.btn-add { background: var(--primary); color: black; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 800; cursor: pointer; }
+.btn-back { background: #333; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; }
 
 /* Admin Extras Editor */
 .extra-item-row { display: flex; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; margin-bottom: 5px; }
