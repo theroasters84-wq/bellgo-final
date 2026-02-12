@@ -5,43 +5,28 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V21)
+   2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v21'; // ✅ Updated Version
+const CACHE_NAME = 'bellgo-v22'; // ✅ Νέα έκδοση για Multi-tenant υποστήριξη
 const ASSETS_TO_CACHE = [
   '/',
-  
-  // HTML Files
   '/index.html',
   '/login.html',
   '/order.html',
   '/premium.html',
   '/stafpremium.html',
-  
-  // CSS
   '/style.css',
-
-  // JavaScript Files
   '/menu-presets.js',
   '/order.js',
   '/premium.js',
   '/player.js',
   '/firebase-config.js',
-  // Σημείωση: Το firebase-messaging-sw.js και sw.js δεν χρειάζεται να είναι εδώ συνήθως, 
-  // αλλά τα backend αρχεία (server.js, package.json) ΔΕΝ μπαίνουν εδώ.
-
-  // Media (Images)
   '/admin.png',
   '/shop.png',
   '/staff.png',
-
-  // Media (Audio)
   '/alert.mp3',
   '/silence.mp3',
-  '/test.mp3',
   '/tone19hz.wav',
-
-  // External Libraries
   'https://js.stripe.com/v3/',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
 ];
@@ -60,13 +45,11 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 /* -----------------------------------------------------------
-   4. BACKGROUND HANDLER
+   4. BACKGROUND HANDLER (Push Notifications)
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[sw.js] Background message:', payload);
-  
-  const title = payload.data.title || payload.notification?.title || '🚨 ΚΛΗΣΗ!';
-  const body = payload.data.body || payload.notification?.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
+  const title = payload.data.title || payload.notification?.title || '🚨 BellGo!';
+  const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
   const url = payload.data.url || '/login.html';
 
   return self.registration.showNotification(title, {
@@ -85,7 +68,6 @@ messaging.setBackgroundMessageHandler(function(payload) {
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  
   const urlToOpen = event.notification.data?.url || '/login.html';
 
   event.waitUntil(
@@ -95,22 +77,18 @@ self.addEventListener('notificationclick', function(event) {
             return client.focus();
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });
 
 /* -----------------------------------------------------------
-   6. PWA CACHING (Network First Strategy)
+   6. INSTALL & ACTIVATE (Cache Management)
 ----------------------------------------------------------- */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
@@ -130,12 +108,16 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// NETWORK FIRST, THEN CACHE
+/* -----------------------------------------------------------
+   7. FETCH STRATEGY (Network First with Dynamic Shop handling)
+----------------------------------------------------------- */
 self.addEventListener('fetch', (event) => {
-  // Αγνοούμε requests που δεν πρέπει να γίνουν cache
-  if (event.request.url.includes('socket.io') || 
-      event.request.url.includes('manifest.json') ||
-      event.request.url.includes('firebase') || 
+  const url = new URL(event.request.url);
+
+  // Παράκαμψη για Websockets, Firebase και Manifests
+  if (url.pathname.includes('socket.io') || 
+      url.pathname.includes('firebase') || 
+      url.pathname.includes('manifest.json') ||
       event.request.method !== 'GET') {
     return;
   }
@@ -143,7 +125,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Αν το αρχείο ήρθε σωστά από το ίντερνετ, το βάζουμε στο cache
+        // Αν η κλήση είναι επιτυχής
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -153,7 +135,11 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // Αν δεν έχουμε ίντερνετ, το φέρνουμε από το cache
+        // OFFLINE LOGIC: 
+        // Αν ο χρήστης ζητάει ένα URL καταστήματος (/shop/name/), του σερβίρουμε το cached order.html
+        if (url.pathname.startsWith('/shop/')) {
+          return caches.match('/order.html');
+        }
         return caches.match(event.request);
       })
   );
