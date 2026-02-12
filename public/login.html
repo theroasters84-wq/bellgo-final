@@ -383,22 +383,13 @@
             }
         });
 
-        // ✅ AUTHENTICATE CHECK (PRE-FILL)
+        // ✅ AUTHENTICATE CHECK (PRE-FILL ONLY)
+        // 🔥 FIX: ΔΕΝ ανοίγουμε αυτόματα το PIN modal πλέον.
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
-                const response = await fetch('/check-subscription', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: user.email })
-                });
-                const data = await response.json();
-                
-                if(data.active) {
-                    adminUser = user;
-                    adminPlan = data.plan;
-                    switchTab('admin'); 
-                    socket.emit('check-pin-status', { email: user.email });
-                }
+                // Απλά προ-συμπληρώνουμε το email για ευκολία
+                document.getElementById('adminEmailInp').value = user.email;
+                switchTab('admin'); 
             }
         });
     </script>
