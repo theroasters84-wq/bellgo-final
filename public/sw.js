@@ -5,25 +5,43 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V20)
+   2. CONFIGURATION & CACHE (V21)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v20'; // ✅ Νέα έκδοση για να καθαρίσει τα παλιά
+const CACHE_NAME = 'bellgo-v21'; // ✅ Updated Version
 const ASSETS_TO_CACHE = [
   '/',
+  
+  // HTML Files
   '/index.html',
-  '/order.html',
   '/login.html',
+  '/order.html',
   '/premium.html',
   '/stafpremium.html',
-  '/style.css',          // ✅ Προσθήκη για να βλέπει τα χρώματα
-  '/menu-presets.js',    // ✅ Προσθήκη για τους καταλόγους
   
+  // CSS
+  '/style.css',
+
+  // JavaScript Files
+  '/menu-presets.js',
+  '/order.js',
+  '/premium.js',
+  '/player.js',
+  '/firebase-config.js',
+  // Σημείωση: Το firebase-messaging-sw.js και sw.js δεν χρειάζεται να είναι εδώ συνήθως, 
+  // αλλά τα backend αρχεία (server.js, package.json) ΔΕΝ μπαίνουν εδώ.
+
+  // Media (Images)
   '/admin.png',
   '/shop.png',
   '/staff.png',
+
+  // Media (Audio)
   '/alert.mp3',
   '/silence.mp3',
+  '/test.mp3',
   '/tone19hz.wav',
+
+  // External Libraries
   'https://js.stripe.com/v3/',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
 ];
@@ -114,6 +132,7 @@ self.addEventListener('activate', (event) => {
 
 // NETWORK FIRST, THEN CACHE
 self.addEventListener('fetch', (event) => {
+  // Αγνοούμε requests που δεν πρέπει να γίνουν cache
   if (event.request.url.includes('socket.io') || 
       event.request.url.includes('manifest.json') ||
       event.request.url.includes('firebase') || 
