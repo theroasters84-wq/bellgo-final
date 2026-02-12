@@ -46,7 +46,8 @@ body {
 /* Order Header Specifics */
 .store-info { display: flex; flex-direction: column; align-items: center; width: 100%; justify-content: center; }
 /* ✅ WEB VIEW FIX: Row layout για να μην πέφτουν μαζί */
-body.is-web .store-info { flex-direction: row; gap: 15px; }
+body.is-web .store-info { flex-direction: row; gap: 15px; width: auto; flex: 1; }
+body.is-web .header-left { position: relative; left: auto; top: auto; }
 body.is-web #storeNameHeader { margin-bottom: 0; font-size: 22px; }
 
 #storeNameHeader { font-weight: 800; font-size: 20px; color: var(--accent); text-align: center; text-transform: uppercase; margin-bottom: 4px; }
@@ -81,7 +82,7 @@ body.is-web #storeNameHeader { margin-bottom: 0; font-size: 22px; }
 .order-panel.writing-mode .form-row,
 .order-panel.writing-mode #cancelUpdateBtn { display: none !important; }
 .order-panel.writing-mode .panel-content { padding: 5px; height: auto; display: block; }
-.order-panel.writing-mode textarea.order-text { height: 100% !important; margin: 0; border: 2px solid var(--primary); border-radius: 4px; }
+.order-panel.writing-mode textarea.order-text { height: 150px !important; margin: 0; border: 2px solid var(--primary); border-radius: 4px; }
 
 /* Panel Internals */
 .panel-header-bar { height: 40px; background: #252525; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }

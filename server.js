@@ -367,6 +367,9 @@ io.on('connection', (socket) => {
             const markedLines = lines.map(l => `++ ${l}`).join('\n');
             existingOrder.text += `\n${markedLines}`;
             
+            // ✅ FIX: Επαναφορά σε 'pending' για να χτυπήσει (Alarm) και να κουνηθεί (Shake)
+            existingOrder.status = 'pending';
+            
             console.log(`➕ Items added to order ${id} by ${socket.username}`);
             
             // Ειδοποίηση Admin (Συναγερμός)

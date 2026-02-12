@@ -177,7 +177,6 @@ window.App = {
 
         txt.addEventListener('focus', () => {
             panel.classList.add('writing-mode');
-            setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 300); // Scroll to bottom
         });
         txt.addEventListener('blur', () => {
             setTimeout(() => {

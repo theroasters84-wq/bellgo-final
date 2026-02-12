@@ -448,7 +448,6 @@
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
                 document.getElementById('adminEmailInp').value = user.email;
-                UI.showAdminLogin();
             }
         });
     </script>

@@ -298,7 +298,8 @@
                         const isNew = rawLine.includes('++');
                         
                         // Καθαρισμός για υπολογισμό συνόλου
-                        let cleanLine = rawLine.replace('✅', '').replace('++', '').trim();
+                        let cleanLine = rawLine.replace('✅', '').replace('++', '').trim();                        let displayLine = rawLine;
+                        let productName = "το προϊόν";
 
                         // Υπολογισμός (Μόνο αν δεν είναι εξοφλημένο)
                         if (!rawLine.startsWith('[') && !isPaid) {
@@ -309,9 +310,25 @@
                                 if(rest.includes(':')) {
                                     const parts = rest.split(':');
                                     const priceVal = parseFloat(parts[parts.length - 1]);
+                                    const nameOnly = parts.slice(0, -1).join(':').trim();
+                                    productName = nameOnly;
+                                    
+                                    // ✅ Μορφοποίηση: 1 Καφές (2.50€)
+                                    displayLine = `${qty} ${nameOnly} (${priceVal.toFixed(2)}€)`;
+                                    if(isNew) displayLine = "++ " + displayLine;
+
                                     if(!isNaN(priceVal)) { total += qty * priceVal; }
                                 }
                             }
+                        } else if (isPaid) {
+                             // Μορφοποίηση και για τα πληρωμένα
+                             const match = cleanLine.match(/^(\d+)\s+(.*)/);
+                             if (match && match[2].includes(':')) {
+                                const parts = match[2].split(':');
+                                const priceVal = parseFloat(parts[parts.length - 1]);
+                                const nameOnly = parts.slice(0, -1).join(':').trim();
+                                displayLine = `${match[1]} ${nameOnly} (${priceVal.toFixed(2)}€) ✅`;
+                             }
                         }
 
                         // Styling Γραμμής
@@ -322,10 +339,11 @@
                         // Κουμπί Μερικής Εξόφλησης (Μόνο για προϊόντα, όχι τίτλους)
                         let btnHtml = '';
                         if (!rawLine.startsWith('[') && !isPaid) {
-                            btnHtml = `<button onclick="event.stopPropagation(); window.socket.emit('pay-partial', {id:${o.id}, index:${idx}})" style="background:#333; border:1px solid #555; color:white; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">€</button>`;
+                            const safeName = productName.replace(/'/g, "\\'");
+                            btnHtml = `<button onclick="event.stopPropagation(); if(confirm('Εξόφληση για ${safeName};')) window.socket.emit('pay-partial', {id:${o.id}, index:${idx}})" style="background:#333; border:1px solid #555; color:white; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">€</button>`;
                         }
 
-                        contentHtml += `<div style="${rowStyle}"><span style="${textStyle}">${rawLine}</span>${btnHtml}</div>`;
+                        contentHtml += `<div style="${rowStyle}"><span style="${textStyle}">${displayLine}</span>${btnHtml}</div>`;
                     });
 
                     div.innerHTML = `

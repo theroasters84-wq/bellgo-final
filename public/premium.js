@@ -605,7 +605,6 @@ window.App = {
         orders.forEach(order => {
             const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             let style = '';
-            if (order.status === 'ready') style = 'border: 2px solid #00E676;';
             
             const icon = document.createElement('div');
             icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
