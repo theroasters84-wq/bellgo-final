@@ -125,6 +125,11 @@ window.App = {
     startApp: () => {
         document.getElementById('appContent').style.display = 'flex';
         
+        // ✅ WEB vs PWA DETECTION
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (!isStandalone) document.body.classList.add('is-web');
+        else document.body.classList.remove('is-web');
+
         // SILENT AUDIO UNLOCK
         document.body.addEventListener('click', () => {
             const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
@@ -145,11 +150,16 @@ window.App = {
         document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
         App.checkActiveOrderStorage();
 
-        // ✅ WRITING MODE: Αυτόματη προσαρμογή όταν ανοίγει το πληκτρολόγιο
+        // ✅ WRITING MODE FIX: Κρύβουμε τα περιττά όταν γράφει
         const txt = document.getElementById('orderText');
         const panel = document.getElementById('orderPanel');
-        txt.addEventListener('focus', () => panel.classList.add('writing-mode'));
-        txt.addEventListener('blur', () => panel.classList.remove('writing-mode'));
+        txt.addEventListener('focus', () => {
+            panel.classList.add('writing-mode');
+            setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 300); // Scroll to bottom
+        });
+        txt.addEventListener('blur', () => {
+            panel.classList.remove('writing-mode');
+        });
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
@@ -292,6 +302,16 @@ window.App = {
                 if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
                     // Optionally set to ready or clear
                 }
+            }
+        });
+
+        // ✅ IMMEDIATE UPDATE (Fixes "den vlepw stadiaka")
+        socket.on('order-changed', (data) => {
+            if (activeOrderState && activeOrderState.id === data.id) {
+                activeOrderState.status = data.status;
+                if (data.readyTime) activeOrderState.readyTime = data.readyTime; // Save ready time
+                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+                App.updateStatusUI(data.status);
             }
         });
     },
@@ -451,10 +471,10 @@ window.App = {
         document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
 
         let timeString = "";
-        if (activeOrderState && activeOrderState.timestamp) {
-            const date = new Date(activeOrderState.timestamp);
-            timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
-        }
+        // Χρήση readyTime αν υπάρχει, αλλιώς timestamp
+        const timeRef = (activeOrderState && activeOrderState.readyTime) ? activeOrderState.readyTime : Date.now();
+        const date = new Date(timeRef);
+        timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
 
         const miniText = document.getElementById('miniStatusText');
         if (status === 'pending') {
@@ -464,7 +484,7 @@ window.App = {
             icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
             if(miniText) miniText.innerText = "Ετοιμάζεται";
         } else if (status === 'ready') {
-            icon.innerText = '🛵'; text.innerText = `Η παραγγελία (${timeString}) έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
+            icon.innerText = '🛵'; text.innerText = `Έρχεται! (Έφυγε ${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
             btnNew.style.display = 'block'; 
             if(miniText) miniText.innerText = "Έρχεται!";
         }
