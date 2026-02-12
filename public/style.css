@@ -1,17 +1,15 @@
 /* --- 2026 MODERN THEME (VARIABLES) --- */
 :root {
-    --bg-dark: #000000;
-    --surface: #121212;
+    --bg-dark: #0a0a0a;
+    --surface: #141414;
     --primary: #00E676; 
     --accent: #FFD700;
-    --danger: #FF3B30;
+    --danger: #FF5252;
     --text-main: #ffffff;
-    --border-glass: 1px solid rgba(255, 255, 255, 0.1);
-    --radius-box: 24px; /* Πιο στρογγυλεμένα για IG style */
-    --radius-btn: 14px;
+    --border-glass: 1px solid rgba(255, 255, 255, 0.08);
+    --radius-box: 24px; /* Instagram-like curves */
+    --radius-btn: 12px;
     --app-height: 100vh;
-    --glass-bg: rgba(20, 20, 20, 0.7);
-    --glass-blur: blur(20px);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -19,7 +17,7 @@
 body { 
     background-color: var(--bg-dark); 
     color: var(--text-main); 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
     margin: 0; 
     height: var(--app-height); 
     width: 100vw; 
@@ -29,184 +27,138 @@ body {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
 }
 
-/* --- COMMON HEADER (INSTAGRAM STYLE) --- */
+/* --- COMMON HEADER UTILS --- */
 .header { 
-    height: 60px; 
-    background: rgba(0, 0, 0, 0.85); 
-    backdrop-filter: var(--glass-blur);
+    height: 70px; background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(15px);
     display: flex; align-items: center; justify-content: space-between; padding: 0 15px; 
     border-bottom: var(--border-glass); flex-shrink: 0; z-index: 1000; position: relative;
 }
 
-/* 🔥 ΩΡΑΡΙΟ ΔΕΞΙΑ ΑΠΟ ΤΟ ΟΝΟΜΑ */
+/* 🔥 ORDER HEADER: ΟΝΟΜΑ & ΩΡΑΡΙΟ ΣΤΗΝ ΙΔΙΑ ΣΕΙΡΑ */
 .store-info { 
     display: flex; 
-    flex-direction: row; /* Οριζόντια διάταξη */
+    flex-direction: row; 
     align-items: center; 
-    gap: 10px; /* Απόσταση ονόματος-ωραρίου */
-    justify-content: center;
-    flex: 1;
+    justify-content: center; 
+    gap: 12px; 
+    width: 100%; 
 }
-#storeNameHeader { font-weight: 800; font-size: 18px; color: var(--text-main); text-transform: none; letter-spacing: -0.5px; }
+#storeNameHeader { font-weight: 800; font-size: 18px; color: var(--text-main); text-transform: none; }
 .schedule-badge { 
-    font-size: 11px; color: #aaa; background: rgba(255,255,255,0.1); 
-    padding: 3px 8px; border-radius: 8px; cursor: pointer; 
-    display: flex; align-items: center; gap: 4px; border: 1px solid rgba(255,255,255,0.05);
+    font-size: 11px; color: #ccc; background: rgba(255,255,255,0.1); 
+    padding: 4px 10px; border-radius: 12px; cursor: pointer; 
+    display: flex; align-items: center; gap: 4px; border: var(--border-glass);
 }
 
-/* 🔥 STATUS PANEL (ΚΑΤΕΒΑΣΜΕΝΟ 1.5 ΕΚΑΤΟΣΤΟ) */
-.header-left { position: absolute; left: 15px; top: 15px; height: 100%; display: flex; align-items: center; }
+/* 🔥 STATUS PANEL: ΚΑΤΕΒΑΣΜΕΝΟ ΓΙΑ ΝΑ ΜΗΝ ΒΡΙΣΚΕΙ */
+.header-left { position: absolute; left: 15px; top: 0; height: 100%; display: flex; align-items: center; }
 .btn-status-mini { 
-    display: none; 
-    background: var(--glass-bg); 
-    border: 1px solid var(--accent); 
-    color: var(--accent); 
-    padding: 6px 12px; 
-    border-radius: 20px; 
-    font-size: 11px; font-weight: bold; cursor: pointer; 
-    align-items: center; gap: 5px; 
-    margin-top: 50px; /* 🔥 Το κατεβάζουμε για να μην βρίσκει στο όνομα */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    display: none; background: rgba(255, 215, 0, 0.15); 
+    border: 1px solid var(--accent); color: var(--accent); 
+    padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; 
+    cursor: pointer; align-items: center; gap: 5px; 
+    margin-top: 55px; /* Κατέβασμα 1.5 εκ. */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    animation: pulseMini 2s infinite; 
 }
 
-/* --- ADMIN: 3 ΚΑΘΕΤΟΙ ΦΑΚΕΛΟΙ & ΔΕΞΙΑ ΡΟΗ --- */
+/* --- ADMIN: ΔΙΑΤΑΞΗ ΦΑΚΕΛΩΝ (3 ΚΑΘΕΤΑ -> ΔΕΞΙΑ) --- */
 #desktopArea {
     flex: 1;
     display: flex;
     flex-direction: column;    /* Στοίχιση σε στήλες */
-    flex-wrap: wrap;           /* Αλλαγή στήλης όταν γεμίζει το ύψος */
-    align-content: flex-start; /* Ξεκινάει από αριστερά */
+    flex-wrap: wrap;           /* Όταν γεμίζουν οι 3, πάει δίπλα */
+    align-content: flex-start; /* Από αριστερά προς τα δεξιά */
     padding: 20px;
-    gap: 20px;
-    overflow-x: auto;          /* Οριζόντιο σκρολάρισμα */
-    overflow-y: hidden;        /* Όχι κάθετο σκρολάρισμα */
-    /* 🔥 Το ύψος υπολογίζεται για να χωράει ακριβώς 3 φακέλους (~130px ο καθένας + gaps) */
-    height: 460px; 
+    gap: 15px;
+    overflow-x: auto;          /* Scroll δεξιά-αριστερά */
+    overflow-y: hidden;
+    height: 440px;             /* Ύψος που χωράει ακριβώς 3 φακέλους */
     -webkit-overflow-scrolling: touch;
 }
 
 .order-folder { 
-    width: 90px; height: 110px; 
+    width: 85px; height: 110px; 
     display: flex; flex-direction: column; align-items: center; 
-    cursor: pointer; position: relative; 
-    /* Αφαιρέσαμε το popIn animation για ταχύτητα */
+    cursor: pointer; position: relative;
 }
-.folder-icon { font-size: 60px; color: #333; transition: 0.2s; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
 .order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); }
+.order-folder.cooking { border: 2px dashed var(--accent); border-radius: 12px; background: rgba(255, 215, 0, 0.05); }
+.folder-icon { font-size: 50px; color: #444; transition: 0.2s; }
 .folder-label { 
-    font-size: 12px; font-weight: 600; text-align: center; color: white; 
+    font-size: 11px; font-weight: bold; text-align: center; color: white; 
+    background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 6px; 
     margin-top: 5px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
 }
 
 /* 🔥 ΚΑΡΦΩΤΑ ΠΑΡΑΘΥΡΑ (ΧΩΡΙΣ ANIMATIONS) */
 .order-window, .modal-box, .details-box { 
     position: fixed; top: 50%; left: 50%; 
-    transform: translate(-50%, -50%) !important; /* Σταθερό κεντράρισμα */
+    transform: translate(-50%, -50%) !important; 
     width: 90%; max-width: 400px; 
-    background: #1c1c1c; 
-    border: 1px solid rgba(255,255,255,0.15); 
+    background: #181818; 
+    border: var(--border-glass); 
     border-radius: var(--radius-box); 
-    box-shadow: 0 0 0 1000px rgba(0,0,0,0.7), 0 20px 60px rgba(0,0,0,0.8); 
+    box-shadow: 0 0 0 1000px rgba(0,0,0,0.8), 0 25px 50px rgba(0,0,0,0.5); 
     display: flex; flex-direction: column; z-index: 5000; overflow: hidden; 
-    animation: none !important; /* 🔥 Κατάργηση όλων των animations */
+    animation: none !important; /* BAM στο κέντρο */
 }
 
-/* --- MENU SETTINGS (INSTAGRAM STYLE - BOTTOM SHEET) --- */
+/* --- MENU FULL PANEL (INSTAGRAM SETTINGS STYLE) --- */
 #menuFullPanel { 
     display: none; flex-direction: column; 
     position: fixed; bottom: 0; left: 0; width: 100%; 
-    height: 90%; /* Σαν συρόμενο μενού Instagram */
+    height: 92%; /* Bottom sheet look */
     background: #121212; 
     z-index: 5000; padding: 20px; 
-    border-radius: 30px 30px 0 0; 
+    border-radius: 25px 25px 0 0; 
     border-top: var(--border-glass);
     overflow-y: auto; 
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
 }
 .menu-header { 
     display: flex; justify-content: space-between; align-items: center; 
-    margin-bottom: 25px; padding-bottom: 15px; border-bottom: var(--border-glass); 
+    margin-bottom: 20px; padding-bottom: 15px; border-bottom: var(--border-glass); 
 }
-.menu-title { font-size: 20px; font-weight: 800; color: var(--text-main); }
+.menu-title { font-size: 18px; font-weight: 800; color: #fff; }
 
-/* --- INSTAGRAM CARDS & INPUTS --- */
-.category-box, .item-box { 
-    background: #1c1c1c; 
-    border: 1px solid rgba(255,255,255,0.08); 
-    padding: 16px; border-radius: 18px; 
-    transition: background 0.2s;
-}
-.item-box:active { background: #262626; transform: scale(0.98); }
-
+/* --- BUTTONS & INPUTS (IG STYLE) --- */
 .inp-detail, .menu-input-box, .chat-inp { 
     background: #262626; border: 1px solid #363636; 
-    color: white; border-radius: 12px; padding: 14px; 
+    color: white; border-radius: 12px; padding: 12px; 
     font-size: 15px; width: 100%;
 }
-.inp-detail:focus { border-color: #555; background: #303030; }
-
-/* --- BUTTONS (MODERN CAPSULE) --- */
-.btn-main, .btn-send, .btn-win-action, .btn-save-details { 
-    background: #ffffff; color: #000000; /* White/Black contrast style */
-    border-radius: 15px; font-weight: 700; border: none; 
-    padding: 16px; font-size: 16px; cursor: pointer;
+.btn-main, .btn-send, .btn-save-details { 
+    background: #fff; color: #000; 
+    border-radius: 14px; font-weight: 700; border: none; 
+    padding: 14px; font-size: 16px; cursor: pointer;
 }
-.btn-google { 
-    background: #ffffff; color: #000; border-radius: 15px; 
-    font-weight: 700; border: 1px solid #ddd;
-}
-.btn-logout { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.btn-google { background: #fff; color: #000; border-radius: 14px; font-weight: 700; border: 1px solid #dbdbdb; }
 
-/* --- ORDER PANEL (SHARED) --- */
+/* --- MENU STYLES --- */
+#menuContainer { flex: 1; overflow-y: auto; padding: 15px; background: var(--bg-dark); padding-bottom: 400px; }
+.category-title { color: #8e8e8e; font-weight: 800; font-size: 13px; margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 1px; }
+.item-box { background: #1c1c1c; border: var(--border-glass); padding: 14px; border-radius: 16px; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.item-price { background: #333; color: var(--primary); padding: 4px 8px; border-radius: 10px; font-weight: bold; }
+
+/* --- ORDER PANEL --- */
 .order-panel { 
     position: fixed; bottom: 0; left: 0; width: 100%; 
-    background: rgba(18, 18, 18, 0.95); backdrop-filter: var(--glass-blur);
-    border-top: var(--border-glass); 
+    background: #1a1a1a; border-top: var(--border-glass); 
     display: flex; flex-direction: column; 
-    z-index: 1000; height: 42%; border-radius: 25px 25px 0 0;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.4);
+    z-index: 1000; height: 45%; border-radius: 25px 25px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
 }
-.panel-header-bar { 
-    height: 35px; background: transparent; display: flex; 
-    align-items: center; justify-content: center; 
-}
+.panel-header-bar { height: 35px; background: transparent; display: flex; align-items: center; justify-content: center; }
 .toggle-icon { width: 40px; height: 5px; background: #333; border-radius: 10px; font-size: 0; }
 
-/* --- CHAT OVERLAY (FULLSCREEN INSTAGRAM STYLE) --- */
-#staffChatOverlay, #adminChatOverlay { 
-    display: none; position: fixed; top: 0; left: 0; 
-    width: 100%; height: 100%; background: #000; 
-    z-index: 10000; flex-direction: column; 
-    animation: none;
-}
+/* --- STAFF LIST --- */
+#staffContainer { background: #000; border-top: var(--border-glass); height: 190px; padding-top: 10px; }
+#staffList { display: flex; flex-direction: row; gap: 12px; overflow-x: auto; padding: 10px; }
+.btn-staff { min-width: 110px; height: 130px; flex-shrink: 0; border-radius: 20px; background: #1a1a1a; border: var(--border-glass); }
 
-/* --- STAFF LIST (HORIZONTAL TABLET STYLE) --- */
-#staffContainer { 
-    background: #000; border-top: var(--border-glass); 
-    height: 180px; padding-top: 10px;
-}
-#staffList { 
-    display: flex; flex-direction: row; gap: 12px; 
-    overflow-x: auto; padding: 10px; 
-}
-.btn-staff { 
-    min-width: 110px; height: 120px; flex-shrink: 0;
-    border-radius: 20px; background: #121212; border: 1px solid #262626;
-}
-
-/* --- UTILS & BADGES --- */
-.item-price { background: #333; color: var(--primary); padding: 4px 8px; border-radius: 10px; }
-.chat-badge { background: #0095F6; border: 2px solid #000; }
-
-/* --- ANIMATIONS (ONLY ESSENTIAL) --- */
-@keyframes shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } }
-@keyframes pulseMini { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } }
-
-/* CUSTOMER CATEGORY TITLES */
-.category-title { 
-    font-size: 14px; font-weight: 800; color: #8e8e8e; 
-    margin: 15px 0 10px 5px; letter-spacing: 1px; 
-}
+/* --- ANIMATIONS --- */
+@keyframes shake { 0% { transform: rotate(0); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0); } }
+@keyframes pulseMini { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
 
 /* HIDE SCROLLBARS */
-#desktopArea::-webkit-scrollbar, #menuContainer::-webkit-scrollbar { display: none; }
+#desktopArea::-webkit-scrollbar, #menuContainer::-webkit-scrollbar, #staffList::-webkit-scrollbar { display: none; }
