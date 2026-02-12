@@ -1,557 +1,230 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+/* --- 2026 MODERN THEME (VARIABLES) --- */
+:root {
+    --bg-dark: #0a0a0a; [cite: 1]
+    --surface: #141414; [cite: 1]
+    --primary: #00E676; [cite: 1]
+    --accent: #FFD700; [cite: 1]
+    --danger: #FF5252; [cite: 2]
+    --text-main: #ffffff; [cite: 2]
+    --border-glass: 1px solid rgba(255, 255, 255, 0.08); [cite: 2]
+    --radius-box: 16px; [cite: 2]
+    --radius-btn: 12px; [cite: 2]
+    --app-height: 100vh; [cite: 2]
+} [cite: 3]
 
-// --- MANIFEST & PWA PRE-LOGIC ---
-(function() {
-    const params = new URLSearchParams(window.location.search);
-    const pName = params.get('name');
-    let pStore = params.get('store');
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
 
-    if (pStore) {
-        localStorage.setItem('bellgo_target_store', pStore);
-    } else {
-        pStore = localStorage.getItem('bellgo_target_store');
-    }
+body { 
+    background-color: var(--bg-dark); [cite: 4]
+    color: var(--text-main); [cite: 4]
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; [cite: 4]
+    margin: 0; [cite: 4]
+    height: var(--app-height); [cite: 4]
+    width: 100vw; [cite: 4]
+    overflow: hidden; [cite: 4]
+    display: flex; [cite: 4]
+    flex-direction: column; [cite: 4]
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; [cite: 5]
+} [cite: 6]
 
-    if (!pStore) {
-        const pathParts = window.location.pathname.split('/');
-        const shopIndex = pathParts.indexOf('shop');
-        if (shopIndex !== -1 && pathParts[shopIndex + 1]) {
-            pStore = pathParts[shopIndex + 1];
-            localStorage.setItem('bellgo_target_store', pStore);
-        }
-    }
+/* --- COMMON HEADER UTILS --- */
+.header { 
+    height: 70px; background: rgba(10, 10, 10, 0.8); [cite: 7]
+    backdrop-filter: blur(12px); [cite: 7]
+    display: flex; align-items: center; justify-content: space-between; padding: 0 15px; [cite: 7]
+    border-bottom: var(--border-glass); flex-shrink: 0; z-index: 1000; position: relative; [cite: 7]
+} [cite: 8]
 
-    if (pName) {
-        document.title = decodeURIComponent(pName);
-        let metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-        if(metaTitle) metaTitle.setAttribute('content', decodeURIComponent(pName));
-    }
+.user-info { display: flex; flex-direction: column; } [cite: 9]
+.header-actions { display: flex; align-items: center; gap: 8px; } [cite: 9]
+.btn-logout { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; } [cite: 10]
+.btn-icon-wrapper { position: relative; display: inline-block; } [cite: 11]
+.btn-icon { background: transparent; border: 1px solid #aaa; color: #aaa; width: 35px; height: 35px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; } [cite: 11]
+.btn-icon:active { background: #333; } [cite: 12]
+.btn-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid #121212; display: none; } [cite: 13]
+.chat-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background-color: var(--danger); border-radius: 50%; border: 2px solid #1e1e1e; display: none; z-index: 10; } [cite: 14, 15]
 
-    const manifestLink = document.getElementById('dynamicManifest');
-    if (manifestLink) {
-        let manifestUrl = `manifest.json?icon=shop`; 
-        if (pStore) {
-            manifestUrl += `&store=${encodeURIComponent(pStore)}&id=cust_${encodeURIComponent(pStore)}`;
-        } else {
-            manifestUrl += `&id=customer_app_general`;
-        }
-        if (pName) manifestUrl += `&name=${encodeURIComponent(pName)}`;
-        manifestLink.setAttribute('href', manifestUrl);
-    }
-})();
+/* Order Header Specifics - ΔΙΟΡΘΩΣΗ: row layout για όνομα/ώρα */
+.store-info { display: flex; flex-direction: row; align-items: center; width: 100%; justify-content: center; gap: 10px; } 
+#storeNameHeader { font-weight: 800; font-size: 20px; color: var(--accent); text-align: center; text-transform: uppercase; } 
+.schedule-badge { font-size: 11px; color: #ccc; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; } [cite: 17]
 
-// --- SERVICE WORKER REGISTRATION ---
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
-}
+/* ΔΙΟΡΘΩΣΗ: Status κάτω από το Header */
+.header-left { position: absolute; left: 15px; top: 75px; height: auto; display: flex; align-items: center; } 
+.btn-status-mini { display: none; background: rgba(255, 215, 0, 0.15); border: 1px solid var(--accent); color: var(--accent); padding: 6px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; align-items: center; gap: 5px; animation: pulseMini 2s infinite; } [cite: 19, 20]
+.btn-header-install { display: none; background: var(--primary); color: black; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; } [cite: 21]
 
-// --- INSTALL PROMPT LOGIC ---
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const btnLogin = document.getElementById('btnInstallLogin');
-    if(btnLogin) btnLogin.style.display = 'block';
-    const btnHeader = document.getElementById('btnInstallHeader');
-    if(btnHeader) btnHeader.style.display = 'block';
-});
+/* --- MENU STYLES --- */
+/* ΔΙΟΡΘΩΣΗ: Premium στοίχιση 3 κάθετα */
+#appContent, .admin-main-area, #mainApp, #waiterPanel { display: flex; flex-direction: column; height: 100%; width: 100%; position: relative; overflow: hidden; } 
+.admin-main-area { display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 15px; padding: 15px; height: 420px; } 
 
-const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-if (isIos() && !window.navigator.standalone) {
-     document.getElementById('btnInstallLogin').style.display = 'block';
-     document.getElementById('btnInstallHeader').style.display = 'block';
-}
+#menuContainer { flex: 1; overflow-y: auto; padding: 10px; background: var(--bg-dark); display: flex; flex-direction: column; gap: 15px; padding-bottom: 400px; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; will-change: scroll-position; } [cite: 23]
+.category-block { width: 100%; } [cite: 24]
+.category-title { color: var(--accent); font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; } [cite: 25]
+.category-items { display: flex; flex-wrap: wrap; gap: 8px; } [cite: 26]
+.item-box { background: #222; border: 1px solid #444; padding: 12px 14px; border-radius: 8px; color: #eee; font-size: 15px; cursor: pointer; transition: transform 0.1s; user-select: none; display: flex; justify-content: space-between; align-items: center; } [cite: 27]
+.item-box:active { transform: scale(0.95); background: #333; border-color: var(--accent); } [cite: 27]
+.item-name { font-style: italic; } [cite: 27]
+.item-price { background: var(--primary); color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; } [cite: 28]
+.menu-fade-out { opacity: 0.3; filter: grayscale(100%); transform: scale(0.98); } [cite: 29]
+.menu-fade-in { animation: menuEntry 0.4s ease-out forwards; } [cite: 29]
 
-// --- FIREBASE CONFIG ---
-const firebaseConfig = { 
-    apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
-    authDomain: "bellgo-5dbe5.firebaseapp.com", 
-    projectId: "bellgo-5dbe5", 
-    storageBucket: "bellgo-5dbe5.firebasestorage.app", 
-    messagingSenderId: "799314495253", 
-    appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
-};
+/* --- ORDER PANEL --- */
+.order-panel { position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 2px solid #333; display: flex; flex-direction: column; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); z-index: 50; height: 45%; transition: height 0.2s ease-out; } [cite: 30, 31]
+.order-panel.minimized { height: 50px; overflow: hidden; } [cite: 32]
+.order-panel.writing-mode { height: 45% !important; transition: none !important; } [cite: 33]
+.order-panel.writing-mode .panel-header-bar, .order-panel.writing-mode .address-bar, .order-panel.writing-mode #liveTotal, .order-panel.writing-mode #btnSendOrder, .order-panel.writing-mode .form-row, .order-panel.writing-mode #cancelUpdateBtn { display: none !important; } [cite: 33]
+.order-panel.writing-mode .panel-content { padding: 5px; height: 100%; } [cite: 34]
+.order-panel.writing-mode textarea.order-text { height: 100% !important; margin: 0; border: 2px solid var(--primary); border-radius: 4px; } [cite: 35]
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-const messaging = getMessaging(app);
+.panel-header-bar { height: 40px; background: #252525; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; } [cite: 36]
+.toggle-icon { font-size: 20px; color: #aaa; transition: transform 0.3s; } [cite: 37]
+.order-panel.minimized .toggle-icon { transform: rotate(180deg); } [cite: 37]
+.panel-content { padding: 10px; display: flex; flex-direction: column; flex: 1; height: 100%; overflow: hidden; } [cite: 37]
+.address-bar { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #333; } [cite: 38]
+.btn-edit { background: none; border: 1px solid #555; color: var(--accent); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; } [cite: 39]
+textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 16px; resize: none; margin-bottom: 8px; } [cite: 40, 41]
+.btn-send { width: 100%; padding: 15px; background: var(--accent); color: black; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; flex-shrink: 0; } [cite: 42]
+.btn-send:disabled { background: #555; color: #aaa; cursor: not-allowed; } [cite: 42]
+.btn-send.update-mode { background: #2196F3; color: white; } [cite: 42]
+#liveTotal { text-align: right; color: var(--primary); font-size: 20px; font-weight: bold; margin-bottom: 10px; flex-shrink: 0; } [cite: 43]
+#cancelUpdateBtn { display:none; width: 100%; padding: 10px; background: #555; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 5px; } [cite: 44, 45]
 
-// --- APP STATE ---
-const params = new URLSearchParams(window.location.search);
-let TARGET_STORE = params.get('store');
+/* STAFF FORM */
+.form-row { display: flex; gap: 10px; flex-shrink: 0; align-items: flex-end; margin-bottom: 8px; } [cite: 46]
+.input-group { flex: 1; } [cite: 47]
+.input-group label { display: block; font-size: 11px; color: #888; margin-bottom: 3px; } [cite: 47]
+.input-box { width: 100%; padding: 12px; background: #333; border: 1px solid #444; border-radius: 6px; color: white; font-size: 16px; text-align: center; font-weight: bold; } [cite: 48]
+.pay-method-toggle { display: flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; height: 45px; } [cite: 49]
+.pay-btn { flex: 1; border: none; background: #222; color: #777; font-size: 20px; cursor: pointer; display:flex; align-items:center; justify-content:center; } [cite: 49]
+.pay-btn.active { background: var(--primary); color: black; } [cite: 50]
 
-if (!TARGET_STORE) {
-    const pathParts = window.location.pathname.split('/');
-    const shopIndex = pathParts.indexOf('shop');
-    if (shopIndex !== -1 && pathParts[shopIndex + 1]) { TARGET_STORE = pathParts[shopIndex + 1]; }
-}
+/* MODALS */
+.overlay-screen, .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 4000; align-items: center; justify-content: center; flex-direction: column; padding: 20px; backdrop-filter: blur(5px); text-align: center; } [cite: 51]
+.details-box, .modal-box { background: #222; padding: 20px; border-radius: 10px; border: 1px solid #444; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); } [cite: 52, 53]
+.extras-grid { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0; } [cite: 54]
+.extra-option { background: #333; border: 1px solid #555; padding: 10px; border-radius: 6px; color: white; font-size: 14px; cursor: pointer; user-select: none; flex: 1 1 45%; display: flex; justify-content: space-between; } [cite: 55]
+.extra-option.selected { background: var(--primary); color: black; border-color: var(--primary); font-weight: bold; } [cite: 56]
+.btn-save-details { padding: 12px; background: var(--primary); color: black; border: none; border-radius: 5px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; } [cite: 57]
+.inp-detail { padding: 12px; background: #333; border: 1px solid #555; color: white; border-radius: 5px; font-size: 16px; width: 100%; } [cite: 58]
 
-if (!TARGET_STORE) {
-    TARGET_STORE = localStorage.getItem('bellgo_target_store');
-}
+/* STAFF ORDERS */
+.orders-box-container { width: 95%; max-width: 500px; background: #1a1a1a; border: 1px solid #444; border-radius: 10px; display: flex; flex-direction: column; height: 85vh; overflow:hidden; } [cite: 59]
+.orders-tabs { display: flex; background: #111; border-bottom: 1px solid #333; } [cite: 60]
+.tab-btn { flex: 1; padding: 15px; background: transparent; border: none; color: #888; font-weight: bold; border-bottom: 3px solid transparent; cursor: pointer; } [cite: 61]
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: #222; } [cite: 61]
+.search-bar { padding: 10px; background: #222; border-bottom: 1px solid #333; display: flex; gap: 10px; } [cite: 62]
+.search-inp { flex: 1; padding: 10px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; text-align: center; font-size: 16px; } [cite: 63]
+.orders-list { overflow-y: auto; padding: 10px; flex: 1; display: flex; flex-direction: column; gap: 10px; } [cite: 63]
+.my-order-item { background: #2a2a2a; padding: 12px; border-radius: 8px; border-left: 5px solid #999; text-align: left; position: relative; cursor: pointer; } [cite: 64]
+.my-order-item:active { transform: scale(0.98); background: #333; } [cite: 65]
+.my-order-item.pending { border-left-color: #FF9800; } [cite: 65]
+.my-order-item.cooking { border-left-color: #2196F3; } [cite: 65]
+.my-order-item.ready { border-left-color: var(--primary); } [cite: 65]
+.order-meta { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; margin-bottom: 5px; } [cite: 66]
+.order-content { white-space: pre-wrap; font-weight: bold; color: white; font-size: 15px; } [cite: 66]
+.order-total { text-align: right; color: var(--accent); font-weight: bold; margin-top: 5px; font-size: 16px; } [cite: 67]
 
-const PRELOADED_NAME = params.get('name'); 
+/* ACTION MODAL */
+#actionModal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index: 25000; align-items:center; justify-content:center; } [cite: 68]
+.action-box { background: #222; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; display:flex; flex-direction:column; gap:15px; } [cite: 69]
+.btn-act { padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; color: black; } [cite: 70]
 
-let currentUser = null;
-let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
-const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
-let storeSchedule = {};
+/* CHAT */
+#staffChatOverlay, #adminChatOverlay { display: none; position: fixed; bottom: 0; right: 0; width: 100%; height: 100%; background: #121212; z-index: 3000; flex-direction: column; } [cite: 71]
+.overlay-header { padding: 15px; background: #1e1e1e; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; } [cite: 72]
+.chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; height: 100%; } [cite: 73]
+.chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 80px; } [cite: 73]
+.chat-input-area { position: absolute; bottom: 0; left: 0; width: 100%; padding: 10px; background: #1a1a1a; border-top: 1px solid #333; display: flex; gap: 10px; } [cite: 74, 75]
+.chat-inp { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #444; background: #000; color: white; } [cite: 76]
+.chat-btn, .btn-icon.menu-active { margin-left: 10px; width: 45px; border-radius: 50%; border: none; background: var(--primary); cursor: pointer; font-size: 20px; display:flex; align-items:center; justify-content:center; } [cite: 77]
+.chat-msg { padding: 10px 14px; border-radius: 12px; font-size: 15px; max-width: 80%; } [cite: 77]
+.chat-msg.me { align-self: flex-end; background: var(--primary); color: black; } [cite: 78]
+.chat-msg.other { align-self: flex-start; background: #333; color: white; } [cite: 78]
 
-// --- VISUAL VIEWPORT LOGIC ---
-function handleViewport() {
-    if (window.visualViewport) {
-        document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
-        if (window.visualViewport.height > (window.screen.height * 0.8)) {
-            document.getElementById('orderPanel').classList.remove('writing-mode');
-            document.getElementById('orderText').blur();
-        }
-    }
-}
-if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleViewport);
-    window.visualViewport.addEventListener('scroll', handleViewport);
-}
-window.addEventListener('resize', handleViewport);
-handleViewport();
+/* SCREENS */
+#startScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 6000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; } [cite: 79, 80]
+.btn-start { padding: 15px 35px; background: var(--primary); color: black; border: none; border-radius: 30px; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); animation: pulse 2s infinite; } [cite: 81]
+#fakeLockOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 20000; align-items: center; justify-content: center; flex-direction: column; color: #333; font-size: 14px; } [cite: 82, 83]
 
-// --- MAIN APP LOGIC ---
-window.App = {
-    installPWA: async () => { if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { document.getElementById('btnInstallLogin').style.display = 'none'; document.getElementById('btnInstallHeader').style.display = 'none'; } deferredPrompt = null; } else if (isIos()) { alert("Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'"); } },
-    loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert("Login Error: " + e.message)); },
-    logout: () => { signOut(auth).then(() => location.reload()); },
+#staffBellBtn { background: var(--accent); color: black; border: 2px solid var(--accent); display: none; } [cite: 84]
+#staffBellBtn.ringing { display: flex; animation: shake 0.5s infinite; box-shadow: 0 0 15px var(--accent); } [cite: 84]
+.flash { animation: flashAnim 0.2s; } [cite: 85]
+@keyframes flashAnim { 0% { background: #333; } 50% { background: #555; } 100% { background: #333; } } [cite: 86]
 
-    checkDetails: () => {
-        document.getElementById('loginScreen').style.display = 'none';
-        if (!customerDetails) {
-            document.getElementById('detailsOverlay').style.display = 'flex';
-            if (currentUser && currentUser.displayName) { document.getElementById('inpName').value = currentUser.displayName; }
-        } else { App.startApp(); }
-    },
+#statusOverlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: rgba(0,0,0,0.95); transition: height 0.3s; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; } [cite: 87]
+.status-content { text-align: center; width: 80%; display: flex; flex-direction: column; align-items: center; } [cite: 88]
+.status-icon { font-size: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; } [cite: 89]
+.status-text { font-size: 24px; font-weight: bold; color: white; margin-bottom: 10px; } [cite: 89]
+.status-sub { font-size: 15px; color: #aaa; } [cite: 89]
+.btn-new-order { margin-top: 20px; padding: 12px 25px; background: var(--primary); color: black; border: none; border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer; display: none; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.4); width: 100%; } [cite: 90, 91]
+.btn-minimize { margin-top: 15px; background: transparent; border: 1px solid #555; color: #aaa; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; } [cite: 92]
+.store-closed-overlay, #closedOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9000; display: none; align-items: center; justify-content: center; flex-direction: column; } [cite: 93]
+#closedOverlay { top: 60px; height: calc(100% - 60px); } [cite: 94]
+.closed-text { font-size: 24px; color: var(--danger); font-weight: bold; text-transform: uppercase; border: 2px solid var(--danger); padding: 10px 20px; border-radius: 10px; background: #121212; } [cite: 95]
 
-    saveDetails: () => {
-        const name = document.getElementById('inpName').value.trim();
-        const address = document.getElementById('inpAddress').value.trim();
-        const floor = document.getElementById('inpFloor').value.trim();
-        const phone = document.getElementById('inpPhone').value.trim();
-        if (!name || !address || !phone) return alert("Συμπληρώστε τα βασικά στοιχεία!");
-        customerDetails = { name, address, floor, phone };
-        localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
-        document.getElementById('detailsOverlay').style.display = 'none';
-        App.startApp();
-    },
-    editDetails: () => { document.getElementById('appContent').style.display = 'none'; document.getElementById('detailsOverlay').style.display = 'flex'; document.getElementById('inpName').value = customerDetails.name; document.getElementById('inpAddress').value = customerDetails.address; document.getElementById('inpFloor').value = customerDetails.floor; document.getElementById('inpPhone').value = customerDetails.phone; },
+/* ADMIN SPECIFICS */
+.header-store-input { background: transparent; border: none; border-bottom: 1px solid #333; color: var(--accent); font-size: 18px; font-weight: 800; width: 100%; max-width: 200px; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); } [cite: 96, 97]
+.status-dot { width: 10px; height: 10px; background: red; border-radius: 50%; box-shadow: 0 0 8px red; cursor: pointer; } [cite: 98]
+.order-folder { width: 85px; height: 100px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: popIn 0.4s; position: relative; } [cite: 99]
+.order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); } [cite: 100]
+.order-folder.cooking { border: 2px dashed var(--accent); border-radius: 10px; background: rgba(255, 215, 0, 0.05); } [cite: 100]
+.folder-icon { font-size: 50px; color: #555; transition: 0.2s; } [cite: 101]
+.folder-label { font-size: 11px; text-align: center; color: white; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 6px; margin-top: 5px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } [cite: 102]
+.folder-time { font-size: 10px; color: #000; background: var(--primary); padding: 2px 6px; border-radius: 10px; position: absolute; top: 0; right: 0; font-weight: bold; } [cite: 103]
 
-    startApp: () => {
-        document.getElementById('appContent').style.display = 'flex';
-        document.body.addEventListener('click', () => { const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"); audio.play().catch(()=>{}); }, { once: true });
+/* ΔΙΟΡΘΩΣΗ: Admin Window Κεντραρισμένο Fixed */
+.order-window { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 400px; height: auto; max-height: 80%; background: #1a1a1a; border: 1px solid #444; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: flex; flex-direction: column; z-index: 2000; overflow: hidden; animation: popIn 0.3s; } [cite: 104, 105, 106]
+.win-header { background: #252525; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; } [cite: 106]
+.win-body { flex: 1; overflow-y: auto; padding: 20px; font-size: 16px; line-height: 1.5; color: #eee; } [cite: 107]
+.win-footer { padding: 15px; border-top: 1px solid #333; background: #222; } [cite: 108]
+.btn-win-action { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; } [cite: 108]
+.order-info-section { color: #aaa; font-size: 14px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #444; } [cite: 109]
+.order-items-section { font-weight: bold; } [cite: 110]
 
-        if (PRELOADED_NAME) {
-            const cleanName = decodeURIComponent(PRELOADED_NAME);
-            document.getElementById('storeNameHeader').innerText = cleanName;
-            document.title = cleanName;
-        } else if(TARGET_STORE) { 
-            document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase(); 
-        }
-        
-        document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
-        App.checkActiveOrderStorage();
-        
-        const txt = document.getElementById('orderText');
-        const panel = document.getElementById('orderPanel');
-        txt.addEventListener('focus', () => { panel.classList.add('writing-mode'); });
+#staffContainer { background: #1a1a1a; border-top: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; height: 210px; transition: height 0.3s ease; } [cite: 111]
+#staffContainer.minimized { height: 35px; } [cite: 111]
+.sidebar-header { padding: 8px; background: #222; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #aaa; font-size: 11px; font-weight: bold; } [cite: 112]
+#staffList { flex: 1; overflow-x: auto; padding: 10px; display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; } [cite: 113]
+.btn-staff { width: 130px; height: 100%; padding: 5px; border-radius: 12px; color: white; font-weight: bold; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #333; border: 2px solid transparent; } [cite: 114]
+.btn-staff.waiter { border-color: #2196F3; background: rgba(33, 150, 243, 0.1); } [cite: 115]
+.btn-staff.driver { border-color: var(--danger); background: rgba(255, 82, 82, 0.1); } [cite: 116]
 
-        App.connectSocket();
-        App.requestNotifyPermission(); 
-    },
+#menuFullPanel { display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); z-index: 500; padding: 15px; overflow-y: auto; } [cite: 117]
+.menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: var(--border-glass); } [cite: 118]
+.menu-title { font-size: 22px; font-weight: 900; color: var(--text-main); letter-spacing: 1px; } [cite: 118]
+.category-box { background: var(--surface); border: 1px solid #333; padding: 20px; border-radius: var(--radius-box); font-size: 18px; font-weight: 800; text-align: center; cursor: pointer; position: relative; color: var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.2s; } [cite: 119, 120]
+.category-box:active { transform: scale(0.98); } [cite: 120]
+.btn-delete-cat { position: absolute; top: -10px; right: -10px; background: var(--danger); color: white; width: 25px; height: 25px; border-radius: 50%; font-size: 12px; border:none; display:flex; align-items:center; justify-content:center; } [cite: 121]
+.item-wrapper { display: flex; align-items: center; gap: 10px; width: 100%; position: relative; animation: fadeInUp 0.3s ease; } [cite: 122]
+.menu-input-box { flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; border-radius: var(--radius-btn); font-size: 15px; padding-right: 40px; } [cite: 123]
+.btn-item-extras { position: absolute; right: 45px; top: 5px; background: #2196F3; color: white; border: none; width: 25px; height: 25px; border-radius: 6px; font-weight: bold; cursor: pointer; } [cite: 124, 125]
+.has-extras { background: var(--primary) !important; color: black !important; } [cite: 125]
+.btn-item-del { background: #333; color: var(--danger); border: 1px solid #333; width: 35px; height: 35px; border-radius: 8px; font-weight: bold; } [cite: 126]
 
-    requestNotifyPermission: async () => {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                const registration = await navigator.serviceWorker.ready;
-                const token = await getToken(messaging, { vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", serviceWorkerRegistration: registration }); 
-                if (token) {
-                    localStorage.setItem('fcm_token', token);
-                    if(window.socket && window.socket.connected) { 
-                        window.socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: token, isNative: false }); 
-                    }
-                }
-            }
-        } catch (error) { console.error("Notification Error:", error); }
-    },
+/* ΔΙΟΡΘΩΣΗ: Modern Premium Buttons στο Menu Editor */
+.btn-add { background: var(--primary); color: black; border: none; padding: 12px 24px; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 230, 118, 0.2); } [cite: 127]
+.btn-back { background: var(--surface); color: white; border: var(--border-glass); padding: 12px 24px; border-radius: var(--radius-btn); cursor: pointer; font-weight: bold; } [cite: 128]
 
-    checkActiveOrderStorage: () => {
-        if (activeOrderState) {
-            const now = Date.now();
-            if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
-                localStorage.removeItem('bellgo_active_order');
-                activeOrderState = null;
-                App.resetUI();
-            } else { App.updateStatusUI(activeOrderState.status); }
-        }
-    },
+.extra-item-row { display: flex; justify-content: space-between; background: #333; padding: 10px; border-radius: 8px; margin-bottom: 5px; } [cite: 129]
+.extra-inputs { display: flex; gap: 5px; margin-bottom: 10px; } [cite: 129]
+.extra-name-inp { flex: 2; background: #111; border: 1px solid #444; color: white; padding: 10px; border-radius: 8px; } [cite: 130]
+.extra-price-inp { flex: 1; background: #111; border: 1px solid #444; color: var(--primary); padding: 10px; border-radius: 8px; text-align: center; } [cite: 131]
 
-    checkStripeReturn: () => {
-        const urlP = new URLSearchParams(window.location.search);
-        const status = urlP.get('payment_status');
-        if (status === 'success') {
-            const saved = localStorage.getItem('bellgo_temp_card_order');
-            if (saved) {
-                const orderData = JSON.parse(saved);
-                App.sendOrder(orderData.items, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
-                localStorage.removeItem('bellgo_temp_card_order');
-                const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]payment_status=[^&]+/, '');
-                window.history.replaceState({}, document.title, cleanUrl);
-            }
-        } else if (status === 'cancel') { alert("Η πληρωμή ακυρώθηκε."); }
-    },
+.switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; } [cite: 131]
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; } [cite: 132]
+.switch input { opacity: 0; width: 0; height: 0; } [cite: 132]
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 34px; } [cite: 133]
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; } [cite: 134, 135]
+input:checked + .slider { background-color: var(--primary); } [cite: 135]
+input:checked + .slider:before { transform: translateX(18px); } [cite: 135]
 
-    connectSocket: () => {
-        if (window.socket && window.socket.connected) return;
-        window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
-        const socket = window.socket;
+#qrOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 7000; flex-direction: column; align-items: center; justify-content: center; } [cite: 136, 137]
 
-        socket.on('connect', () => {
-            // 🔥 ROOM SYNC: Ensure we join using TARGET_STORE
-            socket.emit('join-store', { storeName: TARGET_STORE, username: customerDetails.name + " (Πελάτης)", role: 'customer', token: localStorage.getItem('fcm_token'), isNative: false });
-            setTimeout(() => { App.checkStripeReturn(); }, 1000);
-        });
-
-        socket.on('menu-update', (data) => { 
-            const container = document.getElementById('menuContainer');
-            container.classList.add('menu-fade-out');
-            setTimeout(() => {
-                  App.renderMenu(data);
-                  container.classList.remove('menu-fade-out');
-            }, 250); 
-        });
-
-        // ✅ NEW: Listen specifically for status changes from the server
-        socket.on('order-changed', (data) => {
-              if (!activeOrderState) return;
-              // Loose equality check for ID safety
-              if (data.id == activeOrderState.id) {
-                  console.log("⚡ Order status changed:", data.status);
-                  activeOrderState.status = data.status;
-                  
-                  // ✅ Save Start Time if provided
-                  if (data.startTime) {
-                      activeOrderState.startTime = data.startTime;
-                  }
-                  
-                  localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                  App.updateStatusUI(data.status);
-              }
-        });
-
-        socket.on('store-settings-update', (settings) => {
-            if (settings) {
-                if (settings.name) {
-                    const newName = settings.name;
-                    document.getElementById('storeNameHeader').innerText = newName;
-                    document.title = newName;
-                }
-                const closedOverlay = document.getElementById('closedOverlay');
-                const btnSend = document.getElementById('btnSendOrder');
-                if (settings.statusCustomer === false) {
-                    closedOverlay.style.display = 'flex';
-                    if(btnSend) { btnSend.disabled = true; btnSend.innerText = "⛔ ΤΟ ΚΑΤΑΣΤΗΜΑ ΕΙΝΑΙ ΚΛΕΙΣΤΟ"; }
-                } else {
-                    closedOverlay.style.display = 'none';
-                    if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; }
-                }
-                if (settings.schedule) {
-                    storeSchedule = settings.schedule;
-                    App.updateTodayHours();
-                }
-            }
-        });
-
-        socket.on('orders-update', (orders) => {
-            if (!activeOrderState) return;
-            // 🔥 FIX: Backup check for order status & start time
-            const myOrder = orders.find(o => o.id == activeOrderState.id);
-            if (myOrder) {
-                // Check if status changed OR if we missed the start time
-                if (activeOrderState.status !== myOrder.status || (myOrder.startTime && !activeOrderState.startTime)) {
-                    
-                    activeOrderState.status = myOrder.status;
-                    if(myOrder.startTime) activeOrderState.startTime = myOrder.startTime; // <--- VITAL FIX
-                    
-                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                    App.updateStatusUI(myOrder.status);
-                }
-            }
-        });
-    },
-
-    updateTodayHours: () => {
-        const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
-        const now = new Date();
-        const todayName = days[now.getDay()];
-        const hours = storeSchedule[todayName] || "Κλειστά";
-        document.getElementById('todayHours').innerText = hours;
-    },
-    
-    showFullSchedule: () => {
-        const daysOrder = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-        const list = document.getElementById('scheduleList');
-        list.innerHTML = '';
-        const now = new Date();
-        const todayName = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'][now.getDay()];
-        daysOrder.forEach(day => {
-            const row = document.createElement('div');
-            row.className = 'schedule-row';
-            if(day === todayName) row.classList.add('today');
-            row.innerHTML = `<span>${day}</span><span>${storeSchedule[day] || 'Κλειστά'}</span>`;
-            list.appendChild(row);
-        });
-        document.getElementById('scheduleViewModal').style.display = 'flex';
-    },
-
-    renderMenu: (data) => {
-        const container = document.getElementById('menuContainer');
-        container.innerHTML = '';
-        let menu = [];
-        try {
-            if(typeof data === 'string' && data.startsWith('[')) { menu = JSON.parse(data); } 
-            else if (typeof data === 'object') { menu = data; } 
-            else { const items = (data || "").split('\n'); menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }]; }
-        } catch(e) { menu = []; }
-        if(Array.isArray(menu)) {
-            menu.sort((a,b) => (a.order || 99) - (b.order || 99));
-            menu.forEach(cat => {
-                const title = document.createElement('div');
-                title.className = 'category-title';
-                title.innerText = cat.name;
-                const itemsDiv = document.createElement('div');
-                itemsDiv.className = 'category-items';
-                cat.items.forEach(item => {
-                    let itemName = "", itemPrice = 0, itemExtras = [];
-                    if (typeof item === 'string') {
-                        const parts = item.split(':');
-                        itemName = parts[0].trim();
-                        if(parts.length > 1) itemPrice = parseFloat(parts[parts.length-1]) || 0;
-                    } else {
-                        itemName = item.name;
-                        itemPrice = item.price;
-                        itemExtras = item.extras || [];
-                    }
-                    if(itemName) {
-                        const box = document.createElement('div');
-                        box.className = 'item-box menu-fade-in';
-                        box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
-                        box.addEventListener('click', (e) => { e.preventDefault(); App.handleItemClick(itemName, itemPrice, itemExtras); });
-                        itemsDiv.appendChild(box);
-                    }
-                });
-                const wrapper = document.createElement('div');
-                wrapper.className = 'category-block menu-fade-in';
-                wrapper.appendChild(title);
-                wrapper.appendChild(itemsDiv);
-                container.appendChild(wrapper);
-            });
-        }
-    },
-
-    currentItem: null,
-    tempSelectedExtras: [],
-    handleItemClick: (name, price, extras) => {
-        if (!extras || extras.length === 0) {
-            App.addToOrder(name, price);
-        } else {
-            App.currentItem = { name, price };
-            App.tempSelectedExtras = [];
-            const list = document.getElementById('userExtrasList');
-            list.innerHTML = '';
-            document.getElementById('userExtrasTitle').innerText = name;
-            extras.forEach((ex) => {
-                const btn = document.createElement('div');
-                btn.className = 'extra-option';
-                btn.innerHTML = `<span>${ex.name}</span><span>${ex.price > 0 ? `+${ex.price}€` : ''}</span>`;
-                btn.onclick = () => {
-                    if (btn.classList.contains('selected')) {
-                        btn.classList.remove('selected');
-                        App.tempSelectedExtras = App.tempSelectedExtras.filter(e => e.name !== ex.name);
-                    } else {
-                        btn.classList.add('selected');
-                        App.tempSelectedExtras.push(ex);
-                    }
-                };
-                list.appendChild(btn);
-            });
-            document.getElementById('userExtrasModal').style.display = 'flex';
-        }
-    },
-    
-    confirmExtras: () => {
-        if (!App.currentItem) return;
-        App.addToOrder(App.currentItem.name, App.currentItem.price);
-        App.tempSelectedExtras.forEach(ex => { App.addToOrder(`  + ${ex.name}`, ex.price); });
-        document.getElementById('userExtrasModal').style.display = 'none';
-    },
-
-    addToOrder: (item, price = 0) => {
-        const txt = document.getElementById('orderText');
-        const entry = price > 0 ? `${item}:${price}` : item;
-        if (txt.value.trim() === '') txt.value = `1 ${entry}`;
-        else txt.value += `\n1 ${entry}`;
-        txt.scrollTop = txt.scrollHeight;
-        const panel = document.getElementById('orderPanel');
-        if (panel.classList.contains('minimized')) App.toggleOrderPanel();
-        App.handleInput(); 
-    },
-
-    toggleOrderPanel: () => {
-        const p = document.getElementById('orderPanel');
-        const icon = document.getElementById('panelIcon');
-        if(p.classList.contains('minimized')) {
-            p.classList.remove('minimized');
-            icon.innerText = '▼';
-        } else {
-            p.classList.add('minimized');
-            icon.innerText = '▲';
-        }
-    },
-
-    handleInput: () => {
-        const text = document.getElementById('orderText').value.trim();
-        const lines = text.split('\n');
-        let validForCard = true;
-        let total = 0;
-        if (text.length === 0) validForCard = false;
-        for (const line of lines) {
-            if (!line.trim()) continue;
-            let qty = 1; let rest = line;
-            const qtyMatch = line.match(/^(\d+)\s+(.*)/);
-            if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
-            if(rest.includes(':')) {
-                const parts = rest.split(':');
-                const priceVal = parseFloat(parts[parts.length-1]);
-                if(!isNaN(priceVal)) { total += qty * priceVal; } 
-                else { validForCard = false; }
-            } else if (!line.trim().startsWith('+')) { validForCard = false; }
-        }
-        document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
-        const btnCard = document.getElementById('payCard');
-        if (validForCard && total > 0) { btnCard.disabled = false; btnCard.innerHTML = "💳 ΚΑΡΤΑ"; } 
-        else { btnCard.disabled = true; btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)"; }
-        return total;
-    },
-
-    requestPayment: () => {
-        const items = document.getElementById('orderText').value.trim();
-        if (!items) return alert("Το καλάθι είναι άδειο!");
-        App.handleInput();
-        document.getElementById('paymentOverlay').style.display = 'flex';
-    },
-
-    confirmPayment: (method) => {
-        const items = document.getElementById('orderText').value.trim();
-        if(method === '💳 ΚΑΡΤΑ') { App.payWithCard(items); } 
-        else { App.sendOrder(items, method); document.getElementById('paymentOverlay').style.display = 'none'; }
-    },
-
-    payWithCard: async (items) => {
-        const totalAmount = App.handleInput();
-        if(totalAmount <= 0) return alert("Σφάλμα ποσού.");
-        localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
-        try {
-            const res = await fetch('/create-order-payment', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })
-            });
-            const data = await res.json();
-            if(data.url) { window.location.href = data.url; } 
-            else { alert("Σφάλμα πληρωμής: " + (data.error || "Άγνωστο")); }
-        } catch(e) { alert("Σφάλμα σύνδεσης με τον Server."); }
-    },
-
-  sendOrder: (items, method) => {
-        const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
-        
-        // 1. Ο Πελάτης δημιουργεί το ID
-        const orderId = Date.now();
-        
-        activeOrderState = { id: orderId, status: 'pending', timestamp: Date.now() };
-        localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-        
-        // 2. Στέλνουμε ΚΑΙ το κείμενο ΚΑΙ το ID στον Server
-        window.socket.emit('new-order', { text: fullText, id: orderId });
-        
-        App.showStatus('pending'); 
-        document.getElementById('orderText').value = ''; 
-        document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
-    },
-
-    minimizeStatus: () => { document.getElementById('statusOverlay').style.height = '0'; },
-    maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
-
-    showStatus: (status) => {
-        const overlay = document.getElementById('statusOverlay');
-        const icon = document.getElementById('statusIcon');
-        const text = document.getElementById('statusText');
-        const sub = document.getElementById('statusSub');
-        const btnNew = document.getElementById('btnNewOrder');
-        const btnMini = document.getElementById('btnStatusMini');
-        const miniText = document.getElementById('miniStatusText');
-        overlay.style.height = '100%'; 
-        btnNew.style.display = 'none'; 
-        
-        let timeString = "--:--";
-        if (activeOrderState && activeOrderState.timestamp) {
-            const date = new Date(activeOrderState.timestamp);
-            timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
-        }
-        if(btnMini) btnMini.style.display = 'flex';
-        let statusLabel = "";
-        
-        if (status === 'pending') {
-            statusLabel = "Αναμονή";
-            icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
-        } else if (status === 'cooking') {
-            statusLabel = "Ετοιμάζεται";
-            
-            // ✅ DISPLAY START TIME LOGIC
-            let startStr = "";
-            if(activeOrderState.startTime) {
-                const d = new Date(activeOrderState.startTime);
-                startStr = " (" + d.toLocaleTimeString('el-GR', {hour:'2-digit', minute:'2-digit'}) + ")";
-            }
-            
-            icon.innerText = '👨‍🍳'; text.innerText = '👨‍🍳 Η παραγγελία ετοιμάζεται!' + startStr; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
-        } else if (status === 'ready') {
-            statusLabel = "Έρχεται";
-            icon.innerText = '🛵'; text.innerText = `🛵 Η παραγγελία έρχεται!`; sub.innerText = 'Ο διανομέας ξεκίνησε';
-            btnNew.style.display = 'block'; 
-        }
-        if(miniText) miniText.innerText = `${statusLabel} ${timeString}`;
-    },
-
-    updateStatusUI: (status) => { App.showStatus(status); },
-
-    resetForNewOrder: () => {
-        if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
-            localStorage.removeItem('bellgo_active_order');
-            activeOrderState = null;
-            document.getElementById('statusOverlay').style.height = '0';
-            document.getElementById('btnStatusMini').style.display = 'none';
-            document.getElementById('orderText').value = '';
-        }
-    },
-    resetUI: () => { 
-        document.getElementById('statusOverlay').style.height = '0'; 
-        document.getElementById('btnStatusMini').style.display = 'none';
-    }
-};
-
-// --- AUTH LISTENER ---
-onAuthStateChanged(auth, (user) => {
-    if (user) { currentUser = user; App.checkDetails(); } 
-    else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContent').style.display = 'none'; }
-});
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } [cite: 138]
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } } [cite: 139]
+@keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -2px); } } [cite: 140, 141]
+@keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } [cite: 142]
+@keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } } [cite: 143, 144]
+@keyframes pulseMini { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } } [cite: 144]
