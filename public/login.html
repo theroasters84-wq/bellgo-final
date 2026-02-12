@@ -1,419 +1,644 @@
-<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BellGo Login</title>
-    
-    <link rel="manifest" id="dynamicManifest" href="manifest.json?icon=admin">
-    
-    <meta name="theme-color" content="#121212">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="admin.png">
-    
-    <script>
-        (function() {
-            const params = new URLSearchParams(window.location.search);
-            const pStore = params.get('store');
-            const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=admin`; 
-            if (pStore) url += `&store=${pStore}`;
-            manifestLink.href = url;
-        })();
-    </script>
-    
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100dvh; margin: 0; overflow: hidden; }
-        
-        .login-container { width: 90%; max-width: 400px; background: #1e1e1e; padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; position: relative; }
-        h1 { color: #FFD700; margin-bottom: 20px; font-size: 28px; }
-        
-        /* INSTALL BUTTON */
-        #btnInstall { display: none; margin-bottom: 15px; background: #00E676; color: black; padding: 12px; border-radius: 8px; border: none; font-weight: bold; width: 100%; cursor: pointer; animation: pulse 2s infinite; font-size: 14px; }
-        
-        /* TABS */
-        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #444; }
-        .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #777; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; font-size: 16px; }
-        .tab.active { color: #FFD700; border-bottom-color: #FFD700; }
+const express = require('express');
+const http = require('http');
+const { Server } = require("socket.io");
+const path = require('path');
+const admin = require("firebase-admin");
 
-        /* FORMS */
-        .form-section { display: none; flex-direction: column; gap: 15px; }
-        .form-section.active { display: flex; }
+// ✅ STRIPE SETUP (ΠΡΟΣΟΧΗ: Σε παραγωγή χρησιμοποιούμε .env)
+const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
+const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
+const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
-        /* INPUTS */
-        .inp { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 16px; width: 100%; box-sizing: border-box; text-align: center; }
-        
-        .btn-main { padding: 14px; border-radius: 6px; border: none; background: #FFD700; color: black; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; margin-top: 10px; }
-        .btn-google { background: #DB4437; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        
-        /* PRICING BUTTONS */
-        .pricing-box { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-price { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #444; background: #333; color: white; cursor: pointer; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .btn-price:hover { background: #444; }
-        .price-tag { font-size: 18px; font-weight: bold; color: #FFD700; }
-        
-        .divider { display: flex; align-items: center; text-align: center; color: #555; margin: 10px 0; }
-        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #333; }
-        .divider:not(:empty)::before { margin-right: .25em; }
-        .divider:not(:empty)::after { margin-left: .25em; }
+// ✅ PRICE LIST
+const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
+const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
-        /* PIN MODAL */
-        #pinModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
-        .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
-        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
-        .num-btn:active { background: #555; }
-        .forgot-link { margin-top: 15px; color: #aaa; text-decoration: underline; font-size: 12px; cursor: pointer; background: none; border: none; display: none; }
+/* ---------------- FIREBASE ADMIN SETUP ---------------- */
+let db;
+try {
+    const serviceAccount = require("./serviceAccountKey.json");
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+    db = admin.firestore();
+    console.log("✅ Firebase Admin & Firestore Initialized");
+} catch (e) {
+    console.log("⚠️ Firebase Warning: serviceAccountKey.json not found.");
+}
 
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-    </style>
-</head>
-<body>
+/* ---------------- SERVER SETUP ---------------- */
+const app = express();
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); 
 
-    <div class="login-container">
-        <h1>BellGo 🔔</h1>
-        
-        <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
-        
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('staff')">ΠΡΟΣΩΠΙΚΟ</button>
-            <button class="tab" onclick="switchTab('admin')">ADMIN</button>
-        </div>
+const server = http.createServer(app);
 
-        <div id="staffForm" class="form-section active">
-            <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)">
-            <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
-            <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
-            
-            <select id="stRole" class="inp">
-                <option value="waiter">Σερβιτόρος 🤵</option>
-                <option value="driver">Διανομέας 🛵</option>
-            </select>
+const io = new Server(server, {
+    cors: { origin: "*" },
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 
-            <button class="btn-main" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
-        </div>
+/* ---------------- DATA STORE (MULTI-TENANT MEMORY) ---------------- */
+// 🔥 ΚΡΙΣΙΜΗ ΑΛΛΑΓΗ: Αποθήκευση δεδομένων ΑΝΑ ΚΑΤΑΣΤΗΜΑ
+// Δομή: storesData["storeName"] = { settings: {}, menu: [], orders: [] }
+let storesData = {};
+let activeUsers = {}; // Global users list linked to stores
 
-        <div id="adminForm" class="form-section">
-            <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
-            <button class="btn-main" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
-            
-            <div class="pricing-box">
-                <button class="btn-price" onclick="Admin.buyPackage('basic')">
-                    <span class="price-tag">4€</span>
-                    <span>Basic (Index)</span>
-                </button>
-                <button class="btn-price" onclick="Admin.buyPackage('premium')">
-                    <span class="price-tag">10€</span>
-                    <span>Premium (Full)</span>
-                </button>
-            </div>
+// Default Settings Template
+const defaultSettings = { 
+    name: "BellGo Delivery", 
+    pin: null, 
+    adminEmail: "", 
+    statusCustomer: true, 
+    statusStaff: true,
+    resetTime: "04:00",
+    stripeConnectId: "" 
+}; 
 
-            <div class="divider">Ή</div>
-            
-            <button class="btn-main btn-google" onclick="Admin.googleLogin()">
-                <span>G</span> Σύνδεση Google
-            </button>
-        </div>
-    </div>
+/* ---------------- FIREBASE HELPERS ---------------- */
 
-    <div id="pinModal">
-        <div class="pin-box">
-            <h3 id="pinTitle" style="margin:0; color:#FFD700;">ΕΙΣΑΓΩΓΗ PIN</h3>
-            <p id="pinSub" style="font-size:12px; color:#aaa;">Εισάγετε τον κωδικό καταστήματος</p>
-            <div id="pinDisplay" class="pin-display"></div>
-            <div class="numpad">
-                <button class="num-btn" onclick="PIN.add(1)">1</button>
-                <button class="num-btn" onclick="PIN.add(2)">2</button>
-                <button class="num-btn" onclick="PIN.add(3)">3</button>
-                <button class="num-btn" onclick="PIN.add(4)">4</button>
-                <button class="num-btn" onclick="PIN.add(5)">5</button>
-                <button class="num-btn" onclick="PIN.add(6)">6</button>
-                <button class="num-btn" onclick="PIN.add(7)">7</button>
-                <button class="num-btn" onclick="PIN.add(8)">8</button>
-                <button class="num-btn" onclick="PIN.add(9)">9</button>
-                <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
-                <button class="num-btn" onclick="PIN.add(0)">0</button>
-                <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
-            </div>
-            <button id="btnForgot" class="forgot-link" onclick="PIN.resetFlow()">Ξέχασα το PIN</button>
-        </div>
-    </div>
+// Φόρτωση δεδομένων συγκεκριμένου καταστήματος
+async function getStoreData(storeName) {
+    // 1. Αν υπάρχει στη μνήμη, το επιστρέφουμε
+    if (storesData[storeName]) return storesData[storeName];
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    // 2. Αν δεν υπάρχει, προσπαθούμε να το φορτώσουμε από Firebase
+    console.log(`📥 Loading data for: ${storeName}`);
+    let data = { settings: { ...defaultSettings }, menu: [], orders: [] };
 
-        // ✅ SW REGISTRATION
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(() => console.log("✅ Login SW Registered"));
-        }
-
-        /* -----------------------------------------------
-           ✅ SMART INSTALL LOGIC
-        ----------------------------------------------- */
-        let deferredPrompt;
-        const btnInstall = document.getElementById('btnInstall');
-        const isAndroid = /Android/i.test(navigator.userAgent);
-
-        if (isAndroid) {
-            btnInstall.innerText = "🤖 ΚΑΤΕΒΑΣΤΕ ΤΟ APP (APK)";
-            btnInstall.style.display = "block";
-            btnInstall.style.background = "#FF9800";
-        } else {
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                btnInstall.innerText = "📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ";
-                btnInstall.style.display = 'block';
-            });
-        }
-
-        window.handleInstall = async () => {
-            if (isAndroid) {
-                window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/download/v.1.5.0/app-release.apk";
-            } else if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') btnInstall.style.display = 'none';
-                deferredPrompt = null;
-            }
-        };
-
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
-            authDomain: "bellgo-5dbe5.firebaseapp.com", 
-            projectId: "bellgo-5dbe5", 
-            storageBucket: "bellgo-5dbe5.firebasestorage.app", 
-            messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
-        };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-
-        const socket = io({ transports: ['polling', 'websocket'] });
-
-        let currentPinMode = 'enter'; 
-        let tempPin = '';
-        let pinValue = '';
-        let adminUser = null; 
-        let adminPlan = 'basic'; // Default fallback
-
-        // ✅ AUTO-CHECK STRIPE RETURN
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const emailParam = urlParams.get('email');
-            if (emailParam) {
-                document.getElementById('adminEmailInp').value = emailParam;
-                // Auto trigger login check
-                Admin.manualLogin();
-            }
-        };
-
-        window.switchTab = (tab) => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
-            if (tab === 'staff') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('staffForm').classList.add('active');
-            } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('adminForm').classList.add('active');
-            }
-        };
-
-        window.PIN = {
-            add: (n) => { if (pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
-            clear: () => { pinValue = ''; PIN.updateDisplay(); },
-            updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
-            resetFlow: () => {
-                if(!confirm("Θέλετε να ορίσετε νέο κωδικό;")) return;
-                currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay();
-                document.getElementById('pinTitle').innerText = "ΝΕΟ PIN";
-                document.getElementById('pinSub').innerText = "Ορίστε νέο 4-ψήφιο κωδικό";
-                document.getElementById('btnForgot').style.display = 'none';
-            },
-            submit: () => {
-                if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-                if (currentPinMode === 'enter') {
-                    socket.emit('verify-pin', pinValue);
-                } else if (currentPinMode === 'create') {
-                    tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
-                    currentPinMode = 'confirm';
-                    document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
-                    document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
-                } else if (currentPinMode === 'confirm') {
-                    if (pinValue === tempPin) socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
-                    else { alert("Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); }
+    try {
+        if (db) {
+            const doc = await db.collection('stores').doc(storeName).get();
+            if (doc.exists) {
+                const firebaseData = doc.data();
+                if (firebaseData.settings) data.settings = { ...defaultSettings, ...firebaseData.settings };
+                if (firebaseData.menu) data.menu = firebaseData.menu;
+                if (firebaseData.orders) {
+                    // Filter old orders (>24h)
+                    const yesterday = Date.now() - (24 * 60 * 60 * 1000);
+                    data.orders = (firebaseData.orders || []).filter(o => o.id > yesterday);
                 }
-            }
-        };
-
-        // --- STAFF LOGIC (Modified for Plan Check) ---
-        window.Staff = {
-            login: () => {
-                const name = document.getElementById('stName').value.trim();
-                const pin = document.getElementById('stPin').value.trim();
-                const role = document.getElementById('stRole').value;
-                const adminEmail = document.getElementById('stStore').value.trim(); // Store Email
-
-                if (!name || !pin || !adminEmail) return alert("Συμπληρώστε τα πεδία!");
-                
-                // 1. Verify PIN First
-                socket.emit('verify-pin', pin);
-                
-                socket.once('pin-verified', async (res) => {
-                    if (res.success) {
-                        // 2. PIN OK -> Check Admin's Plan
-                        try {
-                            const subRes = await fetch('/check-subscription', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email: adminEmail })
-                            });
-                            const subData = await subRes.json();
-                            
-                            // Save Session
-                            const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan || 'basic' };
-                            localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-
-                            // 3. Redirect based on Plan
-                            if (subData.active && subData.plan === 'premium') {
-                                window.location.href = "stafpremium.html"; // Premium Staff
-                            } else {
-                                window.location.href = "index.html"; // Basic Staff
-                            }
-                        } catch (e) {
-                            alert("Σφάλμα ελέγχου συνδρομής.");
-                        }
-                    } else {
-                        alert("Λάθος Κωδικός Καταστήματος (PIN)!");
-                        PIN.clear();
-                    }
-                });
-            }
-        };
-
-        // --- ADMIN LOGIC ---
-        window.Admin = {
-            manualLogin: async () => {
-                const email = document.getElementById('adminEmailInp').value.trim();
-                if(!email) return alert("Παρακαλώ εισάγετε email.");
-
-                try {
-                    // 1. Check Subscription
-                    const response = await fetch('/check-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
-                    });
-                    const data = await response.json();
-
-                    if (data.active) {
-                        // 2. Active -> Set Plan & Proceed to PIN
-                        adminUser = { email: email, displayName: "Admin" };
-                        adminPlan = data.plan; // Save plan for later redirect
-                        socket.emit('check-pin-status');
-                    } else {
-                        alert("Δεν βρέθηκε ενεργή συνδρομή. Παρακαλώ επιλέξτε πακέτο.");
-                    }
-                } catch (e) { alert("Σφάλμα σύνδεσης."); }
-            },
-
-            googleLogin: () => {
-                signInWithPopup(auth, provider).then(async (result) => {
-                    // Similar check for Google Login
-                    const email = result.user.email;
-                    const response = await fetch('/check-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
-                    });
-                    const data = await response.json();
-                    
-                    if(data.active) {
-                        adminUser = result.user;
-                        adminPlan = data.plan;
-                        socket.emit('check-pin-status');
-                    } else {
-                        alert("Το Google Email δεν έχει ενεργή συνδρομή.");
-                    }
-                }).catch((error) => alert(error.message));
-            },
-
-            buyPackage: async (plan) => {
-                const email = document.getElementById('adminEmailInp').value.trim();
-                if(!email) return alert("Βάλτε το email σας στο πεδίο από πάνω!");
-
-                const res = await fetch('/create-checkout-session', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email: email, plan: plan })
-                });
-                const data = await res.json();
-                if(data.url) window.location.href = data.url;
-                else alert("Σφάλμα σύνδεσης με Stripe");
-            }
-        };
-
-        // --- SOCKET LISTENERS (REDIRECTS MODIFIED) ---
-        socket.on('pin-status', (data) => {
-            document.getElementById('pinModal').style.display = 'flex';
-            if (data.hasPin) {
-                currentPinMode = 'enter';
-                document.getElementById('pinTitle').innerText = "ΕΙΣΑΓΩΓΗ PIN";
-                document.getElementById('pinSub').innerText = "Βάλτε τον κωδικό σας";
-                document.getElementById('btnForgot').style.display = 'block';
             } else {
-                currentPinMode = 'create';
-                document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
-                document.getElementById('pinSub').innerText = "Ορίστε έναν νέο 4-ψήφιο κωδικό";
-                document.getElementById('btnForgot').style.display = 'none';
-            }
-        });
-
-        socket.on('pin-success', (data) => {
-            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
-            localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-            
-            // REDIRECT BASED ON PLAN
-            if(adminPlan === 'premium') window.location.href = "premium.html";
-            else window.location.href = "index.html";
-        });
-
-        socket.on('pin-verified', (res) => {
-            if (document.getElementById('pinModal').style.display === 'flex' && currentPinMode === 'enter') {
-                if (res.success) {
-                    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
-                    localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
-                    
-                    // REDIRECT BASED ON PLAN
-                    if(adminPlan === 'premium') window.location.href = "premium.html";
-                    else window.location.href = "index.html";
-                } else {
-                    alert("Λάθος PIN!");
-                    PIN.clear();
-                }
-            }
-        });
-
-        // AUTO-REDIRECT IF LOGGED IN
-        if (localStorage.getItem('bellgo_session')) {
-            const saved = JSON.parse(localStorage.getItem('bellgo_session'));
-            const plan = saved.plan || 'basic';
-            if (saved.role === 'admin') {
-                if(plan === 'premium') window.location.href = "premium.html";
-                else window.location.href = "index.html";
-            } else {
-                // Staff
-                if(plan === 'premium') window.location.href = "stafpremium.html";
-                else window.location.href = "index.html";
+                // Initialize new store in DB
+                await db.collection('stores').doc(storeName).set(data);
             }
         }
-    </script>
-</body>
-</html>
+    } catch (e) {
+        console.error(`❌ Error loading store ${storeName}:`, e.message);
+    }
+
+    // Save to memory
+    storesData[storeName] = data;
+    return data;
+}
+
+// Αποθήκευση δεδομένων καταστήματος στο Firebase
+async function saveStoreToFirebase(storeName) {
+    if (!storesData[storeName] || !db) return;
+    try { 
+        await db.collection('stores').doc(storeName).set(storesData[storeName], { merge: true }); 
+    } catch(e){ console.error(`❌ Save Error (${storeName}):`, e.message); }
+}
+
+/* ---------------- VIRTUAL ROUTES ---------------- */
+app.get('/shop/:storeName', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'order.html')); });
+app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
+app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
+
+/* ---------------- STRIPE CONNECT OAUTH ---------------- */
+app.get('/connect-stripe', (req, res) => {
+    // Πρέπει να ξέρουμε ποιο store κάνει connect. Εδώ το βάζουμε γενικά,
+    // αλλά ιδανικά θα έπρεπε να περνάς το storeName στο state.
+    // Προς το παρόν το αφήνουμε απλό, αλλά η callback δεν ξέρει ποιο store να ενημερώσει
+    // αν δεν το αποθηκεύσεις σε cookie ή στο state.
+    // 🔥 FIX: Χρησιμοποιούμε cookie ή υποθέτουμε ότι ο χρήστης θα κάνει login μετά.
+    const state = "BellGo_Store"; 
+    const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&state=${state}`;
+    res.redirect(url);
+});
+
+// Σημείωση: Αυτό το callback έχει ένα θέμα λογικής: Δεν ξέρει σε ποιο storeData να γράψει το stripeId.
+// Κανονικά θα έπρεπε να στέλνουμε το ID στο Front-end και να το στέλνει το Front-end μέσω Socket.
+// Εδώ απλοποιούμε: Επιστρέφουμε το ID στον χρήστη και το JS του premium.html το στέλνει πίσω.
+app.get('/stripe-connect-callback', async (req, res) => {
+    const { code, error } = req.query;
+    if (error || !code) return res.send("<h1>❌ Σφάλμα Stripe.</h1>");
+    
+    try {
+        const response = await stripe.oauth.token({ grant_type: 'authorization_code', code: code });
+        const stripeId = response.stripe_user_id;
+        
+        // Στέλνουμε το ID πίσω στο frontend για να το αποθηκεύσει μέσω socket
+        res.send(`
+            <h1>✅ Επιτυχία!</h1>
+            <p>Σύνδεση επιτυχής. Επιστροφή...</p>
+            <script>
+                localStorage.setItem('temp_stripe_connect_id', '${stripeId}');
+                setTimeout(() => window.location.href='/premium.html', 1000);
+            </script>
+        `);
+    } catch (err) {
+        res.status(500).send("Error connecting Stripe account: " + err.message);
+    }
+});
+
+/* ---------------- DYNAMIC MANIFEST ---------------- */
+app.get('/manifest.json', async (req, res) => {
+    const iconType = req.query.icon || 'admin'; 
+    const storeParam = req.query.store || "general";
+    
+    // 🔥 FIX: Allow Email characters (@, ., -, _) in store ID
+    const safeStoreId = storeParam.replace(/[^a-zA-Z0-9@._-]/g, '');
+    
+    // Φόρτωσε ρυθμίσεις για το συγκεκριμένο κατάστημα
+    let storeName = "BellGo App";
+    if (safeStoreId !== "general") {
+        const data = await getStoreData(safeStoreId);
+        storeName = data.settings.name || `Shop ${safeStoreId}`;
+    }
+    
+    // Override if name provided in query
+    if (req.query.name) storeName = req.query.name;
+
+    let appId = `bellgo_${iconType}_${safeStoreId}`; 
+    let iconFile = "admin.png"; 
+    let startUrl = ".";  
+    let scopeUrl = "/";        
+
+    if (iconType === 'shop') {
+        iconFile = "shop.png"; 
+        startUrl = `/shop/${safeStoreId}?name=${encodeURIComponent(storeName)}`;
+        scopeUrl = `/shop/${safeStoreId}`; 
+    } else {
+        iconFile = "admin.png";
+        startUrl = `/login.html`; 
+        scopeUrl = "/";
+    }
+
+    res.set('Content-Type', 'application/manifest+json');
+    res.json({
+        "id": appId,              
+        "name": storeName,            
+        "short_name": storeName,
+        "start_url": startUrl,   
+        "scope": scopeUrl,        
+        "display": "standalone",
+        "background_color": "#121212",
+        "theme_color": "#121212",
+        "orientation": "portrait",
+        "icons": [
+            { "src": `/${iconFile}`, "sizes": "192x192", "type": "image/png" },
+            { "src": `/${iconFile}`, "sizes": "512x512", "type": "image/png" }
+        ]
+    });
+});
+
+/* ---------------- STRIPE PAYMENTS ---------------- */
+app.post('/check-subscription', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.json({ active: false });
+    try {
+        const customers = await stripe.customers.search({ query: `email:'${email}'` });
+        if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
+        const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
+        if (subscriptions.data.length > 0) {
+            const planId = subscriptions.data[0].items.data[0].price.id;
+            let planType = 'basic';
+            if (planId === PRICE_PREMIUM) planType = 'premium';
+            return res.json({ active: true, plan: planType });
+        } else { return res.json({ active: false }); }
+    } catch (e) { res.json({ active: false, error: e.message }); }
+});
+
+app.post('/create-checkout-session', async (req, res) => {
+    const { email, plan } = req.body;
+    let priceId = PRICE_BASIC; 
+    if (plan === 'premium') priceId = PRICE_PREMIUM; 
+    try {
+        const session = await stripe.checkout.sessions.create({
+            line_items: [{ price: priceId, quantity: 1 }],
+            mode: 'subscription',
+            customer_email: email,
+            success_url: `${YOUR_DOMAIN}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+            cancel_url: `${YOUR_DOMAIN}/login.html`,
+        });
+        res.json({ url: session.url });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/create-order-payment', async (req, res) => {
+    const { amount, storeName } = req.body; 
+    
+    // Φόρτωση του συγκεκριμένου store για να πάρουμε το Stripe ID του
+    const data = await getStoreData(storeName);
+    const shopStripeId = data.settings.stripeConnectId;
+    
+    if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
+    
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'eur',
+                    product_data: { name: 'Παραγγελία Delivery', description: `Κατάστημα: ${data.settings.name}` },
+                    unit_amount: Math.round(amount * 100),
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            payment_intent_data: { transfer_data: { destination: shopStripeId } },
+            success_url: `${YOUR_DOMAIN}/shop/${storeName}?payment_status=success`,
+            cancel_url: `${YOUR_DOMAIN}/shop/${storeName}?payment_status=cancel`,
+        });
+        res.json({ url: session.url });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ---------------- NOTIFICATION LOGIC ---------------- */
+function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
+    if (target && target.fcmToken) { 
+        let targetUrl = "/stafpremium.html";
+        if (target.role === 'admin') targetUrl = "/premium.html";
+
+        const msg = {
+            token: target.fcmToken,
+            notification: {
+                title: title,
+                body: body,
+            },
+            android: { 
+                priority: "high",
+                notification: {
+                    sound: "default",
+                    tag: "bellgo-alarm", 
+                    clickAction: `${YOUR_DOMAIN}${targetUrl}`
+                }
+            },
+            webpush: { 
+                headers: { "Urgency": "high" },
+                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: '/admin.png',
+                    requireInteraction: true, 
+                    tag: 'bellgo-alarm',
+                    renotify: true,
+                    vibrate: [500, 200, 500]
+                }
+            },
+            data: { 
+                ...dataPayload, 
+                title: title, 
+                body: body, 
+                url: targetUrl 
+            }
+        };
+        admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
+    }
+}
+
+// Update clients in a specific store room
+async function updateStoreClients(storeName) {
+    if (!storeName || !storesData[storeName]) return;
+    
+    const store = storesData[storeName];
+
+    // Filter staff list for this store
+    const list = Object.values(activeUsers)
+        .filter(u => u.store === storeName && u.role !== 'customer')
+        .map(u => ({ 
+            name: u.username, 
+            username: u.username, 
+            role: u.role, 
+            status: u.status, 
+            isRinging: u.isRinging 
+        }));
+
+    // Send updates strictly to this room
+    io.to(storeName).emit('staff-list-update', list);
+    io.to(storeName).emit('orders-update', store.orders);
+    io.to(storeName).emit('menu-update', store.menu);
+    io.to(storeName).emit('store-settings-update', store.settings);
+    
+    // Persist to Firebase
+    saveStoreToFirebase(storeName);
+}
+
+/* ---------------- SOCKET.IO ---------------- */
+io.on('connection', (socket) => {
+
+    // Helper to get current store data easily
+    const getMyStore = () => {
+        if (!socket.store) return null;
+        return storesData[socket.store];
+    };
+
+    socket.on('join-store', async (data) => {
+        let rawStore = data.storeName || '';
+        if (!rawStore && data.role === 'customer') {
+            console.log("⚠️ Customer tried to join without storeName");
+            return;
+        }
+        
+        // Αν δεν έχει όνομα (π.χ. admin login χωρίς παράμετρο), προσπάθησε να βρεις default ή σφάλμα
+        if (!rawStore) {
+             // Εδώ υποθέτουμε ότι ο admin θα στείλει storeName αν το έχει αποθηκευμένο. 
+             // Αν είναι κενό, δεν μπορεί να συνεχίσει σωστά σε multi-tenant.
+             return;
+        }
+
+        if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');
+        
+        // Normalize Store Name
+        const storeName = rawStore.toLowerCase().trim();
+        const username = (data.username || '').trim();
+        if (!storeName || !username) return;
+
+        // 🔥 Load data for this store specifically
+        await getStoreData(storeName);
+
+        socket.store = storeName;
+        socket.username = username;
+        socket.role = data.role || 'waiter'; 
+        if (data.role === 'customer') socket.role = 'customer';
+
+        socket.join(storeName); // Join Socket Room
+        console.log(`📡 User ${username} joined room: ${storeName}`); 
+
+        const key = `${storeName}_${username}`;
+        const wasRinging = activeUsers[key]?.isRinging || false;
+        const existingToken = activeUsers[key]?.fcmToken;
+
+        activeUsers[key] = {
+            store: storeName, username, role: socket.role, socketId: socket.id,
+            fcmToken: data.token || existingToken, 
+            status: "online", lastSeen: Date.now(),
+            isRinging: wasRinging, isNative: data.isNative 
+        };
+
+        updateStoreClients(storeName);
+        
+        if(wasRinging) {
+             socket.emit('ring-bell'); 
+        }
+    });
+
+    // 🔥 FIX: Listeners for PIN that accept EMAIL payload (without being joined yet)
+    socket.on('check-pin-status', async (data) => { 
+        const targetEmail = data.email; 
+        if (!targetEmail) return;
+        const store = await getStoreData(targetEmail);
+        socket.emit('pin-status', { hasPin: !!store.settings.pin }); 
+    });
+
+    socket.on('verify-pin', async (data) => {
+        // data can be just string (old logic) or object {pin, email} (new logic)
+        const pin = data.pin || data;
+        const email = data.email || socket.store;
+
+        if (email) {
+            const store = await getStoreData(email);
+            if (store.settings.pin === pin) {
+                socket.emit('pin-verified', { success: true, storeId: email });
+            } else {
+                socket.emit('pin-verified', { success: false });
+            }
+        }
+    });
+
+    socket.on('set-new-pin', async (data) => {
+        const email = data.email;
+        if(email) {
+            const store = await getStoreData(email);
+            store.settings.pin = data.pin;
+            store.settings.adminEmail = email; 
+            socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
+            updateStoreClients(email);
+        }
+    });
+
+    socket.on('update-token', (data) => {
+        const key = `${socket.store}_${data.username}`;
+        if (activeUsers[key]) activeUsers[key].fcmToken = data.token;
+    });
+
+    socket.on('toggle-status', (data) => {
+        const store = getMyStore();
+        if (store) {
+            if (data.type === 'customer') store.settings.statusCustomer = data.isOpen;
+            if (data.type === 'staff') store.settings.statusStaff = data.isOpen;
+            updateStoreClients(socket.store);
+        }
+    });
+
+    socket.on('save-store-name', (newName) => { 
+        const store = getMyStore();
+        if (store) {
+            store.settings.name = newName; 
+            updateStoreClients(socket.store);
+        }
+    });
+    
+    socket.on('save-store-settings', (data) => {
+        const store = getMyStore();
+        if (store) {
+            if(data.resetTime) store.settings.resetTime = data.resetTime;
+            if(data.stripeConnectId) store.settings.stripeConnectId = data.stripeConnectId;
+            if(data.schedule) store.settings.schedule = data.schedule; // Save schedule
+            if(data.hours) store.settings.hours = data.hours; // Save legacy hours string
+            updateStoreClients(socket.store);
+        }
+    });
+
+    socket.on('save-menu', (data) => {
+        const store = getMyStore();
+        if (store) {
+            try {
+                let newMenuData = [];
+                let mode = 'permanent';
+                if (Array.isArray(data)) newMenuData = data;
+                else if (data.menu) { newMenuData = data.menu; mode = data.mode || 'permanent'; }
+
+                if (mode === 'permanent') {
+                    store.menu = JSON.parse(JSON.stringify(newMenuData));
+                }
+                // Αν είναι temporary, δεν το σώζουμε μόνιμα, απλά το στέλνουμε (δεν υποστηρίζεται πλήρως στο τωρινό logic)
+                // Εδώ υποθέτουμε ότι το liveMenu == masterMenu για απλότητα
+                updateStoreClients(socket.store);
+            } catch (e) { console.error(e); }
+        }
+    });
+
+    socket.on('chat-message', (data) => {
+        if(socket.store) {
+            io.to(socket.store).emit('chat-message', { sender: socket.username, text: data.text });
+        }
+    });
+
+    socket.on('new-order', (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        
+        // Check if store is open
+        if (!store.settings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
+
+        // 🔥 FIX: Διαβάζουμε το ID από τον πελάτη (data.id) αν υπάρχει, αλλιώς φτιάχνουμε νέο
+        // Επίσης χειριζόμαστε την περίπτωση που το data είναι απλό string (παλιά έκδοση)
+        const orderText = data.text || data; 
+        const orderId = data.id || Date.now(); 
+
+        const newOrder = {
+            id: orderId, // ✅ Χρήση του κοινού ID
+            text: orderText,
+            from: socket.username,
+            status: 'pending',
+            store: socket.store 
+        };
+        
+        store.orders.push(newOrder);
+        console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
+        updateStoreClients(socket.store);
+
+        // Notify Admins
+        Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => {
+            adm.isRinging = true; 
+            if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
+            sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
+        });
+        // Update again to reflect admin ringing state
+        updateStoreClients(socket.store);
+    });
+
+    socket.on('accept-order', (id) => { 
+        const store = getMyStore();
+        if(store){ 
+            const o = store.orders.find(x => x.id == id); 
+            if(o){ 
+                o.status = 'cooking'; 
+                o.startTime = Date.now();
+                updateStoreClients(socket.store); 
+                // Send explicit event for fast UI update
+                io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime });
+            } 
+        } 
+    });
+    
+    socket.on('ready-order', (id) => { 
+        const store = getMyStore();
+        if(store){ 
+            const o = store.orders.find(x => x.id == id); 
+            if(o){ 
+                o.status = 'ready'; 
+                updateStoreClients(socket.store); 
+                io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready' });
+
+                const tKey = `${socket.store}_${o.from}`; 
+                const tUser = activeUsers[tKey]; 
+                if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
+            } 
+        } 
+    });
+    
+    socket.on('pay-order', (id) => { 
+        const store = getMyStore();
+        if(store) {
+            store.orders = store.orders.filter(x => x.id != id); 
+            updateStoreClients(socket.store); 
+        }
+    });
+    
+    // 🔔 STAFF ALARM
+    socket.on('trigger-alarm', (tName) => { 
+        const key = `${socket.store}_${tName}`; 
+        const t = activeUsers[key]; 
+        if(t){ 
+            t.isRinging = true; 
+            updateStoreClients(socket.store); 
+            if(t.socketId) io.to(t.socketId).emit('ring-bell'); 
+            sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!");
+        } 
+    });
+
+    // ✅ SMART ALARM ACCEPTED
+    socket.on('alarm-accepted', (data) => {
+        let userKey = null;
+        if (data && data.store && data.username) {
+            const directKey = `${data.store}_${data.username}`;
+            if (activeUsers[directKey]) userKey = directKey;
+        }
+        if (!userKey) {
+            for (const [key, user] of Object.entries(activeUsers)) {
+                if (user.socketId === socket.id) { userKey = key; break; }
+            }
+        }
+        if (userKey) {
+            const user = activeUsers[userKey];
+            user.isRinging = false; 
+            io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
+            updateStoreClients(user.store); 
+        }
+    });
+
+    socket.on('manual-logout', (data) => { 
+        const tUser = data && data.targetUser ? data.targetUser : socket.username; 
+        const tKey = `${socket.store}_${tUser}`; 
+        if (activeUsers[tKey]) { 
+            delete activeUsers[tKey]; 
+            updateStoreClients(socket.store); 
+        } 
+    });
+
+    socket.on('disconnect', () => { 
+        const key = `${socket.store}_${socket.username}`; 
+        if (activeUsers[key] && activeUsers[key].socketId === socket.id) { 
+            activeUsers[key].status = 'away'; 
+            updateStoreClients(socket.store); 
+        } 
+    });
+});
+
+// CRON JOBS
+// Auto-reset menu at specific time
+setInterval(() => {
+    try {
+        const nowInGreece = new Date().toLocaleTimeString('el-GR', { timeZone: 'Europe/Athens', hour: '2-digit', minute: '2-digit', hour12: false });
+        // Check for every store
+        Object.keys(storesData).forEach(storeName => {
+            const store = storesData[storeName];
+            if (store.settings.resetTime && nowInGreece === store.settings.resetTime) {
+                // Here we just broadcast menu again to ensure sync
+                io.to(storeName).emit('menu-update', store.menu);
+            }
+        });
+    } catch (e) {}
+}, 60000); 
+
+// Cleanup inactive users (1 hour)
+setInterval(() => { 
+    const now = Date.now(); 
+    for (const key in activeUsers) { 
+        if (now - activeUsers[key].lastSeen > 3600000) {
+            const store = activeUsers[key].store;
+            delete activeUsers[key]; 
+            updateStoreClients(store);
+        }
+    } 
+}, 60000);
+
+// 🔥 LOOPING NOTIFICATIONS (3 SECONDS)
+setInterval(() => {
+    for (const key in activeUsers) {
+        const user = activeUsers[key];
+        if (user.isRinging && user.fcmToken) {
+            const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!";
+            const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!";
+            sendPushNotification(user, msg, body);
+        }
+    }
+}, 3000); 
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
