@@ -34,10 +34,6 @@
         
         #btnInstall { display: none; margin-bottom: 15px; background: #00E676; color: black; padding: 12px; border-radius: 8px; border: none; font-weight: bold; width: 100%; cursor: pointer; animation: pulse 2s infinite; font-size: 14px; }
         
-        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #444; }
-        .tab { flex: 1; padding: 10px; background: transparent; border: none; color: #777; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; font-size: 16px; }
-        .tab.active { color: #FFD700; border-bottom-color: #FFD700; }
-
         .form-section { display: none; flex-direction: column; gap: 15px; }
         .form-section.active { display: flex; }
 
@@ -46,8 +42,7 @@
         .btn-main { padding: 14px; border-radius: 6px; border: none; background: #FFD700; color: black; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-google { background: #DB4437; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
         
-        .pricing-box { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-price { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #444; background: #333; color: white; cursor: pointer; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .btn-price { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #444; background: #333; color: white; cursor: pointer; font-size: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .btn-price:hover { background: #444; }
         .price-tag { font-size: 18px; font-weight: bold; color: #FFD700; }
         
@@ -64,6 +59,15 @@
         .num-btn:active { background: #555; }
         .forgot-link { margin-top: 15px; color: #aaa; text-decoration: underline; font-size: 12px; cursor: pointer; background: none; border: none; display: none; }
 
+        /* NEW ROLE GRID */
+        .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .btn-role { padding: 20px 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 14px; transition: 0.2s; }
+        .btn-role:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
+        .role-icon { font-size: 24px; margin-bottom: 5px; }
+        
+        .btn-sub-link { background: none; border: none; color: #555; text-decoration: underline; font-size: 12px; cursor: pointer; margin-top: 10px; }
+        .btn-back { background: transparent; border: 1px solid #555; color: #aaa; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; margin-top: 15px; width: 100%; }
+
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     </style>
 </head>
@@ -73,31 +77,66 @@
         <h1>BellGo 🔔</h1>
         <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('staff')">ΠΡΟΣΩΠΙΚΟ</button>
-            <button class="tab" onclick="switchTab('admin')">ADMIN</button>
+        <!-- 1. ROLE SELECTION SCREEN -->
+        <div id="roleSelection" class="form-section active">
+            <p style="color:#aaa; margin-bottom:15px;">Επιλέξτε τον ρόλο σας:</p>
+            <div class="role-grid">
+                <button class="btn-role" onclick="UI.showAdminLogin()">
+                    <span class="role-icon">🏪</span> ΤΑΜΕΙΟ
+                </button>
+                <button class="btn-role" onclick="UI.showAdminLogin()">
+                    <span class="role-icon">👨‍🍳</span> ΚΟΥΖΙΝΑ
+                </button>
+                <button class="btn-role" onclick="UI.showStaffLogin('waiter')">
+                    <span class="role-icon">🤵</span> ΣΕΡΒΙΤΟΡΟΣ
+                </button>
+                <button class="btn-role" onclick="UI.showStaffLogin('driver')">
+                    <span class="role-icon">🛵</span> ΔΙΑΝΟΜΕΑΣ
+                </button>
+            </div>
+            <button class="btn-sub-link" onclick="UI.showSubscription()">Αγορά Συνδρομής</button>
         </div>
 
-        <div id="staffForm" class="form-section active">
+        <!-- 2. STAFF LOGIN FORM -->
+        <div id="staffForm" class="form-section">
+            <h3 style="color:#FFD700; margin:0;">Είσοδος Προσωπικού</h3>
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
             <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
-            <select id="stRole" class="inp">
+            <!-- Hidden Select, controlled by JS -->
+            <select id="stRole" class="inp" style="display:none;">
                 <option value="waiter">Σερβιτόρος 🤵</option>
                 <option value="driver">Διανομέας 🛵</option>
             </select>
             <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
+            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
         </div>
 
+        <!-- 3. ADMIN LOGIN FORM -->
         <div id="adminForm" class="form-section">
+            <h3 style="color:#FFD700; margin:0;">Διαχείριση (Admin)</h3>
             <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
             <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
-            <div class="pricing-box">
-                <button class="btn-price" onclick="Admin.buyPackage('basic')"><span class="price-tag">4€</span><span>Basic (Index)</span></button>
-                <button class="btn-price" onclick="Admin.buyPackage('premium')"><span class="price-tag">10€</span><span>Premium (Full)</span></button>
-            </div>
             <div class="divider">Ή</div>
             <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> Σύνδεση Google</button>
+            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
+        </div>
+
+        <!-- 4. SUBSCRIPTION SCREEN -->
+        <div id="subscriptionScreen" class="form-section">
+            <h3 style="color:#FFD700; margin:0;">Επιλογή Πακέτου</h3>
+            <p style="color:#aaa; font-size:12px; margin-bottom:15px;">Εισάγετε το Email σας στο Admin Login πριν την αγορά.</p>
+            
+            <button class="btn-price" onclick="UI.goToBuy('basic')">
+                <span>BellGo Simple</span>
+                <span class="price-tag">4€</span>
+            </button>
+            <button class="btn-price" onclick="UI.goToBuy('premium')">
+                <span>BellGo Management Shop</span>
+                <span class="price-tag">10€</span>
+            </button>
+            
+            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
         </div>
     </div>
 
@@ -189,15 +228,34 @@
             }
         };
 
-        window.switchTab = (tab) => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
-            if (tab === 'staff') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('staffForm').classList.add('active');
-            } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
+        // --- UI NAVIGATION ---
+        window.UI = {
+            showRoles: () => {
+                document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+                document.getElementById('roleSelection').classList.add('active');
+            },
+            showAdminLogin: () => {
+                document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('adminForm').classList.add('active');
+            },
+            showStaffLogin: (role) => {
+                document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+                document.getElementById('staffForm').classList.add('active');
+                const sel = document.getElementById('stRole');
+                if(sel) sel.value = role;
+            },
+            showSubscription: () => {
+                document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+                document.getElementById('subscriptionScreen').classList.add('active');
+            },
+            goToBuy: (plan) => {
+                // Πρέπει να πάει στο Admin Form για να βάλει email
+                UI.showAdminLogin();
+                alert("Παρακαλώ εισάγετε το Email σας και πατήστε Είσοδος. Αν δεν έχετε συνδρομή, θα σας ζητηθεί να αγοράσετε.");
+                // Σημείωση: Η λογική αγοράς είναι ενσωματωμένη στο Admin.manualLogin ή Admin.buyPackage
+                // Εδώ απλά τον στέλνουμε εκεί, ή μπορούμε να καλέσουμε απευθείας αν έχει συμπληρώσει email.
+                const email = document.getElementById('adminEmailInp').value.trim();
+                if(email) Admin.buyPackage(plan);
             }
         };
 
@@ -301,7 +359,9 @@
                         socket.emit('check-pin-status', { email: email });
                         btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     } else {
-                        alert("Δεν βρέθηκε ενεργή συνδρομή.");
+                        if(confirm("Δεν βρέθηκε συνδρομή. Θέλετε να αγοράσετε;")) {
+                            UI.showSubscription();
+                        }
                         btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     }
                 } catch (e) { 
@@ -388,7 +448,7 @@
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
                 document.getElementById('adminEmailInp').value = user.email;
-                switchTab('admin'); 
+                UI.showAdminLogin();
             }
         });
     </script>

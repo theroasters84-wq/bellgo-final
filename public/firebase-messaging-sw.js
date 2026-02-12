@@ -12,29 +12,37 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.setBackgroundMessageHandler(function(payload) {
-  const title = payload.data.title || '🚨 ΚΛΗΣΗ!';
-  const body = payload.data.body || 'ΠΑΤΑ ΓΙΑ ΑΠΑΝΤΗΣΗ';
+  console.log('[firebase-messaging-sw.js] Background message:', payload);
+  
+  const title = payload.data.title || payload.notification?.title || 'BellGo';
+  const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
+  const url = payload.data.url || '/login.html'; // ✅ Λήψη URL από τον Server
 
   return self.registration.showNotification(title, {
     body: body,
-    icon: '/icon.png',
+    icon: '/admin.png',
     tag: 'bellgo-alarm', // Ίδιο tag για να μην γεμίζει η μπάρα
     renotify: true,      // 🔴 ΑΝΑΓΚΑΖΕΙ ΤΗ ΣΥΣΚΕΥΗ ΝΑ ΞΑΝΑΧΤΥΠΗΣΕΙ
     requireInteraction: true,
-    data: { url: '/?type=alarm' }
+    vibrate: [500, 200, 500],
+    data: { url: url }   // ✅ Αποθήκευση URL για το κλικ
   });
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  const urlToOpen = event.notification.data?.url || '/login.html';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
       for (const client of clientsArr) {
-        if (client.url.includes('bellgo') || 'focus' in client) {
+        // ✅ Έλεγχος αν υπάρχει ήδη ανοιχτή καρτέλα με το σωστό URL
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
             return client.focus();
         }
       }
-      return clients.openWindow('/?type=alarm');
+      // ✅ Αν όχι, άνοιγμα νέας
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
 });

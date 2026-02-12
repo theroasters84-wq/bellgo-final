@@ -354,18 +354,59 @@ io.on('connection', (socket) => {
         updateStoreClients(socket.store);
     });
 
+    // ✅ ΝΕΟ: Ειδική εντολή για ΠΡΟΣΘΗΚΗ προϊόντων (από Staff Premium)
+    socket.on('add-items', (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        const { id, items } = data; // items = κείμενο με τα νέα προϊόντα
+        const existingOrder = store.orders.find(o => o.id == id);
+        
+        if (existingOrder) {
+            // Προσθήκη με το διακριτικό ++
+            const lines = (items || "").split('\n').filter(l => l.trim());
+            const markedLines = lines.map(l => `++ ${l}`).join('\n');
+            existingOrder.text += `\n${markedLines}`;
+            
+            console.log(`➕ Items added to order ${id} by ${socket.username}`);
+            
+            // Ειδοποίηση Admin (Συναγερμός)
+            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`); });
+            
+            updateStoreClients(socket.store);
+        }
+    });
+
     socket.on('accept-order', (id) => { const store = getMyStore(); if(store){ const o = store.orders.find(x => x.id == id); if(o){ o.status = 'cooking'; o.startTime = Date.now(); updateStoreClients(socket.store); io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime }); } } });
     socket.on('ready-order', (id) => { const store = getMyStore(); if(store){ const o = store.orders.find(x => x.id == id); if(o){ o.status = 'ready'; o.readyTime = Date.now(); updateStoreClients(socket.store); io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready', readyTime: o.readyTime }); const tKey = `${socket.store}_${o.from}`; const tUser = activeUsers[tKey]; if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); } } });
     socket.on('pay-order', (id) => { const store = getMyStore(); if(store) { store.orders = store.orders.filter(x => x.id != id); updateStoreClients(socket.store); } });
+    
+    // ✅ PARTIAL PAY
+    socket.on('pay-partial', (data) => { const store = getMyStore(); if(store){ const o = store.orders.find(x => x.id == data.id); if(o){ let lines = o.text.split('\n'); if(lines[data.index]) { if(lines[data.index].includes('✅')) { lines[data.index] = lines[data.index].replace(' ✅', ''); } else { lines[data.index] += ' ✅'; } o.text = lines.join('\n'); updateStoreClients(socket.store); } } } });
+    
     socket.on('trigger-alarm', (tName) => { const key = `${socket.store}_${tName}`; const t = activeUsers[key]; if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell'); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!"); } });
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
     socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStoreClients(socket.store); } });
+    socket.on('heartbeat', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key]) { activeUsers[key].lastSeen = Date.now(); } });
 });
 
 setInterval(() => { try { const nowInGreece = new Date().toLocaleTimeString('el-GR', { timeZone: 'Europe/Athens', hour: '2-digit', minute: '2-digit', hour12: false }); Object.keys(storesData).forEach(storeName => { const store = storesData[storeName]; if (store.settings.resetTime && nowInGreece === store.settings.resetTime) { io.to(storeName).emit('menu-update', store.menu); } }); } catch (e) {} }, 60000); 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
-setInterval(() => { for (const key in activeUsers) { const user = activeUsers[key]; if (user.isRinging && user.fcmToken) { const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; sendPushNotification(user, msg, body); } } }, 3000); 
+setInterval(() => { 
+    const now = Date.now(); 
+    for (const key in activeUsers) { 
+        const user = activeUsers[key]; 
+        if (user.isRinging && user.fcmToken) { 
+            // ✅ SMART NOTIFICATIONS: Στέλνει μόνο αν δεν έχει στείλει heartbeat τα τελευταία 10s
+            const isActive = user.status === 'online' && (now - user.lastSeen < 10000);
+            if (!isActive) {
+                const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
+                const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
+                sendPushNotification(user, msg, body); 
+            }
+        } 
+    } 
+}, 3000); 
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

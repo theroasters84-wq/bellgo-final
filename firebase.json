@@ -1,9 +1,10 @@
 {
-  "to": "ΤΟ_TOKEN_ΠΟΥ_ΑΝΤΙΓΡΑΨΕΣ",
-  "data": {
-    "title": "TEST",
-    "body": "ΔΟΝΗΣΗ!",
-    "type": "alarm"
-  },
-  "priority": "high"
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
 }

@@ -288,28 +288,50 @@
                     
                     let total = 0;
                     const lines = o.text.split('\n');
-                    let displayLines = [];
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (line.startsWith('[')) { displayLines.push(line); return; } 
-                        const match = line.match(/^(\d+)\s+(.*)/);
-                        if (match) {
-                            let qty = parseInt(match[1]);
-                            let rest = match[2];
-                            if(rest.includes(':')) {
-                                const parts = rest.split(':');
-                                const priceVal = parseFloat(parts[parts.length - 1]);
-                                const cleanName = parts.slice(0, -1).join(':').trim();
-                                if(!isNaN(priceVal)) { total += qty * priceVal; displayLines.push(`${qty} ${cleanName} (${priceVal}€)`); } 
-                                else { displayLines.push(line); }
-                            } else { displayLines.push(line); }
-                        } else { displayLines.push(line); }
+                    let contentHtml = '';
+
+                    lines.forEach((line, idx) => {
+                        let rawLine = line.trim();
+                        if (!rawLine) return;
+
+                        const isPaid = rawLine.includes('✅');
+                        const isNew = rawLine.includes('++');
+                        
+                        // Καθαρισμός για υπολογισμό συνόλου
+                        let cleanLine = rawLine.replace('✅', '').replace('++', '').trim();
+
+                        // Υπολογισμός (Μόνο αν δεν είναι εξοφλημένο)
+                        if (!rawLine.startsWith('[') && !isPaid) {
+                            const match = cleanLine.match(/^(\d+)\s+(.*)/);
+                            if (match) {
+                                let qty = parseInt(match[1]);
+                                let rest = match[2];
+                                if(rest.includes(':')) {
+                                    const parts = rest.split(':');
+                                    const priceVal = parseFloat(parts[parts.length - 1]);
+                                    if(!isNaN(priceVal)) { total += qty * priceVal; }
+                                }
+                            }
+                        }
+
+                        // Styling Γραμμής
+                        let rowStyle = "display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #444; padding:4px 0;";
+                        let textStyle = isPaid ? "color:#00E676; text-decoration:line-through;" : "color:#eee;";
+                        if (isNew) textStyle += " color:#FFD700; font-weight:bold;";
+
+                        // Κουμπί Μερικής Εξόφλησης (Μόνο για προϊόντα, όχι τίτλους)
+                        let btnHtml = '';
+                        if (!rawLine.startsWith('[') && !isPaid) {
+                            btnHtml = `<button onclick="event.stopPropagation(); window.socket.emit('pay-partial', {id:${o.id}, index:${idx}})" style="background:#333; border:1px solid #555; color:white; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">€</button>`;
+                        }
+
+                        contentHtml += `<div style="${rowStyle}"><span style="${textStyle}">${rawLine}</span>${btnHtml}</div>`;
                     });
 
                     div.innerHTML = `
                         <div class="order-meta"><span>${o.from}</span><span>${new Date(o.id).toLocaleTimeString()} • ${statusTxt}</span></div>
-                        <div class="order-content">${displayLines.join('\n')}</div>
-                        ${total > 0 ? `<div class="order-total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>` : ''}
+                        <div class="order-content" style="white-space:normal;">${contentHtml}</div>
+                        <div class="order-total" style="${total===0?'color:#00E676':''}">ΥΠΟΛΟΙΠΟ: ${total.toFixed(2)}€</div>
                     `;
                     div.onclick = () => { App.selectedOrderId = o.id; document.getElementById('actionModal').style.display = 'flex'; };
                     list.appendChild(div);
@@ -610,8 +632,9 @@
                 const cv = document.getElementById('inpCovers').value;
                 
                 if (App.updatingOrderId) {
-                     window.socket.emit('update-order', { id: App.updatingOrderId, addText: txt });
-                     alert("Ενημερώθηκε! 📝");
+                     // ✅ FIX: Χρήση add-items για ++ και Alarm στον Admin
+                     window.socket.emit('add-items', { id: App.updatingOrderId, items: txt });
+                     alert("Προστέθηκαν! ➕");
                      App.cancelUpdate();
                      return;
                 }

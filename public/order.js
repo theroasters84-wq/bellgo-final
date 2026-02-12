@@ -56,6 +56,10 @@ if (!TARGET_STORE) {
 const PRELOADED_NAME = params.get('name'); 
 
 const parseItem = (str) => {
+    // ✅ FIX: Υποστήριξη για αντικείμενα από το Premium
+    if (typeof str === 'object' && str !== null) {
+        return { name: str.name, price: str.price || 0 };
+    }
     const parts = str.split(':');
     let name = parts[0];
     let price = 0;
@@ -150,15 +154,35 @@ window.App = {
         document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
         App.checkActiveOrderStorage();
 
-        // ✅ WRITING MODE FIX: Κρύβουμε τα περιττά όταν γράφει
+        // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
         const txt = document.getElementById('orderText');
         const panel = document.getElementById('orderPanel');
+
+        function handleViewport() {
+            if (window.visualViewport) {
+                document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                if (window.visualViewport.height > (window.screen.height * 0.8)) {
+                    // Keyboard Closed
+                    panel.classList.remove('writing-mode');
+                    txt.blur();
+                }
+            }
+        }
+        
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleViewport);
+            window.visualViewport.addEventListener('scroll', handleViewport);
+        }
+        window.addEventListener('resize', handleViewport);
+
         txt.addEventListener('focus', () => {
             panel.classList.add('writing-mode');
             setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 300); // Scroll to bottom
         });
         txt.addEventListener('blur', () => {
-            panel.classList.remove('writing-mode');
+            setTimeout(() => {
+                panel.classList.remove('writing-mode');
+            }, 150);
         });
         
         App.connectSocket();
@@ -338,13 +362,19 @@ window.App = {
                 const itemsDiv = document.createElement('div');
                 itemsDiv.className = 'category-items';
 
-                cat.items.forEach(itemStr => {
-                    if(itemStr && itemStr.trim()) {
-                        const { name, price } = parseItem(itemStr);
+                cat.items.forEach(item => {
+                    // ✅ FIX: Έλεγχος αν είναι αντικείμενο ή κείμενο
+                    if (item && (typeof item === 'object' || item.trim())) {
+                        const { name, price } = parseItem(item);
                         const box = document.createElement('div');
                         box.className = 'item-box';
                         box.innerHTML = `<span class="item-name">${name}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
-                        box.addEventListener('dblclick', (e) => { e.preventDefault(); App.addToOrder(itemStr.trim()); });
+                        box.addEventListener('dblclick', (e) => { 
+                            e.preventDefault(); 
+                            // Μετατροπή σε string για το textarea
+                            const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
+                            App.addToOrder(val); 
+                        });
                         itemsDiv.appendChild(box);
                     }
                 });
