@@ -90,12 +90,12 @@
                 <option value="driver">Διανομέας 🛵</option>
             </select>
 
-            <button class="btn-main" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
+            <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
         </div>
 
         <div id="adminForm" class="form-section">
             <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
-            <button class="btn-main" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
+            <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
             
             <div class="pricing-box">
                 <button class="btn-price" onclick="Admin.buyPackage('basic')">
@@ -258,6 +258,9 @@
 
                 if (!name || !pin || !adminEmail) return alert("Συμπληρώστε τα πεδία!");
                 
+                const btn = document.getElementById('btnStaffLogin');
+                btn.innerText = "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
+
                 socket.emit('verify-pin', { pin: pin, email: adminEmail });
                 
                 socket.once('pin-verified', async (res) => {
@@ -269,18 +272,29 @@
                                 body: JSON.stringify({ email: adminEmail })
                             });
                             const subData = await subRes.json();
-                            const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan || 'basic' };
-                            localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
+                            
+                            // 🔥 FIX: Strict check for active subscription
+                            if (subData.active) {
+                                const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan };
+                                localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
-                            if (subData.active && subData.plan === 'premium') {
-                                window.location.href = "stafpremium.html";
+                                if (subData.plan === 'premium') {
+                                    window.location.href = "stafpremium.html";
+                                } else {
+                                    window.location.href = "index.html"; 
+                                }
                             } else {
-                                window.location.href = "index.html"; 
+                                alert("Δεν βρέθηκε ενεργή συνδρομή για αυτό το κατάστημα.");
+                                btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                             }
-                        } catch (e) { alert("Σφάλμα ελέγχου συνδρομής."); }
+                        } catch (e) { 
+                            alert("Σφάλμα δικτύου."); 
+                            btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                        }
                     } else {
                         alert("Λάθος PIN!");
                         PIN.clear();
+                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     }
                 });
             }
@@ -290,6 +304,9 @@
             manualLogin: async () => {
                 const email = document.getElementById('adminEmailInp').value.trim();
                 if(!email) return alert("Παρακαλώ εισάγετε email.");
+                
+                const btn = document.getElementById('btnAdminLogin');
+                btn.innerText = "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
 
                 try {
                     const response = await fetch('/check-subscription', {
@@ -303,10 +320,15 @@
                         adminUser = { email: email, displayName: "Admin" };
                         adminPlan = data.plan; 
                         socket.emit('check-pin-status', { email: email });
+                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     } else {
-                        alert("Δεν βρέθηκε ενεργή συνδρομή. Παρακαλώ επιλέξτε πακέτο.");
+                        alert("Δεν βρέθηκε ενεργή συνδρομή.");
+                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     }
-                } catch (e) { alert("Σφάλμα σύνδεσης."); }
+                } catch (e) { 
+                    alert("Σφάλμα σύνδεσης."); 
+                    btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                }
             },
 
             googleLogin: () => {
@@ -384,10 +406,8 @@
         });
 
         // ✅ AUTHENTICATE CHECK (PRE-FILL ONLY)
-        // 🔥 FIX: ΔΕΝ ανοίγουμε αυτόματα το PIN modal πλέον.
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
-                // Απλά προ-συμπληρώνουμε το email για ευκολία
                 document.getElementById('adminEmailInp').value = user.email;
                 switchTab('admin'); 
             }
