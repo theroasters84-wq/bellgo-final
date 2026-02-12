@@ -332,11 +332,25 @@ io.on('connection', (socket) => {
         if (!store.settings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
         const orderText = data.text || data; 
         const orderId = data.id || Date.now(); 
-        const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
-        store.orders.push(newOrder);
-        console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
-        updateStoreClients(socket.store);
-        Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`); });
+        
+        // ✅ ΕΛΕΓΧΟΣ: Αν υπάρχει ήδη η παραγγελία (Update/Προσθήκη προϊόντων)
+        const existingOrder = store.orders.find(o => o.id == orderId);
+        
+        if (existingOrder) {
+            existingOrder.text = orderText; // Ενημέρωση κειμένου
+            // existingOrder.status = 'pending'; // Προαιρετικά: επαναφορά σε pending αν θέλουμε να ξαναγίνει αποδοχή
+            console.log(`📝 Order Updated: ${orderId}`);
+            // Ειδοποίηση Admin για Τροποποίηση
+            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`); });
+        } else {
+            // Νέα Παραγγελία
+            const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
+            store.orders.push(newOrder);
+            console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
+            // Ειδοποίηση Admin για Νέα Παραγγελία
+            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`); });
+        }
+        
         updateStoreClients(socket.store);
     });
 

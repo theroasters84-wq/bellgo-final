@@ -319,12 +319,15 @@ window.App = {
     renderMenu: (data) => {
         const container = document.getElementById('menuContainer');
         container.innerHTML = '';
+        
         let menu = [];
         try {
             if(typeof data === 'string' && data.startsWith('[')) { menu = JSON.parse(data); } 
             else if (typeof data === 'object') { menu = data; } 
             else { const items = (data || "").split('\n'); menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }]; }
         } catch(e) { menu = []; }
+
+        if (!menu || menu.length === 0) { container.innerHTML = '<div style="text-align:center; color:#555; margin-top:50px;">Ο κατάλογος είναι κενός.</div>'; return; }
 
         if(Array.isArray(menu)) {
             menu.sort((a,b) => (a.order || 99) - (b.order || 99));
