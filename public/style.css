@@ -171,7 +171,7 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 /* ADMIN SPECIFICS */
 .header-store-input { background: transparent; border: none; border-bottom: 1px solid #333; color: var(--accent); font-size: 18px; font-weight: 800; width: 100%; max-width: 200px; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
 .status-dot { width: 10px; height: 10px; background: red; border-radius: 50%; box-shadow: 0 0 8px red; cursor: pointer; }
-.order-folder { width: 85px; height: 100px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: popIn 0.4s; position: relative; }
+.order-folder { width: 75px; height: 85px; display: flex; flex-direction: column; align-items: center; cursor: pointer; animation: popInFolder 0.3s; position: relative; }
 .order-folder.ringing .folder-icon { animation: shake 0.5s infinite; color: var(--accent); }
 .order-folder.cooking { border: 2px dashed var(--accent); border-radius: 10px; background: rgba(255, 215, 0, 0.05); }
 .folder-icon { font-size: 50px; color: #555; transition: 0.2s; }
@@ -199,9 +199,9 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 /* Admin Desktop Area (Folders Grid) */
 #desktopArea {
     display: grid;
-    grid-template-rows: repeat(3, 110px); /* 3 Κάθετα */
+    grid-template-rows: repeat(3, 90px); /* Πιο κοντά κάθετα */
     grid-auto-flow: column; /* Συνέχεια δεξιά */
-    gap: 15px;
+    gap: 5px; /* Μικρότερο κενό */
     padding: 10px;
     overflow-x: auto;
 }
@@ -241,7 +241,8 @@ input:checked + .slider:before { transform: translateX(18px); }
 
 /* ANIMATIONS */
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes popIn { from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@keyframes popInWindow { from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@keyframes popInFolder { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -2px); } }
 @keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
