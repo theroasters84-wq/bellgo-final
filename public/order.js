@@ -472,11 +472,18 @@ window.App = {
         } catch(e) { alert("Σφάλμα σύνδεσης με τον Server."); }
     },
 
-    sendOrder: (items, method) => {
+  sendOrder: (items, method) => {
         const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
-        activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
+        
+        // 1. Ο Πελάτης δημιουργεί το ID
+        const orderId = Date.now();
+        
+        activeOrderState = { id: orderId, status: 'pending', timestamp: Date.now() };
         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-        window.socket.emit('new-order', fullText);
+        
+        // 2. Στέλνουμε ΚΑΙ το κείμενο ΚΑΙ το ID στον Server
+        window.socket.emit('new-order', { text: fullText, id: orderId });
+        
         App.showStatus('pending'); 
         document.getElementById('orderText').value = ''; 
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
