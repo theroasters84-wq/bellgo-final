@@ -463,15 +463,20 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('new-order', (orderText) => {
+    socket.on('new-order', (data) => {
         const store = getMyStore();
         if (!store) return;
         
         // Check if store is open
         if (!store.settings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
 
+        // 🔥 FIX: Διαβάζουμε το ID από τον πελάτη (data.id) αν υπάρχει, αλλιώς φτιάχνουμε νέο
+        // Επίσης χειριζόμαστε την περίπτωση που το data είναι απλό string (παλιά έκδοση)
+        const orderText = data.text || data; 
+        const orderId = data.id || Date.now(); 
+
         const newOrder = {
-            id: Date.now(),
+            id: orderId, // ✅ Χρήση του κοινού ID
             text: orderText,
             from: socket.username,
             status: 'pending',
@@ -479,7 +484,7 @@ io.on('connection', (socket) => {
         };
         
         store.orders.push(newOrder);
-        console.log(`📦 New order in room ${socket.store} from ${socket.username}`);
+        console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
         updateStoreClients(socket.store);
 
         // Notify Admins
