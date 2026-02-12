@@ -711,43 +711,46 @@ window.App = {
         container.innerHTML = '';
         list.forEach(u => {
             if (u.role === 'admin' || u.role === 'customer') return;
-            
-            const row = document.createElement('div');
-            row.className = 'staff-row';
-            const btn = document.createElement('button');
+
+            const staffDiv = document.createElement('div');
             const isAway = u.status === 'away';
-            let stTxt = isAway ? "AWAY" : "IDLE";
-            let stCol = isAway ? "#FF9800" : "white"; 
             
-            if(u.isRinging) { stTxt = "📞 ..."; stCol = "yellow"; } 
-            else if (App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000)) { stTxt = "🚀 ΕΡΧΕΤΑΙ"; stCol = "#00E676"; }
-            else if (isAway) { stTxt = "AWAY"; stCol = "#FF9800"; }
+            let roleClass = 'role-waiter';
+            let icon = '🧑‍🍳';
+            if (u.role === 'driver') {
+                roleClass = 'role-driver';
+                icon = '🛵';
+            }
 
-            // Apply Color Classes
-            let roleClass = 'waiter'; // Default blue
-            if (u.role === 'driver') roleClass = 'driver'; // Red for driver
+            staffDiv.className = `staff-folder ${roleClass} ${isAway ? 'ghost' : ''}`;
 
-            btn.className = `btn-staff ${roleClass} ${isAway ? 'ghost' : ''}`;
-            btn.innerHTML = `<span>${u.username}</span><span style="color:${stCol}; font-weight:bold;">${stTxt}</span>`;
+            let stTxt = isAway ? "Away" : "Idle";
+            const isComing = App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000);
+
+            if (u.isRinging) {
+                stTxt = "Ringing";
+                staffDiv.classList.add('ringing');
+            } else if (isComing) {
+                stTxt = "Coming";
+                staffDiv.classList.add('coming');
+            }
             
-            if (stCol === 'yellow') btn.style.borderColor = 'yellow';
-            else if (stCol === '#00E676') btn.style.borderColor = '#00E676';
+            staffDiv.innerHTML = `
+                <div class="staff-icon">${icon}</div>
+                <div class="staff-label">${u.username}</div>
+                <div class="staff-status">${stTxt}</div>
+            `;
             
-            btn.onclick = () => {
+            staffDiv.onclick = () => {
                 window.socket.emit('trigger-alarm', u.username);
-                btn.innerHTML = `<span>${u.username}</span><span style="color:yellow;">📞 ...</span>`;
-                btn.style.borderColor = 'yellow';
+                staffDiv.querySelector('.staff-status').innerText = 'Ringing';
+                staffDiv.classList.add('ringing');
             };
             
-            row.appendChild(btn);
-            if (isAway && !u.isRinging) {
-                const delBtn = document.createElement('button');
-                delBtn.className = 'btn-delete';
-                delBtn.innerText = 'X';
-                delBtn.onclick = (e) => { e.stopPropagation(); if(confirm("Διαγραφή;")) window.socket.emit('manual-logout', { targetUser: u.username }); };
-                row.appendChild(delBtn);
-            }
-            container.appendChild(row);
+            // The old logic for a delete button on 'away' users can be added here if needed.
+            // For now, focusing on the visual replacement.
+
+            container.appendChild(staffDiv);
         });
     },
     

@@ -537,6 +537,20 @@ window.App = {
     resetUI: () => { 
         document.getElementById('statusOverlay').style.height = '0'; 
         document.getElementById('btnStatusMini').style.display = 'none';
+    },
+
+    toggleOrderPanel: () => {
+        const p = document.getElementById('orderPanel');
+        const icon = document.getElementById('panelIcon');
+        if(p.classList.contains('minimized')) {
+            p.classList.remove('minimized');
+            icon.style.transform = 'rotate(0deg)';
+            icon.innerText = '▼';
+        } else {
+            p.classList.add('minimized');
+            icon.style.transform = 'rotate(180deg)';
+            icon.innerText = '▲';
+        }
     }
 };
 
