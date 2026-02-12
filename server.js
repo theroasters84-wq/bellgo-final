@@ -147,7 +147,9 @@ app.get('/stripe-connect-callback', async (req, res) => {
 app.get('/manifest.json', async (req, res) => {
     const iconType = req.query.icon || 'admin'; 
     const storeParam = req.query.store || "general";
-    const safeStoreId = storeParam.replace(/[^a-zA-Z0-9]/g, '');
+    
+    // 🔥 FIX: Allow Email characters (@, ., -, _) in store ID
+    const safeStoreId = storeParam.replace(/[^a-zA-Z0-9@._-]/g, '');
     
     // Φόρτωσε ρυθμίσεις για το συγκεκριμένο κατάστημα
     let storeName = "BellGo App";
@@ -384,24 +386,37 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('set-new-pin', (data) => {
-        const store = getMyStore();
-        if(store) {
-            store.settings.pin = data.pin;
-            if(data.email) store.settings.adminEmail = data.email; 
-            socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
-            updateStoreClients(socket.store);
-        }
+    // 🔥 FIX: Listeners for PIN that accept EMAIL payload (without being joined yet)
+    socket.on('check-pin-status', async (data) => { 
+        const targetEmail = data.email; 
+        if (!targetEmail) return;
+        const store = await getStoreData(targetEmail);
+        socket.emit('pin-status', { hasPin: !!store.settings.pin }); 
     });
 
-    socket.on('verify-pin', (pin) => {
-        const store = getMyStore();
-        if (store) {
+    socket.on('verify-pin', async (data) => {
+        // data can be just string (old logic) or object {pin, email} (new logic)
+        const pin = data.pin || data;
+        const email = data.email || socket.store;
+
+        if (email) {
+            const store = await getStoreData(email);
             if (store.settings.pin === pin) {
-                socket.emit('pin-verified', { success: true, storeId: store.settings.adminEmail || store.settings.name });
+                socket.emit('pin-verified', { success: true, storeId: email });
             } else {
                 socket.emit('pin-verified', { success: false });
             }
+        }
+    });
+
+    socket.on('set-new-pin', async (data) => {
+        const email = data.email;
+        if(email) {
+            const store = await getStoreData(email);
+            store.settings.pin = data.pin;
+            store.settings.adminEmail = email; 
+            socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
+            updateStoreClients(email);
         }
     });
 
