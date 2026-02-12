@@ -24,7 +24,6 @@
     </script>
     
     <script src="https://js.stripe.com/v3/"></script>
-    
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -72,7 +71,6 @@
 
     <div class="login-container">
         <h1>BellGo 🔔</h1>
-        
         <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
         <div class="tabs">
@@ -84,35 +82,22 @@
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
             <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
-            
             <select id="stRole" class="inp">
                 <option value="waiter">Σερβιτόρος 🤵</option>
                 <option value="driver">Διανομέας 🛵</option>
             </select>
-
             <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
         </div>
 
         <div id="adminForm" class="form-section">
             <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
             <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
-            
             <div class="pricing-box">
-                <button class="btn-price" onclick="Admin.buyPackage('basic')">
-                    <span class="price-tag">4€</span>
-                    <span>Basic (Index)</span>
-                </button>
-                <button class="btn-price" onclick="Admin.buyPackage('premium')">
-                    <span class="price-tag">10€</span>
-                    <span>Premium (Full)</span>
-                </button>
+                <button class="btn-price" onclick="Admin.buyPackage('basic')"><span class="price-tag">4€</span><span>Basic (Index)</span></button>
+                <button class="btn-price" onclick="Admin.buyPackage('premium')"><span class="price-tag">10€</span><span>Premium (Full)</span></button>
             </div>
-
             <div class="divider">Ή</div>
-            
-            <button class="btn-main btn-google" onclick="Admin.googleLogin()">
-                <span>G</span> Σύνδεση Google
-            </button>
+            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> Σύνδεση Google</button>
         </div>
     </div>
 
@@ -147,7 +132,6 @@
             navigator.serviceWorker.register('/sw.js').then(() => console.log("✅ Login SW Registered"));
         }
 
-        // --- INSTALL LOGIC ---
         let deferredPrompt;
         const btnInstall = document.getElementById('btnInstall');
         const isAndroid = /Android/i.test(navigator.userAgent);
@@ -230,21 +214,17 @@
             },
             submit: () => {
                 if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-                
                 if (currentPinMode === 'enter') {
                     socket.emit('verify-pin', { pin: pinValue, email: adminUser.email });
-                } 
-                else if (currentPinMode === 'create') {
+                } else if (currentPinMode === 'create') {
                     tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
                     currentPinMode = 'confirm';
                     document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
                     document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
-                } 
-                else if (currentPinMode === 'confirm') {
+                } else if (currentPinMode === 'confirm') {
                     if (pinValue === tempPin) {
                         socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
-                    }
-                    else { alert("Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); }
+                    } else { alert("Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); }
                 }
             }
         };
@@ -273,7 +253,6 @@
                             });
                             const subData = await subRes.json();
                             
-                            // 🔥 FIX: Strict check for active subscription
                             if (subData.active) {
                                 const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan };
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
@@ -391,7 +370,8 @@
         });
 
         socket.on('pin-verified', (res) => {
-            if (currentPinMode === 'enter') {
+            // 🔥 FIXED: Only run if Modal is OPEN (Admin Flow)
+            if (document.getElementById('pinModal').style.display === 'flex' && currentPinMode === 'enter') {
                 if (res.success) {
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
@@ -405,7 +385,6 @@
             }
         });
 
-        // ✅ AUTHENTICATE CHECK (PRE-FILL ONLY)
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
                 document.getElementById('adminEmailInp').value = user.email;
