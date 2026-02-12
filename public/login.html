@@ -383,11 +383,9 @@
             }
         });
 
-        // ✅ 2. AUTHENTICATE CHECK (ΔΙΟΡΘΩΣΗ)
-        // Αν ο χρήστης είναι ήδη συνδεδεμένος στο Firebase αλλά δεν έχει session storage, κάνουμε auto-login
+        // ✅ AUTHENTICATE CHECK (PRE-FILL)
         onAuthStateChanged(auth, async (user) => {
             if (user && !localStorage.getItem('bellgo_session')) {
-                // Ελέγχουμε ξανά τη συνδρομή για να πάρουμε το Plan
                 const response = await fetch('/check-subscription', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -396,27 +394,13 @@
                 const data = await response.json();
                 
                 if(data.active) {
-                    // Αν είναι ενεργός, ζητάμε PIN κατευθείαν
                     adminUser = user;
                     adminPlan = data.plan;
-                    switchTab('admin'); // Πάμε στο tab του Admin
+                    switchTab('admin'); 
                     socket.emit('check-pin-status', { email: user.email });
                 }
             }
         });
-
-        // AUTO-REDIRECT IF SESSION EXISTS
-        if (localStorage.getItem('bellgo_session')) {
-            const saved = JSON.parse(localStorage.getItem('bellgo_session'));
-            const plan = saved.plan || 'basic';
-            if (saved.role === 'admin') {
-                if(plan === 'premium') window.location.href = "premium.html";
-                else window.location.href = "index.html";
-            } else {
-                if(plan === 'premium') window.location.href = "stafpremium.html";
-                else window.location.href = "index.html";
-            }
-        }
     </script>
 </body>
 </html>
