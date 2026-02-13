@@ -253,7 +253,11 @@ window.App = {
                 if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
                 if(settings.hours) document.getElementById('inpHours').value = settings.hours;
                 if(settings.schedule) App.scheduleData = settings.schedule;
-                if(settings.coverPrice) { App.coverPrice = parseFloat(settings.coverPrice); document.getElementById('inpCoverPrice').value = App.coverPrice; }
+                // ✅ FIX: Να δέχεται και το 0 ως τιμή
+                if(settings.coverPrice !== undefined) { 
+                    App.coverPrice = parseFloat(settings.coverPrice); 
+                    document.getElementById('inpCoverPrice').value = App.coverPrice; 
+                }
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -279,6 +283,9 @@ window.App = {
             App.tempComingState[data.username] = Date.now();
             App.renderStaffList(App.lastStaffList);
         });
+
+        // ✅ FIX: Προσθήκη listener για τα στατιστικά που έλειπε
+        socket.on('stats-data', (data) => App.renderStats(data));
         
         // ✅ Update Full Order List
         socket.on('orders-update', (orders) => {
@@ -423,7 +430,7 @@ window.App = {
         }
 
         // Στατιστικά Ημέρας
-        const todayStats = (mStats.days && mStats.days[day]) ? mStats.days[day] : { turnover: 0, orders: 0 };
+        const todayStats = (mStats.days && mStats.days[day]) ? mStats.days[day] : { turnover: 0, orders: 0, products: {} };
 
         let html = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
@@ -439,16 +446,23 @@ window.App = {
                 </div>
             </div>
             
-            <div style="font-size:16px; font-weight:bold; color:#FFD700; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">ΠΩΛΗΣΕΙΣ ΠΡΟΪΟΝΤΩΝ (ΜΗΝΑΣ)</div>
+            <div style="font-size:16px; font-weight:bold; color:#FFD700; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">ΠΩΛΗΣΕΙΣ ΗΜΕΡΑΣ (${day}/${month})</div>
             <div style="display:flex; flex-direction:column; gap:5px;">
         `;
 
-        const sortedProducts = Object.entries(mStats.products || {}).sort((a, b) => b[1] - a[1]);
-        sortedProducts.forEach(([name, qty]) => {
-            html += `<div style="display:flex; justify-content:space-between; background:#222; padding:8px; border-radius:6px;">
-                        <span style="color:#eee;">${name}</span><span style="font-weight:bold; color:#00E676;">${qty} τμχ</span>
-                     </div>`;
-        });
+        // ✅ Εμφάνιση προϊόντων ΗΜΕΡΑΣ (όχι μήνα)
+        const sortedProducts = Object.entries(todayStats.products || {}).sort((a, b) => b[1] - a[1]);
+        
+        if (sortedProducts.length === 0) {
+            html += '<div style="color:#aaa; text-align:center;">Καμία πώληση σήμερα.</div>';
+        } else {
+            sortedProducts.forEach(([name, qty], index) => {
+                // ✅ Αρίθμηση (index + 1)
+                html += `<div style="display:flex; justify-content:space-between; background:#222; padding:8px; border-radius:6px;">
+                            <span style="color:#eee;"><b>${index + 1}.</b> ${name}</span><span style="font-weight:bold; color:#00E676;">${qty} τμχ</span>
+                         </div>`;
+            });
+        }
         html += '</div>';
         container.innerHTML = html;
     },
@@ -840,6 +854,7 @@ window.App = {
             if (App.adminMode === 'kitchen') {
                 actions = `<button class="btn-win-action" style="background:#555; color:white;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
             } else {
+                actions = `<button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.showTreatOptions('${order.id}')">🎁 ΚΕΡΑΣΜΑ</button>`;
                 actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
             }
         }
@@ -863,6 +878,39 @@ window.App = {
         `;
         win.style.display = 'flex';
     },
+    
+    showTreatOptions: (id) => {
+        const order = App.activeOrders.find(o => o.id == id);
+        if (!order) return;
+        
+        const win = document.getElementById(`win-${id}`);
+        const body = win.querySelector('.win-body');
+        const footer = win.querySelector('.win-footer');
+        
+        // Render items as clickable buttons for partial treat
+        let itemsHtml = '<div style="margin-bottom:10px; color:#aaa;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
+        const lines = order.text.split('\n');
+        
+        lines.forEach((line, idx) => {
+            if (!line.trim() || line.startsWith('[')) return;
+             // Only show items that have a price
+            if (line.includes(':') && !line.includes(':0')) {
+                itemsHtml += `<button onclick="App.treatItem('${id}', ${idx})" style="width:100%; padding:10px; margin-bottom:5px; background:#333; color:white; border:1px solid #555; border-radius:6px; text-align:left; cursor:pointer;">${line}</button>`;
+            } else {
+                itemsHtml += `<div style="padding:5px; color:#777;">${line}</div>`;
+            }
+        });
+        
+        body.innerHTML = itemsHtml;
+        
+        footer.innerHTML = `
+            <button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.treatFull('${id}')">🎁 ΚΕΡΑΣΜΑ ΟΛΑ</button>
+            <button class="btn-win-action" style="background:#555; color:white;" onclick="App.openOrderWindow(App.activeOrders.find(o=>o.id==${id}))">🔙 ΑΚΥΡΟ</button>
+        `;
+    },
+    treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
+    treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+
     minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
     acceptOrder: (id) => {
         if(window.AudioEngine) window.AudioEngine.stopAlarm();

@@ -51,7 +51,8 @@ const defaultSettings = {
     statusCustomer: true, 
     statusStaff: true,
     resetTime: "04:00",
-    stripeConnectId: "" 
+    stripeConnectId: "",
+    coverPrice: 0 // ✅ Default τιμή κουβέρ
 }; 
 
 /* ---------------- FIREBASE HELPERS ---------------- */
@@ -158,15 +159,21 @@ function updateStoreStats(store, order) {
 
     // 2. Σύνολα Ημέρας
     if (!mStats.days) mStats.days = {};
-    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0 };
+    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0, products: {} }; // ✅ Προσθήκη products για την ημέρα
     mStats.days[day].orders++;
     mStats.days[day].turnover += total;
 
     // 3. Τεμάχια Προϊόντων
     if (!mStats.products) mStats.products = {};
     for (const [prodName, qty] of Object.entries(items)) {
+        // Αποθήκευση στο Σύνολο Μήνα
         if (!mStats.products[prodName]) mStats.products[prodName] = 0;
         mStats.products[prodName] += qty;
+        
+        // ✅ Αποθήκευση στο Σύνολο Ημέρας
+        if (!mStats.days[day].products) mStats.days[day].products = {};
+        if (!mStats.days[day].products[prodName]) mStats.days[day].products[prodName] = 0;
+        mStats.days[day].products[prodName] += qty;
     }
 }
 
@@ -401,7 +408,17 @@ io.on('connection', (socket) => {
     socket.on('update-token', (data) => { const key = `${socket.store}_${data.username}`; if (activeUsers[key]) activeUsers[key].fcmToken = data.token; });
     socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; updateStoreClients(socket.store); } });
     socket.on('save-store-name', (newName) => { const store = getMyStore(); if (store) { store.settings.name = newName; updateStoreClients(socket.store); } });
-    socket.on('save-store-settings', (data) => { const store = getMyStore(); if (store) { if(data.resetTime) store.settings.resetTime = data.resetTime; if(data.stripeConnectId) store.settings.stripeConnectId = data.stripeConnectId; if(data.schedule) store.settings.schedule = data.schedule; if(data.hours) store.settings.hours = data.hours; updateStoreClients(socket.store); } });
+    socket.on('save-store-settings', (data) => { 
+        const store = getMyStore(); 
+        if (store) { 
+            if(data.resetTime) store.settings.resetTime = data.resetTime; 
+            if(data.stripeConnectId) store.settings.stripeConnectId = data.stripeConnectId; 
+            if(data.schedule) store.settings.schedule = data.schedule; 
+            if(data.hours) store.settings.hours = data.hours; 
+            if(data.coverPrice !== undefined) store.settings.coverPrice = data.coverPrice; // ✅ Αποθήκευση Κουβέρ
+            updateStoreClients(socket.store); 
+        } 
+    });
     socket.on('save-menu', (data) => { 
         const store = getMyStore(); 
         if (store) { 
@@ -520,6 +537,43 @@ io.on('connection', (socket) => {
                 updateStoreClients(socket.store); 
             }
         } 
+    });
+
+    // ✅ NEW: TREAT ORDER (ΚΕΡΑΣΜΑ)
+    socket.on('treat-order', (data) => {
+        const store = getMyStore();
+        if (store) {
+            const o = store.orders.find(x => x.id == data.id);
+            if (o) {
+                const lines = o.text.split('\n');
+                
+                const treatLine = (line) => {
+                    if (line.includes('(KERASMA)')) return line; // Already treated
+                    // Find last colon which usually separates price
+                    const lastColonIndex = line.lastIndexOf(':');
+                    if (lastColonIndex !== -1) {
+                        const before = line.substring(0, lastColonIndex);
+                        const after = line.substring(lastColonIndex + 1); // Price and potential flags
+                        // Check if 'after' starts with a number
+                        if (/^\d/.test(after.trim())) {
+                             // Replace price with 0 and add tag, keeping existing flags like ✅ if needed, though usually treat implies paid/free
+                             return `${before}:0 (KERASMA)`;
+                        }
+                    }
+                    return line;
+                };
+
+                if (data.type === 'full') {
+                    o.text = lines.map(treatLine).join('\n');
+                } else if (data.type === 'partial' && typeof data.index === 'number') {
+                    if (lines[data.index]) {
+                        lines[data.index] = treatLine(lines[data.index]);
+                        o.text = lines.join('\n');
+                    }
+                }
+                updateStoreClients(socket.store);
+            }
+        }
     });
 
     // ✅ NEW: Αποστολή Στατιστικών στον Admin

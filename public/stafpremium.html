@@ -153,10 +153,21 @@
             </div>
         </div>
 
+        <!-- ✅ NEW: TREAT SELECTION MODAL -->
+        <div id="treatModal" class="overlay-screen" onclick="document.getElementById('treatModal').style.display='none'">
+            <div class="action-box" onclick="event.stopPropagation()">
+                <h3 style="color:#FFD700; text-align:center; margin:0;">Επιλογή Κεράσματος</h3>
+                <div id="treatItemsList" style="max-height:300px; overflow-y:auto; margin:10px 0; display:flex; flex-direction:column; gap:5px;"></div>
+                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.treatFullOrder()">🎁 ΟΛΗ Η ΠΑΡΑΓΓΕΛΙΑ</button>
+                <button class="btn-act" style="background:#555; color:white; margin-top:10px;" onclick="document.getElementById('treatModal').style.display='none'">ΑΚΥΡΟ</button>
+            </div>
+        </div>
+
         <div id="actionModal" onclick="document.getElementById('actionModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()">
                 <h3 style="color:white; text-align:center; margin:0;">Επιλογές</h3>
                 <button class="btn-act" style="background:#2196F3;" onclick="App.prepareUpdateOrder()">➕ ΠΡΟΣΘΗΚΗ (ΕΝΗΜΕΡΩΣΗ)</button>
+                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.openTreatModal()">🎁 ΚΕΡΑΣΜΑ</button>
                 <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'">ΑΚΥΡΟ</button>
             </div>
@@ -682,6 +693,39 @@
                 const p = document.getElementById('orderPanel');
                 if(p.classList.contains('minimized')) App.toggleOrderPanel();
             },
+            
+            // --- TREAT LOGIC ---
+            openTreatModal: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                const o = App.allActiveOrders.find(x => x.id === App.selectedOrderId);
+                if (!o) return;
+                
+                const list = document.getElementById('treatItemsList');
+                list.innerHTML = '';
+                
+                const lines = o.text.split('\n');
+                lines.forEach((line, idx) => {
+                    if (!line.trim() || line.startsWith('[')) return;
+                    // Show only items with price > 0
+                    if (line.includes(':') && !line.includes(':0')) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-act';
+                        btn.style.cssText = "background:#333; color:white; font-size:14px; padding:10px; text-align:left; border:1px solid #555;";
+                        btn.innerText = line;
+                        btn.onclick = () => {
+                            if(confirm("Κέρασμα για: " + line + ";")) {
+                                window.socket.emit('treat-order', { id: App.selectedOrderId, type: 'partial', index: idx });
+                                document.getElementById('treatModal').style.display = 'none';
+                            }
+                        };
+                        list.appendChild(btn);
+                    }
+                });
+                
+                document.getElementById('treatModal').style.display = 'flex';
+            },
+            treatFullOrder: () => { if(confirm("Κέρασμα ΟΛΗ την παραγγελία;")) { window.socket.emit('treat-order', { id: App.selectedOrderId, type: 'full' }); document.getElementById('treatModal').style.display = 'none'; } },
+
             handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
             switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },

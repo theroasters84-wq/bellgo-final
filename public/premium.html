@@ -26,14 +26,14 @@
             </div>
             
             <div class="header-actions">
-                <button id="btnNewOrderSidebar" class="btn-icon" onclick="App.toggleOrderSidebar()" title="Νέα Παραγγελία" style="display:none; background:#00E676; color:black;">➕</button>
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
+                <button id="btnNewOrderSidebar" class="btn-icon" onclick="App.toggleOrderSidebar()" title="Νέα Παραγγελία" style="display:none; background:#00E676; color:black;">➕</button>
                 <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" title="Έξοδος" style="display:none; background:var(--danger); color:white;">🚪</button>
             </div>
         </div>
@@ -47,6 +47,12 @@
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
                     </div>
                 </div>
+                
+                <div style="margin-bottom:15px; padding:10px; background:#1a1a1a; border:1px solid #333; border-radius:10px; display:flex; align-items:center; justify-content:space-between;">
+                    <span style="color:#aaa; font-size:14px;">Τιμή Κουβέρ (€):</span>
+                    <input type="number" id="inpCoverPrice" style="width:80px; padding:8px; background:#000; border:1px solid #444; color:white; border-radius:6px; text-align:center;" placeholder="0.00" step="0.10" onblur="App.autoSaveSettings()">
+                </div>
+
                 <div id="menuInputContainer"></div>
             </div>
 
@@ -139,8 +145,6 @@
                     <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
                     <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
                 </div>
-                <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px; margin-top:10px;">ΤΙΜΗ ΚΟΥΒΕΡ (€)</div>
-                <input type="number" id="inpCoverPrice" class="inp-settings" placeholder="0.00" step="0.10" onblur="App.autoSaveSettings()">
                 <button class="modal-btn" style="background:#333; font-size:13px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
             </div>
 
