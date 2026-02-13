@@ -58,11 +58,22 @@
 
     <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; margin:0;">📍 Στοιχεία Παράδοσης</h3>
+            <h3 style="color:#FFD700; margin:0;" id="detailsTitle">📍 Στοιχεία</h3>
             <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας">
-            <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)">
-            <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι">
-            <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας">
+            
+            <!-- Delivery Fields -->
+            <div id="deliveryFields">
+                <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)">
+                <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι">
+                <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας">
+            </div>
+            <!-- Dine-In Fields -->
+            <div id="dineInFields" style="display:none;">
+                <div style="color:#aaa; font-size:12px; margin-bottom:5px; text-align:left;">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
+                <input type="number" id="inpCovers" class="inp-detail" placeholder="Άτομα" value="1" inputmode="numeric">
+                <div id="tableDisplay" style="color:#00E676; font-weight:bold; margin-top:10px; font-size:18px;"></div>
+            </div>
+
             <button class="btn-save-details" onclick="App.saveDetails()">ΑΠΟΘΗΚΕΥΣΗ & ΣΥΝΕΧΕΙΑ</button>
         </div>
     </div>
@@ -113,6 +124,7 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ ΑΞΙΟΛΟΓΗΣΗ</button>
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 APP</button>
             </div>
         </div>

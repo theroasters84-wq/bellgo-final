@@ -43,6 +43,17 @@ const messaging = getMessaging(app);
 // URL PARAMS
 const params = new URLSearchParams(window.location.search);
 let TARGET_STORE = params.get('store');
+let TABLE_ID = params.get('table'); // ✅ Get Table ID
+
+// ✅ Check if returning from payment (restore table mode)
+if (params.get('payment_status')) {
+    const savedMode = localStorage.getItem('bellgo_return_mode');
+    if (savedMode === 'dinein') {
+        TABLE_ID = localStorage.getItem('bellgo_return_table');
+    }
+}
+let isDineIn = !!TABLE_ID;
+let tableNumber = TABLE_ID;
 
 // Auto-detect store from path
 if (!TARGET_STORE) {
@@ -75,6 +86,7 @@ let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') ||
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 let storeHasStripe = false;
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
+let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
 window.App = {
@@ -90,6 +102,10 @@ window.App = {
         } else if (isIos()) {
             alert("Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
         }
+    },
+
+    openReview: () => {
+        if (googleMapsUrl) window.open(googleMapsUrl, '_blank');
     },
 
     loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert("Login Error: " + e.message)); },
@@ -329,6 +345,17 @@ window.App = {
                 }
                 
                 storeHasStripe = !!settings.stripeConnectId;
+                
+                // ✅ Google Maps Review Button Logic
+                if (settings.googleMapsUrl) {
+                    googleMapsUrl = settings.googleMapsUrl;
+                    const btn = document.getElementById('btnReview');
+                    if(btn) btn.style.display = 'block';
+                } else {
+                    const btn = document.getElementById('btnReview');
+                    if(btn) btn.style.display = 'none';
+                }
+
                 App.handleInput();
                 
                 const closedOverlay = document.getElementById('closedOverlay');

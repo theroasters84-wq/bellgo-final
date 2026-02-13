@@ -259,6 +259,7 @@ window.App = {
                     App.coverPrice = parseFloat(settings.coverPrice); 
                     document.getElementById('inpCoverPrice').value = App.coverPrice; 
                 }
+                if(settings.googleMapsUrl !== undefined) document.getElementById('inpGoogleMaps').value = settings.googleMapsUrl;
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -369,7 +370,8 @@ window.App = {
         const time = document.getElementById('inpResetTime').value;
         const hours = document.getElementById('inpHours').value;
         const cp = document.getElementById('inpCoverPrice').value;
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp });
+        const gmaps = document.getElementById('inpGoogleMaps').value.trim();
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1103,6 +1105,47 @@ window.App = {
                 document.getElementById('qrPaymentModal').style.display = 'flex';
             } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
         } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
+
+    // ✅ NEW: TABLE QR GENERATOR
+    openTableQrModal: () => {
+        document.getElementById('settingsModal').style.display = 'none';
+        document.getElementById('tableQrModal').style.display = 'flex';
+    },
+    generateTableQrs: () => {
+        const input = document.getElementById('inpTableNumbers').value.trim();
+        const container = document.getElementById('qrGrid');
+        container.innerHTML = '';
+        
+        if(!input) return alert("Δώστε αριθμούς τραπεζιών (π.χ. 1-10)");
+        
+        let tables = [];
+        if(input.includes('-')) {
+            const parts = input.split('-');
+            const start = parseInt(parts[0]);
+            const end = parseInt(parts[1]);
+            for(let i=start; i<=end; i++) tables.push(i);
+        } else {
+            tables = input.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+        }
+        
+        const baseUrl = window.location.origin;
+        // Χρήση του userData.store (email) για το link
+        const storeParam = encodeURIComponent(userData.store);
+        
+        tables.forEach(t => {
+            const url = `${baseUrl}/shop/${storeParam}/?table=${t}`;
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
+            wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
+            container.appendChild(wrapper);
+            new QRCode(document.getElementById(`qr-tbl-${t}`), { text: url, width: 100, height: 100 });
+        });
+    },
+    printQrs: () => {
+        const content = document.getElementById('qrGrid').innerHTML;
+        const win = window.open('', '', 'width=800,height=600');
+        win.document.write(`<html><head><title>Print QR</title><style>body{font-family:sans-serif;} .grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:20px;} @media print { .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; } div { page-break-inside: avoid; } }</style></head><body><div class="grid">${content}</div><script>window.print();window.close();<\/script></body></html>`);
     },
 
     minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
