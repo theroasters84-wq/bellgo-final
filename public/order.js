@@ -71,29 +71,8 @@ const parseItem = (str) => {
 };
 
 let currentUser = null;
-let customerDetails = null;
-try {
-    customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-} catch (e) {
-    console.error("Error parsing bellgo_customer_info:", e);
-    localStorage.removeItem('bellgo_customer_info');
-}
-
-let activeOrders = [];
-try {
-    activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
-} catch (e) {
-    console.error("Error parsing bellgo_active_orders:", e);
-    localStorage.removeItem('bellgo_active_orders');
-}
-
-let activeOrderState = null;
-try {
-    activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
-} catch (e) {
-    console.error("Error parsing bellgo_active_order:", e);
-    localStorage.removeItem('bellgo_active_order');
-}
+let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
 window.App = {
@@ -148,18 +127,6 @@ window.App = {
     },
 
     startApp: () => {
-        // ✅ NEW: Check for TARGET_STORE
-        if (!TARGET_STORE) {
-            document.body.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                    <h1 style="color: #FFD700;">Σφάλμα Συνδέσμου</h1>
-                    <p>Το κατάστημα δεν προσδιορίστηκε.</p>
-                    <p style="color: #aaa; font-size: 14px; max-width: 300px;">Παρακαλούμε χρησιμοποιήστε το σύνδεσμο (link) ή τον κωδικό QR που σας δόθηκε από το κατάστημα.</p>
-                </div>
-            `;
-            return; 
-        }
-
         document.getElementById('appContent').style.display = 'flex';
         
         // ✅ WEB vs PWA DETECTION
@@ -173,67 +140,53 @@ window.App = {
             audio.play().catch(()=>{});
         }, { once: true });
 
-        if (TARGET_STORE) {
-            // Priority 1: Use the store ID to create a unique PWA scope.
-            let maniUrl = `/manifest.json?icon=shop&store=${encodeURIComponent(TARGET_STORE)}`;
-            
-            // Set the name from the preloaded param if available
-            const name = PRELOADED_NAME ? decodeURIComponent(PRELOADED_NAME) : TARGET_STORE.split('@')[0].toUpperCase();
-            document.getElementById('storeNameHeader').innerText = name;
-            document.title = name;
-            
-            document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
-
-        } else if (PRELOADED_NAME) {
-            // Fallback for older links that might only have the name
+        if (PRELOADED_NAME) {
             const cleanName = decodeURIComponent(PRELOADED_NAME);
             document.getElementById('storeNameHeader').innerText = cleanName;
             document.title = cleanName;
-            let maniUrl = `/manifest.json?name=${encodeURIComponent(cleanName)}&icon=shop`;
+            let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
+            if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
             document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
+        } else if(TARGET_STORE) {
+            document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
         }
         
         document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
         App.checkActiveOrderStorage();
 
         // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
-        if (!App.viewportInitialized) {
-            App.viewportInitialized = true;
-            const txt = document.getElementById('orderText');
-            const panel = document.getElementById('orderPanel');
+        const txt = document.getElementById('orderText');
+        const panel = document.getElementById('orderPanel');
 
-            const handleViewport = () => {
-                if (window.visualViewport) {
-                    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
-                    if (window.visualViewport.height > (window.screen.height * 0.8)) {
-                        // Keyboard Closed
-                        panel.classList.remove('writing-mode');
-                        txt.blur();
-                    }
-                }
-            };
-            
+        function handleViewport() {
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', handleViewport);
-                window.visualViewport.addEventListener('scroll', handleViewport);
-            }
-            window.addEventListener('resize', handleViewport);
-
-            txt.addEventListener('focus', () => {
-                panel.classList.add('writing-mode');
-            });
-            txt.addEventListener('blur', () => {
-                setTimeout(() => {
+                document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                if (window.visualViewport.height > (window.screen.height * 0.8)) {
+                    // Keyboard Closed
                     panel.classList.remove('writing-mode');
-                }, 150);
-            });
+                    txt.blur();
+                }
+            }
         }
+        
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleViewport);
+            window.visualViewport.addEventListener('scroll', handleViewport);
+        }
+        window.addEventListener('resize', handleViewport);
+
+        txt.addEventListener('focus', () => {
+            panel.classList.add('writing-mode');
+        });
+        txt.addEventListener('blur', () => {
+            setTimeout(() => {
+                panel.classList.remove('writing-mode');
+            }, 150);
+        });
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
         App.requestNotifyPermission(); 
-        // ✅ NEW: Heartbeat για να μην χάνεται η σύνδεση
-        setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 5000);
     },
 
     // ✅✅✅ NEW: REQUEST PERMISSION & GET TOKEN ✅✅✅
@@ -267,25 +220,15 @@ window.App = {
     },
 
     checkActiveOrderStorage: () => {
-        if (activeOrders.length > 0) {
+        if (activeOrderState) {
             const now = Date.now();
-            const updatedOrders = activeOrders.filter(order => {
-                if (order.status === 'ready' && (now - order.timestamp > ORDER_TIMEOUT_MS)) {
-                    return false; // Remove old, ready orders
-                }
-                return true;
-            });
-
-            if (updatedOrders.length !== activeOrders.length) {
-                activeOrders = updatedOrders;
-                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+            if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
+                localStorage.removeItem('bellgo_active_order');
+                activeOrderState = null;
+                App.resetUI();
+            } else {
+                App.updateStatusUI(activeOrderState.status);
             }
-            
-            // ✅ FIX: Συγχρονισμός activeOrderState με την τελευταία παραγγελία
-            if (activeOrders.length > 0) {
-                activeOrderState = activeOrders[activeOrders.length - 1];
-            }
-            App.updateStatusUI(true); // ✅ Άνοιγμα μόνο κατά την εκκίνηση
         }
     },
 
@@ -317,16 +260,9 @@ window.App = {
         }
         const socket = window.socket;
 
-        // Remove old listeners to prevent duplicates
-        socket.removeAllListeners();
+        socket.removeAllListeners(); // Καθαρισμός παλιών listeners
 
         socket.on('connect', () => {
-            // ✅ FIX: Έλεγχος αν υπάρχουν στοιχεία πελάτη για να μην κρασάρει
-            if (!customerDetails) {
-                console.warn("⚠️ No customer details found on connect.");
-                return;
-            }
-
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
             // ✅ SEND TOKEN ON JOIN
             socket.emit('join-store', { 
@@ -341,22 +277,6 @@ window.App = {
             setTimeout(() => {
                 App.checkStripeReturn();
             }, 1000);
-
-            // ✅ NEW: Αν κολλήσει η φόρτωση, ξαναπροσπαθούμε αυτόματα μετά από 2.5s
-            setTimeout(() => {
-                const container = document.getElementById('menuContainer');
-                if (container && container.innerText.includes('Φόρτωση')) {
-                    console.log("⚠️ Menu stuck, retrying join...");
-                    const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    socket.emit('join-store', { 
-                        storeName: TARGET_STORE, 
-                        username: mySocketUsername, 
-                        role: 'customer', 
-                        token: localStorage.getItem('fcm_token'), 
-                        isNative: false 
-                    });
-                }
-            }, 2500);
         });
 
         socket.on('menu-update', (data) => { App.renderMenu(data); });
@@ -396,68 +316,43 @@ window.App = {
 
         socket.on('orders-update', (orders) => {
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
-            const myOrders = orders.filter(o => o.from === mySocketUsername);
-
-            // Simple replace for now, could be smarter (merge)
-            activeOrders = myOrders;
-            localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-            
-            // ✅ FIX: Ενημέρωση του activeOrderState από τον Server
-            if (activeOrders.length > 0) {
-                activeOrderState = activeOrders[activeOrders.length - 1];
-                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+            const myOrder = orders.find(o => o.from === mySocketUsername);
+            if (myOrder) {
+                // ✅ SYNC STATUS FROM SERVER
+                if (!activeOrderState || activeOrderState.status !== myOrder.status) {
+                    activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
+                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+                    App.updateStatusUI(myOrder.status);
+                }
             } else {
-                activeOrderState = null;
-                localStorage.removeItem('bellgo_active_order');
+                // Logic if order removed from server (e.g., ready)
+                if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
+                    // Optionally set to ready or clear
+                }
             }
-            App.updateStatusUI();
         });
 
         // ✅ IMMEDIATE UPDATE (Fixes "den vlepw stadiaka")
         socket.on('order-changed', (data) => {
-            const orderIndex = activeOrders.findIndex(o => o.id === data.id);
-            if (orderIndex > -1) {
-                activeOrders[orderIndex].status = data.status;
-                if (data.readyTime) activeOrders[orderIndex].readyTime = data.readyTime;
-                
-                // ✅ FIX: Update activeOrderState αν είναι η τρέχουσα
-                if (activeOrderState && activeOrderState.id === data.id) {
-                    activeOrderState = activeOrders[orderIndex];
-                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                }
-                
-                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI(false); // ✅ Μην ανοίγεις το overlay
+            if (activeOrderState && activeOrderState.id === data.id) {
+                activeOrderState.status = data.status;
+                if (data.readyTime) activeOrderState.readyTime = data.readyTime; // Save ready time
+                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+                App.updateStatusUI(data.status);
             }
         });
 
-        socket.on('order-status-changed', (data) => {
-            const orderIndex = activeOrders.findIndex(o => o.id === data.id);
-            if (orderIndex > -1) {
-                activeOrders[orderIndex].status = data.status;
-                
-                // ✅ FIX: Update activeOrderState
-                if (activeOrderState && activeOrderState.id === data.id) {
-                    activeOrderState = activeOrders[orderIndex];
-                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                }
-                
-                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI(false); // ✅ Μην ανοίγεις το overlay, απλά ενημέρωσε
-            }
-        });
-
-        // ✅ Force connect or Re-Join if already connected
+        // ✅ Force Connect / Re-Join if needed
         if (!socket.connected) {
             socket.connect();
-        } else if (customerDetails) {
-            // If already connected, ensure we join the room to get the menu
+        } else {
+            // Αν είναι ήδη συνδεδεμένο, ξαναστέλνουμε join για σιγουριά
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
             socket.emit('join-store', { 
                 storeName: TARGET_STORE, 
                 username: mySocketUsername, 
                 role: 'customer', 
-                token: localStorage.getItem('fcm_token'), 
+                token: localStorage.getItem('fcm_token'),
                 isNative: false 
             });
         }
@@ -512,13 +407,7 @@ window.App = {
 
     addToOrder: (item) => {
         const txt = document.getElementById('orderText');
-        txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
-        
-        const panel = document.getElementById('orderPanel');
-        if (panel.classList.contains('minimized')) {
-            App.toggleOrderPanel();
-        }
-
+        txt.focus(); txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
         let lines = txt.value.split('\n').filter(l => l.trim() !== '');
         let found = false;
         const { name } = parseItem(item);
@@ -580,13 +469,11 @@ window.App = {
 
     confirmPayment: (method) => {
         const items = document.getElementById('orderText').value.trim();
-        // ✅ FIX: Hide overlay immediately to prevent "stuck" UI
-        document.getElementById('paymentOverlay').style.display = 'none';
-        
         if(method === '💳 ΚΑΡΤΑ') {
             App.payWithCard(items);
         } else {
             App.sendOrder(items, method);
+            document.getElementById('paymentOverlay').style.display = 'none';
         }
     },
 
@@ -607,30 +494,11 @@ window.App = {
     },
 
     sendOrder: (items, method) => {
-        // ✅ FIX: Έλεγχος σύνδεσης πριν την αποστολή
-        if (!window.socket) App.connectSocket();
-
-        if (!window.socket || !window.socket.connected) {
-             console.log("⚠️ Socket disconnected. Attempting reconnect...");
-             if(window.socket) window.socket.connect();
-             
-             // ✅ FIX: Περιμένουμε λίγο να συνδεθεί και ξαναδοκιμάζουμε αυτόματα
-             setTimeout(() => {
-                 if (window.socket && window.socket.connected) {
-                     App.sendOrder(items, method); // Ξανακαλούμε τη συνάρτηση
-                 } else {
-                     alert("⚠️ Αδυναμία σύνδεσης με το κατάστημα. Ελέγξτε το internet σας ή ανανεώστε τη σελίδα.");
-                 }
-             }, 1500);
-             return;
-        }
-
         const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
         activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-        // ✅ FIX: Στέλνουμε και το ID για να συγχρονίζεται σωστά η κατάσταση (Status)
-        window.socket.emit('new-order', { text: fullText, id: activeOrderState.id });
-        App.updateStatusUI(true); // ✅ Εδώ θέλουμε να ανοίξει το overlay (νέα παραγγελία)
+        window.socket.emit('new-order', fullText);
+        App.showStatus('pending'); // ✅ Wait for Admin (Cooking)
         document.getElementById('orderText').value = ''; 
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
     },
@@ -642,91 +510,38 @@ window.App = {
 
     maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
-    // ✅ FIX: Διαχωρισμός rendering από το άνοιγμα του overlay
-    renderStatusList: () => {
-        const listContainer = document.getElementById('orderStatusList');
-        const btnNew = document.getElementById('btnNewOrder');
-        const miniText = document.getElementById('miniStatusText');
-        
-        if (!listContainer) return;
-        listContainer.innerHTML = '';
-
-        const sorted = activeOrders.slice().sort((a,b) => b.timestamp - a.timestamp);
-        let hasFinished = false;
-
-        if (sorted.length === 0) {
-             listContainer.innerHTML = '<div style="color:#aaa; text-align:center; margin-top:20px;">Δεν υπάρχουν ενεργές παραγγελίες.</div>';
-        } else {
-            sorted.forEach(order => {
-                const div = document.createElement('div');
-                
-                let icon = '⏳';
-                let title = 'Στάλθηκε';
-                let desc = 'Αναμονή για αποδοχή...';
-                let color = '#FF9800'; // Orange
-
-                if (order.status === 'cooking') {
-                    icon = '👨‍🍳'; title = 'Ετοιμάζεται'; desc = 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
-                } else if (order.status === 'ready') {
-                    icon = '🛵'; title = 'Έρχεται!'; desc = 'Ο διανομέας ξεκίνησε.'; color = '#00E676'; // Green
-                    hasFinished = true;
-                }
-
-                const timeStr = new Date(order.timestamp).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
-
-                div.innerHTML = `
-                    <div style="font-size:30px; margin-right:15px;">${icon}</div>
-                    <div style="text-align:left; flex:1;">
-                        <div style="color:${color}; font-weight:bold; font-size:18px;">${title}</div>
-                        <div style="color:#ccc; font-size:14px;">${desc}</div>
-                        <div style="color:#666; font-size:12px; margin-top:4px;">${timeStr}</div>
-                    </div>
-                `;
-                div.style.cssText = "background:#222; padding:15px; border-radius:10px; display:flex; align-items:center; border:1px solid #444; width:100%;";
-                listContainer.appendChild(div);
-            });
-        }
-
-        // Εμφάνιση κουμπιού εκκαθάρισης αν υπάρχει έτοιμη παραγγελία
-        if(hasFinished) btnNew.style.display = 'block';
-        else btnNew.style.display = 'none';
-        
-        // Ενημέρωση Mini Status (παίρνει το status της τελευταίας παραγγελίας)
-        const miniText = document.getElementById('miniStatusText');
-        if(miniText && sorted.length > 0) {
-            const latest = sorted[0];
-            if(latest.status === 'pending') miniText.innerText = "Αναμονή...";
-            else if(latest.status === 'cooking') miniText.innerText = "Ετοιμάζεται";
-            else if(latest.status === 'ready') miniText.innerText = "Έρχεται!";
-        } else if (miniText) {
-            miniText.innerText = "...";
-        }
-    },
-
-    openStatusOverlay: () => {
-        document.getElementById('statusOverlay').style.height = '100%';
-        document.getElementById('btnStatusMini').style.display = 'none';
-    },
-
-    updateStatusUI: (shouldOpen = false) => { 
-        App.renderStatusList();
-        if (shouldOpen) App.openStatusOverlay();
-        
-        // Αν είναι κλειστό αλλά έχουμε παραγγελίες, δείξε το mini button
+    showStatus: (status) => {
         const overlay = document.getElementById('statusOverlay');
-        if (overlay.offsetHeight === 0 && activeOrders.length > 0) {
-             document.getElementById('btnStatusMini').style.display = 'flex';
+        const icon = document.getElementById('statusIcon');
+        const text = document.getElementById('statusText');
+        const sub = document.getElementById('statusSub');
+        const btnNew = document.getElementById('btnNewOrder');
+
+        overlay.style.height = '100%'; 
+        btnNew.style.display = 'none'; 
+        document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
+
+        let timeString = "";
+        // Χρήση readyTime αν υπάρχει, αλλιώς timestamp
+        const timeRef = (activeOrderState && activeOrderState.readyTime) ? activeOrderState.readyTime : Date.now();
+        const date = new Date(timeRef);
+        timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
+
+        const miniText = document.getElementById('miniStatusText');
+        if (status === 'pending') {
+            icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
+            if(miniText) miniText.innerText = "Αναμονή...";
+        } else if (status === 'cooking') {
+            icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
+            if(miniText) miniText.innerText = "Ετοιμάζεται";
+        } else if (status === 'ready') {
+            icon.innerText = '🛵'; text.innerText = `Έρχεται! (Έφυγε ${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
+            btnNew.style.display = 'block'; 
+            if(miniText) miniText.innerText = "Έρχεται!";
         }
     },
 
-    clearFinishedOrders: () => {
-        activeOrders = activeOrders.filter(o => o.status !== 'ready');
-        localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-        App.updateStatusUI(false);
-        if (activeOrders.length === 0) {
-            App.minimizeStatus();
-        }
-    },
+    updateStatusUI: (status) => { App.showStatus(status); },
 
     resetForNewOrder: () => {
         if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
@@ -759,20 +574,6 @@ window.App = {
 };
 
 onAuthStateChanged(auth, (user) => {
-    const splash = document.getElementById('splashScreen');
-    if(splash) splash.style.display = 'none';
-
     if (user) { currentUser = user; App.checkDetails(); } 
     else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContent').style.display = 'none'; }
-});
-
-
-// PWA Lifecycle Fix: Reload page if URL changes on visibility.
-let lastPath = window.location.pathname;
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && window.location.pathname !== lastPath) {
-        // The URL has changed, likely from a QR scan focusing the existing PWA.
-        // A full reload is the most robust way to re-initialize the app state.
-        window.location.reload();
-    }
 });
