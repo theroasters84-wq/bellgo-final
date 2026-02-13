@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v30'; // ✅ Updated Version
+@const CACHE_NAME = 'bellgo-v30'; // ✅ Updated Version
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -139,6 +139,11 @@ self.addEventListener('fetch', (event) => {
         // Αν ο χρήστης ζητάει ένα URL καταστήματος (/shop/name/), του σερβίρουμε το cached order.html
         if (url.pathname.startsWith('/shop/')) {
           return caches.match('/order.html');
+        }
+        // ✅ NEW: Fallback για το Admin App στο /manage/ (χρησιμοποιεί τα αρχεία του root)
+        if (url.pathname.startsWith('/manage/')) {
+             const relative = url.pathname.replace('/manage', '');
+             return caches.match(relative).then(m => m || caches.match(event.request));
         }
         return caches.match(event.request);
       })

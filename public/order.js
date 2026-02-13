@@ -463,6 +463,7 @@ window.App = {
         const lines = text.split('\n');
         let validForCard = true;
         let total = 0;
+        let totalItems = 0;
         if (text.length === 0) validForCard = false;
 
         for (const line of lines) {
@@ -470,6 +471,8 @@ window.App = {
             let qty = 1; let rest = line;
             const qtyMatch = line.match(/^(\d+)\s+(.*)/);
             if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
+            
+            totalItems += qty;
 
             if(rest.includes(':')) {
                 const parts = rest.split(':');
@@ -478,6 +481,17 @@ window.App = {
                 else { validForCard = false; }
             } else { validForCard = false; }
         }
+        
+        const badge = document.getElementById('cartBadge');
+        if (badge) {
+            if (totalItems > 0) {
+                badge.style.display = 'inline-block';
+                badge.innerText = totalItems;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
         document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
         const btnCard = document.getElementById('payCard');
         if (validForCard && total > 0 && storeHasStripe) {

@@ -198,13 +198,16 @@ window.App = {
                 isNative: isNative 
             });
 
-            // ✅ FIX: Έλεγχος για εκκρεμή σύνδεση Stripe μετά το redirect
-            const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
-            if (pendingStripe) {
-                socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
-                localStorage.removeItem('temp_stripe_connect_id');
-                alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
-            }
+            // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
+            // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
+            socket.once('menu-update', () => {
+                const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
+                if (pendingStripe) {
+                    socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
+                    localStorage.removeItem('temp_stripe_connect_id');
+                    alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
+                }
+            });
         });
         socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
         

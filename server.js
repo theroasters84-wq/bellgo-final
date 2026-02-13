@@ -30,6 +30,7 @@ try {
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); 
+app.use('/manage', express.static(path.join(__dirname, 'public'))); // ✅ NEW: Εικονικός φάκελος για Admin PWA Isolation
 
 const server = http.createServer(app);
 
@@ -120,7 +121,7 @@ app.get('/shop/:storeName', (req, res) => {
 app.get('/staff/app', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'stafpremium.html')); });
 
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
-app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
+app.get('/admin', (req, res) => { res.redirect('/manage/login.html'); }); // ✅ Redirect στο νέο isolated path
 
 /* ---------------- STRIPE CONNECT OAUTH ---------------- */
 app.get('/connect-stripe', (req, res) => {
@@ -177,8 +178,8 @@ app.get('/manifest.json', async (req, res) => {
         scopeUrl = "/staff/";
     } else {
         iconFile = "admin.png";
-        startUrl = `/login.html`; 
-        scopeUrl = "/";
+        startUrl = `/manage/login.html`; // ✅ Αλλαγή Start URL
+        scopeUrl = "/manage/";           // ✅ Αλλαγή Scope για να μην πιάνει το /shop/
     }
 
     res.set('Content-Type', 'application/manifest+json');
