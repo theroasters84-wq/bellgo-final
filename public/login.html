@@ -68,6 +68,9 @@
         .btn-sub-link { background: none; border: none; color: #555; text-decoration: underline; font-size: 12px; cursor: pointer; margin-top: 10px; }
         .btn-back { background: transparent; border: 1px solid #555; color: #aaa; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; margin-top: 15px; width: 100%; }
 
+        .password-wrapper { position: relative; width: 100%; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #aaa; font-size: 18px; background:none; border:none; padding: 0; }
+
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
     </style>
 </head>
@@ -102,7 +105,10 @@
             <h3 style="color:#FFD700; margin:0;">Είσοδος Προσωπικού</h3>
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
-            <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
+            <div class="password-wrapper">
+                <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
+                <button class="password-toggle" onclick="UI.togglePinVisibility()" type="button">👁️</button>
+            </div>
             <!-- Hidden Select, controlled by JS -->
             <select id="stRole" class="inp" style="display:none;">
                 <option value="waiter">Σερβιτόρος 🤵</option>
@@ -247,6 +253,10 @@
             showSubscription: () => {
                 document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('subscriptionScreen').classList.add('active');
+            },
+            togglePinVisibility: () => {
+                const inp = document.getElementById('stPin');
+                inp.type = inp.type === 'password' ? 'text' : 'password';
             },
             goToBuy: (plan) => {
                 // Πρέπει να πάει στο Admin Form για να βάλει email

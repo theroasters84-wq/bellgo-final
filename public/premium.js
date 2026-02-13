@@ -694,6 +694,11 @@ window.App = {
             if(win) win.remove();
         }
     },
+    removeStaff: (username) => {
+        if(confirm(`Αφαίρεση χρήστη ${username};`)) {
+            window.socket.emit('manual-logout', { targetUser: username });
+        }
+    },
     
     renderStaffList: (list) => {
         const container = document.getElementById('staffList');
@@ -734,8 +739,14 @@ window.App = {
                 stTxt = "Coming";
                 staffDiv.classList.add('coming');
             }
+
+            let closeBtn = '';
+            if (isAway) {
+                closeBtn = `<button class="btn-staff-close" onclick="event.stopPropagation(); App.removeStaff('${u.username}')">✕</button>`;
+            }
             
             staffDiv.innerHTML = `
+                ${closeBtn}
                 <div class="staff-icon">${icon}</div>
                 <div class="staff-label">${u.username}</div>
                 <div class="staff-status">${stTxt}</div>

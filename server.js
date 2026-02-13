@@ -242,8 +242,8 @@ app.post('/create-order-payment', async (req, res) => {
             }],
             mode: 'payment',
             payment_intent_data: { transfer_data: { destination: shopStripeId } },
-            success_url: `${YOUR_DOMAIN}/shop/${storeName}/?payment_status=success`, // FIX URL
-            cancel_url: `${YOUR_DOMAIN}/shop/${storeName}/?payment_status=cancel`,   // FIX URL
+            success_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=success`,
+            cancel_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=cancel`,
         });
         res.json({ url: session.url });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -266,15 +266,12 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
     }
 }
 
-async function updateStoreClients(storeName) {
-    if (!storeName || !storesData[storeName]) return;
-    const store = storesData[storeName];
-    const list = Object.values(activeUsers).filter(u => u.store === storeName && u.role !== 'customer').map(u => ({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging }));
-    io.to(storeName).emit('staff-list-update', list);
-    io.to(storeName).emit('orders-update', store.orders);
-    io.to(storeName).emit('menu-update', store.menu);
-    io.to(storeName).emit('store-settings-update', store.settings);
-    saveStoreToFirebase(storeName);
+function notifyAdmin(storeName, title, body) {
+    Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'admin').forEach(adm => {
+        adm.isRinging = true;
+        if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
+        sendPushNotification(adm, title, body);
+    });
 }
 
 /* ---------------- SOCKET.IO ---------------- */
@@ -317,7 +314,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await getStoreData(targetEmail); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
-    socket.on('verify-pin', async (data) => { const pin = data.pin || data; const email = data.email || socket.store; if (email) { const store = await getStoreData(email); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
+    socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await getStoreData(email); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
     socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await getStoreData(email); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); updateStoreClients(email); } });
     socket.on('update-token', (data) => { const key = `${socket.store}_${data.username}`; if (activeUsers[key]) activeUsers[key].fcmToken = data.token; });
     socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; updateStoreClients(socket.store); } });
@@ -338,17 +335,17 @@ io.on('connection', (socket) => {
         
         if (existingOrder) {
             existingOrder.text = orderText; // Ενημέρωση κειμένου
-            // existingOrder.status = 'pending'; // Προαιρετικά: επαναφορά σε pending αν θέλουμε να ξαναγίνει αποδοχή
+            existingOrder.status = 'pending'; // Προαιρετικά: επαναφορά σε pending αν θέλουμε να ξαναγίνει αποδοχή
             console.log(`📝 Order Updated: ${orderId}`);
             // Ειδοποίηση Admin για Τροποποίηση
-            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`); });
+            notifyAdmin(socket.store, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`);
         } else {
             // Νέα Παραγγελία
             const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
             store.orders.push(newOrder);
             console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`); });
+            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
         }
         
         updateStoreClients(socket.store);
@@ -373,7 +370,7 @@ io.on('connection', (socket) => {
             console.log(`➕ Items added to order ${id} by ${socket.username}`);
             
             // Ειδοποίηση Admin (Συναγερμός)
-            Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'admin').forEach(adm => { adm.isRinging = true; if (adm.socketId) io.to(adm.socketId).emit('ring-bell'); sendPushNotification(adm, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`); });
+            notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`);
             
             updateStoreClients(socket.store);
         }
