@@ -72,7 +72,7 @@ const parseItem = (str) => {
 
 let currentUser = null;
 let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
+let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
 window.App = {
@@ -220,15 +220,22 @@ window.App = {
     },
 
     checkActiveOrderStorage: () => {
-        if (activeOrderState) {
+        if (activeOrders.length > 0) {
             const now = Date.now();
-            if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
-                localStorage.removeItem('bellgo_active_order');
-                activeOrderState = null;
-                App.resetUI();
-            } else {
-                App.updateStatusUI(activeOrderState.status);
+            const stillActiveOrders = activeOrders.filter(order => 
+                order.status !== 'ready' || (now - (order.timestamp || now) < ORDER_TIMEOUT_MS)
+            );
+
+            if (stillActiveOrders.length < activeOrders.length) {
+                activeOrders = stillActiveOrders;
+                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
             }
+        }
+
+        if (activeOrders.length > 0) {
+            App.updateStatusUI();
+        } else {
+            App.resetUI();
         }
     },
 
@@ -312,29 +319,20 @@ window.App = {
 
         socket.on('orders-update', (orders) => {
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
-            const myOrder = orders.find(o => o.from === mySocketUsername);
-            if (myOrder) {
-                // ✅ SYNC STATUS FROM SERVER
-                if (!activeOrderState || activeOrderState.status !== myOrder.status) {
-                    activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
-                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                    App.updateStatusUI(myOrder.status);
-                }
-            } else {
-                // Logic if order removed from server (e.g., ready)
-                if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
-                    // Optionally set to ready or clear
-                }
-            }
+            activeOrders = orders.filter(o => o.from === mySocketUsername);
+            localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+            App.updateStatusUI();
         });
 
         // ✅ IMMEDIATE UPDATE (Fixes "den vlepw stadiaka")
         socket.on('order-changed', (data) => {
-            if (activeOrderState && activeOrderState.id === data.id) {
-                activeOrderState.status = data.status;
-                if (data.readyTime) activeOrderState.readyTime = data.readyTime; // Save ready time
-                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                App.updateStatusUI(data.status);
+            const orderIndex = activeOrders.findIndex(o => o.id === data.id);
+            if (orderIndex > -1) {
+                activeOrders[orderIndex].status = data.status;
+                if (data.readyTime) activeOrders[orderIndex].readyTime = data.readyTime; // Save ready time
+                activeOrders[orderIndex].timestamp = Date.now(); // Update timestamp on change
+                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+                App.updateStatusUI();
             }
         });
     },
@@ -476,67 +474,127 @@ window.App = {
 
     sendOrder: (items, method) => {
         const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
-        activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
-        localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
+        
         window.socket.emit('new-order', fullText);
-        App.showStatus('pending'); // ✅ Wait for Admin (Cooking)
+        
+        const overlay = document.getElementById('statusOverlay');
+        overlay.style.height = '100%';
+        
+        // Temporarily show a sending message if no other orders are active
+        if (activeOrders.length === 0) {
+            const list = document.getElementById('orderStatusList');
+            list.innerHTML = `<div style="text-align:center; color:#aaa; padding:20px;">Αποστολή παραγγελίας...</div>`;
+        }
+
         document.getElementById('orderText').value = ''; 
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+        App.handleInput(); // Recalculate total and button states
+        
+        // Minimize the order panel after sending
+        const p = document.getElementById('orderPanel');
+        if(!p.classList.contains('minimized')) {
+            App.toggleOrderPanel();
+        }
     },
 
     minimizeStatus: () => { 
         document.getElementById('statusOverlay').style.height = '0'; 
-        document.getElementById('btnStatusMini').style.display = 'flex'; // Εμφάνιση μικρού κουμπιού
+        if (activeOrders.length > 0) {
+            document.getElementById('btnStatusMini').style.display = 'flex';
+        }
     },
 
     maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
-    showStatus: (status) => {
+    renderOrderStatuses: () => {
         const overlay = document.getElementById('statusOverlay');
-        const icon = document.getElementById('statusIcon');
-        const text = document.getElementById('statusText');
-        const sub = document.getElementById('statusSub');
-        const btnNew = document.getElementById('btnNewOrder');
-
-        overlay.style.height = '100%'; 
-        btnNew.style.display = 'none'; 
-        document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
-
-        let timeString = "";
-        // Χρήση readyTime αν υπάρχει, αλλιώς timestamp
-        const timeRef = (activeOrderState && activeOrderState.readyTime) ? activeOrderState.readyTime : Date.now();
-        const date = new Date(timeRef);
-        timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
-
+        const list = document.getElementById('orderStatusList');
         const miniText = document.getElementById('miniStatusText');
-        if (status === 'pending') {
-            icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
-            if(miniText) miniText.innerText = "Αναμονή...";
-        } else if (status === 'cooking') {
-            icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
-            if(miniText) miniText.innerText = "Ετοιμάζεται";
-        } else if (status === 'ready') {
-            icon.innerText = '🛵'; text.innerText = `Έρχεται! (Έφυγε ${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
-            btnNew.style.display = 'block'; 
-            if(miniText) miniText.innerText = "Έρχεται!";
+        const btnClear = document.getElementById('btnNewOrder'); // This is the 'Clear Finished' button
+
+        if (!activeOrders || activeOrders.length === 0) {
+            list.innerHTML = '<div style="text-align:center; color:#aaa; padding:20px;">Δεν υπάρχουν ενεργές παραγγελίες.</div>';
+            miniText.innerText = '...';
+            document.getElementById('btnStatusMini').style.display = 'none';
+            btnClear.style.display = 'none';
+            // Do not hide the whole overlay, user might want to see the empty state.
+            // But if there are no orders, maybe it should be hidden unless just sent.
+            return;
         }
+
+        overlay.style.height = '100%';
+        document.getElementById('btnStatusMini').style.display = 'flex';
+        list.innerHTML = ''; // Clear previous statuses
+        let hasReadyOrder = false;
+
+        const statusOrder = { 'cooking': 1, 'pending': 2, 'ready': 3 };
+        const sortedOrders = [...activeOrders].sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
+
+        sortedOrders.forEach(order => {
+            let icon, text, sub;
+            const timeRef = order.readyTime || order.timestamp || Date.now();
+            const timeString = new Date(timeRef).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
+
+            if (order.status === 'pending') {
+                icon = '⏳'; text = 'Αναμονή...'; sub = 'Το κατάστημα ελέγχει την παραγγελία';
+            } else if (order.status === 'cooking') {
+                icon = '👨‍🍳'; text = 'Ετοιμάζεται!'; sub = `Η παραγγελία έγινε αποδεκτή`;
+            } else if (order.status === 'ready') {
+                icon = '🛵'; text = `Έρχεται! (Έφυγε ${timeString})`; sub = 'Ο διανομέας ξεκίνησε';
+                hasReadyOrder = true;
+            } else {
+                icon = '❓'; text = 'Άγνωστη Κατάσταση'; sub = `Status: ${order.status}`;
+            }
+
+            const itemHTML = `
+                <div style="background-color: #2c2c2c; border-radius: 8px; padding: 15px; display: flex; align-items: center; gap: 15px; border-left: 5px solid ${order.status === 'ready' ? '#4CAF50' : (order.status === 'cooking' ? '#FFD700' : '#aaa')};">
+                    <div style="font-size: 28px;">${icon}</div>
+                    <div style="flex-grow: 1;">
+                        <div style="font-size: 17px; font-weight: bold; color: #fff;">${text}</div>
+                        <div style="font-size: 14px; color: #aaa;">${sub}</div>
+                    </div>
+                </div>
+            `;
+            list.innerHTML += itemHTML;
+        });
+
+        const cooking = activeOrders.filter(o => o.status === 'cooking').length;
+        const pending = activeOrders.filter(o => o.status === 'pending').length;
+        const ready = activeOrders.filter(o => o.status === 'ready').length;
+
+        if (cooking > 0) {
+            miniText.innerText = `${cooking} x 👨‍🍳`;
+        } else if (pending > 0) {
+            miniText.innerText = `${pending} x ⏳`;
+        } else if (ready > 0) {
+            miniText.innerText = `${ready} x 🛵`;
+        } else {
+            miniText.innerText = `${activeOrders.length} Ενεργές`;
+        }
+        
+        btnClear.style.display = hasReadyOrder ? 'block' : 'none';
     },
 
-    updateStatusUI: (status) => { App.showStatus(status); },
+    updateStatusUI: () => { 
+        App.renderOrderStatuses(); 
+    },
 
-    resetForNewOrder: () => {
-        if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
-            localStorage.removeItem('bellgo_active_order');
-            activeOrderState = null;
-            document.getElementById('statusOverlay').style.height = '0';
-            document.getElementById('orderText').value = '';
-            document.getElementById('btnStatusMini').style.display = 'none';
+    clearFinishedOrders: () => {
+        if (confirm("Εκκαθάριση όλων των παραγγελιών που έχουν σταλεί;")) {
+            activeOrders = activeOrders.filter(o => o.status !== 'ready');
+            localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+            App.updateStatusUI();
+            if (activeOrders.length === 0) {
+                App.resetUI();
+            }
         }
     },
 
     resetUI: () => { 
         document.getElementById('statusOverlay').style.height = '0'; 
         document.getElementById('btnStatusMini').style.display = 'none';
+        const list = document.getElementById('orderStatusList');
+        if(list) list.innerHTML = '';
     },
 
     toggleOrderPanel: () => {

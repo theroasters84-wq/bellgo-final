@@ -336,3 +336,73 @@ input:checked + .slider:before { transform: translateX(18px); }
 @keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes pulseMini { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+/* --- RESPONSIVE DESIGN --- */
+
+/* For Tablets and larger phones (landscape) */
+@media (min-width: 600px) {
+    /* Make modals slightly wider */
+    .details-box, .modal-box {
+        max-width: 450px;
+    }
+
+    .order-window {
+        max-width: 500px;
+    }
+}
+
+/* For Desktops and large tablets */
+@media (min-width: 768px) {
+    /* Center the main app content for customer-facing pages like order.html */
+    /* This creates a "phone" view on desktop */
+    body:has(#appContent) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000; /* Black background for the letterbox */
+    }
+
+    #appContent {
+        max-width: 420px;
+        height: 95vh;
+        max-height: 800px;
+        border-radius: 20px;
+        border: 1px solid #333;
+        box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* For admin/staff index.html - side-by-side layout */
+    body:has(.staff-panel) .content {
+        flex-direction: row;
+    }
+
+    .staff-panel {
+        flex: 0 0 300px; /* Fixed width for staff list */
+        display: flex !important; /* Always show on desktop for admins */
+        border-right: 1px solid #333;
+    }
+
+    .chat-panel {
+        flex: 1;
+    }
+
+    /* Make menu items on order.html better for wider screens */
+    .category-items {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+}
+
+/* For very wide screens */
+@media (min-width: 1200px) {
+    #appContent {
+        max-width: 450px;
+    }
+
+    .staff-panel {
+        flex: 0 0 350px;
+    }
+}

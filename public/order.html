@@ -145,10 +145,11 @@
 
         <div id="statusOverlay">
             <div class="status-content">
-                <div id="statusIcon" class="status-icon">⏳</div>
-                <div id="statusText" class="status-text">Αναμονή...</div>
-                <div id="statusSub" class="status-sub">Μην κλείνετε την εφαρμογή</div>
-                <button id="btnNewOrder" class="btn-new-order" onclick="App.resetForNewOrder()">➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</button>
+                <h3 style="color:#FFD700; margin: 0 0 15px 0;">Οι Παραγγελίες μου</h3>
+                <div id="orderStatusList" style="width: 100%; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                    <!-- Dynamically filled by order.js -->
+                </div>
+                <button id="btnNewOrder" class="btn-new-order" onclick="App.clearFinishedOrders()" style="display:none;">✔ ΕΚΚΑΘΑΡΙΣΗ ΟΛΟΚΛΗΡΩΜΕΝΩΝ</button>
                 <button class="btn-minimize" onclick="App.minimizeStatus()">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
             </div>
         </div>
