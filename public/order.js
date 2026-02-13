@@ -630,3 +630,14 @@ onAuthStateChanged(auth, (user) => {
     if (user) { currentUser = user; App.checkDetails(); } 
     else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContent').style.display = 'none'; }
 });
+
+
+// PWA Lifecycle Fix: Reload page if URL changes on visibility.
+let lastPath = window.location.pathname;
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && window.location.pathname !== lastPath) {
+        // The URL has changed, likely from a QR scan focusing the existing PWA.
+        // A full reload is the most robust way to re-initialize the app state.
+        window.location.reload();
+    }
+});
