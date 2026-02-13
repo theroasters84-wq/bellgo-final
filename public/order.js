@@ -623,7 +623,8 @@ window.App = {
         const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
         activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-        window.socket.emit('new-order', fullText);
+        // ✅ FIX: Στέλνουμε και το ID για να συγχρονίζεται σωστά η κατάσταση (Status)
+        window.socket.emit('new-order', { text: fullText, id: activeOrderState.id });
         App.updateStatusUI('pending'); // ✅ Χρήση της updateStatusUI για συνέπεια
         document.getElementById('orderText').value = ''; 
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";

@@ -116,6 +116,9 @@ app.get('/shop/:storeName', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html')); 
 });
 
+// ✅ NEW: Virtual Route για το Staff App (για να έχει δικό του PWA Scope)
+app.get('/staff/app', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'stafpremium.html')); });
+
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 
@@ -167,6 +170,11 @@ app.get('/manifest.json', async (req, res) => {
         // This tricks the browser into thinking it's a separate app/folder
         startUrl = `/shop/${safeStoreId}/?name=${encodeURIComponent(storeName)}`;
         scopeUrl = `/shop/${safeStoreId}/`; 
+    } else if (req.query.id === 'staff_app') {
+        // ✅ FIX: Staff App Isolation
+        iconFile = "admin.png";
+        startUrl = `/staff/app?store=${encodeURIComponent(storeParam)}`;
+        scopeUrl = "/staff/";
     } else {
         iconFile = "admin.png";
         startUrl = `/login.html`; 
