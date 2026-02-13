@@ -285,7 +285,7 @@ window.App = {
             if (activeOrders.length > 0) {
                 activeOrderState = activeOrders[activeOrders.length - 1];
             }
-            App.updateStatusUI();
+            App.updateStatusUI(true); // ✅ Άνοιγμα μόνο κατά την εκκίνηση
         }
     },
 
@@ -427,7 +427,7 @@ window.App = {
                 }
                 
                 localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI();
+                App.updateStatusUI(false); // ✅ Μην ανοίγεις το overlay
             }
         });
 
@@ -443,7 +443,7 @@ window.App = {
                 }
                 
                 localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI();
+                App.updateStatusUI(false); // ✅ Μην ανοίγεις το overlay, απλά ενημέρωσε
             }
         });
 
@@ -630,7 +630,7 @@ window.App = {
         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
         // ✅ FIX: Στέλνουμε και το ID για να συγχρονίζεται σωστά η κατάσταση (Status)
         window.socket.emit('new-order', { text: fullText, id: activeOrderState.id });
-        App.updateStatusUI('pending'); // ✅ Χρήση της updateStatusUI για συνέπεια
+        App.updateStatusUI(true); // ✅ Εδώ θέλουμε να ανοίξει το overlay (νέα παραγγελία)
         document.getElementById('orderText').value = ''; 
         document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
     },
@@ -642,16 +642,15 @@ window.App = {
 
     maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
-    showStatus: () => {
-        const overlay = document.getElementById('statusOverlay');
+    // ✅ FIX: Διαχωρισμός rendering από το άνοιγμα του overlay
+    renderStatusList: () => {
         const listContainer = document.getElementById('orderStatusList');
         const btnNew = document.getElementById('btnNewOrder');
-
-        overlay.style.height = '100%'; 
+        const miniText = document.getElementById('miniStatusText');
+        
+        if (!listContainer) return;
         listContainer.innerHTML = '';
-        document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
 
-        // Ταξινόμηση: Νεότερα πρώτα
         const sorted = activeOrders.slice().sort((a,b) => b.timestamp - a.timestamp);
         let hasFinished = false;
 
@@ -704,12 +703,26 @@ window.App = {
         }
     },
 
-    updateStatusUI: () => { App.showStatus(); },
+    openStatusOverlay: () => {
+        document.getElementById('statusOverlay').style.height = '100%';
+        document.getElementById('btnStatusMini').style.display = 'none';
+    },
+
+    updateStatusUI: (shouldOpen = false) => { 
+        App.renderStatusList();
+        if (shouldOpen) App.openStatusOverlay();
+        
+        // Αν είναι κλειστό αλλά έχουμε παραγγελίες, δείξε το mini button
+        const overlay = document.getElementById('statusOverlay');
+        if (overlay.offsetHeight === 0 && activeOrders.length > 0) {
+             document.getElementById('btnStatusMini').style.display = 'flex';
+        }
+    },
 
     clearFinishedOrders: () => {
         activeOrders = activeOrders.filter(o => o.status !== 'ready');
         localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-        App.updateStatusUI();
+        App.updateStatusUI(false);
         if (activeOrders.length === 0) {
             App.minimizeStatus();
         }
