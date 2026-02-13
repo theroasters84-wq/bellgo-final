@@ -1120,13 +1120,15 @@ window.App = {
         if(!input) return alert("Δώστε αριθμούς τραπεζιών (π.χ. 1-10)");
         
         let tables = [];
-        if(input.includes('-')) {
+        // Έλεγχος αν είναι εύρος αριθμών (π.χ. 1-10)
+        if(input.includes('-') && !isNaN(parseInt(input.split('-')[0]))) {
             const parts = input.split('-');
             const start = parseInt(parts[0]);
             const end = parseInt(parts[1]);
             for(let i=start; i<=end; i++) tables.push(i);
         } else {
-            tables = input.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            // ✅ Αλλαγή: Δέχεται και γράμματα (π.χ. A1, B2)
+            tables = input.split(',').map(x => x.trim()).filter(x => x !== "");
         }
         
         const baseUrl = window.location.origin;
@@ -1134,7 +1136,7 @@ window.App = {
         const storeParam = encodeURIComponent(userData.store);
         
         tables.forEach(t => {
-            const url = `${baseUrl}/shop/${storeParam}/?table=${t}`;
+            const url = `${baseUrl}/shop/${storeParam}/?table=${encodeURIComponent(t)}`;
             const wrapper = document.createElement('div');
             wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
             wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
