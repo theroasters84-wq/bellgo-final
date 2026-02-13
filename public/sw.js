@@ -145,6 +145,11 @@ self.addEventListener('fetch', (event) => {
              const relative = url.pathname.replace('/manage', '');
              return caches.match(relative).then(m => m || caches.match(event.request));
         }
+        // ✅ NEW: Fallback για το Staff App στο /staff/
+        if (url.pathname.startsWith('/staff/')) {
+             // Αν ζητάει την εφαρμογή, δίνουμε το cached HTML
+             if (url.pathname.includes('app')) return caches.match('/stafpremium.html');
+        }
         return caches.match(event.request);
       })
   );

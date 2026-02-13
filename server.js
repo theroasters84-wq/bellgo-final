@@ -164,7 +164,7 @@ function updateStoreStats(store, order) {
     mStats.days[day].turnover += total;
 
     // ✅ 4. Στατιστικά Προσωπικού (Ανά Ημέρα)
-    const staffName = order.from || "Άγνωστος";
+    const staffName = (order.from && order.from.trim()) ? order.from : "Άγνωστος";
     if (!mStats.days[day].staff) mStats.days[day].staff = {};
     if (!mStats.days[day].staff[staffName]) mStats.days[day].staff[staffName] = { orders: 0, turnover: 0, products: {} };
     
