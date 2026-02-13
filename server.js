@@ -99,7 +99,6 @@ async function updateStoreClients(storeName) {
 
     io.to(storeName).emit('staff-list-update', list);
     io.to(storeName).emit('orders-update', store.orders);
-        socket.emit('menu-update', store.menu || []); // ✅ FIX: Άμεση αποστολή στον συγκεκριμένο χρήστη
         io.to(storeName).emit('menu-update', store.menu || []); 
     io.to(storeName).emit('store-settings-update', store.settings);
     saveStoreToFirebase(storeName);
@@ -310,6 +309,7 @@ io.on('connection', (socket) => {
             isRinging: wasRinging, isNative: data.isNative 
         };
 
+        socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket
         updateStoreClients(storeName);
         if(wasRinging) { socket.emit('ring-bell'); }
     });
