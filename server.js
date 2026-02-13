@@ -99,7 +99,7 @@ async function updateStoreClients(storeName) {
 
     io.to(storeName).emit('staff-list-update', list);
     io.to(storeName).emit('orders-update', store.orders);
-    io.to(storeName).emit('menu-update', store.menu);
+        io.to(storeName).emit('menu-update', store.menu || []); // ✅ FIX: Πάντα array για να μην κολλάει το loading
     io.to(storeName).emit('store-settings-update', store.settings);
     saveStoreToFirebase(storeName);
 }
@@ -280,7 +280,7 @@ io.on('connection', (socket) => {
 
     socket.on('join-store', async (data) => {
         let rawStore = data.storeName || '';
-        if (!rawStore && data.role === 'customer') { console.log("⚠️ Customer tried to join without storeName"); return; }
+        if ((!rawStore || rawStore === 'null') && data.role === 'customer') { console.log("⚠️ Customer tried to join without storeName"); return; }
         if (!rawStore) { return; } // Admin without store yet
 
         if (rawStore.endsWith('premium')) rawStore = rawStore.replace('premium', '');

@@ -306,11 +306,23 @@ window.App = {
     },
 
     connectSocket: () => {
-        if (window.socket && window.socket.connected) return;
-        window.socket = io({ transports: ['websocket'], reconnection: true });
+        // ✅ FIX: Αν υπάρχει ήδη socket, δεν φτιάχνουμε νέο, απλά ελέγχουμε τη σύνδεση
+        if (window.socket) {
+            if (!window.socket.connected) window.socket.connect();
+            return;
+        }
+        
+        // ✅ FIX: Αφαίρεση του transports: ['websocket'] για να παίζει και με polling (πιο συμβατό)
+        window.socket = io({ reconnection: true });
         const socket = window.socket;
 
         socket.on('connect', () => {
+            // ✅ FIX: Έλεγχος αν υπάρχουν στοιχεία πελάτη για να μην κρασάρει
+            if (!customerDetails) {
+                console.warn("⚠️ No customer details found on connect.");
+                return;
+            }
+
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
             // ✅ SEND TOKEN ON JOIN
             socket.emit('join-store', { 
@@ -552,6 +564,12 @@ window.App = {
     },
 
     sendOrder: (items, method) => {
+        // ✅ FIX: Έλεγχος σύνδεσης πριν την αποστολή
+        if (!window.socket || !window.socket.connected) {
+             alert("⚠️ Αδυναμία σύνδεσης με το κατάστημα. Ελέγξτε το internet σας ή ανανεώστε τη σελίδα.");
+             return;
+        }
+
         const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
         activeOrderState = { id: Date.now(), status: 'pending', timestamp: Date.now() };
         localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
