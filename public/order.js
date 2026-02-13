@@ -308,7 +308,21 @@ window.App = {
     connectSocket: () => {
         // ✅ FIX: Αν υπάρχει ήδη socket, δεν φτιάχνουμε νέο, απλά ελέγχουμε τη σύνδεση
         if (window.socket) {
-            if (!window.socket.connected) window.socket.connect();
+            if (!window.socket.connected) {
+                window.socket.connect();
+            } else {
+                // ✅ FIX: Αν είναι ήδη συνδεδεμένο, στέλνουμε join-store για να κατέβει το μενού
+                if (customerDetails) {
+                    const mySocketUsername = customerDetails.name + " (Πελάτης)";
+                    window.socket.emit('join-store', { 
+                        storeName: TARGET_STORE, 
+                        username: mySocketUsername, 
+                        role: 'customer', 
+                        token: localStorage.getItem('fcm_token'), 
+                        isNative: false 
+                    });
+                }
+            }
             return;
         }
         
