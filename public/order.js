@@ -197,34 +197,37 @@ window.App = {
         App.checkActiveOrderStorage();
 
         // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
-        const txt = document.getElementById('orderText');
-        const panel = document.getElementById('orderPanel');
+        if (!App.viewportInitialized) {
+            App.viewportInitialized = true;
+            const txt = document.getElementById('orderText');
+            const panel = document.getElementById('orderPanel');
 
-        function handleViewport() {
-            if (window.visualViewport) {
-                document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
-                if (window.visualViewport.height > (window.screen.height * 0.8)) {
-                    // Keyboard Closed
-                    panel.classList.remove('writing-mode');
-                    txt.blur();
+            const handleViewport = () => {
+                if (window.visualViewport) {
+                    document.documentElement.style.setProperty('--app-height', `${window.visualViewport.height}px`);
+                    if (window.visualViewport.height > (window.screen.height * 0.8)) {
+                        // Keyboard Closed
+                        panel.classList.remove('writing-mode');
+                        txt.blur();
+                    }
                 }
+            };
+            
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', handleViewport);
+                window.visualViewport.addEventListener('scroll', handleViewport);
             }
-        }
-        
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', handleViewport);
-            window.visualViewport.addEventListener('scroll', handleViewport);
-        }
-        window.addEventListener('resize', handleViewport);
+            window.addEventListener('resize', handleViewport);
 
-        txt.addEventListener('focus', () => {
-            panel.classList.add('writing-mode');
-        });
-        txt.addEventListener('blur', () => {
-            setTimeout(() => {
-                panel.classList.remove('writing-mode');
-            }, 150);
-        });
+            txt.addEventListener('focus', () => {
+                panel.classList.add('writing-mode');
+            });
+            txt.addEventListener('blur', () => {
+                setTimeout(() => {
+                    panel.classList.remove('writing-mode');
+                }, 150);
+            });
+        }
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
@@ -308,29 +311,14 @@ window.App = {
     },
 
     connectSocket: () => {
-        // ✅ FIX: Αν υπάρχει ήδη socket, δεν φτιάχνουμε νέο, απλά ελέγχουμε τη σύνδεση
-        if (window.socket) {
-            if (!window.socket.connected) {
-                window.socket.connect();
-            } else {
-                // ✅ FIX: Αν είναι ήδη συνδεδεμένο, στέλνουμε join-store για να κατέβει το μενού
-                if (customerDetails) {
-                    const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                    window.socket.emit('join-store', { 
-                        storeName: TARGET_STORE, 
-                        username: mySocketUsername, 
-                        role: 'customer', 
-                        token: localStorage.getItem('fcm_token'), 
-                        isNative: false 
-                    });
-                }
-            }
-            return;
+        // ✅ FIX: Robust connection logic
+        if (!window.socket) {
+            window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         }
-        
-        // ✅ FIX: Ρύθμιση ίδια με το premium.js (polling + websocket) για μέγιστη συμβατότητα
-        window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         const socket = window.socket;
+
+        // Remove old listeners to prevent duplicates
+        socket.removeAllListeners();
 
         socket.on('connect', () => {
             // ✅ FIX: Έλεγχος αν υπάρχουν στοιχεία πελάτη για να μην κρασάρει
@@ -458,6 +446,21 @@ window.App = {
                 App.updateStatusUI();
             }
         });
+
+        // ✅ Force connect or Re-Join if already connected
+        if (!socket.connected) {
+            socket.connect();
+        } else if (customerDetails) {
+            // If already connected, ensure we join the room to get the menu
+            const mySocketUsername = customerDetails.name + " (Πελάτης)";
+            socket.emit('join-store', { 
+                storeName: TARGET_STORE, 
+                username: mySocketUsername, 
+                role: 'customer', 
+                token: localStorage.getItem('fcm_token'), 
+                isNative: false 
+            });
+        }
     },
 
     renderMenu: (data) => {
@@ -577,11 +580,13 @@ window.App = {
 
     confirmPayment: (method) => {
         const items = document.getElementById('orderText').value.trim();
+        // ✅ FIX: Hide overlay immediately to prevent "stuck" UI
+        document.getElementById('paymentOverlay').style.display = 'none';
+        
         if(method === '💳 ΚΑΡΤΑ') {
             App.payWithCard(items);
         } else {
             App.sendOrder(items, method);
-            document.getElementById('paymentOverlay').style.display = 'none';
         }
     },
 

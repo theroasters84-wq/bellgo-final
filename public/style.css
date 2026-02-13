@@ -166,7 +166,7 @@ textarea.order-text { flex: 1; width: 100%; background: #222; border: 1px solid 
 @keyframes flashAnim { 0% { background: #333; } 50% { background: #555; } 100% { background: #333; } }
 
 /* CUSTOMER STATUS OVERLAY */
-#statusOverlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: rgba(0,0,0,0.95); transition: height 0.3s; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 3000; }
+#statusOverlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0; background: rgba(0,0,0,0.95); transition: height 0.3s; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5000; }
 .status-content { text-align: center; width: 80%; display: flex; flex-direction: column; align-items: center; }
 .status-icon { font-size: 70px; margin-bottom: 20px; animation: pulse 1.5s infinite; }
 .status-text { font-size: 24px; font-weight: bold; color: white; margin-bottom: 10px; }
