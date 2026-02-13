@@ -122,6 +122,7 @@
         <div id="adminForm" class="form-section">
             <h3 style="color:#FFD700; margin:0;">Διαχείριση (Admin)</h3>
             <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
+            <input type="text" id="adminNameInp" class="inp" placeholder="Όνομα Ταμείου (π.χ. Μαρία)">
             <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
             <div class="divider">Ή</div>
             <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> Σύνδεση Google</button>
@@ -351,6 +352,7 @@
         window.Admin = {
             manualLogin: async () => {
                 const email = document.getElementById('adminEmailInp').value.trim();
+                const name = document.getElementById('adminNameInp').value.trim(); // ✅ Λήψη Ονόματος
                 if(!email) return alert("Παρακαλώ εισάγετε email.");
                 
                 const btn = document.getElementById('btnAdminLogin');
@@ -365,7 +367,7 @@
                     const data = await response.json();
 
                     if (data.active) {
-                        adminUser = { email: email, displayName: "Admin" };
+                        adminUser = { email: email, displayName: name || "Admin" }; // ✅ Χρήση Ονόματος
                         adminPlan = data.plan; 
                         socket.emit('check-pin-status', { email: email });
                         btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;

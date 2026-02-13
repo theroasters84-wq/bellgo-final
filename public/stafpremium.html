@@ -93,7 +93,7 @@
                     <div class="form-row">
                         <div class="input-group">
                             <label>ΤΡΑΠΕΖΙ</label>
-                            <input type="number" id="inpTable" class="input-box" placeholder="#" inputmode="numeric">
+                            <input type="text" id="inpTable" class="input-box" placeholder="#">
                         </div>
                         <div class="input-group">
                             <label>ΚΟΥΒΕΡ</label>
@@ -320,12 +320,18 @@
                                 let rest = match[2];
                                 if(rest.includes(':')) {
                                     const parts = rest.split(':');
-                                    const priceVal = parseFloat(parts[parts.length - 1]);
+                                    const valPart = parts[parts.length - 1];
+                                    const priceVal = parseFloat(valPart);
                                     const nameOnly = parts.slice(0, -1).join(':').trim();
                                     productName = nameOnly;
                                     
-                                    // ✅ Μορφοποίηση: 1 Καφές (2.50€)
-                                    displayLine = `${qty} ${nameOnly} (${priceVal.toFixed(2)}€)`;
+                                    // ✅ Βελτιωμένη Εμφάνιση Κεράσματος
+                                    if (valPart.includes('(KERASMA)')) {
+                                        displayLine = `${qty} ${nameOnly} 🎁 (ΚΕΡΑΣΜΑ)`;
+                                    } else {
+                                        displayLine = `${qty} ${nameOnly} (${priceVal.toFixed(2)}€)`;
+                                    }
+                                    
                                     if(isNew) displayLine = "++ " + displayLine;
 
                                     if(!isNaN(priceVal)) { total += qty * priceVal; }

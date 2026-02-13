@@ -463,6 +463,104 @@ window.App = {
                          </div>`;
             });
         }
+        
+        // ✅ ΣΤΑΤΙΣΤΙΚΑ ΠΡΟΣΩΠΙΚΟΥ (Κυλιόμενο / Ιστορικό)
+        html += `<div style="font-size:16px; font-weight:bold; color:#2196F3; margin-top:20px; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">ΣΤΑΤΙΣΤΙΚΑ ΠΡΟΣΩΠΙΚΟΥ</div>`;
+        
+        // 1. Υπολογισμός Ημερομηνιών (Logic: 1st-5th shows prev month, else rolling 30 days)
+        let startDate = new Date();
+        const currentDate = new Date();
+        
+        if (currentDate.getDate() <= 5) {
+            // Αν είμαστε 1-5 του μήνα -> Δείξε από 1η του ΠΡΟΗΓΟΥΜΕΝΟΥ μήνα
+            startDate.setMonth(currentDate.getMonth() - 1);
+            startDate.setDate(1);
+        } else {
+            // Αλλιώς -> Κυλιόμενο 30ήμερο
+            startDate.setDate(currentDate.getDate() - 30);
+        }
+        
+        html += `<div style="font-size:11px; color:#aaa; margin-bottom:10px;">Περίοδος: ${startDate.toLocaleDateString('el-GR')} - ${currentDate.toLocaleDateString('el-GR')}</div>`;
+
+        // 2. Συλλογή Δεδομένων
+        let staffAgg = {}; // { "Maria": { orders: 0, turnover: 0, products: {} } }
+        
+        // Loop through dates
+        for (let d = new Date(startDate); d <= currentDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
+            const [y, m, dayPart] = dateStr.split('-');
+            const mKey = `${y}-${m}`;
+            
+            if (stats[mKey] && stats[mKey].days && stats[mKey].days[dayPart] && stats[mKey].days[dayPart].staff) {
+                const dayStaff = stats[mKey].days[dayPart].staff;
+                Object.keys(dayStaff).forEach(name => {
+                    if (!staffAgg[name]) staffAgg[name] = { orders: 0, turnover: 0, products: {} };
+                    staffAgg[name].orders += dayStaff[name].orders;
+                    staffAgg[name].turnover += dayStaff[name].turnover;
+                    
+                    Object.entries(dayStaff[name].products || {}).forEach(([pName, qty]) => {
+                        if (!staffAgg[name].products[pName]) staffAgg[name].products[pName] = 0;
+                        staffAgg[name].products[pName] += qty;
+                    });
+                });
+            }
+        }
+
+        // 3. Εμφάνιση
+        if (Object.keys(staffAgg).length === 0) {
+            html += '<div style="color:#aaa; text-align:center;">Δεν υπάρχουν δεδομένα προσωπικού για αυτή την περίοδο.</div>';
+        } else {
+            Object.entries(staffAgg).forEach(([name, data]) => {
+                // Sort products for this staff
+                const topProducts = Object.entries(data.products).sort((a,b) => b[1] - a[1]).slice(0, 5); // Top 5 items
+                
+                html += `
+                <div style="background:#222; border:1px solid #444; border-radius:8px; padding:10px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:5px;">
+                        <span style="font-weight:bold; color:#FFD700; font-size:16px;">👤 ${name}</span>
+                        <div style="text-align:right;">
+                            <div style="color:#00E676; font-weight:bold;">${data.turnover.toFixed(2)}€</div>
+                            <div style="font-size:10px; color:#aaa;">${data.orders} παρ.</div>
+                        </div>
+                    </div>
+                    <div style="font-size:11px; color:#ccc;">
+                        ${topProducts.map(p => `${p[0]}: <b>${p[1]}</b>`).join(' • ') || 'N/A'}
+                    </div>
+                </div>`;
+            });
+        }
+
+        // ✅ TREATS / MISTAKES SECTION
+        html += `<div style="font-size:16px; font-weight:bold; color:#FF5252; margin-top:20px; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">ΚΕΡΑΣΜΑΤΑ / ΛΑΘΗ (${month})</div>`;
+        
+        const treats = mStats.treats || [];
+        if (treats.length === 0) {
+            html += '<div style="color:#aaa; text-align:center;">Κανένα κέρασμα αυτόν τον μήνα.</div>';
+        } else {
+            // Sort by date desc
+            treats.sort((a,b) => new Date(b.date) - new Date(a.date));
+            
+            html += `<div style="display:flex; flex-direction:column; gap:5px; max-height:200px; overflow-y:auto;">`;
+            treats.forEach(t => {
+                const d = new Date(t.date);
+                const dateFmt = `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
+                html += `
+                <div style="background:#222; border:1px solid #444; border-radius:6px; padding:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; flex-direction:column; text-align:left;">
+                        <span style="color:#FFD700; font-size:12px; font-weight:bold;">${t.staff}</span>
+                        <span style="color:#eee; font-size:13px;">${t.item}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="color:#aaa; font-size:10px;">${dateFmt}</div>
+                        <div style="color:#FF5252; font-weight:bold;">-${t.price.toFixed(2)}€</div>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+            const totalTreats = treats.reduce((acc, t) => acc + t.price, 0);
+            html += `<div style="text-align:right; color:#FF5252; font-weight:bold; margin-top:5px;">ΣΥΝΟΛΟ: -${totalTreats.toFixed(2)}€</div>`;
+        }
+
         html += '</div>';
         container.innerHTML = html;
     },
@@ -855,7 +953,7 @@ window.App = {
                 actions = `<button class="btn-win-action" style="background:#555; color:white;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
             } else {
                 actions = `<button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.showTreatOptions('${order.id}')">🎁 ΚΕΡΑΣΜΑ</button>`;
-                actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
+                actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
             }
         }
         win.style.border = `none`;

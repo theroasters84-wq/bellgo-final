@@ -159,9 +159,18 @@ function updateStoreStats(store, order) {
 
     // 2. Σύνολα Ημέρας
     if (!mStats.days) mStats.days = {};
-    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0, products: {} }; // ✅ Προσθήκη products για την ημέρα
+    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0, products: {}, staff: {} }; // ✅ Προσθήκη staff
     mStats.days[day].orders++;
     mStats.days[day].turnover += total;
+
+    // ✅ 4. Στατιστικά Προσωπικού (Ανά Ημέρα)
+    const staffName = order.from || "Άγνωστος";
+    if (!mStats.days[day].staff) mStats.days[day].staff = {};
+    if (!mStats.days[day].staff[staffName]) mStats.days[day].staff[staffName] = { orders: 0, turnover: 0, products: {} };
+    
+    const sStats = mStats.days[day].staff[staffName];
+    sStats.orders++;
+    sStats.turnover += total;
 
     // 3. Τεμάχια Προϊόντων
     if (!mStats.products) mStats.products = {};
@@ -174,7 +183,31 @@ function updateStoreStats(store, order) {
         if (!mStats.days[day].products) mStats.days[day].products = {};
         if (!mStats.days[day].products[prodName]) mStats.days[day].products[prodName] = 0;
         mStats.days[day].products[prodName] += qty;
+        
+        // ✅ Αποθήκευση στο Προσωπικό
+        if (!sStats.products[prodName]) sStats.products[prodName] = 0;
+        sStats.products[prodName] += qty;
     }
+}
+
+function logTreatStats(store, staffName, items) {
+    if (!store.stats) store.stats = {};
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+    const [year, month, day] = dateStr.split('-');
+    const monthKey = `${year}-${month}`;
+
+    if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {}, products: {}, treats: [] };
+    if (!store.stats[monthKey].treats) store.stats[monthKey].treats = [];
+
+    items.forEach(item => {
+        store.stats[monthKey].treats.push({
+            date: now.toISOString(),
+            staff: staffName,
+            item: item.name,
+            price: item.price
+        });
+    });
 }
 
 /* ---------------- VIRTUAL ROUTES (PWA ISOLATION) ---------------- */
@@ -447,7 +480,7 @@ io.on('connection', (socket) => {
         if (!store) return;
         if (!data) return; // ✅ Safety check
         if (!store.settings.statusCustomer && activeUsers[`${socket.store}_${socket.username}`]?.role === 'customer') return;
-        const orderText = data.text || data; 
+        let orderText = data.text || data; 
         const orderId = data.id || Date.now(); 
         
         // ✅ ΕΛΕΓΧΟΣ: Αν υπάρχει ήδη η παραγγελία (Update/Προσθήκη προϊόντων)
@@ -460,6 +493,36 @@ io.on('connection', (socket) => {
             // Ειδοποίηση Admin για Τροποποίηση
             notifyAdmin(socket.store, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`);
         } else {
+            // ✅ NEW: Έλεγχος για ΛΑΘΟΣ (Table: la / λα)
+            const tableMatch = orderText.match(/\[ΤΡ:\s*([^|\]]+)/);
+            if (tableMatch) {
+                const tVal = tableMatch[1].trim().toLowerCase();
+                if (tVal === 'la' || tVal === 'λα') {
+                    const lines = orderText.split('\n');
+                    let treatedItems = [];
+                    
+                    const newLines = lines.map(line => {
+                        if (line.trim().startsWith('[')) return line; // Header
+                        const lastColon = line.lastIndexOf(':');
+                        if (lastColon !== -1) {
+                            const priceStr = line.substring(lastColon + 1);
+                            const price = parseFloat(priceStr);
+                            if (!isNaN(price) && price > 0) {
+                                const name = line.substring(0, lastColon).trim();
+                                treatedItems.push({ name: name, price: price });
+                                return `${name}:0 (LATHOS)`; // Μηδενισμός τιμής
+                            }
+                        }
+                        return line;
+                    });
+                    
+                    if (treatedItems.length > 0) {
+                        logTreatStats(store, `${socket.username} (LATHOS)`, treatedItems);
+                    }
+                    orderText = newLines.join('\n');
+                }
+            }
+
             // Νέα Παραγγελία
             const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
             store.orders.push(newOrder);
@@ -546,6 +609,7 @@ io.on('connection', (socket) => {
             const o = store.orders.find(x => x.id == data.id);
             if (o) {
                 const lines = o.text.split('\n');
+                let treatedItems = []; // ✅ Track items for stats
                 
                 const treatLine = (line) => {
                     if (line.includes('(KERASMA)')) return line; // Already treated
@@ -556,6 +620,10 @@ io.on('connection', (socket) => {
                         const after = line.substring(lastColonIndex + 1); // Price and potential flags
                         // Check if 'after' starts with a number
                         if (/^\d/.test(after.trim())) {
+                             // ✅ Capture item details
+                             const price = parseFloat(after) || 0;
+                             if (price > 0) treatedItems.push({ name: before.trim(), price: price });
+
                              // Replace price with 0 and add tag, keeping existing flags like ✅ if needed, though usually treat implies paid/free
                              return `${before}:0 (KERASMA)`;
                         }
@@ -571,6 +639,12 @@ io.on('connection', (socket) => {
                         o.text = lines.join('\n');
                     }
                 }
+                
+                // ✅ Log Stats
+                if (treatedItems.length > 0) {
+                    logTreatStats(store, socket.username, treatedItems);
+                }
+
                 updateStoreClients(socket.store);
             }
         }
