@@ -70,10 +70,29 @@ const parseItem = (str) => {
     return { name, price: isNaN(price) ? 0 : price };
 };
 
-let currentUser = null;
-let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
-let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null'); // ✅ FIX: Δήλωση μεταβλητής
+let customerDetails = null;
+try {
+    customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+} catch (e) {
+    console.error("Error parsing bellgo_customer_info:", e);
+    localStorage.removeItem('bellgo_customer_info');
+}
+
+let activeOrders = [];
+try {
+    activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
+} catch (e) {
+    console.error("Error parsing bellgo_active_orders:", e);
+    localStorage.removeItem('bellgo_active_orders');
+}
+
+let activeOrderState = null;
+try {
+    activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
+} catch (e) {
+    console.error("Error parsing bellgo_active_order:", e);
+    localStorage.removeItem('bellgo_active_order');
+}
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
 window.App = {
@@ -275,7 +294,7 @@ window.App = {
 
     connectSocket: () => {
         if (window.socket && window.socket.connected) return;
-        window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
+        window.socket = io({ transports: ['websocket'], reconnection: true });
         const socket = window.socket;
 
         socket.on('connect', () => {
