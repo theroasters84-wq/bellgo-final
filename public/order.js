@@ -148,6 +148,18 @@ window.App = {
     },
 
     startApp: () => {
+        // ✅ NEW: Check for TARGET_STORE
+        if (!TARGET_STORE) {
+            document.body.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: white; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <h1 style="color: #FFD700;">Σφάλμα Συνδέσμου</h1>
+                    <p>Το κατάστημα δεν προσδιορίστηκε.</p>
+                    <p style="color: #aaa; font-size: 14px; max-width: 300px;">Παρακαλούμε χρησιμοποιήστε το σύνδεσμο (link) ή τον κωδικό QR που σας δόθηκε από το κατάστημα.</p>
+                </div>
+            `;
+            return; 
+        }
+
         document.getElementById('appContent').style.display = 'flex';
         
         // ✅ WEB vs PWA DETECTION
