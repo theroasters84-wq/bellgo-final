@@ -236,7 +236,7 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 app.post('/create-order-payment', async (req, res) => {
-    const { amount, storeName } = req.body; 
+    const { amount, storeName, items } = req.body; // ✅ Λήψη items
     const data = await getStoreData(storeName);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
@@ -253,7 +253,7 @@ app.post('/create-order-payment', async (req, res) => {
             }],
             mode: 'payment',
             payment_intent_data: { transfer_data: { destination: shopStripeId } },
-            success_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=success`,
+            success_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=success&data=${encodeURIComponent(items || '')}`, // ✅ Επιστροφή items στο URL
             cancel_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=cancel`,
         });
         res.json({ url: session.url });
@@ -277,8 +277,9 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
     }
 }
 
-function notifyAdmin(storeName, title, body) {
+function notifyAdmin(storeName, title, body, excludeSocketId = null) {
     Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'admin').forEach(adm => {
+        if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
         if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
         sendPushNotification(adm, title, body);
@@ -378,7 +379,7 @@ io.on('connection', (socket) => {
             store.orders.push(newOrder);
             console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`);
+            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id);
         }
         
         updateStoreClients(socket.store);
@@ -451,7 +452,14 @@ io.on('connection', (socket) => {
     // ✅ PARTIAL PAY
     socket.on('pay-partial', (data) => { const store = getMyStore(); if(store){ const o = store.orders.find(x => x.id == data.id); if(o){ let lines = o.text.split('\n'); if(lines[data.index]) { if(lines[data.index].includes('✅')) { lines[data.index] = lines[data.index].replace(' ✅', ''); } else { lines[data.index] += ' ✅'; } o.text = lines.join('\n'); updateStoreClients(socket.store); } } } });
     
-    socket.on('trigger-alarm', (tName) => { const key = `${socket.store}_${tName}`; const t = activeUsers[key]; if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell'); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", "Ο Admin σε ζητάει!"); } });
+    socket.on('trigger-alarm', (data) => { 
+        const tName = (typeof data === 'object') ? data.target : data;
+        const source = (typeof data === 'object') ? data.source : "Admin";
+        
+        const key = `${socket.store}_${tName}`; 
+        const t = activeUsers[key]; 
+        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`); } 
+    });
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
     socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStoreClients(socket.store); } });

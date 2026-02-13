@@ -461,10 +461,12 @@
                     });
                 });
 
-                socket.on('ring-bell', () => {
+                socket.on('ring-bell', (data) => {
                     if(window.AudioEngine) window.AudioEngine.triggerAlarm();
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
+                    // ✅ Εμφάνιση ποιος καλεί (Ταμείο ή Κουζίνα)
+                    if(data && data.source) bell.innerText = `🔔 ${data.source}`; else bell.innerText = "🔔";
                     bell.classList.add('ringing');
                     // No Overlay
                 });

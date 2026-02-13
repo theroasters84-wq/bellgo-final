@@ -140,6 +140,8 @@ window.App = {
     tempComingState: {},
     lastStaffList: [],
     scheduleData: {},
+    adminMode: localStorage.getItem('bellgo_admin_mode') || 'cashier', // 'cashier' or 'kitchen'
+    coverPrice: 0,
     
     // EXTRAS STATE
     currentExtrasItemIndex: null,
@@ -151,6 +153,11 @@ window.App = {
             if(window.AudioEngine) window.AudioEngine.init();
         }, {once:true});
         
+        // ✅ UI SETUP BASED ON MODE
+        if (App.adminMode === 'cashier') {
+            document.getElementById('btnNewOrderSidebar').style.display = 'flex';
+        }
+
         App.connectSocket();
         App.startHeartbeat();
         App.requestNotifyPermission(); 
@@ -232,6 +239,7 @@ window.App = {
                 if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
                 if(settings.hours) document.getElementById('inpHours').value = settings.hours;
                 if(settings.schedule) App.scheduleData = settings.schedule;
+                if(settings.coverPrice) { App.coverPrice = parseFloat(settings.coverPrice); document.getElementById('inpCoverPrice').value = App.coverPrice; }
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -338,7 +346,8 @@ window.App = {
     autoSaveSettings: () => {
         const time = document.getElementById('inpResetTime').value;
         const hours = document.getElementById('inpHours').value;
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours });
+        const cp = document.getElementById('inpCoverPrice').value;
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -613,6 +622,89 @@ window.App = {
         App.renderMenu(); 
     },
 
+    // --- SIDEBAR ORDER LOGIC (CASHIER) ---
+    toggleOrderSidebar: () => {
+        const sb = document.getElementById('orderSidebar');
+        if (sb.style.right === '0px') {
+            sb.style.right = '-100%';
+        } else {
+            sb.style.right = '0px';
+            App.renderSidebarMenu();
+        }
+    },
+    togglePaso: () => {
+        const isPaso = document.getElementById('sidebarPaso').checked;
+        const tblInp = document.getElementById('sidebarTable');
+        if (isPaso) { tblInp.disabled = true; tblInp.value = ''; tblInp.placeholder = '#'; }
+        else { tblInp.disabled = false; tblInp.focus(); }
+    },
+    renderSidebarMenu: () => {
+        const container = document.getElementById('sidebarMenuContainer');
+        container.innerHTML = '';
+        App.menuData.forEach(cat => {
+            const title = document.createElement('div');
+            title.className = 'category-title';
+            title.innerText = cat.name;
+            const itemsDiv = document.createElement('div');
+            itemsDiv.className = 'category-items';
+            cat.items.forEach(item => {
+                let name = item, price = 0;
+                if(typeof item === 'object') { name = item.name; price = item.price; }
+                else { const p = item.split(':'); name = p[0]; if(p.length>1) price=parseFloat(p[p.length-1]); }
+                
+                const box = document.createElement('div');
+                box.className = 'item-box';
+                box.innerHTML = `<span class="item-name">${name}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
+                box.onclick = () => App.addToSidebarOrder(name, price);
+                itemsDiv.appendChild(box);
+            });
+            container.appendChild(title);
+            container.appendChild(itemsDiv);
+        });
+    },
+    addToSidebarOrder: (name, price) => {
+        const txt = document.getElementById('sidebarOrderText');
+        const line = price > 0 ? `${name}:${price}` : name;
+        txt.value += (txt.value ? '\n' : '') + `1 ${line}`;
+        App.calcSidebarTotal();
+    },
+    calcSidebarTotal: () => {
+        const txt = document.getElementById('sidebarOrderText').value;
+        const total = calculateTotal(txt);
+        document.getElementById('sidebarTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+    },
+    sendSidebarOrder: () => {
+        const txt = document.getElementById('sidebarOrderText').value.trim();
+        if(!txt) return alert("Κενή παραγγελία");
+        
+        const isPaso = document.getElementById('sidebarPaso').checked;
+        const table = document.getElementById('sidebarTable').value;
+        const covers = parseInt(document.getElementById('sidebarCovers').value) || 0;
+        
+        let header = "";
+        if (isPaso) header = "[PASO]";
+        else {
+            if (!table) return alert("Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
+            header = `[ΤΡ: ${table}]`;
+        }
+        
+        let finalBody = txt;
+        // ✅ AUTO COVER CHARGE
+        if (covers > 0) {
+            header += ` [AT: ${covers}]`;
+            if (App.coverPrice > 0) {
+                finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
+            }
+        }
+        
+        window.socket.emit('new-order', `${header}\n${finalBody}`);
+        alert("Εστάλη!");
+        document.getElementById('sidebarOrderText').value = '';
+        document.getElementById('sidebarTable').value = '';
+        document.getElementById('sidebarCovers').value = '';
+        App.toggleOrderSidebar(); // Close
+    },
+
     renderDesktopIcons: (orders) => {
         const desktop = document.getElementById('desktopArea');
         desktop.innerHTML = '';
@@ -768,7 +860,8 @@ window.App = {
             `;
             
             staffDiv.onclick = () => {
-                window.socket.emit('trigger-alarm', u.username);
+                const sourceLabel = App.adminMode === 'kitchen' ? "ΚΟΥΖΙΝΑ" : "ΤΑΜΕΙΟ";
+                window.socket.emit('trigger-alarm', { target: u.username, source: sourceLabel });
                 staffDiv.querySelector('.staff-status').innerText = 'Ringing';
                 staffDiv.classList.add('ringing');
             };

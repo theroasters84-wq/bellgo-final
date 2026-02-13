@@ -246,16 +246,34 @@ window.App = {
     checkStripeReturn: () => {
         const urlP = new URLSearchParams(window.location.search);
         const status = urlP.get('payment_status');
+        const dataParam = urlP.get('data'); // ✅ ΝΕΟ: Ανάκτηση δεδομένων από το URL (για iOS PWA fix)
+
         if (status === 'success') {
-            const saved = localStorage.getItem('bellgo_temp_card_order');
-            if (saved) {
-                const orderData = JSON.parse(saved);
+            let itemsToSend = null;
+            
+            // 1. Πρώτα ελέγχουμε το URL (Ασφαλές για PWA -> Browser redirect)
+            if (dataParam) {
+                itemsToSend = decodeURIComponent(dataParam);
+            } 
+            // 2. Αν δεν υπάρχει στο URL, ελέγχουμε το LocalStorage (Fallback)
+            else {
+                const saved = localStorage.getItem('bellgo_temp_card_order');
+                if (saved) itemsToSend = JSON.parse(saved).items;
+            }
+
+            if (itemsToSend) {
                 // ✅ SEND ORDER ONLY IF SOCKET IS CONNECTED
-                App.sendOrder(orderData.items, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
+                App.sendOrder(itemsToSend, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
                 localStorage.removeItem('bellgo_temp_card_order');
                 
+                alert("Η πληρωμή ολοκληρώθηκε και η παραγγελία εστάλη!\nΜπορείτε να επιστρέψετε στην εφαρμογή.");
+                
                 // Clear URL
-                const cleanUrl = window.location.pathname + window.location.search.replace(/[?&]payment_status=[^&]+/, '');
+                const newParams = new URLSearchParams(window.location.search);
+                newParams.delete('payment_status');
+                newParams.delete('data');
+                const newSearch = newParams.toString();
+                const cleanUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
                 window.history.replaceState({}, document.title, cleanUrl);
             }
         } else if (status === 'cancel') {
@@ -554,7 +572,7 @@ window.App = {
             const res = await fetch('/create-order-payment', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })
+                body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE, items: items }) // ✅ Στέλνουμε και τα προϊόντα
             });
             const data = await res.json();
             if(data.url) { window.location.href = data.url; } 

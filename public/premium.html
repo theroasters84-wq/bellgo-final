@@ -26,6 +26,7 @@
             </div>
             
             <div class="header-actions">
+                <button id="btnNewOrderSidebar" class="btn-icon" onclick="App.toggleOrderSidebar()" title="Νέα Παραγγελία" style="display:none; background:#00E676; color:black;">➕</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
@@ -58,6 +59,34 @@
                     <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
                 </div>
                 <div id="staffList"></div>
+            </div>
+        </div>
+
+        <!-- ✅ NEW: SIDEBAR ORDER PANEL (FULL SCREEN RIGHT) -->
+        <div id="orderSidebar" class="order-panel" style="position:fixed; top:0; right:-100%; width:100%; height:100%; transition:right 0.3s; z-index:4000; border-top:none; border-left:2px solid #333; display:flex; flex-direction:column;">
+            <div class="panel-header-bar" style="background:#111; justify-content:space-between; padding:0 15px; cursor:default;">
+                <span style="font-weight:bold; color:#00E676;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
+                <button onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
+            </div>
+            <div class="panel-content" style="background:#1a1a1a;">
+                <div class="form-row">
+                    <div class="input-group" style="flex:0.5;">
+                        <label>PASO</label>
+                        <input type="checkbox" id="sidebarPaso" style="width:30px; height:30px;" checked onchange="App.togglePaso()">
+                    </div>
+                    <div class="input-group">
+                        <label>ΤΡΑΠΕΖΙ</label>
+                        <input type="number" id="sidebarTable" class="input-box" placeholder="#" disabled>
+                    </div>
+                    <div class="input-group">
+                        <label>ΚΟΥΒΕΡ</label>
+                        <input type="number" id="sidebarCovers" class="input-box" placeholder="0">
+                    </div>
+                </div>
+                <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:8px; padding:5px;"></div>
+                <textarea id="sidebarOrderText" class="order-text" placeholder="Προϊόντα..." style="height:100px;"></textarea>
+                <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;">ΣΥΝΟΛΟ: 0.00€</div>
+                <button class="btn-send" onclick="App.sendSidebarOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
             </div>
         </div>
     </div>
@@ -109,6 +138,8 @@
                     <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
                     <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
                 </div>
+                <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px; margin-top:10px;">ΤΙΜΗ ΚΟΥΒΕΡ (€)</div>
+                <input type="number" id="inpCoverPrice" class="inp-settings" placeholder="0.00" step="0.10" onblur="App.autoSaveSettings()">
                 <button class="modal-btn" style="background:#333; font-size:13px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
             </div>
 

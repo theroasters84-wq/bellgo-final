@@ -84,10 +84,10 @@
         <div id="roleSelection" class="form-section active">
             <p style="color:#aaa; margin-bottom:15px;">Επιλέξτε τον ρόλο σας:</p>
             <div class="role-grid">
-                <button class="btn-role" onclick="UI.showAdminLogin()">
+                <button class="btn-role" onclick="UI.showAdminLogin('cashier')">
                     <span class="role-icon">🏪</span> ΤΑΜΕΙΟ
                 </button>
-                <button class="btn-role" onclick="UI.showAdminLogin()">
+                <button class="btn-role" onclick="UI.showAdminLogin('kitchen')">
                     <span class="role-icon">👨‍🍳</span> ΚΟΥΖΙΝΑ
                 </button>
                 <button class="btn-role" onclick="UI.showStaffLogin('waiter')">
@@ -240,7 +240,8 @@
                 document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('roleSelection').classList.add('active');
             },
-            showAdminLogin: () => {
+            showAdminLogin: (mode) => {
+                if(mode) localStorage.setItem('bellgo_admin_mode', mode); // ✅ Αποθήκευση Mode (cashier/kitchen)
                 document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('adminForm').classList.add('active');
             },
