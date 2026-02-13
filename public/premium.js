@@ -161,9 +161,15 @@ window.App = {
             document.getElementById('btnSettings').style.display = 'none';
             document.getElementById('btnKitchenExit').style.display = 'flex';
             document.getElementById('inpStoreNameHeader').disabled = true;
+            // 🔒 ΚΟΥΖΙΝΑ: Απενεργοποίηση Sidebar
+            const sb = document.getElementById('orderSidebar');
+            if(sb) sb.style.display = 'none';
         } else {
             // 🏪 CASHIER MODE
             document.getElementById('btnNewOrderSidebar').style.display = 'flex';
+            // ✅ ΤΑΜΕΙΟ: Η μπάρα υπάρχει αλλά ξεκινάει ΚΛΕΙΣΤΗ
+            const sb = document.getElementById('orderSidebar');
+            if(sb) { sb.style.display = 'flex'; sb.style.right = '-100%'; }
         }
 
         App.connectSocket();
@@ -633,7 +639,10 @@ window.App = {
     // --- SIDEBAR ORDER LOGIC (CASHIER) ---
     toggleOrderSidebar: () => {
         const sb = document.getElementById('orderSidebar');
-        const isOpen = sb.style.right === '0px' || sb.style.right === '0';
+        // Ελέγχουμε αν είναι ανοιχτό (0px) ή κλειστό (-100%)
+        const currentRight = sb.style.right;
+        const isOpen = currentRight === '0px' || currentRight === '0';
+        
         if (isOpen) {
             sb.style.right = '-100%';
         } else {
