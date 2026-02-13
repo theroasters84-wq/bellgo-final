@@ -180,7 +180,11 @@ window.App = {
     },
 
     connectSocket: () => {
-        if (window.socket && window.socket.connected) return;
+        // ✅ FIX: Αν υπάρχει ήδη socket, δεν φτιάχνουμε νέο
+        if (window.socket) {
+            if (!window.socket.connected) window.socket.connect();
+            return;
+        }
         window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         const socket = window.socket;
         socket.on('connect', () => {
@@ -790,6 +794,12 @@ window.App = {
 };
 
 window.onload = App.init;
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log("✅ Admin Service Worker Registered"))
+        .catch(err => console.log("❌ Admin SW Error:", err));
+}
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')

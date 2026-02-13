@@ -229,6 +229,8 @@ window.App = {
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
         App.requestNotifyPermission(); 
+        // ✅ NEW: Heartbeat για να μην χάνεται η σύνδεση
+        setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 5000);
     },
 
     // ✅✅✅ NEW: REQUEST PERMISSION & GET TOKEN ✅✅✅
@@ -579,8 +581,20 @@ window.App = {
 
     sendOrder: (items, method) => {
         // ✅ FIX: Έλεγχος σύνδεσης πριν την αποστολή
+        if (!window.socket) App.connectSocket();
+
         if (!window.socket || !window.socket.connected) {
-             alert("⚠️ Αδυναμία σύνδεσης με το κατάστημα. Ελέγξτε το internet σας ή ανανεώστε τη σελίδα.");
+             console.log("⚠️ Socket disconnected. Attempting reconnect...");
+             if(window.socket) window.socket.connect();
+             
+             // ✅ FIX: Περιμένουμε λίγο να συνδεθεί και ξαναδοκιμάζουμε αυτόματα
+             setTimeout(() => {
+                 if (window.socket && window.socket.connected) {
+                     App.sendOrder(items, method); // Ξανακαλούμε τη συνάρτηση
+                 } else {
+                     alert("⚠️ Αδυναμία σύνδεσης με το κατάστημα. Ελέγξτε το internet σας ή ανανεώστε τη σελίδα.");
+                 }
+             }, 1500);
              return;
         }
 
