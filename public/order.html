@@ -47,7 +47,7 @@
 </head>
 <body>
 
-    <div id="loginScreen">
+    <div id="loginScreen" style="display:none;">
         <h1 style="color:#FFD700;">BellGo Delivery 🛵</h1>
         <p style="color:#aaa;">Συνδεθείτε για να παραγγείλετε</p>
         <button class="btn-google" onclick="App.loginGoogle()">
@@ -98,7 +98,7 @@
         </div>
     </div>
 
-    <div id="appContent">
+    <div id="appContent" style="display:none;">
         <div class="header">
             <div class="header-left">
                 <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
@@ -145,11 +145,9 @@
 
         <div id="statusOverlay">
             <div class="status-content">
-                <div id="statusIcon" class="status-icon">⏳</div>
-                <div id="statusText" class="status-text">Αναμονή...</div>
-                <div id="statusSub" class="status-sub">Μην κλείνετε την εφαρμογή</div>
-                <button id="btnNewOrder" class="btn-new-order" onclick="App.resetForNewOrder()">➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</button>
-                <button class="btn-minimize" onclick="App.minimizeStatus()">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
+                <h2 style="color:#FFD700; margin-top:0;">Κατάσταση Παραγγελιών</h2>
+                <div id="orderStatusList" style="width:100%; overflow-y:auto; max-height:60vh; padding:5px;"></div>
+                <button class="btn-minimize" onclick="App.minimizeStatus()" style="margin-top:20px; width:100%; padding:15px; background:#333; color:white; border:none; border-radius:10px; font-weight:bold;">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
             </div>
         </div>
     </div>
