@@ -70,6 +70,7 @@ const parseItem = (str) => {
     return { name, price: isNaN(price) ? 0 : price };
 };
 
+let currentUser = null;
 let customerDetails = null;
 try {
     customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');

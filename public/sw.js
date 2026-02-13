@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v23'; // ✅ Νέα έκδοση για Multi-tenant υποστήριξη
+const CACHE_NAME = 'bellgo-v24'; // ✅ Νέα έκδοση για Multi-tenant υποστήριξη
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
