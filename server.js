@@ -67,6 +67,8 @@ async function getStoreData(storeName) {
                 const firebaseData = doc.data();
                 if (firebaseData.settings) data.settings = { ...defaultSettings, ...firebaseData.settings };
                 if (firebaseData.menu) data.menu = firebaseData.menu;
+                // ✅ Load Permanent Menu Backup (για επαναφορά)
+                data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
                 if (firebaseData.orders) {
                     const yesterday = Date.now() - (24 * 60 * 60 * 1000);
                     data.orders = (firebaseData.orders || []).filter(o => o.id > yesterday);
@@ -330,7 +332,27 @@ io.on('connection', (socket) => {
     socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; updateStoreClients(socket.store); } });
     socket.on('save-store-name', (newName) => { const store = getMyStore(); if (store) { store.settings.name = newName; updateStoreClients(socket.store); } });
     socket.on('save-store-settings', (data) => { const store = getMyStore(); if (store) { if(data.resetTime) store.settings.resetTime = data.resetTime; if(data.stripeConnectId) store.settings.stripeConnectId = data.stripeConnectId; if(data.schedule) store.settings.schedule = data.schedule; if(data.hours) store.settings.hours = data.hours; updateStoreClients(socket.store); } });
-    socket.on('save-menu', (data) => { const store = getMyStore(); if (store) { try { let newMenuData = []; let mode = 'permanent'; if (Array.isArray(data)) newMenuData = data; else if (data.menu) { newMenuData = data.menu; mode = data.mode || 'permanent'; } if (mode === 'permanent') { store.menu = JSON.parse(JSON.stringify(newMenuData)); } updateStoreClients(socket.store); } catch (e) { console.error(e); } } });
+    socket.on('save-menu', (data) => { 
+        const store = getMyStore(); 
+        if (store) { 
+            try { 
+                let newMenuData = []; 
+                let mode = 'permanent'; 
+                if (Array.isArray(data)) newMenuData = data; 
+                else if (data.menu) { newMenuData = data.menu; mode = data.mode || 'permanent'; } 
+                
+                // ✅ Ενημερώνουμε ΠΑΝΤΑ το ενεργό μενού για να το βλέπουν οι πελάτες
+                store.menu = JSON.parse(JSON.stringify(newMenuData));
+                
+                // ✅ Ενημερώνουμε το Backup ΜΟΝΟ αν είναι μόνιμη αποθήκευση
+                if (mode === 'permanent') { 
+                    store.permanentMenu = JSON.parse(JSON.stringify(newMenuData)); 
+                } 
+                
+                updateStoreClients(socket.store); 
+            } catch (e) { console.error(e); } 
+        } 
+    });
     socket.on('chat-message', (data) => { if(socket.store) { io.to(socket.store).emit('chat-message', { sender: socket.username, text: data.text }); } });
 
     socket.on('new-order', (data) => {
@@ -436,7 +458,23 @@ io.on('connection', (socket) => {
     socket.on('heartbeat', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key]) { activeUsers[key].lastSeen = Date.now(); } });
 });
 
-setInterval(() => { try { const nowInGreece = new Date().toLocaleTimeString('el-GR', { timeZone: 'Europe/Athens', hour: '2-digit', minute: '2-digit', hour12: false }); Object.keys(storesData).forEach(storeName => { const store = storesData[storeName]; if (store.settings.resetTime && nowInGreece === store.settings.resetTime) { io.to(storeName).emit('menu-update', store.menu); } }); } catch (e) {} }, 60000); 
+setInterval(() => { 
+    try { 
+        const nowInGreece = new Date().toLocaleTimeString('el-GR', { timeZone: 'Europe/Athens', hour: '2-digit', minute: '2-digit', hour12: false }); 
+        Object.keys(storesData).forEach(storeName => { 
+            const store = storesData[storeName]; 
+            if (store.settings.resetTime && nowInGreece === store.settings.resetTime) { 
+                // ✅ ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΜΕΝΟΥ (Reset)
+                if (store.permanentMenu) {
+                    store.menu = JSON.parse(JSON.stringify(store.permanentMenu));
+                    io.to(storeName).emit('menu-update', store.menu); 
+                    saveStoreToFirebase(storeName);
+                    console.log(`🔄 Menu reset for ${storeName}`);
+                }
+            } 
+        }); 
+    } catch (e) {} 
+}, 60000); 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
 setInterval(() => { 
     const now = Date.now(); 

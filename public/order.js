@@ -75,6 +75,7 @@ let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') ||
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 let storeHasStripe = false;
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
+let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
 window.App = {
     installPWA: async () => {
@@ -282,13 +283,18 @@ window.App = {
                 isNative: false 
             });
             
-            // ✅ ✅ CLIENT-SIDE FIX: Wait 1s and then check for pending orders
-            setTimeout(() => {
-                App.checkStripeReturn();
-            }, 1000);
+            // Αφαιρέθηκε το setTimeout. Ο έλεγχος γίνεται πλέον στο 'menu-update'
         });
 
-        socket.on('menu-update', (data) => { App.renderMenu(data); });
+        socket.on('menu-update', (data) => { 
+            App.renderMenu(data); 
+            
+            // ✅ FIX: Ελέγχουμε για πληρωμή ΜΟΝΟ αφού έχουμε συνδεθεί επιτυχώς (πήραμε μενού)
+            if (!hasCheckedStripe) {
+                hasCheckedStripe = true;
+                App.checkStripeReturn();
+            }
+        });
 
         // ✅✅✅ ΕΛΕΓΧΟΣ ΚΛΕΙΣΤΟΥ ΚΑΤΑΣΤΗΜΑΤΟΣ (Status Customer) ✅✅✅
         socket.on('store-settings-update', (settings) => {
@@ -341,6 +347,21 @@ window.App = {
                         if (serverOrder.readyTime) localOrder.readyTime = serverOrder.readyTime;
                         changed = true;
                     }
+                }
+            });
+
+            // ✅ FIX: Συγχρονισμός παραγγελιών από Server (για PWA/Browser Isolation)
+            myServerOrders.forEach(serverOrder => {
+                const exists = activeOrders.find(lo => lo.id === serverOrder.id);
+                if (!exists) {
+                    activeOrders.push({
+                        id: serverOrder.id,
+                        status: serverOrder.status,
+                        timestamp: serverOrder.id,
+                        text: serverOrder.text,
+                        readyTime: serverOrder.readyTime
+                    });
+                    changed = true;
                 }
             });
             
