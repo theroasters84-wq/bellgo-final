@@ -20,16 +20,34 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
 
+    <script>
+        (function() {
+            // Δυναμική εύρεση του Store από το URL Path ή το Query String
+            let store = "";
+            const pathParts = window.location.pathname.split('/');
+            // Έλεγχος αν είμαστε σε URL μορφής /shop/storeName/
+            if (pathParts.includes('shop') && pathParts.length > 2) {
+                store = pathParts[pathParts.indexOf('shop') + 1];
+            } else {
+                // Fallback σε query string ?store=xyz
+                const params = new URLSearchParams(window.location.search);
+                store = params.get('store');
+            }
 
+            const manifestLink = document.getElementById('dynamicManifest');
+            if (store) {
+                // Ζητάμε δυναμικό manifest για αυτό το store
+                // Το /manifest.json route του server θα επιστρέψει το σωστό start_url & scope
+                manifestLink.href = `/manifest.json?icon=shop&store=${encodeURIComponent(store)}`;
+            } else {
+                manifestLink.href = `/manifest.json?icon=shop`;
+            }
+        })();
+    </script>
 </head>
 <body>
 
-    <div id="splashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#121212; z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column;">
-        <div style="font-size:50px; animation:pulse 1s infinite;">🛵</div>
-        <div style="color:#FFD700; font-weight:bold; margin-top:10px; font-size:20px;">BellGo</div>
-    </div>
-
-    <div id="loginScreen" style="display:none;">
+    <div id="loginScreen">
         <h1 style="color:#FFD700;">BellGo Delivery 🛵</h1>
         <p style="color:#aaa;">Συνδεθείτε για να παραγγείλετε</p>
         <button class="btn-google" onclick="App.loginGoogle()">
@@ -80,7 +98,7 @@
         </div>
     </div>
 
-    <div id="appContent" style="display:none;">
+    <div id="appContent">
         <div class="header">
             <div class="header-left">
                 <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
@@ -127,11 +145,10 @@
 
         <div id="statusOverlay">
             <div class="status-content">
-                <h3 style="color:#FFD700; margin: 0 0 15px 0;">Οι Παραγγελίες μου</h3>
-                <div id="orderStatusList" style="width: 100%; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
-                    <!-- Dynamically filled by order.js -->
-                </div>
-                <button id="btnNewOrder" class="btn-new-order" onclick="App.clearFinishedOrders()" style="display:none;">✔ ΕΚΚΑΘΑΡΙΣΗ ΟΛΟΚΛΗΡΩΜΕΝΩΝ</button>
+                <div id="statusIcon" class="status-icon">⏳</div>
+                <div id="statusText" class="status-text">Αναμονή...</div>
+                <div id="statusSub" class="status-sub">Μην κλείνετε την εφαρμογή</div>
+                <button id="btnNewOrder" class="btn-new-order" onclick="App.resetForNewOrder()">➕ ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</button>
                 <button class="btn-minimize" onclick="App.minimizeStatus()">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
             </div>
         </div>
