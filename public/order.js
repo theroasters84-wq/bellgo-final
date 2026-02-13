@@ -222,9 +222,11 @@ window.App = {
     checkActiveOrderStorage: () => {
         if (!Array.isArray(activeOrders)) activeOrders = [];
         const now = Date.now();
+        const TWELVE_HOURS = 12 * 60 * 60 * 1000;
         
-        // Filter out 'ready' orders older than 1 hour
+        // Filter out 'ready' orders older than 1 hour AND any order older than 12 hours
         activeOrders = activeOrders.filter(o => {
+            if ((now - o.timestamp) > TWELVE_HOURS) return false; // Safety cleanup
             if (o.status === 'ready') {
                 const timeRef = o.readyTime || o.timestamp;
                 return (now - timeRef) < ORDER_TIMEOUT_MS;
@@ -561,15 +563,16 @@ window.App = {
                         <div style="color:#ccc; font-size:14px;">${subText}</div>
                         <div style="color:#666; font-size:12px; margin-top:4px;">${timeStr}</div>
                     </div>
-                    ${order.status === 'ready' ? '<div style="font-size:20px; color:#aaa;">✖</div>' : ''}
+                    <div class="btn-dismiss" style="font-size:22px; color:#888; padding:0 0 0 15px; cursor:pointer;">✖</div>
                 `;
                 
                 el.style.cssText = `background:#222; border:1px solid ${color}; border-radius:10px; padding:15px; margin-bottom:10px; display:flex; align-items:center; width:100%;`;
                 
-                if (order.status === 'ready') {
-                    el.style.cursor = 'pointer';
-                    el.onclick = () => App.dismissOrder(order.id);
-                }
+                el.querySelector('.btn-dismiss').onclick = (e) => {
+                    e.stopPropagation();
+                    if (order.status !== 'ready' && !confirm("Απόκρυψη παραγγελίας;")) return;
+                    App.dismissOrder(order.id);
+                };
                 
                 list.appendChild(el);
             });
