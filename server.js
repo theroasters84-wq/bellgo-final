@@ -99,7 +99,8 @@ async function updateStoreClients(storeName) {
 
     io.to(storeName).emit('staff-list-update', list);
     io.to(storeName).emit('orders-update', store.orders);
-        io.to(storeName).emit('menu-update', store.menu || []); // ✅ FIX: Πάντα array για να μην κολλάει το loading
+        socket.emit('menu-update', store.menu || []); // ✅ FIX: Άμεση αποστολή στον συγκεκριμένο χρήστη
+        io.to(storeName).emit('menu-update', store.menu || []); 
     io.to(storeName).emit('store-settings-update', store.settings);
     saveStoreToFirebase(storeName);
 }

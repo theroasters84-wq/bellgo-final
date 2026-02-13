@@ -328,8 +328,8 @@ window.App = {
             return;
         }
         
-        // ✅ FIX: Αφαίρεση του transports: ['websocket'] για να παίζει και με polling (πιο συμβατό)
-        window.socket = io({ reconnection: true });
+        // ✅ FIX: Ρύθμιση ίδια με το premium.js (polling + websocket) για μέγιστη συμβατότητα
+        window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         const socket = window.socket;
 
         socket.on('connect', () => {
@@ -353,6 +353,22 @@ window.App = {
             setTimeout(() => {
                 App.checkStripeReturn();
             }, 1000);
+
+            // ✅ NEW: Αν κολλήσει η φόρτωση, ξαναπροσπαθούμε αυτόματα μετά από 2.5s
+            setTimeout(() => {
+                const container = document.getElementById('menuContainer');
+                if (container && container.innerText.includes('Φόρτωση')) {
+                    console.log("⚠️ Menu stuck, retrying join...");
+                    const mySocketUsername = customerDetails.name + " (Πελάτης)";
+                    socket.emit('join-store', { 
+                        storeName: TARGET_STORE, 
+                        username: mySocketUsername, 
+                        role: 'customer', 
+                        token: localStorage.getItem('fcm_token'), 
+                        isNative: false 
+                    });
+                }
+            }, 2500);
         });
 
         socket.on('menu-update', (data) => { App.renderMenu(data); });
