@@ -387,7 +387,7 @@ app.post('/create-qr-payment', async (req, res) => {
                 price_data: {
                     currency: 'eur',
                     product_data: { name: `Παραγγελία #${orderId}`, description: 'Πληρωμή στο τραπέζι' },
-                    unit_amount: Math.round(amount * 100),
+                    unit_amount: Math.round(parseFloat(amount) * 100),
                 },
                 quantity: 1,
             }],
