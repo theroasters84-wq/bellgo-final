@@ -642,42 +642,78 @@ window.App = {
 
     maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
 
-    showStatus: (status) => {
+    showStatus: () => {
         const overlay = document.getElementById('statusOverlay');
-        const icon = document.getElementById('statusIcon');
-        const text = document.getElementById('statusText');
-        const sub = document.getElementById('statusSub');
+        const listContainer = document.getElementById('orderStatusList');
         const btnNew = document.getElementById('btnNewOrder');
 
         overlay.style.height = '100%'; 
-        btnNew.style.display = 'none'; 
+        listContainer.innerHTML = '';
         document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
 
-        let timeString = "";
-        // ✅ FIX: Έλεγχος αν υπάρχει activeOrderState
-        const currentOrder = activeOrderState;
-        const currentStatus = status || (currentOrder ? currentOrder.status : 'pending');
+        // Ταξινόμηση: Νεότερα πρώτα
+        const sorted = activeOrders.slice().sort((a,b) => b.timestamp - a.timestamp);
+        let hasFinished = false;
 
-        // Χρήση readyTime αν υπάρχει, αλλιώς timestamp
-        const timeRef = (currentOrder && currentOrder.readyTime) ? currentOrder.readyTime : Date.now();
-        const date = new Date(timeRef);
-        timeString = date.toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
+        if (sorted.length === 0) {
+             listContainer.innerHTML = '<div style="color:#aaa; text-align:center; margin-top:20px;">Δεν υπάρχουν ενεργές παραγγελίες.</div>';
+        } else {
+            sorted.forEach(order => {
+                const div = document.createElement('div');
+                
+                let icon = '⏳';
+                let title = 'Στάλθηκε';
+                let desc = 'Αναμονή για αποδοχή...';
+                let color = '#FF9800'; // Orange
 
+                if (order.status === 'cooking') {
+                    icon = '👨‍🍳'; title = 'Ετοιμάζεται'; desc = 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
+                } else if (order.status === 'ready') {
+                    icon = '🛵'; title = 'Έρχεται!'; desc = 'Ο διανομέας ξεκίνησε.'; color = '#00E676'; // Green
+                    hasFinished = true;
+                }
+
+                const timeStr = new Date(order.timestamp).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
+
+                div.innerHTML = `
+                    <div style="font-size:30px; margin-right:15px;">${icon}</div>
+                    <div style="text-align:left; flex:1;">
+                        <div style="color:${color}; font-weight:bold; font-size:18px;">${title}</div>
+                        <div style="color:#ccc; font-size:14px;">${desc}</div>
+                        <div style="color:#666; font-size:12px; margin-top:4px;">${timeStr}</div>
+                    </div>
+                `;
+                div.style.cssText = "background:#222; padding:15px; border-radius:10px; display:flex; align-items:center; border:1px solid #444; width:100%;";
+                listContainer.appendChild(div);
+            });
+        }
+
+        // Εμφάνιση κουμπιού εκκαθάρισης αν υπάρχει έτοιμη παραγγελία
+        if(hasFinished) btnNew.style.display = 'block';
+        else btnNew.style.display = 'none';
+        
+        // Ενημέρωση Mini Status (παίρνει το status της τελευταίας παραγγελίας)
         const miniText = document.getElementById('miniStatusText');
-        if (currentStatus === 'pending') {
-            icon.innerText = '⏳'; text.innerText = 'Στάλθηκε! Αναμονή...'; sub.innerText = 'Το κατάστημα ελέγχει την παραγγελία';
-            if(miniText) miniText.innerText = "Αναμονή...";
-        } else if (currentStatus === 'cooking') {
-            icon.innerText = '👨‍🍳'; text.innerText = 'Ετοιμάζεται!'; sub.innerText = 'Η παραγγελία έγινε αποδεκτή';
-            if(miniText) miniText.innerText = "Ετοιμάζεται";
-        } else if (currentStatus === 'ready') {
-            icon.innerText = '🛵'; text.innerText = `Έρχεται! (Έφυγε ${timeString})`; sub.innerText = 'Ο διανομέας ξεκίνησε';
-            btnNew.style.display = 'block'; 
-            if(miniText) miniText.innerText = "Έρχεται!";
+        if(miniText && sorted.length > 0) {
+            const latest = sorted[0];
+            if(latest.status === 'pending') miniText.innerText = "Αναμονή...";
+            else if(latest.status === 'cooking') miniText.innerText = "Ετοιμάζεται";
+            else if(latest.status === 'ready') miniText.innerText = "Έρχεται!";
+        } else if (miniText) {
+            miniText.innerText = "...";
         }
     },
 
-    updateStatusUI: (status) => { App.showStatus(status); },
+    updateStatusUI: () => { App.showStatus(); },
+
+    clearFinishedOrders: () => {
+        activeOrders = activeOrders.filter(o => o.status !== 'ready');
+        localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+        App.updateStatusUI();
+        if (activeOrders.length === 0) {
+            App.minimizeStatus();
+        }
+    },
 
     resetForNewOrder: () => {
         if(confirm("Θέλετε να κάνετε νέα παραγγελία;")) {
