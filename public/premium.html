@@ -229,6 +229,19 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: QR PAYMENT MODAL -->
+    <div id="qrPaymentModal" class="modal-overlay">
+        <div class="modal-box" style="background:white; color:black;">
+            <h3 style="margin:0;">💳 ΠΛΗΡΩΜΗ ΜΕ ΚΑΡΤΑ</h3>
+            <div id="qrPaymentCode" style="margin:20px auto;"></div>
+            <div id="qrLinkContainer" style="margin-bottom:15px;"></div>
+            <div style="font-weight:bold; color:red; border:2px solid red; padding:10px; border-radius:8px; font-size:14px;">
+                ⚠️ ΜΗΝ ΞΕΧΑΣΕΤΕ ΝΑ ΖΗΤΗΣΕΤΕ ΤΟ ΝΟΜΙΜΟ ΠΑΡΑΣΤΑΤΙΚΟ (ΑΠΟΔΕΙΞΗ)
+            </div>
+            <button onclick="document.getElementById('qrPaymentModal').style.display='none'" style="margin-top:15px; padding:10px 20px; background:#333; color:white; border:none; border-radius:8px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
     <div id="qrOverlay" onclick="this.style.display='none'" class="modal-overlay" style="align-items:center; justify-content:center;">
         <div class="qr-box" onclick="event.stopPropagation()" style="background:white; padding:20px; border-radius:16px; text-align:center;">
             <div style="color:black; font-weight:bold; font-size:18px; margin-bottom:10px;">📲 Link Καταστήματος</div>

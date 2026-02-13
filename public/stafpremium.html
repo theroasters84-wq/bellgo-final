@@ -37,6 +37,7 @@
 
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -163,11 +164,25 @@
             </div>
         </div>
 
+        <!-- ✅ NEW: QR PAYMENT MODAL -->
+        <div id="qrPaymentModal" class="overlay-screen" onclick="document.getElementById('qrPaymentModal').style.display='none'">
+            <div class="action-box" onclick="event.stopPropagation()" style="background:white; color:black;">
+                <h3 style="margin:0;">💳 ΠΛΗΡΩΜΗ</h3>
+                <div id="qrPaymentCode" style="margin:10px auto; display:flex; justify-content:center;"></div>
+                <div id="qrLinkContainerStaff" style="margin-bottom:10px;"></div>
+                <div style="font-weight:bold; color:red; border:2px solid red; padding:10px; border-radius:8px; font-size:14px;">
+                    ⚠️ ΜΗΝ ΞΕΧΑΣΕΤΕ ΝΑ ΖΗΤΗΣΕΤΕ ΤΟ ΝΟΜΙΜΟ ΠΑΡΑΣΤΑΤΙΚΟ (ΑΠΟΔΕΙΞΗ)
+                </div>
+                <button class="btn-act" style="background:#333; color:white; margin-top:10px;" onclick="document.getElementById('qrPaymentModal').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
+            </div>
+        </div>
+
         <div id="actionModal" onclick="document.getElementById('actionModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()">
                 <h3 style="color:white; text-align:center; margin:0;">Επιλογές</h3>
                 <button class="btn-act" style="background:#2196F3;" onclick="App.prepareUpdateOrder()">➕ ΠΡΟΣΘΗΚΗ (ΕΝΗΜΕΡΩΣΗ)</button>
                 <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.openTreatModal()">🎁 ΚΕΡΑΣΜΑ</button>
+                <button class="btn-act" style="background:#635BFF; color:white;" onclick="App.openQrPayment()">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>
                 <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'">ΑΚΥΡΟ</button>
             </div>
@@ -176,6 +191,21 @@
     </div>
 
     <script>
+    // Helper for Staff App to calculate total (since it parses text differently)
+    function calculateOrderTotal(text) {
+        let total = 0;
+        const lines = text.split('\n');
+        lines.forEach(line => {
+            const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
+            if (match) {
+                let qty = parseInt(match[1] || '1');
+                let price = parseFloat(match[3]);
+                total += qty * price;
+            }
+        });
+        return total;
+    }
+
     const AudioEngine = {
         keepAlivePlayer: null, 
         alarmPlayer: null,      
@@ -731,6 +761,37 @@
                 document.getElementById('treatModal').style.display = 'flex';
             },
             treatFullOrder: () => { if(confirm("Κέρασμα ΟΛΗ την παραγγελία;")) { window.socket.emit('treat-order', { id: App.selectedOrderId, type: 'full' }); document.getElementById('treatModal').style.display = 'none'; } },
+
+            // ✅ NEW: QR PAYMENT LOGIC (STAFF)
+            openQrPayment: async () => {
+                document.getElementById('actionModal').style.display = 'none';
+                const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                if(!order) return;
+                
+                // Calculate total from text
+                const total = calculateOrderTotal(order.text);
+                if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
+
+                try {
+                    const res = await fetch('/create-qr-payment', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ amount: total, storeName: userData.store, orderId: order.id })
+                    });
+                    const data = await res.json();
+                    if(data.url) {
+                        document.getElementById('qrPaymentCode').innerHTML = "";
+                        new QRCode(document.getElementById('qrPaymentCode'), { text: data.url, width: 200, height: 200 });
+                        
+                        // ✅ Προσθήκη κουμπιού για άνοιγμα στη συσκευή του προσωπικού
+                        const linkContainer = document.getElementById('qrLinkContainerStaff');
+                        if(linkContainer) {
+                            linkContainer.innerHTML = `<button onclick="window.open('${data.url}', '_blank')" style="background:#2196F3; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold;">🔗 ΠΛΗΡΩΜΗ ΕΔΩ (MANUAL)</button>`;
+                        }
+
+                        document.getElementById('qrPaymentModal').style.display = 'flex';
+                    } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
+                } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            },
 
             handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },

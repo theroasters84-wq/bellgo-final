@@ -962,14 +962,17 @@ window.App = {
         orders.forEach(order => {
             const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             let style = '';
+            const isPaid = order.text.includes('PAID') || order.text.includes('✅');
             
             const icon = document.createElement('div');
             icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
             // ✅ Apply Cooking style
             if (order.status === 'cooking') icon.classList.add('cooking');
+            // ✅ Apply Paid style
+            if (isPaid) icon.style.border = "2px solid #00E676";
             
             icon.style = style;
-            icon.innerHTML = `<div class="folder-icon">📂</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
+            icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
             icon.onclick = () => App.openOrderWindow(order);
             desktop.appendChild(icon);
         });
@@ -1016,7 +1019,8 @@ window.App = {
             } else {
                 // ✅ Μεταφορά Κεράσματος πάνω και αφαίρεση από κάτω
                 treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
-                actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
+                actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
+                actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ (ΜΕΤΡΗΤΑ)</button>`;
             }
         }
         win.style.border = `none`;
@@ -1072,6 +1076,34 @@ window.App = {
     },
     treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
     treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+
+    // ✅ NEW: QR PAYMENT LOGIC
+    openQrPayment: async (id) => {
+        const order = App.activeOrders.find(o => o.id == id);
+        if(!order) return;
+        const total = calculateTotal(order.text);
+        if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
+
+        try {
+            const res = await fetch('/create-qr-payment', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ amount: total, storeName: userData.store, orderId: id })
+            });
+            const data = await res.json();
+            if(data.url) {
+                document.getElementById('qrPaymentCode').innerHTML = "";
+                new QRCode(document.getElementById('qrPaymentCode'), { text: data.url, width: 200, height: 200 });
+                
+                // ✅ Προσθήκη κουμπιού για άνοιγμα στη συσκευή του καταστήματος
+                const linkContainer = document.getElementById('qrLinkContainer');
+                if(linkContainer) {
+                    linkContainer.innerHTML = `<button onclick="window.open('${data.url}', '_blank')" style="background:#2196F3; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold;">🔗 ΠΛΗΡΩΜΗ ΕΔΩ (MANUAL)</button>`;
+                }
+
+                document.getElementById('qrPaymentModal').style.display = 'flex';
+            } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
+        } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
 
     minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
     acceptOrder: (id) => {
@@ -1190,20 +1222,6 @@ window.App = {
 };
 
 window.onload = App.init;
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log("✅ Admin Service Worker Registered"))
-        .catch(err => console.log("❌ Admin SW Error:", err));
-}
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log("✅ Admin Service Worker Registered"))
-        .catch(err => console.log("❌ Admin SW Error:", err));
-}
-        .catch(err => console.log("❌ Admin SW Error:", err));
-}
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')

@@ -369,6 +369,67 @@ app.post('/create-order-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ✅ NEW: QR PAYMENT GENERATION (Admin/Staff initiates)
+app.post('/create-qr-payment', async (req, res) => {
+    const { amount, storeName, orderId } = req.body;
+    const data = await getStoreData(storeName);
+    const shopStripeId = data.settings.stripeConnectId;
+    if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει Stripe." }); }
+    
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.get('host');
+    const returnDomain = `${protocol}://${host}`;
+
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'eur',
+                    product_data: { name: `Παραγγελία #${orderId}`, description: 'Πληρωμή στο τραπέζι' },
+                    unit_amount: Math.round(amount * 100),
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            payment_intent_data: { transfer_data: { destination: shopStripeId } },
+            success_url: `${returnDomain}/qr-payment-success?store=${encodeURIComponent(storeName)}&orderId=${orderId}`,
+            cancel_url: `${returnDomain}/qr-payment-cancel`,
+        });
+        res.json({ url: session.url });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ✅ NEW: QR PAYMENT SUCCESS CALLBACK
+app.get('/qr-payment-success', async (req, res) => {
+    const { store, orderId } = req.query;
+    if(store && orderId) {
+        const data = await getStoreData(store);
+        const order = data.orders.find(o => o.id == orderId);
+        if(order) {
+             if(!order.text.includes('💳 PAID')) {
+                 order.text += '\n💳 PAID (QR) ✅';
+                 updateStoreClients(store);
+                 notifyAdmin(store, "ΠΛΗΡΩΜΗ QR 💳", `Η παραγγελία εξοφλήθηκε!`);
+             }
+        }
+    }
+    res.send(`
+        <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;}</style></head><body>
+            <div style="font-size:60px;">✅</div>
+            <h1 style="color:#00E676;">Επιτυχία!</h1>
+            <p>Η πληρωμή ολοκληρώθηκε.</p>
+            <div style="margin-top:30px;padding:15px;border:2px solid #FFD700;border-radius:10px;color:#FFD700;font-weight:bold;">
+                ΜΗΝ ΞΕΧΑΣΕΤΕ ΝΑ ΖΗΤΗΣΕΤΕ ΤΟ ΝΟΜΙΜΟ ΠΑΡΑΣΤΑΤΙΚΟ (ΑΠΟΔΕΙΞΗ)
+            </div>
+        </body></html>
+    `);
+});
+
+app.get('/qr-payment-cancel', (req, res) => {
+    res.send(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}</style></head><body><h1>❌ Ακύρωση</h1><p>Η πληρωμή δεν ολοκληρώθηκε.</p></body></html>`);
+});
+
 /* ---------------- NOTIFICATION LOGIC ---------------- */
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
     if (target && target.fcmToken) { 
