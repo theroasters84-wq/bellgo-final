@@ -63,7 +63,7 @@ body.is-web #storeNameHeader { margin-bottom: 0; font-size: 22px; }
 .category-block { width: 100%; }
 .category-title { color: var(--accent); font-weight: bold; font-size: 16px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 2px; text-transform: uppercase; }
 .category-items { display: flex; flex-wrap: wrap; gap: 8px; }
-.item-box { background: #222; border: 1px solid #444; padding: 12px 14px; border-radius: 8px; color: #eee; font-size: 15px; cursor: pointer; transition: transform 0.1s; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+.item-box { background: #222; border: 1px solid #444; padding: 12px 14px; border-radius: 8px; color: #eee; font-size: 15px; cursor: pointer; transition: transform 0.1s; user-select: none; display: flex; justify-content: space-between; align-items: center; touch-action: manipulation; }
 .item-box:active { transform: scale(0.95); background: #333; border-color: var(--accent); }
 .item-name { font-style: italic; }
 .item-price { background: var(--primary); color: black; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 13px; margin-left: 8px; }

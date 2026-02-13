@@ -73,6 +73,7 @@ const parseItem = (str) => {
 let currentUser = null;
 let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
+let storeHasStripe = false;
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
 window.App = {
@@ -303,6 +304,9 @@ window.App = {
                     }
                 }
                 
+                storeHasStripe = !!settings.stripeConnectId;
+                App.handleInput();
+                
                 const closedOverlay = document.getElementById('closedOverlay');
                 const btnSend = document.getElementById('btnSendOrder');
                 
@@ -403,11 +407,20 @@ window.App = {
                         const box = document.createElement('div');
                         box.className = 'item-box';
                         box.innerHTML = `<span class="item-name">${name}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
-                        box.addEventListener('dblclick', (e) => { 
+                        
+                        // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ
+                        let lastTap = 0;
+                        box.addEventListener('click', (e) => { 
                             e.preventDefault(); 
-                            // Μετατροπή σε string για το textarea
-                            const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
-                            App.addToOrder(val); 
+                            const currentTime = new Date().getTime();
+                            const tapLength = currentTime - lastTap;
+                            if (tapLength < 400 && tapLength > 0) {
+                                const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
+                                App.addToOrder(val); 
+                                lastTap = 0;
+                            } else {
+                                lastTap = currentTime;
+                            }
                         });
                         itemsDiv.appendChild(box);
                     }
@@ -423,7 +436,8 @@ window.App = {
 
     addToOrder: (item) => {
         const txt = document.getElementById('orderText');
-        txt.focus(); txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
+        // txt.focus(); // Αφαιρέθηκε για να μην ανοίγει το πληκτρολόγιο στο iPhone
+        txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
         let lines = txt.value.split('\n').filter(l => l.trim() !== '');
         let found = false;
         const { name } = parseItem(item);
@@ -466,12 +480,16 @@ window.App = {
         }
         document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
         const btnCard = document.getElementById('payCard');
-        if (validForCard && total > 0) {
+        if (validForCard && total > 0 && storeHasStripe) {
             btnCard.disabled = false;
             btnCard.innerHTML = "💳 ΚΑΡΤΑ";
         } else {
             btnCard.disabled = true;
-            btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
+            if (!storeHasStripe) {
+                btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη ενεργή)";
+            } else {
+                btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
+            }
         }
         return total;
     },

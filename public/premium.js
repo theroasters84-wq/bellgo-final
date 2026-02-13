@@ -197,6 +197,14 @@ window.App = {
                 token: localStorage.getItem('fcm_token'), 
                 isNative: isNative 
             });
+
+            // ✅ FIX: Έλεγχος για εκκρεμή σύνδεση Stripe μετά το redirect
+            const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
+            if (pendingStripe) {
+                socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
+                localStorage.removeItem('temp_stripe_connect_id');
+                alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
+            }
         });
         socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
         
