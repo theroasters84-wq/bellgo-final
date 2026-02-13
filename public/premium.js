@@ -169,7 +169,7 @@ window.App = {
             document.getElementById('btnNewOrderSidebar').style.display = 'flex';
             // ✅ ΤΑΜΕΙΟ: Η μπάρα υπάρχει αλλά ξεκινάει ΚΛΕΙΣΤΗ
             const sb = document.getElementById('orderSidebar');
-            if(sb) { sb.style.display = 'flex'; sb.style.right = '-100%'; }
+            if(sb) { sb.style.display = 'flex'; sb.style.left = '-100%'; }
         }
 
         App.connectSocket();
@@ -391,6 +391,66 @@ window.App = {
         window.socket.emit('save-store-settings', { schedule: newSched });
         document.getElementById('scheduleModal').style.display = 'none';
         document.getElementById('settingsModal').style.display = 'flex';
+    },
+
+    // --- STATISTICS LOGIC ---
+    openStatsModal: () => {
+        document.getElementById('settingsModal').style.display = 'none';
+        document.getElementById('statsModal').style.display = 'flex';
+        App.refreshStats();
+    },
+    refreshStats: () => {
+        document.getElementById('statsContent').innerHTML = '<p style="text-align:center; color:#aaa;">Φόρτωση...</p>';
+        window.socket.emit('get-stats');
+    },
+    renderStats: (stats) => {
+        const container = document.getElementById('statsContent');
+        if (!stats || Object.keys(stats).length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#aaa;">Δεν υπάρχουν δεδομένα ακόμα.</p>';
+            return;
+        }
+
+        // Βρίσκουμε τον τρέχοντα μήνα και μέρα
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // "2026-02-13"
+        const [year, month, day] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+        
+        const mStats = stats[monthKey];
+        if (!mStats) {
+            container.innerHTML = `<p style="text-align:center; color:#aaa;">Κανένα δεδομένο για τον μήνα ${monthKey}</p>`;
+            return;
+        }
+
+        // Στατιστικά Ημέρας
+        const todayStats = (mStats.days && mStats.days[day]) ? mStats.days[day] : { turnover: 0, orders: 0 };
+
+        let html = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                <div style="background:#333; padding:10px; border-radius:10px; text-align:center; border:1px solid #555;">
+                    <div style="font-size:12px; color:#aaa;">ΣΗΜΕΡΑ (${day}/${month})</div>
+                    <div style="font-size:24px; font-weight:bold; color:#FFD700;">${todayStats.turnover.toFixed(2)}€</div>
+                    <div style="font-size:11px; color:#fff;">${todayStats.orders} παρ.</div>
+                </div>
+                <div style="background:#333; padding:10px; border-radius:10px; text-align:center; border:1px solid #555;">
+                    <div style="font-size:12px; color:#aaa;">ΜΗΝΑΣ (${month})</div>
+                    <div style="font-size:24px; font-weight:bold; color:#00E676;">${mStats.turnover.toFixed(2)}€</div>
+                    <div style="font-size:11px; color:#fff;">${mStats.orders} παρ.</div>
+                </div>
+            </div>
+            
+            <div style="font-size:16px; font-weight:bold; color:#FFD700; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">ΠΩΛΗΣΕΙΣ ΠΡΟΪΟΝΤΩΝ (ΜΗΝΑΣ)</div>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+        `;
+
+        const sortedProducts = Object.entries(mStats.products || {}).sort((a, b) => b[1] - a[1]);
+        sortedProducts.forEach(([name, qty]) => {
+            html += `<div style="display:flex; justify-content:space-between; background:#222; padding:8px; border-radius:6px;">
+                        <span style="color:#eee;">${name}</span><span style="font-weight:bold; color:#00E676;">${qty} τμχ</span>
+                     </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
     },
     
     // --- TEMPLATE LOGIC ---
@@ -639,14 +699,14 @@ window.App = {
     // --- SIDEBAR ORDER LOGIC (CASHIER) ---
     toggleOrderSidebar: () => {
         const sb = document.getElementById('orderSidebar');
-        // Ελέγχουμε αν είναι ανοιχτό (0px) ή κλειστό (-100%)
-        const currentRight = sb.style.right;
-        const isOpen = currentRight === '0px' || currentRight === '0';
+        // Ελέγχουμε αν είναι ανοιχτό (0px) ή κλειστό (-100%) με βάση το LEFT
+        const currentLeft = sb.style.left;
+        const isOpen = currentLeft === '0px' || currentLeft === '0';
         
         if (isOpen) {
-            sb.style.right = '-100%';
+            sb.style.left = '-100%';
         } else {
-            sb.style.right = '0px';
+            sb.style.left = '0px';
             App.renderSidebarMenu();
         }
     },

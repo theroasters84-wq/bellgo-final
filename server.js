@@ -67,6 +67,7 @@ async function getStoreData(storeName) {
                 const firebaseData = doc.data();
                 if (firebaseData.settings) data.settings = { ...defaultSettings, ...firebaseData.settings };
                 if (firebaseData.menu) data.menu = firebaseData.menu;
+                if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
                 // ✅ Load Permanent Menu Backup (για επαναφορά)
                 data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
                 if (firebaseData.orders) {
@@ -105,6 +106,68 @@ async function updateStoreClients(storeName) {
         io.to(storeName).emit('menu-update', store.menu || []); 
     io.to(storeName).emit('store-settings-update', store.settings);
     saveStoreToFirebase(storeName);
+}
+
+/* ---------------- STATISTICS HELPER ---------------- */
+function updateStoreStats(store, order) {
+    if (!store.stats) store.stats = {};
+    
+    // Υπολογισμός Τζίρου & Προϊόντων από το κείμενο της παραγγελίας
+    let total = 0;
+    let items = {};
+    const lines = (order.text || "").split('\n');
+    
+    lines.forEach(line => {
+        let cleanLine = line.replace('++ ', '').replace('✅ ', '').trim();
+        if (cleanLine.startsWith('[')) return; // Αγνοούμε επικεφαλίδες (Τραπέζια κλπ)
+
+        const match = cleanLine.match(/^(\d+)\s+(.*)/);
+        if (match) {
+            let qty = parseInt(match[1]);
+            let rest = match[2];
+            let price = 0;
+            let name = rest;
+
+            if (rest.includes(':')) {
+                const parts = rest.split(':');
+                const priceStr = parts[parts.length - 1];
+                price = parseFloat(priceStr) || 0;
+                name = parts.slice(0, -1).join(':').trim();
+            }
+
+            if (name) {
+                if (!items[name]) items[name] = 0;
+                items[name] += qty;
+                total += qty * price;
+            }
+        }
+    });
+
+    // Ημερομηνία (Μήνας & Μέρα)
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
+    const [year, month, day] = dateStr.split('-');
+    const monthKey = `${year}-${month}`;
+
+    if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {}, products: {} };
+    const mStats = store.stats[monthKey];
+
+    // 1. Σύνολα Μήνα
+    mStats.orders++;
+    mStats.turnover += total;
+
+    // 2. Σύνολα Ημέρας
+    if (!mStats.days) mStats.days = {};
+    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0 };
+    mStats.days[day].orders++;
+    mStats.days[day].turnover += total;
+
+    // 3. Τεμάχια Προϊόντων
+    if (!mStats.products) mStats.products = {};
+    for (const [prodName, qty] of Object.entries(items)) {
+        if (!mStats.products[prodName]) mStats.products[prodName] = 0;
+        mStats.products[prodName] += qty;
+    }
 }
 
 /* ---------------- VIRTUAL ROUTES (PWA ISOLATION) ---------------- */
@@ -450,9 +513,23 @@ io.on('connection', (socket) => {
     socket.on('pay-order', (id) => { 
         const store = getMyStore(); 
         if(store) { 
-            store.orders = store.orders.filter(x => x.id != id); 
-            updateStoreClients(socket.store); 
+            const o = store.orders.find(x => x.id == id);
+            if (o) {
+                updateStoreStats(store, o); // ✅ Καταγραφή στατιστικών πριν τη διαγραφή
+                store.orders = store.orders.filter(x => x.id != id); 
+                updateStoreClients(socket.store); 
+            }
         } 
+    });
+
+    // ✅ NEW: Αποστολή Στατιστικών στον Admin
+    socket.on('get-stats', () => {
+        const store = getMyStore();
+        if (store && store.stats && socket.role === 'admin') {
+            socket.emit('stats-data', store.stats);
+        } else {
+            socket.emit('stats-data', {}); // Κενά αν δεν υπάρχουν
+        }
     });
 
     // ✅ PARTIAL PAY

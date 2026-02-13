@@ -64,7 +64,7 @@
         </div>
 
         <!-- ✅ NEW: SIDEBAR ORDER PANEL (FULL SCREEN RIGHT) -->
-        <div id="orderSidebar" class="order-panel" style="position:fixed; top:0; right:-100%; width:100%; height:100%; transition:right 0.3s; z-index:4000; border-top:none; border-left:2px solid #333; display:flex; flex-direction:column;">
+        <div id="orderSidebar" class="order-panel" style="position:fixed; top:0; left:-100%; width:100%; height:100%; transition:left 0.3s; z-index:4000; border-top:none; border-right:2px solid #333; display:flex; flex-direction:column;">
             <div class="panel-header-bar" style="background:#111; justify-content:space-between; padding:0 15px; cursor:default;">
                 <span style="font-weight:bold; color:#00E676;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
                 <button id="btnCloseSidebar" onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:white; font-size:30px; padding:15px; cursor:pointer; z-index:5000;">✕</button>
@@ -146,6 +146,7 @@
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
+                <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()">📊 ΣΤΑΤΙΣΤΙΚΑ</button>
                 <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK</button>
             </div>
 
@@ -206,6 +207,18 @@
             <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')">📅 ΣΗΜΕΡΑ ΜΟΝΟ</button>
             <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
             <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: STATISTICS MODAL -->
+    <div id="statsModal" class="modal-overlay">
+        <div class="modal-box" style="max-width:500px;">
+            <h3 class="modal-title">📊 ΣΤΑΤΙΣΤΙΚΑ ΜΗΝΑ</h3>
+            <div id="statsContent" style="text-align:left; width:100%; max-height:60vh; overflow-y:auto;">
+                <p style="text-align:center; color:#aaa;">Φόρτωση...</p>
+            </div>
+            <button class="modal-btn" style="background:#2196F3; margin-top:10px;" onclick="App.refreshStats()">🔄 ΑΝΑΝΕΩΣΗ</button>
+            <button onclick="document.getElementById('statsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;">ΠΙΣΩ</button>
         </div>
     </div>
 
