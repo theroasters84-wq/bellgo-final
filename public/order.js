@@ -72,7 +72,7 @@ const parseItem = (str) => {
 
 let currentUser = null;
 let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-let activeOrderState = JSON.parse(localStorage.getItem('bellgo_active_order') || 'null');
+let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 
 window.App = {
@@ -140,15 +140,24 @@ window.App = {
             audio.play().catch(()=>{});
         }, { once: true });
 
-        if (PRELOADED_NAME) {
+        if (TARGET_STORE) {
+            // Priority 1: Use the store ID to create a unique PWA scope.
+            let maniUrl = `/manifest.json?icon=shop&store=${encodeURIComponent(TARGET_STORE)}`;
+            
+            // Set the name from the preloaded param if available
+            const name = PRELOADED_NAME ? decodeURIComponent(PRELOADED_NAME) : TARGET_STORE.split('@')[0].toUpperCase();
+            document.getElementById('storeNameHeader').innerText = name;
+            document.title = name;
+            
+            document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
+
+        } else if (PRELOADED_NAME) {
+            // Fallback for older links that might only have the name
             const cleanName = decodeURIComponent(PRELOADED_NAME);
             document.getElementById('storeNameHeader').innerText = cleanName;
             document.title = cleanName;
-            let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
-            if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
+            let maniUrl = `/manifest.json?name=${encodeURIComponent(cleanName)}&icon=shop`;
             document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
-        } else if(TARGET_STORE) {
-            document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
         }
         
         document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
@@ -220,15 +229,20 @@ window.App = {
     },
 
     checkActiveOrderStorage: () => {
-        if (activeOrderState) {
+        if (activeOrders.length > 0) {
             const now = Date.now();
-            if (activeOrderState.status === 'ready' && (now - activeOrderState.timestamp > ORDER_TIMEOUT_MS)) {
-                localStorage.removeItem('bellgo_active_order');
-                activeOrderState = null;
-                App.resetUI();
-            } else {
-                App.updateStatusUI(activeOrderState.status);
+            const updatedOrders = activeOrders.filter(order => {
+                if (order.status === 'ready' && (now - order.timestamp > ORDER_TIMEOUT_MS)) {
+                    return false; // Remove old, ready orders
+                }
+                return true;
+            });
+
+            if (updatedOrders.length !== activeOrders.length) {
+                activeOrders = updatedOrders;
+                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
             }
+            App.updateStatusUI();
         }
     },
 
@@ -312,29 +326,31 @@ window.App = {
 
         socket.on('orders-update', (orders) => {
             const mySocketUsername = customerDetails.name + " (Πελάτης)";
-            const myOrder = orders.find(o => o.from === mySocketUsername);
-            if (myOrder) {
-                // ✅ SYNC STATUS FROM SERVER
-                if (!activeOrderState || activeOrderState.status !== myOrder.status) {
-                    activeOrderState = { id: myOrder.id, status: myOrder.status, timestamp: Date.now() };
-                    localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                    App.updateStatusUI(myOrder.status);
-                }
-            } else {
-                // Logic if order removed from server (e.g., ready)
-                if (activeOrderState && (activeOrderState.status === 'pending' || activeOrderState.status === 'cooking')) {
-                    // Optionally set to ready or clear
-                }
-            }
+            const myOrders = orders.filter(o => o.from === mySocketUsername);
+
+            // Simple replace for now, could be smarter (merge)
+            activeOrders = myOrders;
+            localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+            App.updateStatusUI();
         });
 
         // ✅ IMMEDIATE UPDATE (Fixes "den vlepw stadiaka")
         socket.on('order-changed', (data) => {
-            if (activeOrderState && activeOrderState.id === data.id) {
-                activeOrderState.status = data.status;
-                if (data.readyTime) activeOrderState.readyTime = data.readyTime; // Save ready time
-                localStorage.setItem('bellgo_active_order', JSON.stringify(activeOrderState));
-                App.updateStatusUI(data.status);
+            const orderIndex = activeOrders.findIndex(o => o.id === data.id);
+            if (orderIndex > -1) {
+                activeOrders[orderIndex].status = data.status;
+                if (data.readyTime) activeOrders[orderIndex].readyTime = data.readyTime;
+                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+                App.updateStatusUI();
+            }
+        });
+
+        socket.on('order-status-changed', (data) => {
+            const orderIndex = activeOrders.findIndex(o => o.id === data.id);
+            if (orderIndex > -1) {
+                activeOrders[orderIndex].status = data.status;
+                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
+                App.updateStatusUI();
             }
         });
     },
