@@ -154,7 +154,15 @@ window.App = {
         }, {once:true});
         
         // ✅ UI SETUP BASED ON MODE
-        if (App.adminMode === 'cashier') {
+        if (App.adminMode === 'kitchen') {
+            // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
+            document.getElementById('btnNewOrderSidebar').style.display = 'none';
+            document.getElementById('btnMenuToggle').style.display = 'none';
+            document.getElementById('btnSettings').style.display = 'none';
+            document.getElementById('btnKitchenExit').style.display = 'flex';
+            document.getElementById('inpStoreNameHeader').disabled = true;
+        } else {
+            // 🏪 CASHIER MODE
             document.getElementById('btnNewOrderSidebar').style.display = 'flex';
         }
 
@@ -625,7 +633,8 @@ window.App = {
     // --- SIDEBAR ORDER LOGIC (CASHIER) ---
     toggleOrderSidebar: () => {
         const sb = document.getElementById('orderSidebar');
-        if (sb.style.right === '0px') {
+        const isOpen = sb.style.right === '0px' || sb.style.right === '0';
+        if (isOpen) {
             sb.style.right = '-100%';
         } else {
             sb.style.right = '0px';
@@ -759,7 +768,11 @@ window.App = {
         } else if (order.status === 'cooking') {
             actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
         } else {
-            actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
+            if (App.adminMode === 'kitchen') {
+                actions = `<button class="btn-win-action" style="background:#555; color:white;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
+            } else {
+                actions = `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ & ΚΛΕΙΣΙΜΟ</button>`;
+            }
         }
         win.style.border = `none`;
         win.innerHTML = `

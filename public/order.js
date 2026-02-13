@@ -49,7 +49,7 @@ if (!TARGET_STORE) {
     const pathParts = window.location.pathname.split('/');
     const shopIndex = pathParts.indexOf('shop');
     if (shopIndex !== -1 && pathParts[shopIndex + 1]) {
-        TARGET_STORE = pathParts[shopIndex + 1];
+        TARGET_STORE = decodeURIComponent(pathParts[shopIndex + 1]); // ✅ FIX: Αποκωδικοποίηση ονόματος (π.χ. My%20Shop -> My Shop)
     }
 }
 

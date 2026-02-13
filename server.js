@@ -240,6 +240,12 @@ app.post('/create-order-payment', async (req, res) => {
     const data = await getStoreData(storeName);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
+    
+    // ✅ FIX: Δυναμικό Domain για να επιστρέφει ακριβώς εκεί που ήταν ο πελάτης
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.get('host');
+    const returnDomain = `${protocol}://${host}`;
+
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -253,8 +259,8 @@ app.post('/create-order-payment', async (req, res) => {
             }],
             mode: 'payment',
             payment_intent_data: { transfer_data: { destination: shopStripeId } },
-            success_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=success&data=${encodeURIComponent(items || '')}`, // ✅ Επιστροφή items στο URL
-            cancel_url: `${YOUR_DOMAIN}/shop/${encodeURIComponent(storeName)}/?payment_status=cancel`,
+            success_url: `${returnDomain}/shop/${encodeURIComponent(storeName)}/?payment_status=success&data=${encodeURIComponent(items || '')}`, // ✅ Dynamic Domain
+            cancel_url: `${returnDomain}/shop/${encodeURIComponent(storeName)}/?payment_status=cancel`,
         });
         res.json({ url: session.url });
     } catch (e) { res.status(500).json({ error: e.message }); }

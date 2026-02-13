@@ -27,7 +27,7 @@
             const pathParts = window.location.pathname.split('/');
             // Έλεγχος αν είμαστε σε URL μορφής /shop/storeName/
             if (pathParts.includes('shop') && pathParts.length > 2) {
-                store = pathParts[pathParts.indexOf('shop') + 1];
+                store = decodeURIComponent(pathParts[pathParts.indexOf('shop') + 1]); // ✅ FIX: Αποκωδικοποίηση
             } else {
                 // Fallback σε query string ?store=xyz
                 const params = new URLSearchParams(window.location.search);
