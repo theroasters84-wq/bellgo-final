@@ -509,7 +509,13 @@ window.App = {
 
     addToOrder: (item) => {
         const txt = document.getElementById('orderText');
-        txt.focus(); txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
+        txt.classList.add('flash'); setTimeout(() => txt.classList.remove('flash'), 200);
+        
+        const panel = document.getElementById('orderPanel');
+        if (panel.classList.contains('minimized')) {
+            App.toggleOrderPanel();
+        }
+
         let lines = txt.value.split('\n').filter(l => l.trim() !== '');
         let found = false;
         const { name } = parseItem(item);
