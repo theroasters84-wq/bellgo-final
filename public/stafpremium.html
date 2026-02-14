@@ -329,11 +329,14 @@
                         let rawLine = line.trim();
                         if (!rawLine) return;
 
+                        const isPaidCash = rawLine.includes('✅ 💶');
+                        const isPaidCard = rawLine.includes('✅ 💳');
                         const isPaid = rawLine.includes('✅');
                         const isNew = rawLine.includes('++');
                         
                         // Καθαρισμός για υπολογισμό συνόλου
-                        let cleanLine = rawLine.replace('✅', '').replace('++', '').trim();                        let displayLine = rawLine;
+                        let cleanLine = rawLine.replace(/✅ 💶|✅ 💳|✅/g, '').replace('++', '').trim();
+                        let displayLine = rawLine;
                         let productName = "το προϊόν";
 
                         // Υπολογισμός (Μόνο αν δεν είναι εξοφλημένο)
@@ -380,8 +383,27 @@
                         // Κουμπί Μερικής Εξόφλησης (Μόνο για προϊόντα, όχι τίτλους)
                         let btnHtml = '';
                         if (!rawLine.startsWith('[') && !isPaid) {
-                            const safeName = productName.replace(/'/g, "\\'");
-                            btnHtml = `<button onclick="event.stopPropagation(); if(confirm('Εξόφληση για ${safeName};')) window.socket.emit('pay-partial', {id:${o.id}, index:${idx}})" style="background:#333; border:1px solid #555; color:white; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">€</button>`;
+                            // ✅ FIX: Προσθήκη επιλογών Μετρητά/Κάρτα όπως στο Admin
+                            const opCash = isPaidCard ? '0.3' : '1';
+                            const opCard = isPaidCash ? '0.3' : '1';
+                            const filtCash = isPaidCard ? 'grayscale(1)' : 'none';
+                            const filtCard = isPaidCash ? 'grayscale(1)' : 'none';
+                            
+                            btnHtml = `
+                                <button onclick="event.stopPropagation(); App.payItemPartial(${o.id}, ${idx}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${opCash}; filter:${filtCash};" title="Μετρητά">💶</button>
+                                <button onclick="event.stopPropagation(); App.payItemPartial(${o.id}, ${idx}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${opCard}; filter:${filtCard};" title="Κάρτα">💳</button>
+                            `;
+                        } else if (isPaid) {
+                             // Αν είναι πληρωμένο, δείχνουμε τα κουμπιά αχνά για να φαίνεται ο τρόπος
+                             const opCash = isPaidCash ? '1' : '0.3';
+                             const opCard = isPaidCard ? '1' : '0.3';
+                             const filtCash = isPaidCash ? 'none' : 'grayscale(1)';
+                             const filtCard = isPaidCard ? 'none' : 'grayscale(1)';
+                             
+                             btnHtml = `
+                                <button onclick="event.stopPropagation(); App.payItemPartial(${o.id}, ${idx}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${opCash}; filter:${filtCash};">💶</button>
+                                <button onclick="event.stopPropagation(); App.payItemPartial(${o.id}, ${idx}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${opCard}; filter:${filtCard};">💳</button>
+                            `;
                         }
 
                         contentHtml += `<div style="${rowStyle}"><span style="${textStyle}">${displayLine}</span>${btnHtml}</div>`;
@@ -757,6 +779,11 @@
             treatFullOrder: () => { if(confirm("Κέρασμα ΟΛΗ την παραγγελία;")) { window.socket.emit('treat-order', { id: App.selectedOrderId, type: 'full' }); document.getElementById('treatModal').style.display = 'none'; } },
 
             // ✅ NEW: QR PAYMENT LOGIC (STAFF)
+            // ✅ NEW: PARTIAL PAYMENT (Cash/Card)
+            payItemPartial: (id, index, method) => {
+                window.socket.emit('pay-partial', { id: id, index: index, method: method });
+            },
+
             openQrPayment: async () => {
                 document.getElementById('actionModal').style.display = 'none';
                 const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);

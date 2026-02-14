@@ -99,6 +99,7 @@ window.App = {
     autoClosePrint: false, // ✅ Auto Close Window State
     knownOrderIds: new Set(), // ✅ Track printed orders
     expensePresets: [], // ✅ Local storage for presets
+    fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
     init: () => {
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
@@ -232,8 +233,12 @@ window.App = {
     
     requestNotifyPermission: async () => {
         try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
+            // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
+            if (Notification.permission === 'default') {
+                await Notification.requestPermission();
+            }
+            
+            if (Notification.permission === "granted") {
                 const registration = await navigator.serviceWorker.ready;
                 const token = await getToken(messaging, { 
                     vapidKey: vapidKey, 
@@ -345,6 +350,7 @@ window.App = {
                     if(sw) sw.checked = App.autoClosePrint;
                 }
                 if(settings.expensePresets) App.expensePresets = settings.expensePresets;
+                if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -522,6 +528,7 @@ window.App = {
     openExpensesModal: () => {
         document.getElementById('expensesModal').style.display = 'flex';
         App.renderExpensePresets();
+        App.renderFixedExpenses(); // ✅ Render Fixed
         // Load today's expenses from cached stats if available
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
@@ -536,18 +543,63 @@ window.App = {
         App.calcExpensesTotal();
     },
     
+    // ✅ NEW: FIXED EXPENSES LOGIC
+    renderFixedExpenses: () => {
+        const container = document.getElementById('fixedExpensesContainer');
+        container.innerHTML = '';
+        (App.fixedExpenses || []).forEach((fixed, idx) => {
+            const btn = document.createElement('div');
+            btn.style.cssText = "background:#444; color:#FFD700; padding:5px 10px; border-radius:15px; font-size:12px; display:flex; align-items:center; gap:5px; border:1px solid #FFD700;";
+            btn.innerHTML = `<span>${fixed.name}: <b>${fixed.price.toFixed(2)}€</b></span> <span style="color:#FF5252; font-weight:bold; font-size:10px; cursor:pointer;">✕</span>`;
+            
+            // Click on X -> Remove
+            btn.children[1].onclick = (e) => {
+                if(confirm("Διαγραφή πάγιου εξόδου;")) {
+                    App.fixedExpenses.splice(idx, 1);
+                    window.socket.emit('save-store-settings', { fixedExpenses: App.fixedExpenses });
+                    App.renderFixedExpenses();
+                    App.calcExpensesTotal();
+                }
+            };
+            container.appendChild(btn);
+        });
+    },
+
+    addFixedExpense: () => {
+        const name = document.getElementById('inpFixedName').value.trim();
+        const price = parseFloat(document.getElementById('inpFixedPrice').value);
+        if(!name || isNaN(price)) return alert("Συμπληρώστε όνομα και τιμή!");
+        
+        if(!App.fixedExpenses) App.fixedExpenses = [];
+        App.fixedExpenses.push({ name, price });
+        
+        window.socket.emit('save-store-settings', { fixedExpenses: App.fixedExpenses });
+        
+        document.getElementById('inpFixedName').value = '';
+        document.getElementById('inpFixedPrice').value = '';
+        App.renderFixedExpenses();
+        App.calcExpensesTotal();
+    },
+
     renderExpensePresets: () => {
         const container = document.getElementById('expensePresetsContainer');
         container.innerHTML = '';
         (App.expensePresets || []).forEach((preset, idx) => {
             const btn = document.createElement('div');
             btn.style.cssText = "background:#333; color:white; padding:5px 10px; border-radius:15px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; border:1px solid #555;";
-            btn.innerHTML = `<span>${preset}</span> <span style="color:#FF5252; font-weight:bold; font-size:10px;">✕</span>`;
+            
+            // Handle old string presets vs new object presets
+            let name = preset;
+            let price = null;
+            if(typeof preset === 'object') { name = preset.name; price = preset.price; }
+            
+            btn.innerHTML = `<span>${name}${price ? ` (${price}€)` : ''}</span> <span style="color:#FF5252; font-weight:bold; font-size:10px;">✕</span>`;
             
             // Click on text -> Add to textarea
             btn.onclick = (e) => {
                 const txt = document.getElementById('txtExpenses');
-                txt.value += (txt.value ? '\n' : '') + `${preset} . `;
+                const lineToAdd = price ? `${name} . ${price}` : `${name} . `;
+                txt.value += (txt.value ? '\n' : '') + lineToAdd;
                 App.calcExpensesTotal();
             };
             
@@ -556,6 +608,7 @@ window.App = {
                 e.stopPropagation();
                 if(confirm("Διαγραφή παγίου;")) {
                     App.expensePresets.splice(idx, 1);
+                    window.socket.emit('save-store-settings', { expensePresets: App.expensePresets }); // ✅ Save on delete
                     App.renderExpensePresets();
                 }
             };
@@ -565,20 +618,42 @@ window.App = {
     
     addExpensePreset: () => {
         const val = document.getElementById('inpNewPreset').value.trim();
+        const price = parseFloat(document.getElementById('inpNewPresetPrice').value);
         if(!val) return;
+        
         if(!App.expensePresets) App.expensePresets = [];
-        App.expensePresets.push(val);
+        
+        if(!isNaN(price) && price > 0) {
+            App.expensePresets.push({ name: val, price: price });
+        } else {
+            App.expensePresets.push(val); // Backwards compatibility for string-only
+        }
+        
+        window.socket.emit('save-store-settings', { expensePresets: App.expensePresets }); // ✅ Save on add
+        
         document.getElementById('inpNewPreset').value = '';
+        document.getElementById('inpNewPresetPrice').value = '';
         App.renderExpensePresets();
     },
     
     calcExpensesTotal: () => {
-        const txt = document.getElementById('txtExpenses').value;
         let total = 0;
+        
+        // 1. Add Fixed Expenses
+        if(App.fixedExpenses) {
+            App.fixedExpenses.forEach(f => total += (f.price || 0));
+        }
+
+        // 2. Add Textarea Expenses
+        const txt = document.getElementById('txtExpenses').value;
         txt.split('\n').forEach(line => {
-            if(line.includes('.')) {
-                const parts = line.split('.');
-                const val = parseFloat(parts[parts.length-1]);
+            // ✅ FIX: Support for comma decimals and various separators
+            // Regex looks for a number at the end of the line (e.g. "Item . 2,50" or "Item 2.50")
+            const match = line.match(/[\d,.]+$/);
+            if(match) {
+                // Replace comma with dot for JS parsing
+                const numStr = match[0].replace(/,/g, '.');
+                const val = parseFloat(numStr);
                 if(!isNaN(val)) total += val;
             }
         });
@@ -589,7 +664,9 @@ window.App = {
     saveExpenses: () => {
         const total = App.calcExpensesTotal();
         const text = document.getElementById('txtExpenses').value;
-        window.socket.emit('save-expenses', { text: text, total: total, presets: App.expensePresets });
+        // Note: Presets and Fixed are saved via save-store-settings now.
+        // We only send the daily text and total here.
+        window.socket.emit('save-expenses', { text: text, total: total });
         document.getElementById('expensesModal').style.display = 'none';
         alert("Αποθηκεύτηκε!");
     },
@@ -609,6 +686,10 @@ window.App = {
         App.renderStatsDashboard();
     },
     renderStatsDashboard: () => {
+        // ✅ RESET HEADER
+        const btnBack = document.getElementById('btnStatsBack'); if(btnBack) btnBack.style.display = 'none';
+        const title = document.getElementById('statsTitle'); if(title) title.innerText = '📊 DASHBOARD';
+
         const stats = App.cachedStats;
         const container = document.getElementById('statsContent');
         if (!stats || Object.keys(stats).length === 0) {
@@ -759,6 +840,10 @@ window.App = {
     },
 
     showPeriodDetails: (period) => {
+        // ✅ SHOW BACK BUTTON
+        document.getElementById('btnStatsBack').style.display = 'block';
+        document.getElementById('statsTitle').innerText = period === 'today' ? '📊 ΣΗΜΕΡΑ' : '📊 ΙΣΤΟΡΙΚΟ';
+
         const stats = App.cachedStats;
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
@@ -766,7 +851,7 @@ window.App = {
         const monthKey = `${year}-${month}`;
         const mStats = stats[monthKey];
 
-        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FFD700;">`;
+        let html = `<div style="margin-bottom:15px;"><h3 style="margin:0; color:#FFD700;">`;
         
         if (period === 'today') {
             html += `ΠΩΛΗΣΕΙΣ ΣΗΜΕΡΑ (${day}/${month})</h3></div>`;
@@ -877,6 +962,10 @@ window.App = {
     },
 
     showQrStats: () => {
+        // ✅ SHOW BACK BUTTON
+        document.getElementById('btnStatsBack').style.display = 'block';
+        document.getElementById('statsTitle').innerText = '📱 QR STATS';
+
         const stats = App.cachedStats;
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
@@ -884,7 +973,7 @@ window.App = {
         const monthKey = `${year}-${month}`;
         const mStats = stats[monthKey];
 
-        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FFD700;">ΠΕΛΑΤΕΣ QR (${month})</h3></div>`;
+        let html = `<div style="margin-bottom:15px;"><h3 style="margin:0; color:#FFD700;">ΠΕΛΑΤΕΣ QR (${month})</h3></div>`;
 
         if (!mStats || !mStats.qrStats) {
             html += `<p style="color:#aaa; text-align:center;">Δεν υπάρχουν δεδομένα QR για αυτόν τον μήνα.</p>`;
@@ -935,6 +1024,10 @@ window.App = {
     },
 
     showTreatsStats: () => {
+        // ✅ SHOW BACK BUTTON
+        document.getElementById('btnStatsBack').style.display = 'block';
+        document.getElementById('statsTitle').innerText = '🎁 ΚΕΡΑΣΜΑΤΑ';
+
         const stats = App.cachedStats;
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
@@ -942,7 +1035,7 @@ window.App = {
         const monthKey = `${year}-${month}`;
         const mStats = stats[monthKey];
 
-        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FF5252;">ΛΑΘΗ & ΚΕΡΑΣΜΑΤΑ</h3></div>`;
+        let html = `<div style="margin-bottom:15px;"><h3 style="margin:0; color:#FF5252;">ΛΑΘΗ & ΚΕΡΑΣΜΑΤΑ</h3></div>`;
 
         if (!mStats || !mStats.treats || mStats.treats.length === 0) {
             html += `<p style="color:#aaa; text-align:center;">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</p>`;
@@ -966,6 +1059,10 @@ window.App = {
     },
 
     showStaffDetails: (name) => {
+        // ✅ SHOW BACK BUTTON
+        document.getElementById('btnStatsBack').style.display = 'block';
+        document.getElementById('statsTitle').innerText = `👤 ${name}`;
+
         const stats = App.cachedStats;
         const now = new Date();
         const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
@@ -997,7 +1094,7 @@ window.App = {
         
         shifts.sort((a,b) => parseInt(b.date) - parseInt(a.date)); // Sort by day desc
 
-        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#2196F3;">👤 ${name}</h3></div>`;
+        let html = `<div style="margin-bottom:15px;"><h3 style="margin:0; color:#2196F3;">ΑΝΑΛΥΣΗ ΠΡΟΣΩΠΙΚΟΥ</h3></div>`;
         
         html += `<div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-around; text-align:center; border:1px solid #444;">
                     <div><div style="color:#aaa; font-size:12px;">ΤΖΙΡΟΣ</div><div style="color:#00E676; font-weight:bold; font-size:20px;">${totalTurnover.toFixed(2)}€</div></div>
@@ -1400,7 +1497,7 @@ window.App = {
         orders.forEach(order => {
             const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             let style = '';
-            const isPaid = order.text.includes('PAID') || order.text.includes('✅');
+            const isPaid = order.text.includes('PAID');
             
             // ✅ NEW: Ανίχνευση Τραπεζιού για Label
             let displayLabel = order.from;
@@ -1417,7 +1514,6 @@ window.App = {
             if (isPaid) icon.style.border = "2px solid #00E676";
             
             icon.style = style;
-            icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
             icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${displayLabel}</div><div class="folder-time">${time}</div>`;
             icon.onclick = () => App.openOrderWindow(order);
             desktop.appendChild(icon);
@@ -1463,8 +1559,9 @@ window.App = {
             
             const cleanLine = line.replace(/ ✅ 💶| ✅ 💳| ✅/g, '');
             
-            const btnCash = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCash ? '1' : '0.2'}; filter:${isPaid && !isPaidCash ? 'grayscale(1)' : 'none'};" title="Μετρητά">💶</button>`;
-            const btnCard = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCard ? '1' : '0.2'}; filter:${isPaid && !isPaidCard ? 'grayscale(1)' : 'none'};" title="Κάρτα">💳</button>`;
+            // ✅ FIX: Καθαρός κώδικας για κουμπιά (Φωτεινά by default, αχνά αν επιλέχθηκε το άλλο)
+            const btnCash = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCard ? '0.3' : '1'}; filter:${isPaidCard ? 'grayscale(1)' : 'none'};" title="Μετρητά">💶</button>`;
+            const btnCard = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCash ? '0.3' : '1'}; filter:${isPaidCash ? 'grayscale(1)' : 'none'};" title="Κάρτα">💳</button>`;
 
             displayItems += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding:5px 0;">
                                 <span style="color:${isPaid ? '#00E676' : 'white'};">${cleanLine}</span>
@@ -1781,13 +1878,4 @@ window.App = {
     logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
     toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
-    startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
-};
-
-window.onload = App.init;
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log("✅ Admin Service Worker Registered"))
-        .catch(err => console.log("❌ Admin SW Error:", err));
-}
+    startHeartbeat: () =>

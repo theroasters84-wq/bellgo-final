@@ -249,6 +249,11 @@ app.get('/shop/:storeName', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html')); 
 });
 
+// ✅ NEW: Fallback για το Mini App (για να ανοίγει σωστά πάντα)
+app.get('/mini*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'mini_app', 'index.html'));
+});
+
 // ✅ NEW: Virtual Route για το Staff App (για να έχει δικό του PWA Scope)
 app.get('/staff/app', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'stafpremium.html')); });
 
@@ -572,6 +577,7 @@ io.on('connection', (socket) => {
             if(data.autoPrint !== undefined) store.settings.autoPrint = data.autoPrint; // ✅ Αποθήκευση Auto Print
             if(data.autoClosePrint !== undefined) store.settings.autoClosePrint = data.autoClosePrint; // ✅ Αποθήκευση Auto Close Print
             if(data.expensePresets) store.settings.expensePresets = data.expensePresets; // ✅ Αποθήκευση Presets Εξόδων
+            if(data.fixedExpenses) store.settings.fixedExpenses = data.fixedExpenses; // ✅ NEW: Αποθήκευση Πάγιων Εξόδων
             updateStoreClients(socket.store); 
         } 
     });
@@ -791,7 +797,7 @@ io.on('connection', (socket) => {
                 total: data.total
             };
             
-            if(data.presets) store.settings.expensePresets = data.presets;
+            // Presets are now saved via save-store-settings, but keeping this for backward compatibility if needed
             updateStoreClients(socket.store);
         }
     });

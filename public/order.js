@@ -19,7 +19,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 // iOS Detection
-const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+const isIos = () => {
+    const ua = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || (ua.includes("mac") && "ontouchend" in document);
+};
 if (isIos() && !window.navigator.standalone) {
         const btnLogin = document.getElementById('btnInstallLogin');
         if(btnLogin) btnLogin.style.display = 'block';
@@ -297,8 +300,12 @@ window.App = {
     // ✅✅✅ NEW: REQUEST PERMISSION & GET TOKEN ✅✅✅
     requestNotifyPermission: async () => {
         try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
+            // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
+            if (Notification.permission === 'default') {
+                await Notification.requestPermission();
+            }
+            
+            if (Notification.permission === "granted") {
                 const registration = await navigator.serviceWorker.ready;
                 // 👇 ΕΔΩ ΒΑΖΕΙΣ ΤΟ VAPID KEY ΣΟΥ 👇
                 const token = await getToken(messaging, { 
@@ -611,6 +618,7 @@ window.App = {
                         box.className = 'item-box';
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
                         box.style.touchAction = 'manipulation';
+                        box.style.cursor = 'pointer'; // ✅ Fix for iOS click registration
                         box.innerHTML = `<span class="item-name">${name}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
                         
                         // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ

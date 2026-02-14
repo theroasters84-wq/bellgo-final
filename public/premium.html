@@ -290,16 +290,28 @@
             <h3 class="modal-title">💸 ΕΞΟΔΑ ΗΜΕΡΑΣ</h3>
             <div id="expensesTotal" style="font-size:24px; color:#FF5252; font-weight:bold; text-align:center; margin-bottom:15px;">0.00€</div>
             
+            <!-- FIXED EXPENSES -->
+            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
+                <div class="settings-label" style="color:#FFD700;">ΠΑΓΙΑ ΕΞΟΔΑ (Αυτόματος Υπολογισμός)</div>
+                <div id="fixedExpensesContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="inpFixedName" class="inp-settings" placeholder="Όνομα (π.χ. Ενοίκιο)" style="margin:0; flex:2;">
+                    <input type="number" id="inpFixedPrice" class="inp-settings" placeholder="€" style="margin:0; flex:1;">
+                    <button class="modal-btn" style="width:auto; margin:0; background:#FFD700; color:black;" onclick="App.addFixedExpense()">➕</button>
+                </div>
+            </div>
+
             <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px;">
-                <div class="settings-label">ΠΑΓΙΑ / PRESETS</div>
+                <div class="settings-label">ΓΡΗΓΟΡΗ ΠΡΟΣΘΗΚΗ (Presets)</div>
                 <div id="expensePresetsContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="inpNewPreset" class="inp-settings" placeholder="Όνομα (π.χ. Προμηθευτής)" style="margin:0;">
+                    <input type="text" id="inpNewPreset" class="inp-settings" placeholder="Όνομα (π.χ. Ψωμί)" style="margin:0; flex:2;">
+                    <input type="number" id="inpNewPresetPrice" class="inp-settings" placeholder="€ (Optional)" style="margin:0; flex:1;">
                     <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="App.addExpensePreset()">➕</button>
                 </div>
             </div>
 
-            <textarea id="txtExpenses" class="order-text" style="height:150px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2.50)..." oninput="App.calcExpensesTotal()"></textarea>
+            <textarea id="txtExpenses" class="order-text" style="height:150px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
             
             <button class="modal-btn" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
             <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
@@ -310,7 +322,8 @@
     <div id="statsModal" class="modal-overlay">
         <div class="modal-box" style="width:95%; height:95%; max-width:none; max-height:none; display:flex; flex-direction:column; padding:0;">
             <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; background:#1a1a1a;">
-                <h3 class="modal-title" style="margin:0; font-size:20px;">📊 DASHBOARD</h3>
+                <button id="btnStatsBack" onclick="App.renderStatsDashboard()" style="display:none; background:none; border:none; color:white; font-size:24px; cursor:pointer; margin-right:10px;">🔙</button>
+                <h3 id="statsTitle" class="modal-title" style="margin:0; font-size:20px; flex:1;">📊 DASHBOARD</h3>
                 <button onclick="document.getElementById('statsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✕</button>
             </div>
             <div id="statsContent" style="flex:1; overflow-y:auto; padding:20px; text-align:left; background:#121212;">
