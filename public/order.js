@@ -44,6 +44,30 @@ if (params.get('payment_status')) {
         TABLE_ID = localStorage.getItem('bellgo_return_table');
     }
 }
+
+// ✅ ΑΥΤΟΝΟΜΙΑ QR: Το URL καθορίζει την κατάσταση
+if (TABLE_ID) {
+    // 1. Αν το URL έχει τραπέζι, επιβάλλουμε Dine-In
+    // Αν υπήρχε παλιά πληροφορία για άλλο τραπέζι, την ενημερώνουμε
+    let currentDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+    if (currentDetails && currentDetails.table !== TABLE_ID) {
+        console.log("🔄 QR Change Detected: Switching Table");
+        currentDetails.table = TABLE_ID;
+        currentDetails.type = 'dinein';
+        localStorage.setItem('bellgo_customer_info', JSON.stringify(currentDetails));
+    }
+} else {
+    // 2. Αν το URL ΔΕΝ έχει τραπέζι (και δεν επιστρέφουμε από πληρωμή)
+    // Τότε θεωρούμε ότι είναι Delivery/Takeaway QR και ΚΑΘΑΡΙΖΟΥΜΕ το τραπέζι
+    let currentDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+    if (!params.get('payment_status') && currentDetails && currentDetails.type === 'dinein') {
+        console.log("🔄 Delivery QR Detected: Clearing Table Session");
+        currentDetails.type = 'delivery';
+        delete currentDetails.table;
+        localStorage.setItem('bellgo_customer_info', JSON.stringify(currentDetails));
+    }
+}
+
 let isDineIn = !!TABLE_ID;
 let tableNumber = TABLE_ID;
 
@@ -77,12 +101,7 @@ let currentUser = null;
 let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 
-// ✅ FIX: Αν δεν βρέθηκε τραπέζι στο URL αλλά ο χρήστης ήταν ήδη σε τραπέζι, το επαναφέρουμε
-if (!TABLE_ID && customerDetails && customerDetails.type === 'dinein' && customerDetails.table) {
-    TABLE_ID = customerDetails.table;
-    isDineIn = true;
-    tableNumber = TABLE_ID;
-}
+// (ΑΦΑΙΡΕΘΗΚΕ Η ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΤΡΑΠΕΖΙΟΥ ΓΙΑ ΝΑ ΛΕΙΤΟΥΡΓΕΙ ΤΟ DELIVERY QR)
 
 let storeHasStripe = false;
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
