@@ -93,6 +93,12 @@
         .info-box { background:#222; border:1px solid #444; padding:25px; border-radius:15px; max-width:90%; }
         .info-close { margin-top:20px; padding:10px 30px; background:#00E676; color:black; font-weight:bold; border:none; border-radius:20px; cursor:pointer; }
     </style>
+    <script>
+        // AUTH GUARD (Moved to head for immediate check)
+        if (!localStorage.getItem('bellgo_session')) {
+            window.location.href = "login.html";
+        }
+    </script>
 </head>
 <body>
 
@@ -154,28 +160,15 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+        import { firebaseConfig, stripeKey, vapidKey } from './config.js';
 
-        // AUTH GUARD
-        const savedSession = localStorage.getItem('bellgo_session');
-        if (!savedSession) {
-            window.location.href = "login.html";
-        }
-        const userData = JSON.parse(savedSession || '{}');
+        const userData = JSON.parse(localStorage.getItem('bellgo_session') || '{}');
 
-        // FIREBASE SETUP
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
-            authDomain: "bellgo-5dbe5.firebaseapp.com", 
-            projectId: "bellgo-5dbe5", 
-            storageBucket: "bellgo-5dbe5.firebasestorage.app", 
-            messagingSenderId: "799314495253", 
-            appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
-        };
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
         // STRIPE KEY
-        const stripe = Stripe('pk_test_51SwnsPJcEtNSGviLKOxO4p4VbPFFETxpAN84nX0fmYAPrSVGRaeLdLnMc5WmYtYVeErvgIxKyzYJED4Q6aIv7WV9002gRiPOay');
+        const stripe = Stripe(stripeKey);
 
         // AUDIO & STATE
         const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
@@ -217,7 +210,7 @@
                     if (permission === 'granted') {
                         // ✅ ADDED YOUR VAPID KEY HERE
                         const token = await getToken(messaging, { 
-                            vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
+                            vapidKey: vapidKey, 
                             serviceWorkerRegistration: reg 
                         });
                         if (token) {

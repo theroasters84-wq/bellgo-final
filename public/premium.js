@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+import { firebaseConfig, vapidKey } from './config.js';
 
 // --- MANIFEST LOGIC (Running immediately) ---
 (function() {
@@ -30,14 +31,6 @@ if (!savedSession) window.location.href = "login.html";
 const userData = JSON.parse(savedSession || '{}');
 if (userData.role !== 'admin') { alert("Access Denied"); window.location.href = "login.html"; }
 
-const firebaseConfig = { 
-    apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8", 
-    authDomain: "bellgo-5dbe5.firebaseapp.com", 
-    projectId: "bellgo-5dbe5", 
-    storageBucket: "bellgo-5dbe5.firebasestorage.app", 
-    messagingSenderId: "799314495253", 
-    appId: "1:799314495253:web:baf6852f2a065c3a2e8b1c"
-};
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
@@ -143,6 +136,23 @@ window.App = {
         App.startHeartbeat();
         App.requestNotifyPermission(); 
         
+        // ✅ FIX: Close Settings on Background Click & Add Back Button
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) settingsModal.style.display = 'none';
+            });
+            const box = settingsModal.querySelector('.modal-box') || settingsModal.firstElementChild;
+            if (box) {
+                if (window.getComputedStyle(box).position === 'static') box.style.position = 'relative';
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '✕';
+                closeBtn.style.cssText = "position:absolute; top:15px; right:15px; background:transparent; border:none; color:#aaa; font-size:20px; font-weight:bold; cursor:pointer; z-index:10;";
+                closeBtn.onclick = () => settingsModal.style.display = 'none';
+                box.appendChild(closeBtn);
+            }
+        }
+
         setInterval(() => {
             if (Object.keys(App.tempComingState).length > 0 && App.lastStaffList.length > 0) {
                 App.renderStaffList(App.lastStaffList);
@@ -156,7 +166,7 @@ window.App = {
             if (permission === "granted") {
                 const registration = await navigator.serviceWorker.ready;
                 const token = await getToken(messaging, { 
-                    vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM", 
+                    vapidKey: vapidKey, 
                     serviceWorkerRegistration: registration 
                 }); 
                 if (token) {
