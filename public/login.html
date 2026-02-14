@@ -77,7 +77,7 @@
 <body>
 
     <div class="login-container">
-        <h1>BellGo 🔔</h1>
+        <h1 onclick="window.dc=(window.dc||0)+1; if(window.dc===5) { const p = prompt('Developer Password:'); if(p === '19921992') window.location.href='developer.html'; window.dc=0; }" style="cursor:pointer; user-select:none;">BellGo 🔔</h1>
         <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
         <!-- 1. ROLE SELECTION SCREEN -->

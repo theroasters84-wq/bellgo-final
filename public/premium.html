@@ -125,72 +125,97 @@
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
-            <button class="modal-btn" style="background:var(--danger); margin-bottom:15px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ</button>
+            
+            <!-- MAIN MENU -->
+            <div id="settingsMain">
+                <button class="modal-btn" onclick="App.openSettingsSub('subStore')">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subPrint')">🖨️ ΕΚΤΥΠΩΣΗ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subQr')">📱 QR & LINKS</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')">⚙️ ΓΕΝΙΚΑ & PLUGINS</button>
+                
+                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ</button>
+                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+            </div>
 
-            <div class="settings-section">
-                <div class="settings-label">ΚΑΤΑΣΤΑΣΗ</div>
-                <div class="switch-row">
-                    <span>ΠΕΛΑΤΕΣ (Delivery)</span>
-                    <label class="switch"><input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')"><span class="slider"></span></label>
+            <!-- SUB: STORE & SCHEDULE -->
+            <div id="subStore" class="settings-sub" style="display:none;">
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</h4>
+                <div class="settings-section">
+                    <div class="settings-label">ΚΑΤΑΣΤΑΣΗ</div>
+                    <div class="switch-row">
+                        <span>ΠΕΛΑΤΕΣ (Delivery)</span>
+                        <label class="switch"><input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')"><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row">
+                        <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
+                        <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
+                    </div>
                 </div>
-                <div class="switch-row">
-                    <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
-                    <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
+
+                <div class="settings-section">
+                    <div class="settings-label">ΩΡΑΡΙΑ</div>
+                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;">ΩΡΑ ΑΝΑΝΕΩΣΗΣ ΚΑΤΑΛΟΓΟΥ</div>
+                    <div style="display:flex; gap:10px; margin-bottom:5px;">
+                        <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
+                        <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
+                    </div>
+                    <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
                 </div>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
             </div>
 
-            <div class="settings-section">
-                <div class="settings-label">ΩΡΑΡΙΑ</div>
-                <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;">ΩΡΑ ΑΝΑΝΕΩΣΗΣ ΚΑΤΑΛΟΓΟΥ</div>
-                <div style="display:flex; gap:10px; margin-bottom:5px;">
-                    <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
-                    <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
+            <!-- SUB: PRINT -->
+            <div id="subPrint" class="settings-sub" style="display:none;">
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΡΥΘΜΙΣΕΙΣ ΕΚΤΥΠΩΣΗΣ</h4>
+                <div class="settings-section">
+                    <div class="settings-label">ΕΚΤΥΠΩΣΗ</div>
+                    <select id="selAutoPrint" class="inp-settings" onchange="App.autoSaveSettings()">
+                        <option value="false">Χειροκίνητα (Κουμπί)</option>
+                        <option value="true">Αυτόματα (Κατά την Αποδοχή)</option>
+                    </select>
+                    <div class="switch-row" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:13px; color:#ccc;">Κλείσιμο παραθύρου μετά</span>
+                        <label class="switch"><input type="checkbox" id="switchAutoClosePrint" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                    </div>
                 </div>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
             </div>
 
-            <div class="settings-section">
-                <div class="settings-label">ΕΚΤΥΠΩΣΗ</div>
-                <select id="selAutoPrint" class="inp-settings" onchange="App.autoSaveSettings()">
-                    <option value="false">Χειροκίνητα (Κουμπί)</option>
-                    <option value="true">Αυτόματα (Κατά την Αποδοχή)</option>
-                </select>
-                <div class="switch-row" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:13px; color:#ccc;">Κλείσιμο παραθύρου μετά</span>
-                    <label class="switch"><input type="checkbox" id="switchAutoClosePrint" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+            <!-- SUB: QR & LINKS -->
+            <div id="subQr" class="settings-sub" style="display:none;">
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">QR & LINKS</h4>
+                <div class="settings-section">
+                    <div class="settings-label">LINKS</div>
+                    <input type="text" id="inpGoogleMaps" class="inp-settings" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
                 </div>
-                <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
+                <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</button>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
             </div>
 
-            <div class="settings-section">
-                <div class="settings-label">LINKS</div>
-                <input type="text" id="inpGoogleMaps" class="inp-settings" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
+            <!-- SUB: GENERAL -->
+            <div id="subGeneral" class="settings-sub" style="display:none;">
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΓΕΝΙΚΑ & PLUGINS</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
+                    <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()">📊 ΣΤΑΤΙΣΤΙΚΑ</button>
+                </div>
+                <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'">💳 CONNECT STRIPE</button>
+                <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;">Checking...</div>
+
+                <div class="settings-section" style="border: 1px solid #333; background: #111; margin-top:15px; opacity:0.8;">
+                    <div class="settings-label" style="color:#777; font-size:11px;">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
+                    <select id="selShopType" class="inp-settings" style="margin-bottom:5px; font-size:12px; padding:8px; background:#222; border-color:#444;">
+                        <option value="" disabled selected>Επιλέξτε είδος...</option>
+                        <option value="coffee_takeaway">☕ Cafe Takeaway</option>
+                        <option value="coffee_bar">🍸 Cafe Bar</option>
+                        <option value="pizzeria">🍕 Pizzeria</option>
+                        <option value="souvlaki">🍖 Souvlaki / Grill</option>
+                    </select>
+                    <button class="modal-btn" style="background:#333; color:#aaa; font-size:12px; padding:8px;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ</button>
+                </div>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
             </div>
-            <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</button>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
-                <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()">📊 ΣΤΑΤΙΣΤΙΚΑ</button>
-                <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK</button>
-            </div>
-
-            <button class="modal-btn" style="background:#635BFF;" onclick="window.location.href='/connect-stripe'">💳 CONNECT STRIPE</button>
-            <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center;">Checking...</div>
-
-            <div class="settings-section" style="border: 1px solid #333; background: #111; margin-top:15px; opacity:0.8;">
-                <div class="settings-label" style="color:#777; font-size:11px;">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
-                <select id="selShopType" class="inp-settings" style="margin-bottom:5px; font-size:12px; padding:8px; background:#222; border-color:#444;">
-                    <option value="" disabled selected>Επιλέξτε είδος...</option>
-                    <option value="coffee_takeaway">☕ Cafe Takeaway</option>
-                    <option value="coffee_bar">🍸 Cafe Bar</option>
-                    <option value="pizzeria">🍕 Pizzeria</option>
-                    <option value="souvlaki">🍖 Souvlaki / Grill</option>
-                </select>
-                <button class="modal-btn" style="background:#333; color:#aaa; font-size:12px; padding:8px;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ</button>
-            </div>
-
-            <div style="font-size:11px; color:#555; margin-top:15px; font-style:italic;">Για σύνδεση με ταμειακή επικοινωνήστε μαζί μας</div>
-
-            <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 

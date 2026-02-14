@@ -370,7 +370,23 @@ window.App = {
         document.getElementById('pinChangeModal').style.display = 'none'; 
         document.getElementById('settingsModal').style.display = 'flex'; 
     },
-    openSettingsModal: () => { document.getElementById('settingsModal').style.display = 'flex'; },
+    openSettingsModal: () => { 
+        document.getElementById('settingsModal').style.display = 'flex';
+        App.closeSettingsSub(); // Reset to main view
+    },
+    
+    openSettingsSub: (id) => {
+        document.getElementById('settingsMain').style.display = 'none';
+        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
+        const target = document.getElementById(id);
+        if(target) target.style.display = 'block';
+    },
+
+    closeSettingsSub: () => {
+        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
+        const main = document.getElementById('settingsMain');
+        if(main) main.style.display = 'block';
+    },
     
     autoSaveSettings: () => {
         const time = document.getElementById('inpResetTime').value;

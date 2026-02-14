@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BellGo Debugger</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { background: #111; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; overflow-y: auto; height: 100vh; display: block; }
+        .log-entry { border-bottom: 1px solid #333; padding: 8px 0; font-size: 13px; word-break: break-all; }
+        .log-time { color: #888; margin-right: 10px; }
+        .log-type { font-weight: bold; margin-right: 10px; display: inline-block; width: 60px; }
+        .log-data { color: #ddd; white-space: pre-wrap; }
+        
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .btn-debug { padding: 10px 15px; background: #333; border: 1px solid #555; color: white; cursor: pointer; border-radius: 5px; font-weight: bold; font-family: sans-serif; }
+        .btn-debug:hover { background: #444; border-color: #fff; }
+        .btn-danger { background: #D32F2F; border-color: #B71C1C; }
+        
+        h2 { margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+
+        /* ANALYTICS MODAL */
+        #analyticsModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; padding: 20px; overflow-y: auto; }
+        .analytics-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 10px; max-width: 800px; margin: 0 auto; }
+        .stat-card { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; flex: 1; }
+        .stat-val { font-size: 24px; font-weight: bold; color: #00E676; margin-top: 5px; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        .data-table th { text-align: left; border-bottom: 1px solid #555; padding: 8px; color: #aaa; }
+        .data-table td { border-bottom: 1px solid #333; padding: 8px; color: #eee; }
+        .email-list { width: 100%; height: 100px; background: #111; color: #0f0; border: 1px solid #333; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h2 style="color: #FFD700;">🪲 BellGo Developer Console</h2>
+    
+    <div class="toolbar">
+        <button class="btn-debug" onclick="Debug.clearLogs()">🧹 Clear Logs</button>
+        <button class="btn-debug" onclick="Debug.checkStorage()">💾 Check Storage</button>
+        <button class="btn-debug" onclick="Debug.getStats()">📊 Get Stats</button>
+        <button class="btn-debug" style="background:#673AB7;" onclick="Debug.openAnalytics()">📈 Analytics</button>
+        <button class="btn-debug btn-danger" onclick="Debug.clearStorage()">🗑️ WIPE DATA</button>
+        <button class="btn-debug" onclick="Debug.reload()">🔄 Reload</button>
+        <button class="btn-debug" onclick="window.location.href='login.html'">🔙 Login</button>
+    </div>
+
+    <div id="consoleOutput"></div>
+
+    <!-- ANALYTICS MODAL -->
+    <div id="analyticsModal">
+        <div class="analytics-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0; color:#FFD700;">📊 Ανάλυση Πελατών & Κέρδη</h2>
+                <button class="btn-debug" onclick="document.getElementById('analyticsModal').style.display='none'">✕ ΚΛΕΙΣΙΜΟ</button>
+            </div>
+
+            <div style="display:flex; gap:15px; margin-bottom:20px;">
+                <div class="stat-card">
+                    <div style="color:#aaa;">ΣΥΝΟΛΟ ΠΕΛΑΤΩΝ</div>
+                    <div id="statClients" class="stat-val">0</div>
+                </div>
+                <div class="stat-card">
+                    <div style="color:#aaa;">ΜΗΝΙΑΙΑ ΕΣΟΔΑ (Est.)</div>
+                    <div id="statRevenue" class="stat-val" style="color:#FFD700;">0€</div>
+                </div>
+            </div>
+
+            <h3 style="color:#2196F3; border-bottom:1px solid #333; padding-bottom:5px;">📧 Αρχείο Email (Marketing)</h3>
+            <textarea id="emailArchive" class="email-list" readonly></textarea>
+            <button class="btn-debug" style="margin-top:5px;" onclick="navigator.clipboard.writeText(document.getElementById('emailArchive').value); alert('Αντιγράφηκαν!');">📋 ΑΝΤΙΓΡΑΦΗ EMAILS</button>
+
+            <h3 style="color:#00E676; border-bottom:1px solid #333; padding-bottom:5px; margin-top:20px;">🏪 Λίστα Καταστημάτων</h3>
+            <table class="data-table">
+                <thead><tr><th>Όνομα</th><th>Email</th><th>Πλάνο</th></tr></thead>
+                <tbody id="clientsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { firebaseConfig } from './config.js';
+        
+        // Σύνδεση στο Socket
+        const socket = io({ transports: ['polling', 'websocket'] });
+        
+        window.Debug = {
+            log: (type, data) => {
+                const div = document.createElement('div');
+                div.className = 'log-entry';
+                const time = new Date().toLocaleTimeString();
+                const json = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+                
+                let color = '#fff';
+                if(type === 'IN 📥') color = '#00E676';
+                if(type === 'OUT 📤') color = '#2196F3';
+                if(type === 'SYS') color = '#FFD700';
+
+                div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-type" style="color:${color}">${type}</span><span class="log-data">${json}</span>`;
+                document.getElementById('consoleOutput').prepend(div);
+            },
+            clearLogs: () => document.getElementById('consoleOutput').innerHTML = '',
+            checkStorage: () => {
+                const data = {
+                    session: JSON.parse(localStorage.getItem('bellgo_session') || 'null'),
+                    customer: JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null'),
+                    activeOrders: JSON.parse(localStorage.getItem('bellgo_active_orders') || 'null'),
+                    fcmToken: localStorage.getItem('fcm_token') ? 'Present' : 'Missing'
+                };
+                Debug.log('STORAGE', data);
+            },
+            getStats: () => {
+                socket.emit('get-stats');
+                Debug.log('OUT 📤', 'get-stats');
+            },
+            openAnalytics: () => {
+                socket.emit('get-dev-analytics');
+                document.getElementById('analyticsModal').style.display = 'block';
+            },
+            clearStorage: () => {
+                if(confirm("ΠΡΟΣΟΧΗ: Θα διαγραφούν όλα τα τοπικά δεδομένα (Login, Ρυθμίσεις, Παραγγελίες). Συνέχεια;")) {
+                    localStorage.clear();
+                    alert("Εκκαθάριση ολοκληρώθηκε!");
+                    location.reload();
+                }
+            },
+            reload: () => location.reload()
+        };
+
+        // --- SOCKET MONITORING (Monkey Patching) ---
+        const onevent = socket.onevent;
+        socket.onevent = function (packet) {
+            const args = packet.data || [];
+            Debug.log('IN 📥', { event: args[0], data: args[1] });
+            if (onevent) onevent.call(this, packet);
+        };
+
+        const _emit = socket.emit;
+        socket.emit = function (...args) {
+            Debug.log('OUT 📤', { event: args[0], data: args[1] });
+            _emit.apply(this, args);
+        };
+        
+        socket.on('connect', () => {
+            Debug.log('SYS', 'Connected to Server (ID: ' + socket.id + ')');
+            // Join as Admin for testing
+            socket.emit('join-store', { storeName: 'debug_room', username: 'Dev', role: 'admin' });
+        });
+
+        socket.on('stats-data', (data) => {
+            Debug.log('IN 📥', { event: 'stats-data', summary: 'Received Stats Object' });
+        });
+
+        // ✅ NEW: Analytics Data Handler
+        socket.on('dev-analytics-data', (data) => {
+            if(data.error) return alert("Error: " + data.error);
+            
+            document.getElementById('statClients').innerText = data.stores.length;
+            document.getElementById('statRevenue').innerText = data.revenue + "€";
+            document.getElementById('emailArchive').value = data.emails.join(', ');
+
+            const tbody = document.getElementById('clientsTableBody');
+            tbody.innerHTML = '';
+            data.stores.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${s.name}</td><td>${s.email}</td><td style="color:${s.plan==='premium'?'#FFD700':'#aaa'}">${s.plan.toUpperCase()}</td>`;
+                tbody.appendChild(tr);
+            });
+        });
+    </script>
+</body>
+</html>

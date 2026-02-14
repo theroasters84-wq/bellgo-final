@@ -55,7 +55,8 @@ const defaultSettings = {
     coverPrice: 0, // ✅ Default τιμή κουβέρ
     googleMapsUrl: "", // ✅ Google Maps Link
     autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
-    autoClosePrint: false // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
+    autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
+    plan: 'basic' // ✅ Καταγραφή Συνδρομής (basic/premium)
 }; 
 
 /* ---------------- FIREBASE HELPERS ---------------- */
@@ -772,6 +773,40 @@ io.on('connection', (socket) => {
         } else {
             socket.emit('stats-data', {}); // Κενά αν δεν υπάρχουν
         }
+    });
+
+    // ✅ NEW: DEVELOPER ANALYTICS (Πελάτες, Κέρδη, Emails)
+    socket.on('get-dev-analytics', async () => {
+        // 1. Ανάκτηση από Μνήμη (Active)
+        let allStores = Object.values(storesData).map(s => ({
+            name: s.settings.name,
+            email: s.settings.adminEmail,
+            plan: s.settings.plan || 'basic'
+        }));
+
+        // 2. Ανάκτηση από Firestore (Όλο το ιστορικό)
+        if (db) {
+            try {
+                const snapshot = await db.collection('stores').get();
+                const dbStores = [];
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    dbStores.push({
+                        name: d.settings?.name || doc.id,
+                        email: d.settings?.adminEmail || doc.id,
+                        plan: d.settings?.plan || 'basic'
+                    });
+                });
+                if (dbStores.length > 0) allStores = dbStores;
+            } catch(e) { console.log("Analytics DB Error", e.message); }
+        }
+
+        // 3. Υπολογισμοί
+        const uniqueEmails = [...new Set(allStores.map(s => s.email).filter(e => e && e.includes('@')))];
+        // Υπολογισμός εσόδων (Basic: 4€, Premium: 10€)
+        const revenue = allStores.reduce((sum, s) => sum + (s.plan === 'premium' ? 10 : 4), 0);
+
+        socket.emit('dev-analytics-data', { stores: allStores, emails: uniqueEmails, revenue: revenue });
     });
 
     // ✅ PARTIAL PAY
