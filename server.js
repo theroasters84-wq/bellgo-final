@@ -227,6 +227,9 @@ app.get('/shop/:storeName', (req, res) => {
 // ✅ NEW: Virtual Route για το Staff App (για να έχει δικό του PWA Scope)
 app.get('/staff/app', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'stafpremium.html')); });
 
+// ✅ NEW: Explicit Route για το Trapaizei (Table Ordering)
+app.get('/trapaizei.html', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trapaizei.html')); });
+
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.redirect('/manage/login.html'); }); // ✅ Redirect στο νέο isolated path
 
