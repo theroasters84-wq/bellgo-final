@@ -1892,7 +1892,6 @@ window.App = {
     logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
     toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
-    startHeartbeat: () =>
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
 };
 
