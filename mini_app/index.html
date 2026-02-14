@@ -2,13 +2,246 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Isolated Mini App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo Mini</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/player.js"></script>
     <style>
-        body { background-color: #lid #00E676; padding-bottom: 10px; }
+        /* Mini App Specific Overrides */
+        body { background: #000; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; margin: 0; }
+        
+        /* LOGIN SCREEN */
+        .login-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 30px; gap: 15px; background: #121212; }
+        .logo { font-size: 50px; margin-bottom: 10px; animation: pulse 2s infinite; }
+        .inp { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 16px; text-align: center; outline: none; transition: 0.2s; }
+        .inp:focus { border-color: #00E676; background: #2a2a2a; }
+        
+        .mode-select { display: flex; gap: 8px; width: 100%; background: #222; padding: 5px; border-radius: 12px; margin-top: 10px; }
+        .mode-btn { flex: 1; padding: 12px 5px; border: none; background: transparent; color: #777; cursor: pointer; border-radius: 8px; font-size: 11px; font-weight: bold; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .mode-btn.active { background: #00E676; color: black; box-shadow: 0 2px 10px rgba(0, 230, 118, 0.3); }
+        .mode-icon { font-size: 18px; }
+
+        .big-btn { width: 100%; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: 800; border: none; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .big-btn:active { transform: scale(0.98); }
+
+        /* APP SCREEN */
+        .app-container { display: none; flex-direction: column; height: 100%; }
+        .header { height: 60px; background: #1a1a1a; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; border-bottom: 1px solid #333; box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 10; }
+        .header-title { font-weight: 800; color: #00E676; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .controls-area { padding: 15px; background: #121212; border-bottom: 1px solid #222; display: flex; flex-direction: column; gap: 10px; }
+        
+        .user-grid { flex: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; align-content: start; }
+        
+        .user-card { background: #222; border: 1px solid #333; border-radius: 16px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; aspect-ratio: 1; position: relative; overflow: hidden; }
+        .user-card:active { transform: scale(0.95); background: #333; }
+        .user-card.ringing { border-color: #FFD700; animation: shake 0.5s infinite; background: rgba(255, 215, 0, 0.15); }
+        
+        .user-icon { font-size: 32px; margin-bottom: 8px; }
+        .user-name { font-size: 13px; font-weight: bold; color: #eee; text-align: center; line-height: 1.2; }
+        .user-status { font-size: 10px; color: #777; margin-top: 4px; }
+
+        /* ALARM OVERLAY */
+        #alarmOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(220, 20, 60, 0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; animation: flashRed 0.8s infinite; backdrop-filter: blur(5px); }
+        @keyframes flashRed { 0% { background: rgba(220, 20, 60, 0.95); } 50% { background: rgba(100, 0, 0, 0.95); } 100% { background: rgba(220, 20, 60, 0.95); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 20% { transform: translate(-3px, 0px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, -2px); } }
+
     </style>
 </head>
 <body>
-    <ει ανεξάρτητα στον φάκελο <b>/mini_app</b>.</p>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-container">
+        <div class="logo">🔔</div>
+        <h2 style="margin:0; color:#ccc;">BellGo Mini</h2>
+        <p style="margin:0 0 15px 0; color:#666; font-size:12px;">Σύστημα Ενδοεπικοινωνίας</p>
+        
+        <input type="text" id="inpStore" class="inp" placeholder="Όνομα Επιχείρησης">
+        <input type="password" id="inpCode" class="inp" placeholder="Κωδικός Δωματίου (π.χ. 1234)">
+        <input type="text" id="inpName" class="inp" placeholder="Το Όνομά σου">
+        
+        <div style="width:100%; text-align:left; font-size:11px; color:#888; margin-top:5px; font-weight:bold; text-transform:uppercase;">Επιλογη Λειτουργιας</div>
+        <div class="mode-select">
+            <button class="mode-btn active" onclick="selectMode('intercom')" id="btnIntercom">
+                <span class="mode-icon">↔️</span>INTERCOM<br>(Όλοι-Όλοι)
+            </button>
+            <button class="mode-btn" onclick="selectMode('sender')" id="btnSender">
+                <span class="mode-icon">📡</span>ΠΟΜΠΟΣ<br>(Καλώ)
+            </button>
+            <button class="mode-btn" onclick="selectMode('receiver')" id="btnReceiver">
+                <span class="mode-icon">👂</span>ΔΕΚΤΗΣ<br>(Ακούω)
+            </button>
+        </div>
+
+        <button class="big-btn" style="background: #00E676; color: black;" onclick="joinRoom()">ΕΙΣΟΔΟΣ</button>
+    </div>
+
+    <!-- APP SCREEN -->
+    <div id="appScreen" class="app-container">
+        <div class="header">
+            <div id="displayStore" class="header-title">Store</div>
+            <button onclick="logout()" style="background:#333; color:white; border:none; padding:8px 12px; border-radius:8px; font-weight:bold; cursor:pointer;">EXIT</button>
+        </div>
+        
+        <div id="controlsArea" class="controls-area">
+            <div id="myStatus" style="color:#aaa; font-size:12px; text-align:center;">Συνδέθηκε ως: <b>User</b></div>
+            <button id="btnCallAll" class="big-btn" style="background: #FFD700; color: black; display:none; margin:0;" onclick="triggerAlarm('ALL')">🔔 ΚΛΗΣΗ ΟΛΩΝ</button>
+        </div>
+
+        <div id="userGrid" class="user-grid"></div>
+    </div>
+
+    <!-- ALARM OVERLAY -->
+    <div id="alarmOverlay" onclick="App.acceptAlarm()">
+        <div style="font-size: 80px; animation: shake 0.5s infinite;">📞</div>
+        <h1 id="callerName" style="color:white; margin:20px 0; text-align:center; font-size:30px;">ΚΛΗΣΗ...</h1>
+        <div style="font-size: 18px; color: white; border: 2px solid white; padding: 12px 30px; border-radius: 30px; font-weight:bold;">ΠΑΤΑ ΓΙΑ ΑΠΟΔΟΧΗ</div>
+    </div>
+
+    <script>
+        let selectedMode = 'intercom';
+        let currentUser = null;
+        let currentStore = null;
+        let userList = [];
+
+        // --- INITIALIZATION ---
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if(mode === 'intercom') document.getElementById('btnIntercom').classList.add('active');
+            if(mode === 'sender') document.getElementById('btnSender').classList.add('active');
+            if(mode === 'receiver') document.getElementById('btnReceiver').classList.add('active');
+        }
+
+        // --- SOCKET & APP LOGIC ---
+        window.App = {
+            acceptAlarm: () => {
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                document.getElementById('alarmOverlay').style.display = 'none';
+                // Optional: Send feedback to caller
+            }
+        };
+
+        function joinRoom() {
+            const store = document.getElementById('inpStore').value.trim();
+            const code = document.getElementById('inpCode').value.trim();
+            const name = document.getElementById('inpName').value.trim();
+
+            if(!store || !code || !name) return alert("Συμπληρώστε όλα τα πεδία!");
+
+            // Create Unique Room ID
+            const roomID = `${store}_${code}`; 
+            currentUser = name;
+            currentStore = roomID;
+
+            // UI Switch
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'flex';
+            document.getElementById('displayStore').innerText = store.toUpperCase();
+            document.getElementById('myStatus').innerHTML = `Χρήστης: <b style="color:#fff">${name}</b> • Mode: <span style="color:#00E676">${selectedMode.toUpperCase()}</span>`;
+
+            // Setup Controls based on Mode
+            if (selectedMode === 'receiver') {
+                document.getElementById('controlsArea').style.display = 'none'; // Receivers don't call
+            } else {
+                document.getElementById('btnCallAll').style.display = 'block';
+            }
+
+            // Connect Socket
+            const socket = io({ transports: ['polling', 'websocket'] });
+            window.socket = socket;
+
+            socket.on('connect', () => {
+                socket.emit('join-store', { 
+                    storeName: roomID, 
+                    username: name, 
+                    role: 'staff', // Generic role
+                    isNative: false 
+                });
+            });
+
+            socket.on('staff-list-update', (list) => {
+                userList = list.filter(u => u.username !== currentUser); // Exclude self
+                renderUsers();
+            });
+
+            socket.on('ring-bell', (data) => {
+                // Receivers and Intercoms accept calls. Senders usually don't, but let's allow it.
+                const caller = data ? data.source : "Άγνωστος";
+                document.getElementById('callerName').innerText = `ΚΛΗΣΗ ΑΠΟ:\n${caller}`;
+                document.getElementById('alarmOverlay').style.display = 'flex';
+                
+                if(window.AudioEngine) {
+                    window.AudioEngine.init(); // Ensure init
+                    window.AudioEngine.triggerAlarm(caller);
+                }
+            });
+
+            // Init Audio Engine on first interaction
+            if(window.AudioEngine) window.AudioEngine.init();
+        }
+
+        function renderUsers() {
+            const grid = document.getElementById('userGrid');
+            grid.innerHTML = '';
+
+            if (selectedMode === 'receiver') {
+                grid.innerHTML = '<div style="width:100%; text-align:center; color:#555; margin-top:50px;">Αναμονή για κλήσεις...</div>';
+                return;
+            }
+
+            if (userList.length === 0) {
+                grid.innerHTML = '<div style="width:100%; text-align:center; color:#555; margin-top:20px;">Κανένας άλλος χρήστης online.</div>';
+                return;
+            }
+
+            userList.forEach(u => {
+                const card = document.createElement('div');
+                card.className = 'user-card';
+                if(u.isRinging) card.classList.add('ringing');
+
+                card.innerHTML = `
+                    <div class="user-icon">👤</div>
+                    <div class="user-name">${u.username}</div>
+                    <div class="user-status">${u.status === 'online' ? 'Online' : 'Away'}</div>
+                `;
+
+                card.onclick = () => triggerAlarm(u.username);
+                grid.appendChild(card);
+            });
+        }
+
+        function triggerAlarm(target) {
+            if (!window.socket) return;
+            
+            // Visual Feedback
+            const btn = document.getElementById('btnCallAll');
+            const originalText = btn.innerText;
+            
+            if (target === 'ALL') {
+                btn.innerText = "📡 ΚΛΗΣΗ...";
+                userList.forEach(u => {
+                    window.socket.emit('trigger-alarm', { target: u.username, source: currentUser });
+                });
+                setTimeout(() => btn.innerText = originalText, 2000);
+            } else {
+                if(confirm(`Κλήση προς ${target};`)) {
+                    window.socket.emit('trigger-alarm', { target: target, source: currentUser });
+                }
+            }
+        }
+
+        function logout() {
+            if(confirm("Έξοδος;")) location.reload();
+        }
+
+        // Auto-fill from previous session
+        /*
+        const savedStore = localStorage.getItem('mini_store');
+        if(savedStore) document.getElementById('inpStore').value = savedStore;
+        */
+    </script>
 </body>
 </html>

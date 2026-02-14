@@ -697,8 +697,6 @@ window.App = {
         alert("Αποθηκεύτηκε!");
     },
 
-                            } else {
-    
     // --- TEMPLATE LOGIC ---
     applyPresetMenu: () => {
         const type = document.getElementById('selShopType').value;
