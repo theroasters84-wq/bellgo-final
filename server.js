@@ -31,6 +31,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/manage', express.static(path.join(__dirname, 'public'))); // ✅ NEW: Εικονικός φάκελος για Admin PWA Isolation
+app.use('/mini', express.static(path.join(__dirname, 'mini_app'))); // ✅ NEW: Εντελώς ξεχωριστός φάκελος (Isolated App)
 
 const server = http.createServer(app);
 
@@ -108,7 +109,7 @@ async function updateStoreClients(storeName) {
 
     io.to(storeName).emit('staff-list-update', list);
     io.to(storeName).emit('orders-update', store.orders);
-        io.to(storeName).emit('menu-update', store.menu || []); 
+    io.to(storeName).emit('menu-update', store.menu || []); 
     io.to(storeName).emit('store-settings-update', store.settings);
     saveStoreToFirebase(storeName);
 }

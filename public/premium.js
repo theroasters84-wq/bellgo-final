@@ -847,11 +847,6 @@ window.App = {
                     let staffNames = staffList.join(', ') || "-";
                     
                     html += `<div style="background:#222; border:1px solid #444; border-radius:8px; overflow:hidden;">
-                                <div style="background:#333; padding:10px; display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-weight:bold; color:#FFD700;">📅 ${dDay}/${m}</span>
-                                    <div style="text-align:right;">
-                                        <div style="color:#00E676; font-weight:bold;">+${dayData.turnover.toFixed(2)}€ <span style="color:#FF5252; margin-left:5px;">-${dayExp.toFixed(2)}€</span></div>
-                                        <div style="font-size:12px; color:${dayNet>=0?'#fff':'#FF5252'}; font-weight:bold;">= ${dayNet.toFixed(2)}€</div>
                                 <div style="background:#333; padding:5px 10px; font-weight:bold; color:#FFD700; font-size:13px;">📅 ${dDay}/${m}</div>
                                 <div style="display:grid; grid-template-columns: 1fr 1.5fr 1fr 1fr; gap:5px; padding:10px; align-items:center;">
                                     <div style="text-align:center;">
@@ -871,26 +866,6 @@ window.App = {
                                         <div style="color:${dayNet>=0?'#fff':'#FF5252'}; font-weight:bold;">${dayNet.toFixed(2)}€</div>
                                     </div>
                                 </div>
-                                <div style="padding:10px;">`;
-                    
-                    if (dayData.staff && Object.keys(dayData.staff).length > 0) {
-                        const sortedStaff = Object.entries(dayData.staff).sort((a,b) => b[1].turnover - a[1].turnover);
-                        html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-size:11px; color:#aaa; border-bottom:1px solid #444; margin-bottom:5px; padding-bottom:2px;">
-                                    <div>ΟΝΟΜΑ</div><div style="text-align:center;">ΤΖΙΡΟΣ</div><div style="text-align:right;">ΕΙΔΗ</div>
-                                 </div>`;
-                        sortedStaff.forEach(([sName, sData]) => {
-                            let sItems = 0;
-                            if(sData.products) Object.values(sData.products).forEach(q => sItems += q);
-                            html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-size:13px; margin-bottom:4px;">
-                                        <div style="color:white;">${sName}</div>
-                                        <div style="text-align:center; color:#00E676;">${sData.turnover.toFixed(2)}€</div>
-                                        <div style="text-align:right; color:#ccc;">${sItems}</div>
-                                     </div>`;
-                        });
-                    } else {
-                        html += `<div style="font-size:12px; color:#555; font-style:italic;">Χωρίς δεδομένα προσωπικού</div>`;
-                    }
-                    html += `</div></div>`;
                              </div>`;
                 }
             }
