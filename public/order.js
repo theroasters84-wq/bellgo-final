@@ -122,6 +122,15 @@ window.App = {
     checkDetails: () => {
         document.getElementById('loginScreen').style.display = 'none';
         
+        // ✅ AUTO-SWITCH FIX: Αν το Mode δεν ταιριάζει με τα αποθηκευμένα, καθαρισμός!
+        if (customerDetails) {
+            if (isDineIn && customerDetails.type !== 'dinein') {
+                customerDetails = null; // Ήταν Delivery, τώρα είναι Τραπέζι -> Reset
+            } else if (!isDineIn && customerDetails.type === 'dinein') {
+                customerDetails = null; // Ήταν Τραπέζι, τώρα είναι Delivery -> Reset
+            }
+        }
+
         // ✅ 1. ΡΥΘΜΙΣΗ UI: Εμφάνιση σωστών πεδίων ανάλογα με το Mode
         if (isDineIn) {
             document.getElementById('detailsTitle').innerText = "🍽️ Καλώς ήρθατε!";
@@ -142,10 +151,7 @@ window.App = {
         } else {
             if (isDineIn) {
                 // Είμαστε σε τραπέζι, αλλά τα στοιχεία είναι Delivery ή λείπουν άτομα -> ΑΝΟΙΓΜΑ
-                if (customerDetails.type !== 'dinein' || !customerDetails.covers) shouldOpenForm = true;
-            } else {
-                // Είμαστε Delivery, αλλά τα στοιχεία είναι Dine-in -> ΑΝΟΙΓΜΑ
-                if (customerDetails.type === 'dinein') shouldOpenForm = true;
+                if (!customerDetails.covers || customerDetails.table != tableNumber) shouldOpenForm = true;
             }
         }
 

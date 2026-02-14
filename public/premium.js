@@ -966,7 +966,13 @@ window.App = {
 
         if (App.sidebarMode === 'paso') {
             header = "[PASO]";
-        ='a rs > 0) {
+        } else if (App.sidebarMode === 'table') {
+            const table = document.getElementById('sidebarTable').value;
+            const covers = parseInt(document.getElementById('sidebarCovers').value) || 0;
+            if (!table) return alert("Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
+            header = `[ΤΡ: ${table}]`;
+            if (covers > 0) {
+                header += ` [AT: ${covers}]`;
                 if (App.coverPrice > 0) {
                     finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
                 }
@@ -975,9 +981,16 @@ window.App = {
             const name = document.getElementById('sidebarDelName').value.trim();
             const addr = document.getElementById('sidebarDelAddr').value.trim();
             const phone = document.getElementById('sidebarDelPhone').value.trim();
-            if(!name || !addr || !pho
-      r     const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
-    windn       .getElementById('sidebarTable').value = '';
+            if(!name || !addr || !phone) return alert("Συμπληρώστε τα στοιχεία Delivery!");
+            header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📞 ${phone}\n💵 ΜΕΤΡΗΤΑ`;
+        }
+        
+        const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
+        window.socket.emit('new-order', `${header}${separator}${finalBody}`);
+        
+        alert("Εστάλη!");
+        document.getElementById('sidebarOrderText').value = '';
+        document.getElementById('sidebarTable').value = '';
         document.getElementById('sidebarCovers').value = '';
         document.getElementById('sidebarDelName').value = '';
         document.getElementById('sidebarDelAddr').value = '';
@@ -1212,7 +1225,7 @@ window.App = {
         const storeParam = encodeURIComponent(userData.store);
         
         tables.forEach(t => {
-            const url = `${baseUrl}/shop/${storeParam}?table=${encodeURIComponent(t)}`;
+            const url = `${baseUrl}/shop/${storeParam}/?table=${encodeURIComponent(t)}`;
             const wrapper = document.createElement('div');
             wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
             wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
