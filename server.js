@@ -460,16 +460,22 @@ app.get('/qr-payment-cancel', (req, res) => {
 });
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
-function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
+function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }, ttlSeconds = 86400) {
     if (target && target.fcmToken) { 
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
 
+        // ✅ TTL Logic: Αν είναι Loop (Alarm), θέλουμε μικρό TTL για να μην "μπουκώνει"
+        const finalTTL = ttlSeconds.toString();
+
         const msg = {
             token: target.fcmToken,
-            notification: { title: title, body: body },
-            android: { priority: "high", notification: { sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } },
-            webpush: { headers: { "Urgency": "high", "TTL": "86400" }, fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` }, notification: { title: title, body: body, icon: '/admin.png', requireInteraction: true, tag: 'bellgo-alarm', renotify: true, vibrate: [500, 200, 500] } },
+            // ✅ FIX: Στέλνουμε DATA-ONLY για Web. Αφαιρούμε το 'notification' για να αναγκάσουμε 
+            // τον Service Worker να διαχειριστεί την εμφάνιση. Αυτό λύνει το "Site updated in background".
+            // notification: { title: title, body: body }, 
+            
+            android: { priority: "high", notification: { title: title, body: body, sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } },
+            webpush: { headers: { "Urgency": "high", "TTL": finalTTL }, fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` } }, 
             data: { ...dataPayload, title: title, body: body, url: targetUrl }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
@@ -481,7 +487,7 @@ function notifyAdmin(storeName, title, body, excludeSocketId = null) {
         if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
         if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
-        sendPushNotification(adm, title, body);
+        sendPushNotification(adm, title, body, { type: "alarm" }, 60); // TTL 60s για Admin Alerts
     });
 }
 
@@ -701,7 +707,7 @@ io.on('connection', (socket) => {
                 // Push Notification Logic
                 const tKey = `${socket.store}_${o.from}`; 
                 const tUser = activeUsers[tKey]; 
-                if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!"); 
+                if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
             } 
         } 
     });
@@ -834,7 +840,32 @@ io.on('connection', (socket) => {
     });
 
     // ✅ PARTIAL PAY
-    socket.on('pay-partial', (data) => { const store = getMyStore(); if(store){ const o = store.orders.find(x => x.id == data.id); if(o){ let lines = o.text.split('\n'); if(lines[data.index]) { if(lines[data.index].includes('✅')) { lines[data.index] = lines[data.index].replace(' ✅', ''); } else { lines[data.index] += ' ✅'; } o.text = lines.join('\n'); updateStoreClients(socket.store); } } } });
+    socket.on('pay-partial', (data) => { 
+        const store = getMyStore(); 
+        if(store){ 
+            const o = store.orders.find(x => x.id == data.id); 
+            if(o){ 
+                let lines = o.text.split('\n'); 
+                if(lines[data.index]) { 
+                    let line = lines[data.index];
+                    const clean = line.replace(/ ✅ 💶| ✅ 💳| ✅/g, '');
+                    let newTag = '';
+
+                    if (data.method === 'cash') {
+                        if (!line.includes('✅ 💶')) newTag = ' ✅ 💶';
+                    } else if (data.method === 'card') {
+                        if (!line.includes('✅ 💳')) newTag = ' ✅ 💳';
+                    } else {
+                        if (!line.includes('✅')) newTag = ' ✅';
+                    }
+                    
+                    lines[data.index] = clean + newTag;
+                    o.text = lines.join('\n'); 
+                    updateStoreClients(socket.store); 
+                } 
+            } 
+        } 
+    });
     
     socket.on('trigger-alarm', (data) => { 
         const tName = (typeof data === 'object') ? data.target : data;
@@ -842,7 +873,7 @@ io.on('connection', (socket) => {
         
         const key = `${socket.store}_${tName}`; 
         const t = activeUsers[key]; 
-        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`); } 
+        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm" }, 10); } 
     });
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
@@ -878,7 +909,7 @@ setInterval(() => {
             if (!isActive) {
                 const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
                 const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
-                sendPushNotification(user, msg, body); 
+                sendPushNotification(user, msg, body, { type: "alarm" }, 5); // ✅ TTL 5s για το Loop (να μην στοιβάζονται)
             }
         } 
     } 

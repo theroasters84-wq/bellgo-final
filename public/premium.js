@@ -402,8 +402,8 @@ window.App = {
             }
         });
 
-        socket.on('ring-bell', () => {
-            if(window.AudioEngine) window.AudioEngine.triggerAlarm();
+        socket.on('ring-bell', (data) => {
+            if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
         });
     },
     
@@ -784,6 +784,33 @@ window.App = {
         } else {
             // MONTH CLICK -> LAST 30 DAYS BREAKDOWN
             html += `ΙΣΤΟΡΙΚΟ (30 ΗΜΕΡΕΣ)</h3></div>`;
+            
+            // ✅ 1. CALCULATE 30-DAY TOTALS
+            let totalTurnover30 = 0;
+            let totalExpenses30 = 0;
+            
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(now.getDate() - i);
+                const dStr = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+                const [y, m, dDay] = dStr.split('-');
+                const mKey = `${y}-${m}`;
+                
+                if (stats[mKey] && stats[mKey].days && stats[mKey].days[dDay]) {
+                    const dd = stats[mKey].days[dDay];
+                    totalTurnover30 += dd.turnover;
+                    if(dd.expenses) totalExpenses30 += dd.expenses.total;
+                }
+            }
+            const totalNet30 = totalTurnover30 - totalExpenses30;
+
+            // ✅ 2. RENDER TOTALS HEADER
+            html += `<div style="display:flex; justify-content:space-around; background:#222; padding:15px; border-radius:10px; border:1px solid #444; margin-bottom:20px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+                        <div><div style="font-size:11px; color:#aaa;">ΣΥΝΟΛΟ ΕΣΟΔΑ</div><div style="font-size:18px; color:#00E676; font-weight:bold;">${totalTurnover30.toFixed(2)}€</div></div>
+                        <div><div style="font-size:11px; color:#aaa;">ΣΥΝΟΛΟ ΕΞΟΔΑ</div><div style="font-size:18px; color:#FF5252; font-weight:bold;">${totalExpenses30.toFixed(2)}€</div></div>
+                        <div><div style="font-size:11px; color:#aaa;">ΚΑΘΑΡΟ ΚΕΡΔΟΣ</div><div style="font-size:18px; color:${totalNet30>=0?'#FFD700':'#FF5252'}; font-weight:bold;">${totalNet30.toFixed(2)}€</div></div>
+                     </div>`;
+
             html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
             let foundAny = false;
@@ -805,12 +832,43 @@ window.App = {
                     const dayExp = (dayData.expenses ? dayData.expenses.total : 0);
                     const dayNet = dayData.turnover - dayExp;
                     
+                    // ✅ 3. SHIFT / STAFF LOGIC
+                    let staffList = [];
+                    if (dayData.staff) {
+                        Object.keys(dayData.staff).forEach(name => {
+                            if (name.includes('(LATHOS)')) return;
+                            if (name.includes('(Πελάτης)')) {
+                                if (!staffList.includes('Delivery/QR')) staffList.push('Delivery/QR');
+                            } else {
+                                staffList.push(name.split(' ')[0]);
+                            }
+                        });
+                    }
+                    let staffNames = staffList.join(', ') || "-";
+                    
                     html += `<div style="background:#222; border:1px solid #444; border-radius:8px; overflow:hidden;">
                                 <div style="background:#333; padding:10px; display:flex; justify-content:space-between; align-items:center;">
                                     <span style="font-weight:bold; color:#FFD700;">📅 ${dDay}/${m}</span>
                                     <div style="text-align:right;">
                                         <div style="color:#00E676; font-weight:bold;">+${dayData.turnover.toFixed(2)}€ <span style="color:#FF5252; margin-left:5px;">-${dayExp.toFixed(2)}€</span></div>
                                         <div style="font-size:12px; color:${dayNet>=0?'#fff':'#FF5252'}; font-weight:bold;">= ${dayNet.toFixed(2)}€</div>
+                                <div style="background:#333; padding:5px 10px; font-weight:bold; color:#FFD700; font-size:13px;">📅 ${dDay}/${m}</div>
+                                <div style="display:grid; grid-template-columns: 1fr 1.5fr 1fr 1fr; gap:5px; padding:10px; align-items:center;">
+                                    <div style="text-align:center;">
+                                        <div style="font-size:10px; color:#aaa;">ΤΖΙΡΟΣ</div>
+                                        <div style="color:#00E676; font-weight:bold;">${dayData.turnover.toFixed(2)}€</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:10px; color:#aaa;">ΒΑΡΔΙΑ</div>
+                                        <div style="color:#fff; font-size:12px; line-height:1.2;">${staffNames}</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:10px; color:#aaa;">ΕΞΟΔΑ</div>
+                                        <div style="color:#FF5252; font-weight:bold;">${dayExp.toFixed(2)}€</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:10px; color:#aaa;">ΚΑΘΑΡΟ</div>
+                                        <div style="color:${dayNet>=0?'#fff':'#FF5252'}; font-weight:bold;">${dayNet.toFixed(2)}€</div>
                                     </div>
                                 </div>
                                 <div style="padding:10px;">`;
@@ -833,6 +891,7 @@ window.App = {
                         html += `<div style="font-size:12px; color:#555; font-style:italic;">Χωρίς δεδομένα προσωπικού</div>`;
                     }
                     html += `</div></div>`;
+                             </div>`;
                 }
             }
             
@@ -1400,15 +1459,6 @@ window.App = {
             win.id = `win-${order.id}`;
             document.getElementById('windowsContainer').appendChild(win);
         }
-        let infoText = "";
-        let itemsText = order.text;
-        if (order.text.includes("---")) {
-            const parts = order.text.split("---");
-            infoText = parts[0].replace(/\n/g, '<br>').trim();
-            itemsText = parts[1].trim();
-        } else {
-            itemsText = order.text;
-        }
         
         // ✅ Add Time Info
         let timeInfo = `<div style="font-size:12px; color:#aaa; margin-top:5px;">Λήψη: ${new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`;
@@ -1416,8 +1466,38 @@ window.App = {
             timeInfo += `<div style="font-size:12px; color:#FFD700; font-weight:bold;">Έναρξη: ${new Date(order.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`;
         }
 
+        // ✅ NEW: Parse Items for Partial Payment (Cash/Card)
+        let infoText = "";
+        const allLines = order.text.split('\n');
+        let startIndex = 0;
+        
+        if (order.text.includes("---")) {
+            const parts = order.text.split("---");
+            infoText = parts[0].replace(/\n/g, '<br>').trim();
+            startIndex = allLines.findIndex(l => l.includes("---")) + 1;
+        }
+
+        let displayItems = '';
+        for (let i = startIndex; i < allLines.length; i++) {
+            const line = allLines[i];
+            if (!line.trim()) continue;
+            
+            const isPaidCash = line.includes('✅ 💶');
+            const isPaidCard = line.includes('✅ 💳');
+            const isPaid = line.includes('✅');
+            
+            const cleanLine = line.replace(/ ✅ 💶| ✅ 💳| ✅/g, '');
+            
+            const btnCash = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCash ? '1' : '0.2'}; filter:${isPaid && !isPaidCash ? 'grayscale(1)' : 'none'};" title="Μετρητά">💶</button>`;
+            const btnCard = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCard ? '1' : '0.2'}; filter:${isPaid && !isPaidCard ? 'grayscale(1)' : 'none'};" title="Κάρτα">💳</button>`;
+
+            displayItems += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding:5px 0;">
+                                <span style="color:${isPaid ? '#00E676' : 'white'};">${cleanLine}</span>
+                                <div style="white-space:nowrap;">${btnCash}${btnCard}</div>
+                             </div>`;
+        }
+
         const total = calculateTotal(order.text);
-        const displayItems = itemsText.replace(/\n/g, '<br>');
         let actions = '';
         let treatBtn = ''; // ✅ Κουμπί Κεράσματος για το Header
 
@@ -1535,6 +1615,11 @@ window.App = {
     },
     treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
     treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+
+    // ✅ NEW: PARTIAL PAYMENT (Cash/Card)
+    payItemPartial: (id, index, method) => {
+        window.socket.emit('pay-partial', { id: id, index: index, method: method });
+    },
 
     // ✅ NEW: QR PAYMENT LOGIC
     openQrPayment: async (id) => {
@@ -1687,7 +1772,7 @@ window.App = {
             `;
             
             staffDiv.onclick = () => {
-                const sourceLabel = App.adminMode === 'kitchen' ? "ΚΟΥΖΙΝΑ" : "ΤΑΜΕΙΟ";
+                const sourceLabel = App.adminMode === 'kitchen' ? "👨‍🍳" : "💸";
                 window.socket.emit('trigger-alarm', { target: u.username, source: sourceLabel });
                 staffDiv.querySelector('.staff-status').innerText = 'Ringing';
                 staffDiv.classList.add('ringing');

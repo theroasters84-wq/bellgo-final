@@ -78,14 +78,14 @@ const AudioEngine = {
     },
 
     // --- ΚΛΗΣΗ (Triggered by Socket) ---
-    async triggerAlarm() {
+    async triggerAlarm(source) {
         if (this.isRinging) return;
         this.isRinging = true;
 
         console.log("🚨 ALARM TRIGGERED");
 
         // 1. Αλλάζουμε τα γράμματα στην μπάρα
-        this.updateDisplay("alarm");
+        this.updateDisplay("alarm", source);
 
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
         this.alarmPlayer.currentTime = 0;
@@ -102,7 +102,7 @@ const AudioEngine = {
         // 4. ΕΛΕΓΧΟΣ BACKGROUND: Αν η καρτέλα δεν φαίνεται, στείλε Notification
         // (Μόνο αν ΔΕΝ είμαστε σε Native App, γιατί εκεί το κάνει το Plugin)
         if (document.hidden && !window.Capacitor) {
-            this.sendNotification();
+            this.sendNotification(source);
         }
     },
 
@@ -127,12 +127,12 @@ const AudioEngine = {
         this.vibrate(false);
     },
 
-    updateDisplay(state) {
+    updateDisplay(state, source) {
         if (!("mediaSession" in navigator)) return;
 
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                title: source ? `🚨 ${source}` : "🚨 ΚΛΗΣΗ",
                 artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 album: "BellGo Alert",
                 artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
@@ -167,11 +167,11 @@ const AudioEngine = {
     },
 
     // Τοπικό Notification για Background (Backup στο Server Loop)
-    sendNotification() {
+    sendNotification(source) {
         if (Notification.permission === "granted") {
             try {
                 const notif = new Notification("🚨 ΚΛΗΣΗ!", { 
-                    body: "Πατήστε για αποδοχή",
+                    body: source ? `Ο ${source} σε ζητάει!` : "Πατήστε για αποδοχή",
                     icon: "/admin.png", 
                     tag: 'bellgo-alarm', // Ίδιο tag με το sw.js για να μην γεμίζει
                     renotify: true,

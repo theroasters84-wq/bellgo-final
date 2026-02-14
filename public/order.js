@@ -617,9 +617,19 @@ window.App = {
                         let lastTap = 0;
                         box.addEventListener('click', (e) => { 
                             e.preventDefault(); 
+                            
+                            // ✅ FIX: Στα iPhone το Double Tap δυσκολεύει, οπότε το κάνουμε Single Tap
+                            if (isIos()) {
+                                const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
+                                App.addToOrder(val);
+                                box.style.opacity = '0.5';
+                                setTimeout(() => box.style.opacity = '1', 100);
+                                return;
+                            }
+
                             const currentTime = new Date().getTime();
                             const tapLength = currentTime - lastTap;
-                            if (tapLength < 500 && tapLength > 0) { // ✅ Increased to 500ms
+                            if (tapLength < 500 && tapLength > 0) { 
                                 const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
                                 App.addToOrder(val); 
                                 lastTap = 0;
