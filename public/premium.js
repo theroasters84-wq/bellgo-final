@@ -23,53 +23,6 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
     if (pName) document.title = decodeURIComponent(pName) + " (Admin)";
 })();
 
-// --- AUDIO ENGINE ---
-const AudioEngine = {
-    keepAlivePlayer: null, 
-    alarmPlayer: null,      
-    isRinging: false,
-    wakeLock: null,
-    
-    async init() {
-        if (!this.keepAlivePlayer) {
-            this.keepAlivePlayer = document.createElement("audio");
-            this.keepAlivePlayer.src = "tone19hz.wav"; 
-            this.keepAlivePlayer.loop = true;
-            this.keepAlivePlayer.volume = 1.0; 
-            document.body.appendChild(this.keepAlivePlayer);
-        }
-        if (!this.alarmPlayer) {
-            this.alarmPlayer = document.createElement("audio");
-            this.alarmPlayer.src = "alert.mp3"; 
-            this.alarmPlayer.loop = true;
-            this.alarmPlayer.volume = 1.0;
-            document.body.appendChild(this.alarmPlayer);
-        }
-        this.requestWakeLock();
-        try { await this.keepAlivePlayer.play(); } catch (e) {}
-    },
-    async triggerAlarm() {
-        if (this.isRinging) return;
-        this.isRinging = true;
-        this.alarmPlayer.currentTime = 0;
-        try { await this.alarmPlayer.play(); } catch(e) {}
-        if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-    },
-    stopAlarm() {
-        if (!this.isRinging) return; 
-        this.isRinging = false;
-        this.alarmPlayer.pause();
-        this.alarmPlayer.currentTime = 0;
-        if (navigator.vibrate) navigator.vibrate(0);
-    },
-    async requestWakeLock() {
-        if ('wakeLock' in navigator) {
-            try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
-        }
-    }
-};
-window.AudioEngine = AudioEngine;
-
 // --- MAIN APPLICATION LOGIC ---
 
 const savedSession = localStorage.getItem('bellgo_session');
@@ -502,6 +455,22 @@ window.App = {
                 </div>
             </div>
         `;
+        
+        // --- NEW CATEGORIES: QR & TREATS ---
+        html += `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
+                <div onclick="App.showQrStats()" style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #444; cursor:pointer; text-align:center;">
+                    <div style="font-size:24px; margin-bottom:5px;">📱</div>
+                    <div style="font-weight:bold; color:#fff;">ΠΕΛΑΤΕΣ QR</div>
+                    <div style="font-size:11px; color:#aaa;">Delivery & Dine-In</div>
+                </div>
+                <div onclick="App.showTreatsStats()" style="background:#1a1a1a; padding:15px; border-radius:10px; border:1px solid #444; cursor:pointer; text-align:center;">
+                    <div style="font-size:24px; margin-bottom:5px;">🎁</div>
+                    <div style="font-weight:bold; color:#fff;">ΛΑΘΗ & ΚΕΡΑΣΜΑΤΑ</div>
+                    <div style="font-size:11px; color:#aaa;">Ιστορικό</div>
+                </div>
+            </div>
+        `;
 
         // --- STAFF LIST ---
         html += `<div style="font-size:18px; font-weight:bold; color:#2196F3; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:5px;">ΠΡΟΣΩΠΙΚΟ</div>`;
@@ -580,28 +549,166 @@ window.App = {
         const [year, month, day] = dateStr.split('-');
         const monthKey = `${year}-${month}`;
         const mStats = stats[monthKey];
-        if(!mStats) return;
 
-        let products = {};
-        let title = "";
+        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FFD700;">`;
         
         if (period === 'today') {
-            title = `ΠΩΛΗΣΕΙΣ ΣΗΜΕΡΑ (${day}/${month})`;
+            html += `ΠΩΛΗΣΕΙΣ ΣΗΜΕΡΑ (${day}/${month})</h3></div>`;
+            let products = {};
             if(mStats.days && mStats.days[day] && mStats.days[day].products) products = mStats.days[day].products;
+            
+            const sorted = Object.entries(products).sort((a,b) => b[1] - a[1]);
+            html += `<div style="display:flex; flex-direction:column; gap:5px;">`;
+            sorted.forEach(([name, qty], idx) => {
+                html += `<div style="display:flex; justify-content:space-between; background:#222; padding:10px; border-radius:6px; border:1px solid #444;">
+                            <span><b>${idx+1}.</b> ${name}</span><span style="color:#00E676; font-weight:bold;">${qty} τμχ</span>
+                         </div>`;
+            });
+            html += `</div>`;
         } else {
-            title = `ΠΩΛΗΣΕΙΣ ΜΗΝΑ (${month})`;
-            if(mStats.products) products = mStats.products;
-        }
+            // MONTH CLICK -> LAST 30 DAYS BREAKDOWN
+            html += `ΙΣΤΟΡΙΚΟ (30 ΗΜΕΡΕΣ)</h3></div>`;
+            html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
 
-        const sorted = Object.entries(products).sort((a,b) => b[1] - a[1]);
-        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FFD700;">${title}</h3></div>`;
-        html += `<div style="display:flex; flex-direction:column; gap:5px;">`;
-        sorted.forEach(([name, qty], idx) => {
-            html += `<div style="display:flex; justify-content:space-between; background:#222; padding:10px; border-radius:6px; border:1px solid #444;">
-                        <span><b>${idx+1}.</b> ${name}</span><span style="color:#00E676; font-weight:bold;">${qty} τμχ</span>
-                     </div>`;
-        });
-        html += `</div>`;
+            let foundAny = false;
+
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(now.getDate() - i);
+                const dStr = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+                const [y, m, dDay] = dStr.split('-');
+                const mKey = `${y}-${m}`;
+                
+                if (stats[mKey] && stats[mKey].days && stats[mKey].days[dDay]) {
+                    foundAny = true;
+                    const dayData = stats[mKey].days[dDay];
+                    
+                    let dayItems = 0;
+                    if(dayData.products) Object.values(dayData.products).forEach(q => dayItems += q);
+                    
+                    html += `<div style="background:#222; border:1px solid #444; border-radius:8px; overflow:hidden;">
+                                <div style="background:#333; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-weight:bold; color:#FFD700;">📅 ${dDay}/${m}</span>
+                                    <div style="text-align:right;">
+                                        <div style="color:#00E676; font-weight:bold;">${dayData.turnover.toFixed(2)}€</div>
+                                        <div style="font-size:11px; color:#aaa;">${dayItems} είδη • ${dayData.orders} παρ.</div>
+                                    </div>
+                                </div>
+                                <div style="padding:10px;">`;
+                    
+                    if (dayData.staff && Object.keys(dayData.staff).length > 0) {
+                        const sortedStaff = Object.entries(dayData.staff).sort((a,b) => b[1].turnover - a[1].turnover);
+                        html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-size:11px; color:#aaa; border-bottom:1px solid #444; margin-bottom:5px; padding-bottom:2px;">
+                                    <div>ΟΝΟΜΑ</div><div style="text-align:center;">ΤΖΙΡΟΣ</div><div style="text-align:right;">ΕΙΔΗ</div>
+                                 </div>`;
+                        sortedStaff.forEach(([sName, sData]) => {
+                            let sItems = 0;
+                            if(sData.products) Object.values(sData.products).forEach(q => sItems += q);
+                            html += `<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-size:13px; margin-bottom:4px;">
+                                        <div style="color:white;">${sName}</div>
+                                        <div style="text-align:center; color:#00E676;">${sData.turnover.toFixed(2)}€</div>
+                                        <div style="text-align:right; color:#ccc;">${sItems}</div>
+                                     </div>`;
+                        });
+                    } else {
+                        html += `<div style="font-size:12px; color:#555; font-style:italic;">Χωρίς δεδομένα προσωπικού</div>`;
+                    }
+                    html += `</div></div>`;
+                }
+            }
+            
+            if(!foundAny) html += `<div style="text-align:center; color:#aaa; padding:20px;">Δεν βρέθηκαν δεδομένα για τις τελευταίες 30 ημέρες.</div>`;
+            html += `</div>`;
+        }
+        document.getElementById('statsContent').innerHTML = html;
+    },
+
+    showQrStats: () => {
+        const stats = App.cachedStats;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+        const [year, month] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+        const mStats = stats[monthKey];
+
+        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FFD700;">ΠΕΛΑΤΕΣ QR (${month})</h3></div>`;
+
+        if (!mStats || !mStats.qrStats) {
+            html += `<p style="color:#aaa; text-align:center;">Δεν υπάρχουν δεδομένα QR για αυτόν τον μήνα.</p>`;
+        } else {
+            const q = mStats.qrStats;
+            const dIn = q.dineIn || { turnover: 0, orders: 0 };
+            const del = q.delivery || { turnover: 0, orders: 0 };
+            
+            html += `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;">
+                <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; text-align:center;">
+                    <div style="color:#aaa; font-size:12px;">ΚΑΘΙΣΤΙΚΟ (DINE-IN)</div>
+                    <div style="font-size:24px; color:#00E676; font-weight:bold;">${dIn.turnover.toFixed(2)}€</div>
+                    <div style="font-size:12px; color:#fff;">${dIn.orders} παραγγελίες</div>
+                </div>
+                <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; text-align:center;">
+                    <div style="color:#aaa; font-size:12px;">DELIVERY</div>
+                    <div style="font-size:24px; color:#FFD700; font-weight:bold;">${del.turnover.toFixed(2)}€</div>
+                    <div style="font-size:12px; color:#fff;">${del.orders} παραγγελίες</div>
+                </div>
+            </div>
+            <h4 style="color:#aaa; border-bottom:1px solid #333; padding-bottom:5px;">ΑΝΑΛΥΣΗ ΑΝΑ ΗΜΕΡΑ</h4>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+            `;
+            
+            const days = Object.keys(mStats.days || {}).sort((a,b) => parseInt(b) - parseInt(a));
+            days.forEach(d => {
+                const dData = mStats.days[d];
+                if (dData.qrStats) {
+                    const qd = dData.qrStats;
+                    const di = qd.dineIn || { turnover: 0, orders: 0 };
+                    const de = qd.delivery || { turnover: 0, orders: 0 };
+                    if (di.orders > 0 || de.orders > 0) {
+                        html += `
+                        <div style="background:#1a1a1a; padding:10px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-weight:bold; color:white; width:40px;">${d}/${month}</div>
+                            <div style="text-align:right;">
+                                <div style="font-size:12px; color:#00E676;">🍽️ ${di.turnover.toFixed(2)}€ <span style="color:#555;">(${di.orders})</span></div>
+                                <div style="font-size:12px; color:#FFD700;">🛵 ${de.turnover.toFixed(2)}€ <span style="color:#555;">(${de.orders})</span></div>
+                            </div>
+                        </div>`;
+                    }
+                }
+            });
+            html += `</div>`;
+        }
+        document.getElementById('statsContent').innerHTML = html;
+    },
+
+    showTreatsStats: () => {
+        const stats = App.cachedStats;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+        const [year, month] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+        const mStats = stats[monthKey];
+
+        let html = `<div style="margin-bottom:15px; display:flex; align-items:center;"><button onclick="App.renderStatsDashboard()" style="background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-right:10px; cursor:pointer;">🔙</button><h3 style="margin:0; color:#FF5252;">ΛΑΘΗ & ΚΕΡΑΣΜΑΤΑ</h3></div>`;
+
+        if (!mStats || !mStats.treats || mStats.treats.length === 0) {
+            html += `<p style="color:#aaa; text-align:center;">Δεν υπάρχουν καταγραφές για αυτόν τον μήνα.</p>`;
+        } else {
+            const list = [...mStats.treats].sort((a,b) => new Date(b.date) - new Date(a.date));
+            let totalMistakes = 0, totalTreats = 0;
+            list.forEach(t => { if (t.staff.includes('(LATHOS)')) totalMistakes += t.price; else totalTreats += t.price; });
+
+            html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;"><div style="background:#222; padding:10px; border-radius:10px; border:1px solid #444; text-align:center;"><div style="color:#aaa; font-size:11px;">ΣΥΝΟΛΟ ΛΑΘΩΝ</div><div style="font-size:20px; color:#FF5252; font-weight:bold;">${totalMistakes.toFixed(2)}€</div></div><div style="background:#222; padding:10px; border-radius:10px; border:1px solid #444; text-align:center;"><div style="color:#aaa; font-size:11px;">ΣΥΝΟΛΟ ΚΕΡΑΣΜΑΤΩΝ</div><div style="font-size:20px; color:#FFD700; font-weight:bold;">${totalTreats.toFixed(2)}€</div></div></div><div style="display:flex; flex-direction:column; gap:8px;">`;
+
+            list.forEach(t => {
+                const isMistake = t.staff.includes('(LATHOS)');
+                const dateObj = new Date(t.date);
+                const dateFmt = dateObj.toLocaleDateString('el-GR', {day:'2-digit', month:'2-digit'}) + ' ' + dateObj.toLocaleTimeString('el-GR', {hour:'2-digit', minute:'2-digit'});
+                const staffClean = t.staff.replace(' (LATHOS)', '');
+                html += `<div style="background:#1a1a1a; padding:10px; border-radius:8px; border-left:4px solid ${isMistake ? '#FF5252' : '#FFD700'};"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span style="font-weight:bold; color:white;">${t.item}</span><span style="font-weight:bold; color:${isMistake ? '#FF5252' : '#FFD700'};">${t.price.toFixed(2)}€</span></div><div style="font-size:11px; color:#aaa; display:flex; justify-content:space-between;"><span>${isMistake ? '⚠️ ΛΑΘΟΣ' : '🎁 ΚΕΡΑΣΜΑ'} • ${staffClean}</span><span>${dateFmt}</span></div></div>`;
+            });
+            html += `</div>`;
+        }
         document.getElementById('statsContent').innerHTML = html;
     },
 

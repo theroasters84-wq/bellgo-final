@@ -165,6 +165,28 @@ function updateStoreStats(store, order) {
     mStats.days[day].orders++;
     mStats.days[day].turnover += total;
 
+    // ✅ NEW: QR STATS LOGIC (Πελάτες QR)
+    const isQr = (order.from && order.from.includes('(Πελάτης)'));
+    if (isQr) {
+        let qrType = null;
+        if (order.text.includes('[ΤΡ:') || order.text.includes('[ΤΡ')) qrType = 'dineIn';
+        else if (order.text.includes('[DELIVERY')) qrType = 'delivery';
+
+        if (qrType) {
+            // Month Totals
+            if (!mStats.qrStats) mStats.qrStats = { dineIn: { turnover: 0, orders: 0 }, delivery: { turnover: 0, orders: 0 } };
+            if (!mStats.qrStats[qrType]) mStats.qrStats[qrType] = { turnover: 0, orders: 0 };
+            mStats.qrStats[qrType].turnover += total;
+            mStats.qrStats[qrType].orders++;
+
+            // Day Totals
+            if (!mStats.days[day].qrStats) mStats.days[day].qrStats = { dineIn: { turnover: 0, orders: 0 }, delivery: { turnover: 0, orders: 0 } };
+            if (!mStats.days[day].qrStats[qrType]) mStats.days[day].qrStats[qrType] = { turnover: 0, orders: 0 };
+            mStats.days[day].qrStats[qrType].turnover += total;
+            mStats.days[day].qrStats[qrType].orders++;
+        }
+    }
+
     // ✅ 4. Στατιστικά Προσωπικού (Ανά Ημέρα)
     const staffName = (order.from && order.from.trim()) ? order.from : "Άγνωστος";
     if (!mStats.days[day].staff) mStats.days[day].staff = {};
@@ -499,6 +521,28 @@ io.on('connection', (socket) => {
         socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket
         updateStoreClients(storeName);
         if(wasRinging) { socket.emit('ring-bell'); }
+    });
+
+    // ✅ NEW: Έλεγχος αν το τραπέζι έχει ενεργή παραγγελία
+    socket.on('check-table-status', (data) => {
+        const store = getMyStore();
+        if (!store || !data.table) return;
+        
+        // Ψάχνουμε παραγγελία που να περιέχει [ΤΡ: table] και να μην είναι πληρωμένη
+        // Regex: Ταιριάζει ακριβώς τον αριθμό (π.χ. το 1 να μην πιάσει το 10)
+        const tableRegex = new RegExp(`\\[ΤΡ:\\s*${data.table}(?:\\s+|\\]|\\|)`);
+        
+        const activeOrder = store.orders.find(o => {
+            // Θεωρούμε ενεργή μια παραγγελία αν δεν έχει σβηστεί (το pay-order τη διαγράφει)
+            // και αν δεν έχει ήδη το tag PAID (αν κρατάτε ιστορικό)
+            return tableRegex.test(o.text) && !o.text.includes('💳 PAID');
+        });
+
+        if (activeOrder) {
+            socket.emit('table-status', { active: true, orderId: activeOrder.id, text: activeOrder.text });
+        } else {
+            socket.emit('table-status', { active: false });
+        }
     });
 
     socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await getStoreData(targetEmail); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });

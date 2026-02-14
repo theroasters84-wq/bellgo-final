@@ -45,7 +45,7 @@ async function initFCM(socket) {
     }
 
     const token = await getToken(messaging, {
-      vapidKey: "ΒΑΛΕ_ΕΔΩ_TΟ_VAPID_KEY"
+      vapidKey: "BDUWH0UaYagUPXGB8BM59VFRBW8FMbgOy7YcbBHxT4aJ6rN0Jms-0dGWXIODGYWoSSHomos4gg1GOTZn6k70JcM"
     });
 
     if (token) {

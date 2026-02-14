@@ -98,6 +98,8 @@ let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
 window.App = {
+    existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
+
     installPWA: async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
@@ -376,6 +378,11 @@ window.App = {
                 token: localStorage.getItem('fcm_token'), // 👈 Token here
                 isNative: false 
             });
+
+            // ✅ NEW: Έλεγχος αν το τραπέζι είναι ήδη ανοιχτό
+            if (isDineIn) {
+                socket.emit('check-table-status', { table: tableNumber });
+            }
             
             // Αφαιρέθηκε το setTimeout. Ο έλεγχος γίνεται πλέον στο 'menu-update'
         });
@@ -387,6 +394,15 @@ window.App = {
             if (!hasCheckedStripe) {
                 hasCheckedStripe = true;
                 App.checkStripeReturn();
+            }
+        });
+
+        // ✅ NEW: Απάντηση για το αν υπάρχει ενεργό τραπέζι
+        socket.on('table-status', (data) => {
+            if (data.active) {
+                // ✅ AUTOMATICALLY LINK TO EXISTING ORDER (DEFAULT)
+                App.existingOrderId = data.orderId;
+                App.showTableOptionsModal(data);
             }
         });
 
@@ -560,6 +576,113 @@ window.App = {
         }
     },
 
+    // ✅ NEW: Modal Επιλογών Τραπεζιού (Συμπλήρωση / Νέα / Πληρωμή)
+    showTableOptionsModal: (data) => {
+        // Υπολογισμός συνόλου υπάρχουσας παραγγελίας
+        let total = 0;
+        const lines = data.text.split('\n');
+        lines.forEach(line => {
+            const parts = line.split(':');
+            const price = parseFloat(parts[parts.length-1]);
+            const qtyMatch = line.match(/^(\d+)\s+/);
+            const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
+            if(!isNaN(price)) total += price * qty;
+        });
+
+        const modal = document.createElement('div');
+        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
+        
+        // --- STEP 1: EXISTING OR NEW ---
+        const step1Html = `
+            <div id="step1" style="background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
+                <h2 style="color:#FFD700; margin-top:0;">🍽️ Τραπέζι ${tableNumber}</h2>
+                <p style="color:#ccc;">Υπάρχει ανοιχτή παραγγελία.<br>Σύνολο: <b>${total.toFixed(2)}€</b></p>
+                <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ</button>
+                <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)</button>
+            </div>
+        `;
+
+        // --- STEP 2: PAY OR SUPPLEMENT ---
+        const step2Html = `
+            <div id="step2" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
+                <h3 style="color:#2196F3;">Επιλογές</h3>
+                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ΣΥΜΠΛΗΡΩΣΗ</button>
+                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ΕΞΟΦΛΗΣΗ</button>
+                <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+            </div>
+        `;
+
+        // --- STEP 3: NEW PEOPLE ---
+        const step3Html = `
+            <div id="step3" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
+                <h3 style="color:#FFD700;">Ήρθαν νέα άτομα;</h3>
+                <p style="color:#ccc; font-size:12px;">Αν ναι, συμπληρώστε τον αριθμό.</p>
+                <input type="number" id="inpNewPeople" placeholder="Αρ. ατόμων (προαιρετικό)" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #555; background:#333; color:white; text-align:center; font-size:16px;">
+                <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶</button>
+                <button id="btnBack2" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+            </div>
+        `;
+
+        modal.innerHTML = step1Html + step2Html + step3Html;
+        document.body.appendChild(modal);
+
+        // --- HANDLERS ---
+        const s1 = document.getElementById('step1');
+        const s2 = document.getElementById('step2');
+        const s3 = document.getElementById('step3');
+
+        // Step 1 Logic
+        document.getElementById('btnExisting').onclick = () => {
+            s1.style.display = 'none';
+            s2.style.display = 'block';
+            App.existingOrderId = data.orderId;
+        };
+        document.getElementById('btnNewOrder').onclick = () => {
+            App.existingOrderId = null;
+            modal.remove();
+        };
+
+        // Step 2 Logic
+        document.getElementById('btnSupplement').onclick = () => {
+            s2.style.display = 'none';
+            s3.style.display = 'block';
+        };
+        document.getElementById('btnPayExisting').onclick = () => {
+            if(!storeHasStripe) return alert("Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
+            App.payExistingOrder(data.orderId, total);
+            modal.remove();
+        };
+        document.getElementById('btnBack1').onclick = () => {
+            s2.style.display = 'none';
+            s1.style.display = 'block';
+        };
+
+        // Step 3 Logic
+        document.getElementById('btnGoToMenu').onclick = () => {
+            const extra = document.getElementById('inpNewPeople').value;
+            if(extra && parseInt(extra) > 0) {
+                App.addToOrder(`(+ ${extra} ΑΤΟΜΑ)`);
+            }
+            modal.remove();
+        };
+        document.getElementById('btnBack2').onclick = () => {
+            s3.style.display = 'none';
+            s2.style.display = 'block';
+        };
+    },
+
+    payExistingOrder: async (orderId, amount) => {
+        try {
+            const res = await fetch('/create-qr-payment', { // Χρησιμοποιούμε το QR endpoint που δέχεται orderId
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId })
+            });
+            const data = await res.json();
+            if(data.url) window.location.href = data.url;
+            else alert("Σφάλμα: " + (data.error || "Άγνωστο"));
+        } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
+
     addToOrder: (item) => {
         const txt = document.getElementById('orderText');
         // txt.focus(); // Αφαιρέθηκε για να μην ανοίγει το πληκτρολόγιο στο iPhone
@@ -678,6 +801,16 @@ window.App = {
         } else {
             // ✅ Μορφή για Delivery
             fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n📮 T.K.: ${customerDetails.zip || '-'}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
+        }
+
+        // ✅ LOGIC: Αν είναι συμπλήρωση, στέλνουμε add-items
+        if (App.existingOrderId) {
+            window.socket.emit('add-items', { id: App.existingOrderId, items: items });
+            alert("Η παραγγελία ενημερώθηκε!");
+            App.existingOrderId = null; // Reset
+            document.getElementById('orderText').value = ''; 
+            document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+            return;
         }
 
         const newOrder = { id: Date.now(), status: 'pending', timestamp: Date.now() };
