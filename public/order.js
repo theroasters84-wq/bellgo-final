@@ -48,13 +48,25 @@ if (params.get('payment_status')) {
 // ✅ ΑΥΤΟΝΟΜΙΑ QR: Το URL καθορίζει την κατάσταση
 if (TABLE_ID) {
     // 1. Αν το URL έχει τραπέζι, επιβάλλουμε Dine-In
-    // Αν υπήρχε παλιά πληροφορία για άλλο τραπέζι, την ενημερώνουμε
+    
+    // ✅ FIX: Ανίχνευση νέας σάρωσης (Scan) vs Refresh vs Payment Return
+    const isPaymentReturn = params.get('payment_status');
+    const isNewSession = !sessionStorage.getItem('bellgo_session_active');
+
     let currentDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
-    if (currentDetails && currentDetails.table !== TABLE_ID) {
-        console.log("🔄 QR Change Detected: Switching Table");
-        currentDetails.table = TABLE_ID;
-        currentDetails.type = 'dinein';
-        localStorage.setItem('bellgo_customer_info', JSON.stringify(currentDetails));
+    
+    if (!isPaymentReturn) {
+        // Αν είναι νέα καρτέλα (Scan) ή αν άλλαξε το τραπέζι -> Reset Covers
+        if (isNewSession || (currentDetails && currentDetails.table !== TABLE_ID)) {
+            sessionStorage.setItem('bellgo_session_active', 'true');
+            if (currentDetails) {
+                console.log("🔄 New Scan or Table Change: Resetting Covers");
+                delete currentDetails.covers; // Force ask for covers
+                currentDetails.table = TABLE_ID;
+                currentDetails.type = 'dinein';
+                localStorage.setItem('bellgo_customer_info', JSON.stringify(currentDetails));
+            }
+        }
     }
 } else {
     // 2. Αν το URL ΔΕΝ έχει τραπέζι (και δεν επιστρέφουμε από πληρωμή)
@@ -104,7 +116,7 @@ let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[
 // (ΑΦΑΙΡΕΘΗΚΕ Η ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΤΡΑΠΕΖΙΟΥ ΓΙΑ ΝΑ ΛΕΙΤΟΥΡΓΕΙ ΤΟ DELIVERY QR)
 
 let storeHasStripe = false;
-const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
+const ORDER_TIMEOUT_MS = 30 * 60 * 1000; // ✅ 30 Minutes Timeout
 let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
@@ -243,6 +255,7 @@ window.App = {
         }
 
         App.checkActiveOrderStorage();
+        setInterval(App.checkActiveOrderStorage, 60000); // ✅ Check every minute to auto-hide old orders
         App.handleInput(); // ✅ Προσθήκη: Ενημέρωση καλαθιού/badge κατά την εκκίνηση
 
         // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
@@ -318,7 +331,7 @@ window.App = {
         // Filter out 'ready' orders older than 1 hour AND any order older than 12 hours
         activeOrders = activeOrders.filter(o => {
             if ((now - o.timestamp) > TWELVE_HOURS) return false; // Safety cleanup
-            if (o.status === 'ready') {
+            if (o.status === 'ready' || o.status === 'completed') { // ✅ Handle completed/closed orders
                 const timeRef = o.readyTime || o.timestamp;
                 return (now - timeRef) < ORDER_TIMEOUT_MS;
             }
@@ -477,6 +490,13 @@ window.App = {
                     if (localOrder.status !== serverOrder.status) {
                         localOrder.status = serverOrder.status;
                         if (serverOrder.readyTime) localOrder.readyTime = serverOrder.readyTime;
+                        changed = true;
+                    }
+                } else {
+                    // ✅ NEW: Αν η παραγγελία κλείσει (διαγραφεί) από το κατάστημα (π.χ. Τραπέζι)
+                    if (localOrder.status !== 'completed' && localOrder.status !== 'ready') {
+                        localOrder.status = 'completed';
+                        localOrder.readyTime = Date.now(); // Start 30min timer
                         changed = true;
                     }
                 }
@@ -789,6 +809,15 @@ window.App = {
     payWithCard: async (items) => {
         const totalAmount = App.handleInput();
         if(totalAmount <= 0) return alert("Σφάλμα ποσού.");
+        
+        // ✅ FIX: Αποθήκευση κατάστασης (Τραπέζι/Delivery) πριν την πληρωμή
+        if (isDineIn) {
+            localStorage.setItem('bellgo_return_mode', 'dinein');
+            localStorage.setItem('bellgo_return_table', tableNumber);
+        } else {
+            localStorage.setItem('bellgo_return_mode', 'delivery');
+        }
+
         localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
         try {
             const res = await fetch('/create-order-payment', {
@@ -834,8 +863,17 @@ window.App = {
     },
 
     minimizeStatus: () => { 
-        document.getElementById('statusOverlay').style.height = '0'; 
-        document.getElementById('btnStatusMini').style.display = 'flex'; // Εμφάνιση μικρού κουμπιού
+        document.getElementById('statusOverlay').style.height = '0';
+        const btn = document.getElementById('btnStatusMini');
+        if(btn) {
+            btn.style.display = 'flex'; 
+            // ✅ FIX: Force Top-Left Position
+            btn.style.position = 'fixed';
+            btn.style.top = '10px';
+            btn.style.left = '10px';
+            btn.style.right = 'auto';
+            btn.style.bottom = 'auto';
+        }
     },
 
     maximizeStatus: () => { document.getElementById('statusOverlay').style.height = '100%'; },
@@ -845,7 +883,12 @@ window.App = {
         if (!list) return;
         list.innerHTML = '';
         
-        document.getElementById('btnStatusMini').style.display = 'none'; // Απόκρυψη μικρού κουμπιού όταν είναι ανοιχτό
+        // ✅ FIX: Hide mini button ONLY if overlay is open
+        if (shouldOpen || document.getElementById('statusOverlay').style.height === '100%') {
+            document.getElementById('btnStatusMini').style.display = 'none';
+        } else if (activeOrders.length > 0) {
+            App.minimizeStatus(); // Ensure it's visible and positioned
+        }
 
         // Sort: Newest first
         activeOrders.sort((a,b) => b.timestamp - a.timestamp);
@@ -865,6 +908,8 @@ window.App = {
                     icon = '👨‍🍳'; statusText = 'Ετοιμάζεται'; subText = 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
                 } else if (order.status === 'ready') {
                     icon = '🛵'; statusText = 'Έρχεται!'; subText = 'Πατήστε για απόκρυψη'; color = '#00E676'; // Green
+                } else if (order.status === 'completed') {
+                    icon = '✅'; statusText = 'Ολοκληρώθηκε'; subText = 'Η παραγγελία έκλεισε.'; color = '#888'; // Grey
                 }
 
                 const timeStr = new Date(order.timestamp).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
@@ -883,7 +928,7 @@ window.App = {
                 
                 el.querySelector('.btn-dismiss').onclick = (e) => {
                     e.stopPropagation();
-                    if (order.status !== 'ready' && !confirm("Απόκρυψη παραγγελίας;")) return;
+                    if (order.status !== 'ready' && order.status !== 'completed' && !confirm("Απόκρυψη παραγγελίας;")) return;
                     App.dismissOrder(order.id);
                 };
                 
@@ -897,6 +942,7 @@ window.App = {
             const latest = activeOrders[0];
             if (latest.status === 'ready') miniText.innerText = "Έρχεται!";
             else if (latest.status === 'cooking') miniText.innerText = "Ετοιμάζεται";
+            else if (latest.status === 'completed') miniText.innerText = "✅";
             else miniText.innerText = "Αναμονή...";
         } else if (miniText) {
             miniText.innerText = "...";

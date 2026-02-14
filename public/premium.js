@@ -159,6 +159,58 @@ window.App = {
                 App.renderStaffList(App.lastStaffList);
             }
         }, 1000);
+
+        // ✅ UI CUSTOMIZATIONS: Hidden Stats, Moved Auto-Reset, Renamed Plugins
+        setTimeout(() => {
+            // 1. Hide Stats Button & Add 5-Click Secret on Settings
+            const btnStats = document.querySelector('button[onclick="App.openStatsModal()"]');
+            if(btnStats) btnStats.style.display = 'none';
+
+            const btnSet = document.getElementById('btnSettings');
+            if(btnSet) {
+                const originalClick = btnSet.onclick;
+                let c = 0, t = null;
+                btnSet.onclick = (e) => {
+                    c++;
+                    if(t) clearTimeout(t);
+                    t = setTimeout(() => c=0, 2000);
+                    if(c === 5) { 
+                        e.preventDefault(); e.stopPropagation(); 
+                        App.openStatsModal(); 
+                        document.getElementById('settingsModal').style.display = 'none'; 
+                        c=0; 
+                    } else {
+                        if(originalClick) originalClick.call(btnSet, e);
+                    }
+                };
+            }
+
+            // 2. Rename "Plugins" to "PIN / Connect Stripe"
+            const headers = document.querySelectorAll('h3, h4, .settings-header');
+            headers.forEach(h => {
+                if(h.innerText.toLowerCase().includes('plugins')) {
+                    h.innerText = "PIN / CONNECT STRIPE";
+                }
+            });
+
+            // 3. Move Auto Menu (Reset Time) to Menu Editor
+            const inpReset = document.getElementById('inpResetTime');
+            const menuPanel = document.getElementById('menuFullPanel');
+            if(inpReset && menuPanel) {
+                if(inpReset.previousElementSibling && inpReset.previousElementSibling.tagName === 'LABEL') {
+                    inpReset.previousElementSibling.style.display = 'none';
+                }
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = "position:absolute; top:15px; right:60px; display:flex; align-items:center; gap:5px; z-index:100;";
+                const lbl = document.createElement('span');
+                lbl.innerText = "Auto Reset:";
+                lbl.style.cssText = "font-size:10px; color:#666; font-weight:bold;";
+                inpReset.style.cssText = "width:50px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
+                wrapper.appendChild(lbl);
+                wrapper.appendChild(inpReset);
+                menuPanel.appendChild(wrapper);
+            }
+        }, 500);
     },
     
     requestNotifyPermission: async () => {
