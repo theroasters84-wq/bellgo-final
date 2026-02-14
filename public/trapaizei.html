@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BellGo Table</title>
+    <style>
+        body { background-color: #121212; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; flex-direction: column; }
+        .loader { border: 4px solid #333; border-top: 4px solid #00E676; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <div>Σύνδεση στο τραπέζι...</div>
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const store = params.get('store');
+            const table = params.get('table');
+
+            if (store) {
+                // Redirect to the PWA-friendly URL structure: /shop/STORE_NAME/?table=TABLE_NUM
+                const cleanStore = encodeURIComponent(store);
+                const cleanTable = table ? encodeURIComponent(table) : '';
+                
+                window.location.replace(`/shop/${cleanStore}/?table=${cleanTable}`);
+            } else {
+                document.body.innerHTML = "<h3 style='color:red'>Σφάλμα: Δεν βρέθηκε κατάστημα.</h3>";
+            }
+        })();
+    </script>
+</body>
+</html>
