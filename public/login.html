@@ -232,6 +232,9 @@
             if (emailParam) {
                 document.getElementById('adminEmailInp').value = emailParam;
                 Admin.manualLogin();
+            } else {
+                const savedEmail = localStorage.getItem('bellgo_last_email');
+                if(savedEmail) document.getElementById('adminEmailInp').value = savedEmail;
             }
         };
 
@@ -354,6 +357,7 @@
                 const email = document.getElementById('adminEmailInp').value.trim();
                 const name = document.getElementById('adminNameInp').value.trim(); // ✅ Λήψη Ονόματος
                 if(!email) return alert("Παρακαλώ εισάγετε email.");
+                localStorage.setItem('bellgo_last_email', email); // ✅ Save email for next time
                 
                 const btn = document.getElementById('btnAdminLogin');
                 btn.innerText = "ΕΛΕΓΧΟΣ..."; btn.disabled = true;

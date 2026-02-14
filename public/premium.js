@@ -158,6 +158,12 @@ window.App = {
         }, {once:true});
         
         // ✅ UI SETUP BASED ON MODE
+        // ✅ FIX: Άμεση εμφάνιση ονόματος (για να μην φαίνεται κενό μέχρι να συνδεθεί)
+        if (userData.store) {
+            const inpHeader = document.getElementById('inpStoreNameHeader');
+            if (inpHeader) inpHeader.value = userData.store;
+        }
+
         if (App.adminMode === 'kitchen') {
             // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
             const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'none';
@@ -1032,7 +1038,7 @@ window.App = {
         const desktop = document.getElementById('desktopArea');
         desktop.innerHTML = '';
         orders.forEach(order => {
-       .{hour: '2-digit', minute:'2-digit'});
+            const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             let style = '';
             const isPaid = order.text.includes('PAID') || order.text.includes('✅');
             
