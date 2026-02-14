@@ -291,7 +291,7 @@
             <div id="expensesTotal" style="font-size:24px; color:#FF5252; font-weight:bold; text-align:center; margin-bottom:15px;">0.00€</div>
             
             <!-- FIXED EXPENSES -->
-            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
+            <div class="expenses-section" style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
                 <div class="settings-label" style="color:#FFD700;">ΠΑΓΙΑ ΕΞΟΔΑ (Αυτόματος Υπολογισμός)</div>
                 <div id="fixedExpensesContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
@@ -301,7 +301,7 @@
                 </div>
             </div>
 
-            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px;">
+            <div class="expenses-section" style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px;">
                 <div class="settings-label">ΓΡΗΓΟΡΗ ΠΡΟΣΘΗΚΗ (Presets)</div>
                 <div id="expensePresetsContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
@@ -311,9 +311,9 @@
                 </div>
             </div>
 
-            <textarea id="txtExpenses" class="order-text" style="height:150px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
+            <textarea id="txtExpenses" class="order-text" style="height:200px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
             
-            <button class="modal-btn" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
             <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>

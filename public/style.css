@@ -382,3 +382,32 @@ input:checked + .slider:before { transform: translateX(18px); }
 @keyframes menuEntry { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes pulseMini { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+
+/* ✅ EXPENSES MODAL WRITING MODE */
+#expensesModal.writing-mode .modal-box {
+    height: 100%;
+    max-height: 100%;
+    width: 100%;
+    border-radius: 0;
+    justify-content: flex-start;
+    padding-top: 20px;
+}
+
+#expensesModal.writing-mode .expenses-section,
+#expensesModal.writing-mode .modal-title,
+#expensesModal.writing-mode #expensesTotal,
+#expensesModal.writing-mode button:not(.btn-save-expenses) {
+    display: none !important;
+}
+
+#expensesModal.writing-mode #txtExpenses {
+    flex: 1;
+    height: auto !important;
+    margin-bottom: 10px;
+}
+
+#expensesModal.writing-mode .btn-save-expenses {
+    display: block !important;
+    margin-top: 0;
+    flex-shrink: 0;
+}
