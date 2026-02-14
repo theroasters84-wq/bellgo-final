@@ -102,7 +102,7 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
-    ...StatsUI, // ✅ Import Statistics Logic
+    ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
 
     init: () => {
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
