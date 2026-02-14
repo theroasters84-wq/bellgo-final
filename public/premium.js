@@ -142,6 +142,7 @@ window.App = {
     scheduleData: {},
     adminMode: localStorage.getItem('bellgo_admin_mode') || 'cashier', // 'cashier' or 'kitchen'
     coverPrice: 0,
+    sidebarMode: 'paso', // ✅ Default Mode
     
     // EXTRAS STATE
     currentExtrasItemIndex: null,
@@ -903,11 +904,23 @@ window.App = {
             App.renderSidebarMenu();
         }
     },
-    togglePaso: () => {
-        const isPaso = document.getElementById('sidebarPaso').checked;
-        const tblInp = document.getElementById('sidebarTable');
-        if (isPaso) { tblInp.disabled = true; tblInp.value = ''; tblInp.placeholder = '#'; }
-        else { tblInp.disabled = false; tblInp.focus(); }
+    cut document.getElementById('btnModePaso').style.color = 'white';
+        document.getElementById('btnModeTable').style.background = '#333';
+        document.getElementById('btnModeTable').style.color = 'white';
+        document.getElementById('btnModeDelivery').style.background = '#333';
+        document.getElementById('btnModeDelivery').style.color = 'white';
+        
+        // Hide All Inputs
+        document.getElementById('divTableInputs').style.display = 'none';
+        document.getElementById('divDeliveryInputs').style.display = 'none';
+
+        // Activate Selected
+        const btn = document.getElementById(mode === 'paso' ? 'btnModePaso' : mode === 'table' ? 'btnModeTable' : 'btnModeDelivery');
+        btn.style.background = '#FFD700';
+        btn.style.color = 'black';
+
+        if (mode === 'table') { document.getElementById('divTableInputs').style.display = 'flex'; setTimeout(()=>document.getElementById('sidebarTable').focus(),100); }
+        if (mode === 'delivery') { document.getElementById('divDeliveryInputs').style.display = 'flex'; setTimeout(()=>document.getElementById('sidebarDelName').focus(),100); }
     },
     renderSidebarMenu: () => {
         const container = document.getElementById('sidebarMenuContainer');
@@ -948,43 +961,45 @@ window.App = {
         const txt = document.getElementById('sidebarOrderText').value.trim();
         if(!txt) return alert("Κενή παραγγελία");
         
-        const isPaso = document.getElementById('sidebarPaso').checked;
-        const table = document.getElementById('sidebarTable').value;
-        const covers = parseInt(document.getElementById('sidebarCovers').value) || 0;
-        
         let header = "";
-        if (isPaso) header = "[PASO]";
-        else {
-            if (!table) return alert("Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
-            header = `[ΤΡ: ${table}]`;
-        }
-        
         let finalBody = txt;
-        // ✅ AUTO COVER CHARGE
-        if (covers > 0) {
-            header += ` [AT: ${covers}]`;
-            if (App.coverPrice > 0) {
-                finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
+
+        if (App.sidebarMode === 'paso') {
+            header = "[PASO]";
+        ='a rs > 0) {
+                if (App.coverPrice > 0) {
+                    finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
+                }
             }
-        }
-        
-        window.socket.emit('new-order', `${header}\n${finalBody}`);
-        alert("Εστάλη!");
-        document.getElementById('sidebarOrderText').value = '';
-        document.getElementById('sidebarTable').value = '';
+        } else if (App.sidebarMode === 'delivery') {
+            const name = document.getElementById('sidebarDelName').value.trim();
+            const addr = document.getElementById('sidebarDelAddr').value.trim();
+            const phone = document.getElementById('sidebarDelPhone').value.trim();
+            if(!name || !addr || !pho
+      r     const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
+    windn       .getElementById('sidebarTable').value = '';
         document.getElementById('sidebarCovers').value = '';
+        document.getElementById('sidebarDelName').value = '';
+        document.getElementById('sidebarDelAddr').value = '';
+        document.getElementById('sidebarDelPhone').value = '';
         App.toggleOrderSidebar(); // Close
     },
 
     renderDesktopIcons: (orders) => {
         const desktop = document.getElementById('desktopArea');
         desktop.innerHTML = '';
-        orders.sort((a,b) => a.id - b.id);
-        orders.forEach(order => {
-            const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        oorders.forEach(order => {
+       .{hour: '2-digit', minute:'2-digit'});
             let style = '';
             const isPaid = order.text.includes('PAID') || order.text.includes('✅');
             
+            // ✅ NEW: Ανίχνευση Τραπεζιού για Label
+            let displayLabel = order.from;
+            const tableMatch = order.text.match(/\[ΤΡ:\s*([^|\]]+)/);
+            if (tableMatch) {
+                displayLabel = `Τραπέζι ${tableMatch[1]}`;
+            }
+
             const icon = document.createElement('div');
             icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
             // ✅ Apply Cooking style
@@ -994,6 +1009,7 @@ window.App = {
             
             icon.style = style;
             icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${order.from}</div><div class="folder-time">${time}</div>`;
+            icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${displayLabel}</div><div class="folder-time">${time}</div>`;
             icon.onclick = () => App.openOrderWindow(order);
             desktop.appendChild(icon);
         });
@@ -1029,6 +1045,12 @@ window.App = {
         const displayItems = itemsText.replace(/\n/g, '<br>');
         let actions = '';
         let treatBtn = ''; // ✅ Κουμπί Κεράσματος για το Header
+
+        // ✅ Εμφάνιση κουμπιών (Κέρασμα + Εκτύπωση) σε ΟΛΑ τα στάδια (εκτός αν είναι Kitchen Mode)
+        if (App.adminMode !== 'kitchen') {
+             treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
+             treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+        }
 
         if (order.status === 'pending') {
             actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;

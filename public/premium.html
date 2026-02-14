@@ -76,20 +76,32 @@
                 <button id="btnCloseSidebar" onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:white; font-size:30px; padding:15px; cursor:pointer; z-index:5000;">✕</button>
             </div>
             <div class="panel-content" style="background:#1a1a1a;">
-                <div class="form-row">
-                    <div class="input-group" style="flex:0.5;">
-                        <label>PASO</label>
-                        <input type="checkbox" id="sidebarPaso" style="width:30px; height:30px;" checked onchange="App.togglePaso()">
-                    </div>
+                <!-- ✅ NEW: Mode Selection (Paso, Table, Delivery) -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:10px;">
+                    <button id="btnModePaso" class="modal-btn" style="background:#FFD700; color:black; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('paso')">PASO</button>
+                    <button id="btnModeTable" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('table')">ΤΡΑΠΕΖΙ</button>
+                    <button id="btnModeDelivery" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('delivery')">DELIVERY</button>
+                </div>
+
+                <!-- Table Inputs -->
+                <div id="divTableInputs" class="form-row" style="display:none;">
                     <div class="input-group">
                         <label>ΤΡΑΠΕΖΙ</label>
-                        <input type="text" id="sidebarTable" class="input-box" placeholder="#" disabled>
+                        <input type="text" id="sidebarTable" class="input-box" placeholder="#">
                     </div>
                     <div class="input-group">
                         <label>ΚΟΥΒΕΡ</label>
                         <input type="number" id="sidebarCovers" class="input-box" placeholder="0">
                     </div>
                 </div>
+
+                <!-- Delivery Inputs -->
+                <div id="divDeliveryInputs" style="display:none; flex-direction:column; gap:8px; margin-bottom:10px;">
+                    <input type="text" id="sidebarDelName" class="inp-settings" placeholder="Όνομα Πελάτη" style="margin:0; padding:8px;">
+                    <input type="text" id="sidebarDelAddr" class="inp-settings" placeholder="Διεύθυνση" style="margin:0; padding:8px;">
+                    <input type="tel" id="sidebarDelPhone" class="inp-settings" placeholder="Τηλέφωνο" style="margin:0; padding:8px;">
+                </div>
+
                 <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:8px; padding:5px;"></div>
                 <textarea id="sidebarOrderText" class="order-text" placeholder="Προϊόντα..." style="height:100px;"></textarea>
                 <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;">ΣΥΝΟΛΟ: 0.00€</div>

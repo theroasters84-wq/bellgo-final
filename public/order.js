@@ -224,6 +224,7 @@ window.App = {
         }
 
         App.checkActiveOrderStorage();
+        App.handleInput(); // ✅ Προσθήκη: Ενημέρωση καλαθιού/badge κατά την εκκίνηση
 
         // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
         const txt = document.getElementById('orderText');
@@ -601,6 +602,7 @@ window.App = {
             } else { validForCard = false; }
         }
         
+        // ✅ ΕΛΕΓΧΟΣ BADGE (ΣΗΜΑΤΑΚΙ)
         const badge = document.getElementById('cartBadge');
         if (badge) {
             if (totalItems > 0) {
