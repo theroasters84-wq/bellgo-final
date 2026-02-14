@@ -58,23 +58,24 @@
 
     <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; margin:0;" id="detailsTitle">📍 Στοιχεία</h3>
-            <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας">
+            <h3 style="color:#FFD700; margin:0;" id="detailsTitle"> Καλώς ήρθατε!</h3>
             
             <!-- Delivery Fields -->
             <div id="deliveryFields">
+                <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας">
                 <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)">
                 <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι">
                 <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας">
+                <input type="text" id="inpZip" class="inp-detail" placeholder="Τ.Κ. (Προαιρετικό)">
             </div>
             <!-- Dine-In Fields -->
             <div id="dineInFields" style="display:none;">
-                <div style="color:#aaa; font-size:12px; margin-bottom:5px; text-align:left;">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
-                <input type="number" id="inpCovers" class="inp-detail" placeholder="Άτομα" value="1" inputmode="numeric">
-                <div id="tableDisplay" style="color:#00E676; font-weight:bold; margin-top:10px; font-size:18px;"></div>
+                <div id="tableDisplay" style="color:#00E676; font-weight:bold; margin-bottom:15px; font-size:22px;"></div>
+                <div style="color:#aaa; font-size:14px; margin-bottom:5px;">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
+                <input type="number" id="inpCovers" class="inp-detail" placeholder="π.χ. 4" value="1" inputmode="numeric" style="text-align:center; font-size:20px; width:80px; margin:0 auto;">
             </div>
 
-            <button class="btn-save-details" onclick="App.saveDetails()">ΑΠΟΘΗΚΕΥΣΗ & ΣΥΝΕΧΕΙΑ</button>
+            <button class="btn-save-details" onclick="App.saveDetails()">ΣΥΝΕΧΕΙΑ</button>
         </div>
     </div>
 
