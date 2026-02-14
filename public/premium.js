@@ -98,8 +98,32 @@ window.App = {
     autoPrint: false, // ✅ Auto Print State
     autoClosePrint: false, // ✅ Auto Close Window State
     knownOrderIds: new Set(), // ✅ Track printed orders
+    expensePresets: [], // ✅ Local storage for presets
 
     init: () => {
+        // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
+        const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (isIos() && !isStandalone) {
+            const div = document.createElement('div');
+            div.id = 'iosInstallPrompt';
+            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:20000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; color:white;";
+            div.innerHTML = `
+                <div style="font-size:60px; margin-bottom:20px;">📲</div>
+                <h2 style="color:#FFD700; margin-bottom:10px;">ΕΓΚΑΤΑΣΤΑΣΗ APP</h2>
+                <p style="color:#ccc; font-size:15px; margin-bottom:20px;">Για να λειτουργούν οι <b>Ειδοποιήσεις</b> και ο <b>Ήχος</b> στο iPhone, η εφαρμογή πρέπει να εγκατασταθεί.</p>
+                
+                <div style="background:#222; border:1px solid #444; padding:20px; border-radius:15px; width:100%; text-align:left; font-size:14px; color:#eee;">
+                    <div style="margin-bottom:15px;">1. Πατήστε το κουμπί <b>Share</b> <span style="font-size:18px;">⎋</span> κάτω στο Safari.</div>
+                    <div>2. Επιλέξτε <b>"Προσθήκη στην Οθόνη Αφετηρίας"</b> (Add to Home Screen).</div>
+                </div>
+                
+                <button onclick="document.getElementById('iosInstallPrompt').remove()" style="margin-top:30px; background:none; border:none; color:#555; text-decoration:underline; cursor:pointer;">Συνέχεια στον Browser (Χωρίς Ήχο)</button>
+            `;
+            document.body.appendChild(div);
+        }
+
         document.body.addEventListener('click', () => { 
             if(window.AudioEngine) window.AudioEngine.init();
         }, {once:true});
@@ -135,7 +159,8 @@ window.App = {
 
         App.connectSocket();
         App.startHeartbeat();
-        App.requestNotifyPermission(); 
+        // App.requestNotifyPermission(); 
+        App.checkNotificationPermission(); // ✅ UI Check
         
         // ✅ FIX: Close Settings on Background Click & Add Back Button
         const settingsModal = document.getElementById('settingsModal');
@@ -185,29 +210,21 @@ window.App = {
                 };
             }
 
-            // 2. Rename "Plugins" to "PIN / Connect Stripe"
-            const headers = document.querySelectorAll('h3, h4, .settings-header');
-            headers.forEach(h => {
-                if(h.innerText.toLowerCase().includes('plugins')) {
-                    h.innerText = "PIN / CONNECT STRIPE";
-                }
-            });
-
-            // 3. Move Auto Menu (Reset Time) to Menu Editor
-            const inpReset = document.getElementById('inpResetTime');
+            // 3. Move Delivery Hours to Menu Editor (Top Right)
+            const inpHours = document.getElementById('inpHours');
             const menuPanel = document.getElementById('menuFullPanel');
-            if(inpReset && menuPanel) {
-                if(inpReset.previousElementSibling && inpReset.previousElementSibling.tagName === 'LABEL') {
-                    inpReset.previousElementSibling.style.display = 'none';
+            if(inpHours && menuPanel) {
+                if(inpHours.previousElementSibling && inpHours.previousElementSibling.tagName === 'LABEL') {
+                    inpHours.previousElementSibling.style.display = 'none';
                 }
                 const wrapper = document.createElement('div');
                 wrapper.style.cssText = "position:absolute; top:15px; right:60px; display:flex; align-items:center; gap:5px; z-index:100;";
                 const lbl = document.createElement('span');
-                lbl.innerText = "Auto Reset:";
+                lbl.innerText = "Hours:";
                 lbl.style.cssText = "font-size:10px; color:#666; font-weight:bold;";
-                inpReset.style.cssText = "width:50px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
+                inpHours.style.cssText = "width:80px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
                 wrapper.appendChild(lbl);
-                wrapper.appendChild(inpReset);
+                wrapper.appendChild(inpHours);
                 menuPanel.appendChild(wrapper);
             }
         }, 500);
@@ -228,6 +245,27 @@ window.App = {
                 }
             }
         } catch (error) { console.error("Notification Error:", error); }
+    },
+
+    checkNotificationPermission: () => {
+        if (Notification.permission === 'default') {
+            const div = document.createElement('div');
+            div.id = 'notifPermRequest';
+            div.style.cssText = "position:fixed; bottom:20px; right:20px; width:300px; background:#333; border:1px solid #FFD700; padding:15px; z-index:10000; text-align:center; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5);";
+            div.innerHTML = `
+                <div style="color:white; font-weight:bold; margin-bottom:5px;">🔔 Ειδοποιήσεις Ήχου</div>
+                <div style="color:#aaa; font-size:11px; margin-bottom:10px;">Απαραίτητο για να χτυπάει όταν είναι κλειστό.</div>
+                <button id="btnAllowNotif" style="background:#FFD700; color:black; border:none; padding:8px 20px; border-radius:5px; font-weight:bold; cursor:pointer;">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+            `;
+            document.body.appendChild(div);
+            
+            document.getElementById('btnAllowNotif').onclick = async () => {
+                await App.requestNotifyPermission();
+                document.getElementById('notifPermRequest').remove();
+            };
+        } else if (Notification.permission === 'granted') {
+            App.requestNotifyPermission();
+        }
     },
 
     connectSocket: () => {
@@ -306,6 +344,7 @@ window.App = {
                     const sw = document.getElementById('switchAutoClosePrint');
                     if(sw) sw.checked = App.autoClosePrint;
                 }
+                if(settings.expensePresets) App.expensePresets = settings.expensePresets;
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -479,6 +518,82 @@ window.App = {
         document.getElementById('settingsModal').style.display = 'flex';
     },
 
+    // --- EXPENSES LOGIC ---
+    openExpensesModal: () => {
+        document.getElementById('expensesModal').style.display = 'flex';
+        App.renderExpensePresets();
+        // Load today's expenses from cached stats if available
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+        const [year, month, day] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+        
+        let currentText = "";
+        if (App.cachedStats && App.cachedStats[monthKey] && App.cachedStats[monthKey].days[day] && App.cachedStats[monthKey].days[day].expenses) {
+            currentText = App.cachedStats[monthKey].days[day].expenses.text || "";
+        }
+        document.getElementById('txtExpenses').value = currentText;
+        App.calcExpensesTotal();
+    },
+    
+    renderExpensePresets: () => {
+        const container = document.getElementById('expensePresetsContainer');
+        container.innerHTML = '';
+        (App.expensePresets || []).forEach((preset, idx) => {
+            const btn = document.createElement('div');
+            btn.style.cssText = "background:#333; color:white; padding:5px 10px; border-radius:15px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; border:1px solid #555;";
+            btn.innerHTML = `<span>${preset}</span> <span style="color:#FF5252; font-weight:bold; font-size:10px;">✕</span>`;
+            
+            // Click on text -> Add to textarea
+            btn.onclick = (e) => {
+                const txt = document.getElementById('txtExpenses');
+                txt.value += (txt.value ? '\n' : '') + `${preset} . `;
+                App.calcExpensesTotal();
+            };
+            
+            // Click on X -> Remove preset
+            btn.children[1].onclick = (e) => {
+                e.stopPropagation();
+                if(confirm("Διαγραφή παγίου;")) {
+                    App.expensePresets.splice(idx, 1);
+                    App.renderExpensePresets();
+                }
+            };
+            container.appendChild(btn);
+        });
+    },
+    
+    addExpensePreset: () => {
+        const val = document.getElementById('inpNewPreset').value.trim();
+        if(!val) return;
+        if(!App.expensePresets) App.expensePresets = [];
+        App.expensePresets.push(val);
+        document.getElementById('inpNewPreset').value = '';
+        App.renderExpensePresets();
+    },
+    
+    calcExpensesTotal: () => {
+        const txt = document.getElementById('txtExpenses').value;
+        let total = 0;
+        txt.split('\n').forEach(line => {
+            if(line.includes('.')) {
+                const parts = line.split('.');
+                const val = parseFloat(parts[parts.length-1]);
+                if(!isNaN(val)) total += val;
+            }
+        });
+        document.getElementById('expensesTotal').innerText = total.toFixed(2) + '€';
+        return total;
+    },
+    
+    saveExpenses: () => {
+        const total = App.calcExpensesTotal();
+        const text = document.getElementById('txtExpenses').value;
+        window.socket.emit('save-expenses', { text: text, total: total, presets: App.expensePresets });
+        document.getElementById('expensesModal').style.display = 'none';
+        alert("Αποθηκεύτηκε!");
+    },
+
     // --- STATISTICS LOGIC ---
     openStatsModal: () => {
         document.getElementById('settingsModal').style.display = 'none';
@@ -524,6 +639,10 @@ window.App = {
         let monthItemsCount = 0;
         if(mStats.products) Object.values(mStats.products).forEach(q => monthItemsCount += q);
 
+        // Expenses
+        const todayExp = (todayStats.expenses ? todayStats.expenses.total : 0);
+        const monthExp = (mStats.expensesTotal || 0); // Need to calc this or store it
+
         let html = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
                 <!-- TODAY CARD -->
@@ -537,6 +656,18 @@ window.App = {
                     <div style="font-size:14px; color:#aaa; font-weight:bold; margin-bottom:5px;">ΜΗΝΑΣ (${month})</div>
                     <div style="font-size:32px; font-weight:800; color:#00E676;">${mStats.turnover.toFixed(2)}€</div>
                     <div style="font-size:13px; color:#fff; margin-top:5px;">${monthItemsCount} τεμάχια</div>
+                </div>
+            </div>
+            
+            <!-- EXPENSES SUMMARY -->
+            <div style="background:#222; padding:15px; border-radius:12px; border:1px solid #444; margin-bottom:25px; display:flex; justify-content:space-around; text-align:center;">
+                <div>
+                    <div style="font-size:12px; color:#aaa;">ΕΞΟΔΑ ΣΗΜΕΡΑ</div>
+                    <div style="font-size:20px; color:#FF5252; font-weight:bold;">${todayExp.toFixed(2)}€</div>
+                </div>
+                <div>
+                    <div style="font-size:12px; color:#aaa;">ΚΑΘΑΡΟ (ΣΗΜΕΡΑ)</div>
+                    <div style="font-size:20px; color:${(todayStats.turnover - todayExp) >= 0 ? '#00E676' : '#FF5252'}; font-weight:bold;">${(todayStats.turnover - todayExp).toFixed(2)}€</div>
                 </div>
             </div>
         `;
@@ -671,12 +802,15 @@ window.App = {
                     let dayItems = 0;
                     if(dayData.products) Object.values(dayData.products).forEach(q => dayItems += q);
                     
+                    const dayExp = (dayData.expenses ? dayData.expenses.total : 0);
+                    const dayNet = dayData.turnover - dayExp;
+                    
                     html += `<div style="background:#222; border:1px solid #444; border-radius:8px; overflow:hidden;">
                                 <div style="background:#333; padding:10px; display:flex; justify-content:space-between; align-items:center;">
                                     <span style="font-weight:bold; color:#FFD700;">📅 ${dDay}/${m}</span>
                                     <div style="text-align:right;">
-                                        <div style="color:#00E676; font-weight:bold;">${dayData.turnover.toFixed(2)}€</div>
-                                        <div style="font-size:11px; color:#aaa;">${dayItems} είδη • ${dayData.orders} παρ.</div>
+                                        <div style="color:#00E676; font-weight:bold;">+${dayData.turnover.toFixed(2)}€ <span style="color:#FF5252; margin-left:5px;">-${dayExp.toFixed(2)}€</span></div>
+                                        <div style="font-size:12px; color:${dayNet>=0?'#fff':'#FF5252'}; font-weight:bold;">= ${dayNet.toFixed(2)}€</div>
                                     </div>
                                 </div>
                                 <div style="padding:10px;">`;
@@ -1540,8 +1674,11 @@ window.App = {
             let closeBtn = '';
             if (isAway) {
                 closeBtn = `<button class="btn-staff-close" onclick="event.stopPropagation(); App.removeStaff('${u.username}')">✕</button>`;
+                // ✅ FIX: Κουμπί διαγραφής (X) για προσωπικό που είναι Offline/Background
+                closeBtn = `<button onclick="event.stopPropagation(); App.removeStaff('${u.username}')" style="position:absolute; top:2px; right:2px; background:#D32F2F; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.5);">✕</button>`;
             }
             
+            staffDiv.style.position = 'relative'; // Ensure positioning context
             staffDiv.innerHTML = `
                 ${closeBtn}
                 <div class="staff-icon">${icon}</div>

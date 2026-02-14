@@ -469,7 +469,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             token: target.fcmToken,
             notification: { title: title, body: body },
             android: { priority: "high", notification: { sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } },
-            webpush: { headers: { "Urgency": "high" }, fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` }, notification: { title: title, body: body, icon: '/admin.png', requireInteraction: true, tag: 'bellgo-alarm', renotify: true, vibrate: [500, 200, 500] } },
+            webpush: { headers: { "Urgency": "high", "TTL": "86400" }, fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` }, notification: { title: title, body: body, icon: '/admin.png', requireInteraction: true, tag: 'bellgo-alarm', renotify: true, vibrate: [500, 200, 500] } },
             data: { ...dataPayload, title: title, body: body, url: targetUrl }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
@@ -564,6 +564,7 @@ io.on('connection', (socket) => {
             if(data.googleMapsUrl !== undefined) store.settings.googleMapsUrl = data.googleMapsUrl; // ✅ Αποθήκευση Google Maps
             if(data.autoPrint !== undefined) store.settings.autoPrint = data.autoPrint; // ✅ Αποθήκευση Auto Print
             if(data.autoClosePrint !== undefined) store.settings.autoClosePrint = data.autoClosePrint; // ✅ Αποθήκευση Auto Close Print
+            if(data.expensePresets) store.settings.expensePresets = data.expensePresets; // ✅ Αποθήκευση Presets Εξόδων
             updateStoreClients(socket.store); 
         } 
     });
@@ -762,6 +763,29 @@ io.on('connection', (socket) => {
 
                 updateStoreClients(socket.store);
             }
+        }
+    });
+
+    // ✅ NEW: SAVE EXPENSES
+    socket.on('save-expenses', (data) => {
+        const store = getMyStore();
+        if (store) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+            const [year, month, day] = dateStr.split('-');
+            const monthKey = `${year}-${month}`;
+
+            if (!store.stats) store.stats = {};
+            if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {} };
+            if (!store.stats[monthKey].days[day]) store.stats[monthKey].days[day] = { orders: 0, turnover: 0 };
+
+            store.stats[monthKey].days[day].expenses = {
+                text: data.text,
+                total: data.total
+            };
+            
+            if(data.presets) store.settings.expensePresets = data.presets;
+            updateStoreClients(socket.store);
         }
     });
 

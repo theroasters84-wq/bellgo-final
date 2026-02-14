@@ -290,7 +290,8 @@ window.App = {
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
-        App.requestNotifyPermission(); 
+        // App.requestNotifyPermission(); // ΑΦΑΙΡΕΣΗ ΑΥΤΟΜΑΤΗΣ ΚΛΗΣΗΣ (Μπλοκάρεται)
+        App.checkNotificationPermission(); // ✅ ΝΕΑ ΚΛΗΣΗ ΜΕ UI
     },
 
     // ✅✅✅ NEW: REQUEST PERMISSION & GET TOKEN ✅✅✅
@@ -321,6 +322,29 @@ window.App = {
                 }
             }
         } catch (error) { console.error("Notification Error:", error); }
+    },
+
+    // ✅ NEW: ΕΛΕΓΧΟΣ ΑΔΕΙΑΣ & UI
+    checkNotificationPermission: () => {
+        if (Notification.permission === 'default') {
+            const div = document.createElement('div');
+            div.id = 'notifPermRequest';
+            div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#222; border-top:2px solid #FFD700; padding:20px; z-index:10000; text-align:center; box-shadow:0 -5px 20px rgba(0,0,0,0.5);";
+            div.innerHTML = `
+                <div style="color:white; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 Ενεργοποίηση Ειδοποιήσεων</div>
+                <div style="color:#ccc; font-size:12px; margin-bottom:15px;">Για να ενημερωθείτε όταν έρθει η παραγγελία σας!</div>
+                <button id="btnAllowNotif" style="background:#00E676; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer;">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#777; margin-left:10px; cursor:pointer;">Όχι τώρα</button>
+            `;
+            document.body.appendChild(div);
+            
+            document.getElementById('btnAllowNotif').onclick = async () => {
+                await App.requestNotifyPermission();
+                document.getElementById('notifPermRequest').remove();
+            };
+        } else if (Notification.permission === 'granted') {
+            App.requestNotifyPermission(); // Αν έχει ήδη άδεια, απλά ανανεώνουμε το token
+        }
     },
 
     checkActiveOrderStorage: () => {
@@ -442,6 +466,12 @@ window.App = {
                         currentParams.set('name', newName);
                         window.history.replaceState({}, '', `${window.location.pathname}?${currentParams.toString()}`);
                     }
+                }
+
+                // ✅ Ενημέρωση Ωραρίου Διανομής (Header)
+                if (settings.hours) {
+                    const el = document.getElementById('todayHours');
+                    if(el) el.innerText = settings.hours;
                 }
                 
                 storeHasStripe = !!settings.stripeConnectId;
@@ -579,6 +609,8 @@ window.App = {
                         const { name, price } = parseItem(item);
                         const box = document.createElement('div');
                         box.className = 'item-box';
+                        // ✅ FIX iOS: touch-action: manipulation disables zoom delay
+                        box.style.touchAction = 'manipulation';
                         box.innerHTML = `<span class="item-name">${name}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
                         
                         // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ
@@ -587,10 +619,13 @@ window.App = {
                             e.preventDefault(); 
                             const currentTime = new Date().getTime();
                             const tapLength = currentTime - lastTap;
-                            if (tapLength < 400 && tapLength > 0) {
+                            if (tapLength < 500 && tapLength > 0) { // ✅ Increased to 500ms
                                 const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
                                 App.addToOrder(val); 
                                 lastTap = 0;
+                                // ✅ Visual Feedback
+                                box.style.opacity = '0.5';
+                                setTimeout(() => box.style.opacity = '1', 100);
                             } else {
                                 lastTap = currentTime;
                             }

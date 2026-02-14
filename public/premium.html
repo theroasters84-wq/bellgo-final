@@ -27,6 +27,7 @@
             
             <div class="header-actions">
                 <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
+                <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
@@ -131,7 +132,7 @@
                 <button class="modal-btn" onclick="App.openSettingsSub('subStore')">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subPrint')">🖨️ ΕΚΤΥΠΩΣΗ</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subQr')">📱 QR & LINKS</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')">⚙️ ΓΕΝΙΚΑ & PLUGINS</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')">⚙️ PIN / CONNECT STRIPE</button>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ</button>
                 <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
@@ -154,7 +155,7 @@
 
                 <div class="settings-section">
                     <div class="settings-label">ΩΡΑΡΙΑ</div>
-                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;">ΩΡΑ ΑΝΑΝΕΩΣΗΣ ΚΑΤΑΛΟΓΟΥ</div>
+                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;">ΩΡΕΣ ΔΙΑΝΟΜΗΣ & RESET</div>
                     <div style="display:flex; gap:10px; margin-bottom:5px;">
                         <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
                         <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
@@ -195,7 +196,7 @@
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΓΕΝΙΚΑ & PLUGINS</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / CONNECT STRIPE</h4>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
                     <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()">📊 ΣΤΑΤΙΣΤΙΚΑ</button>
@@ -203,17 +204,15 @@
                 <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'">💳 CONNECT STRIPE</button>
                 <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;">Checking...</div>
 
-                <div class="settings-section" style="border: 1px solid #333; background: #111; margin-top:15px; opacity:0.8;">
-                    <div class="settings-label" style="color:#777; font-size:11px;">ΑΥΤΟΜΑΤΟ ΜΕΝΟΥ (TEMPLATE)</div>
-                    <select id="selShopType" class="inp-settings" style="margin-bottom:5px; font-size:12px; padding:8px; background:#222; border-color:#444;">
-                        <option value="" disabled selected>Επιλέξτε είδος...</option>
-                        <option value="coffee_takeaway">☕ Cafe Takeaway</option>
-                        <option value="coffee_bar">🍸 Cafe Bar</option>
-                        <option value="pizzeria">🍕 Pizzeria</option>
-                        <option value="souvlaki">🍖 Souvlaki / Grill</option>
-                    </select>
-                    <button class="modal-btn" style="background:#333; color:#aaa; font-size:12px; padding:8px;" onclick="App.applyPresetMenu()">📥 ΦΟΡΤΩΣΗ</button>
-                </div>
+                <!-- Hidden Select for JS to grab -->
+                <select id="selShopType" style="display:none;">
+                    <option value="" disabled selected>Template...</option>
+                    <option value="coffee_takeaway">☕ Cafe Takeaway</option>
+                    <option value="coffee_bar">🍸 Cafe Bar</option>
+                    <option value="pizzeria">🍕 Pizzeria</option>
+                    <option value="souvlaki">🍖 Souvlaki / Grill</option>
+                </select>
+
                 <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
             </div>
         </div>
@@ -282,6 +281,28 @@
             <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')">📅 ΣΗΜΕΡΑ ΜΟΝΟ</button>
             <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
             <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: EXPENSES MODAL -->
+    <div id="expensesModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">💸 ΕΞΟΔΑ ΗΜΕΡΑΣ</h3>
+            <div id="expensesTotal" style="font-size:24px; color:#FF5252; font-weight:bold; text-align:center; margin-bottom:15px;">0.00€</div>
+            
+            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px;">
+                <div class="settings-label">ΠΑΓΙΑ / PRESETS</div>
+                <div id="expensePresetsContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="inpNewPreset" class="inp-settings" placeholder="Όνομα (π.χ. Προμηθευτής)" style="margin:0;">
+                    <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="App.addExpensePreset()">➕</button>
+                </div>
+            </div>
+
+            <textarea id="txtExpenses" class="order-text" style="height:150px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2.50)..." oninput="App.calcExpensesTotal()"></textarea>
+            
+            <button class="modal-btn" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+            <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
