@@ -96,6 +96,7 @@ window.App = {
     tempExtras: [],
     cachedStats: null, // ✅ Store stats for navigation
     autoPrint: false, // ✅ Auto Print State
+    autoClosePrint: false, // ✅ Auto Close Window State
     knownOrderIds: new Set(), // ✅ Track printed orders
 
     init: () => {
@@ -248,6 +249,11 @@ window.App = {
                     App.autoPrint = settings.autoPrint;
                     document.getElementById('selAutoPrint').value = App.autoPrint.toString();
                 }
+                if(settings.autoClosePrint !== undefined) {
+                    App.autoClosePrint = settings.autoClosePrint;
+                    const sw = document.getElementById('switchAutoClosePrint');
+                    if(sw) sw.checked = App.autoClosePrint;
+                }
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -372,7 +378,8 @@ window.App = {
         const cp = document.getElementById('inpCoverPrice').value;
         const gmaps = document.getElementById('inpGoogleMaps').value.trim();
         const ap = document.getElementById('selAutoPrint').value === 'true';
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap });
+        const acp = document.getElementById('switchAutoClosePrint').checked;
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1232,7 +1239,7 @@ window.App = {
                 treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
                 
                 actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
-                actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ (ΜΕΤΡΗΤΑ)</button>`;
+                actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
             }
         }
         win.style.border = `none`;
@@ -1287,6 +1294,12 @@ window.App = {
                 <div class="total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
                 <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
             </body></html>`);
+
+        // ✅ Κλείσιμο παραθύρου παραγγελίας μετά την εκτύπωση (Αν είναι ενεργοποιημένο)
+        if (App.autoClosePrint) {
+            const winEl = document.getElementById(`win-${id}`);
+            if(winEl) winEl.style.display = 'none';
+        }
     },
 
     showTreatOptions: (id) => {
@@ -1406,11 +1419,9 @@ window.App = {
         if(win) win.style.display = 'none';
     },
     completeOrder: (id) => {
-        if(confirm("Εξόφληση και κλείσιμο;")) {
-            window.socket.emit('pay-order', Number(id)); 
-            const win = document.getElementById(`win-${id}`);
-            if(win) win.remove();
-        }
+        window.socket.emit('pay-order', Number(id)); 
+        const win = document.getElementById(`win-${id}`);
+        if(win) win.remove();
     },
     removeStaff: (username) => {
         if(confirm(`Αφαίρεση χρήστη ${username};`)) {

@@ -54,7 +54,8 @@ const defaultSettings = {
     stripeConnectId: "",
     coverPrice: 0, // ✅ Default τιμή κουβέρ
     googleMapsUrl: "", // ✅ Google Maps Link
-    autoPrint: false // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
+    autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
+    autoClosePrint: false // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
 }; 
 
 /* ---------------- FIREBASE HELPERS ---------------- */
@@ -561,6 +562,7 @@ io.on('connection', (socket) => {
             if(data.coverPrice !== undefined) store.settings.coverPrice = data.coverPrice; // ✅ Αποθήκευση Κουβέρ
             if(data.googleMapsUrl !== undefined) store.settings.googleMapsUrl = data.googleMapsUrl; // ✅ Αποθήκευση Google Maps
             if(data.autoPrint !== undefined) store.settings.autoPrint = data.autoPrint; // ✅ Αποθήκευση Auto Print
+            if(data.autoClosePrint !== undefined) store.settings.autoClosePrint = data.autoClosePrint; // ✅ Αποθήκευση Auto Close Print
             updateStoreClients(socket.store); 
         } 
     });

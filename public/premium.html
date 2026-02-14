@@ -154,7 +154,11 @@
                     <option value="false">Χειροκίνητα (Κουμπί)</option>
                     <option value="true">Αυτόματα (Κατά την Αποδοχή)</option>
                 </select>
-                <button class="modal-btn" style="background:#333; font-size:13px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
+                <div class="switch-row" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; color:#ccc;">Κλείσιμο παραθύρου μετά</span>
+                    <label class="switch"><input type="checkbox" id="switchAutoClosePrint" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                </div>
+                <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
             </div>
 
             <div class="settings-section">
