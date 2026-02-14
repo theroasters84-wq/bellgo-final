@@ -160,21 +160,25 @@ window.App = {
         // ✅ UI SETUP BASED ON MODE
         if (App.adminMode === 'kitchen') {
             // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
-            document.getElementById('btnNewOrderSidebar').style.display = 'none';
-            document.getElementById('btnMenuToggle').style.display = 'none';
-            document.getElementById('btnSettings').style.display = 'none';
-            document.getElementById('btnKitchenExit').style.display = 'flex';
-            document.getElementById('inpStoreNameHeader').disabled = true;
+            const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'none';
+            const btnMenu = document.getElementById('btnMenuToggle'); if(btnMenu) btnMenu.style.display = 'none';
+            const btnSet = document.getElementById('btnSettings'); if(btnSet) btnSet.style.display = 'none';
+            const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'flex';
+            const inpHeader = document.getElementById('inpStoreNameHeader'); if(inpHeader) inpHeader.disabled = true;
             // 🔒 ΚΟΥΖΙΝΑ: Απενεργοποίηση Sidebar
             const sb = document.getElementById('orderSidebar');
             if(sb) sb.style.display = 'none';
         } else {
             // 🏪 CASHIER MODE
-            document.getElementById('btnNewOrderSidebar').style.display = 'flex';
+            const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'flex';
             // ✅ ΤΑΜΕΙΟ: Η μπάρα υπάρχει αλλά ξεκινάει ΚΛΕΙΣΤΗ
             const sb = document.getElementById('orderSidebar');
             if(sb) { sb.style.display = 'flex'; sb.style.left = '-100%'; }
         }
+
+        // ✅ FIX: Απόκρυψη StartScreen αν υπάρχει (για να μην μπλοκάρει τα κλικ)
+        const startScreen = document.getElementById('startScreen');
+        if(startScreen) startScreen.style.display = 'none';
 
         App.connectSocket();
         App.startHeartbeat();
@@ -205,13 +209,14 @@ window.App = {
     },
 
     connectSocket: () => {
-        // ✅ FIX: Αν υπάρχει ήδη socket, δεν φτιάχνουμε νέο
-        if (window.socket) {
-            if (!window.socket.connected) window.socket.connect();
-            return;
+        if (!window.socket) {
+            window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         }
-        window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
         const socket = window.socket;
+        
+        // ✅ FIX: Καθαρισμός παλιών listeners για να μην διπλασιάζονται, αλλά επανασύνδεση
+        socket.removeAllListeners();
+
         socket.on('connect', () => {
             document.getElementById('connDot').style.background = '#00E676';
             const isNative = !!window.Capacitor;
@@ -234,6 +239,12 @@ window.App = {
                 }
             });
         });
+
+        // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
+        if(socket.connected) {
+            socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+        }
+
         socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
         
         socket.on('menu-update', (data) => {
@@ -251,7 +262,8 @@ window.App = {
         
         socket.on('store-settings-update', (settings) => {
             if(settings) {
-                if(settings.name) document.getElementById('inpStoreNameHeader').value = settings.name;
+                const inpHeader = document.getElementById('inpStoreNameHeader');
+                if(settings.name && inpHeader) inpHeader.value = settings.name;
                 document.getElementById('switchCust').checked = settings.statusCustomer;
                 document.getElementById('switchStaff').checked = settings.statusStaff;
                 if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
