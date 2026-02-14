@@ -53,7 +53,8 @@ const defaultSettings = {
     resetTime: "04:00",
     stripeConnectId: "",
     coverPrice: 0, // ✅ Default τιμή κουβέρ
-    googleMapsUrl: "" // ✅ Google Maps Link
+    googleMapsUrl: "", // ✅ Google Maps Link
+    autoPrint: false // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
 }; 
 
 /* ---------------- FIREBASE HELPERS ---------------- */
@@ -512,6 +513,7 @@ io.on('connection', (socket) => {
             if(data.hours) store.settings.hours = data.hours; 
             if(data.coverPrice !== undefined) store.settings.coverPrice = data.coverPrice; // ✅ Αποθήκευση Κουβέρ
             if(data.googleMapsUrl !== undefined) store.settings.googleMapsUrl = data.googleMapsUrl; // ✅ Αποθήκευση Google Maps
+            if(data.autoPrint !== undefined) store.settings.autoPrint = data.autoPrint; // ✅ Αποθήκευση Auto Print
             updateStoreClients(socket.store); 
         } 
     });

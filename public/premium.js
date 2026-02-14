@@ -148,6 +148,8 @@ window.App = {
     currentExtrasCatIndex: null,
     tempExtras: [],
     cachedStats: null, // ✅ Store stats for navigation
+    autoPrint: false, // ✅ Auto Print State
+    knownOrderIds: new Set(), // ✅ Track printed orders
 
     init: () => {
         document.body.addEventListener('click', () => { 
@@ -260,6 +262,10 @@ window.App = {
                     document.getElementById('inpCoverPrice').value = App.coverPrice; 
                 }
                 if(settings.googleMapsUrl !== undefined) document.getElementById('inpGoogleMaps').value = settings.googleMapsUrl;
+                if(settings.autoPrint !== undefined) {
+                    App.autoPrint = settings.autoPrint;
+                    document.getElementById('switchAutoPrint').checked = App.autoPrint;
+                }
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -291,6 +297,17 @@ window.App = {
         
         // ✅ Update Full Order List
         socket.on('orders-update', (orders) => {
+            // ✅ AUTO PRINT LOGIC
+            orders.forEach(o => {
+                if (!App.knownOrderIds.has(o.id)) {
+                    App.knownOrderIds.add(o.id);
+                    // Αν είναι ενεργό το Auto Print, είναι νέα παραγγελία (pending) και δεν είμαστε στην αρχική φόρτωση σελίδας
+                    if (App.autoPrint && o.status === 'pending' && App.isInitialized) {
+                        App.printOrder(o.id);
+                    }
+                }
+            });
+            App.isInitialized = true; // Mark as initialized after first batch
             App.activeOrders = orders;
             App.renderDesktopIcons(orders);
         });
@@ -371,7 +388,8 @@ window.App = {
         const hours = document.getElementById('inpHours').value;
         const cp = document.getElementById('inpCoverPrice').value;
         const gmaps = document.getElementById('inpGoogleMaps').value.trim();
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps });
+        const ap = document.getElementById('switchAutoPrint').checked;
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1021,7 +1039,8 @@ window.App = {
             } else {
                 // ✅ Μεταφορά Κεράσματος πάνω και αφαίρεση από κάτω
                 treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
-                actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
+                actions = `<button class="btn-win-action" style="background:#333; color:white; margin-bottom:10px; border:1px solid #555;" onclick="App.printOrder('${order.id}')">🖨️ ΕΚΤΥΠΩΣΗ</button>`;
+                actions += `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ (ΜΕΤΡΗΤΑ)</button>`;
             }
         }
@@ -1047,6 +1066,38 @@ window.App = {
         win.style.display = 'flex';
     },
     
+    // ✅ NEW: PRINT ORDER FUNCTION
+    printOrder: (id) => {
+        const order = App.activeOrders.find(o => o.id == id);
+        if(!order) return;
+        
+        const total = calculateTotal(order.text);
+        const date = new Date(order.id).toLocaleString('el-GR');
+        const storeName = document.getElementById('inpStoreNameHeader').value || "BellGo Order";
+        const itemsHtml = order.text.replace(/\n/g, '<br>');
+
+        const win = window.open('', '', 'width=300,height=600');
+        win.document.write(`
+            <html>
+            <head>
+                <title>Print Order #${id}</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; width: 280px; margin: 0 auto; padding: 10px; color: black; }
+                    .header { text-align: center; font-weight: bold; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 5px; }
+                    .meta { font-size: 12px; margin-bottom: 10px; }
+                    .items { font-size: 14px; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                    .total { text-align: right; font-size: 18px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="header">${storeName}</div>
+                <div class="meta">${date}<br>${order.from}</div>
+                <div class="items">${itemsHtml}</div>
+                <div class="total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
+                <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
+            </body></html>`);
+    },
+
     showTreatOptions: (id) => {
         const order = App.activeOrders.find(o => o.id == id);
         if (!order) return;
@@ -1136,7 +1187,7 @@ window.App = {
         const storeParam = encodeURIComponent(userData.store);
         
         tables.forEach(t => {
-            const url = `${baseUrl}/shop/${storeParam}/?table=${encodeURIComponent(t)}`;
+            const url = `${baseUrl}/shop/${storeParam}?table=${encodeURIComponent(t)}`;
             const wrapper = document.createElement('div');
             wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
             wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;

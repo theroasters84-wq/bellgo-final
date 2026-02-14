@@ -84,6 +84,14 @@ const parseItem = (str) => {
 let currentUser = null;
 let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
+
+// ✅ FIX: Αν δεν βρέθηκε τραπέζι στο URL αλλά ο χρήστης ήταν ήδη σε τραπέζι, το επαναφέρουμε
+if (!TABLE_ID && customerDetails && customerDetails.type === 'dinein' && customerDetails.table) {
+    TABLE_ID = customerDetails.table;
+    isDineIn = true;
+    tableNumber = TABLE_ID;
+}
+
 let storeHasStripe = false;
 const ORDER_TIMEOUT_MS = 60 * 60 * 1000; 
 let googleMapsUrl = "";

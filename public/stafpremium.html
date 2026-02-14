@@ -181,6 +181,7 @@
             <div class="action-box" onclick="event.stopPropagation()">
                 <h3 style="color:white; text-align:center; margin:0;">Επιλογές</h3>
                 <button class="btn-act" style="background:#2196F3;" onclick="App.prepareUpdateOrder()">➕ ΠΡΟΣΘΗΚΗ (ΕΝΗΜΕΡΩΣΗ)</button>
+                <button class="btn-act" style="background:#333; color:white; border:1px solid #555;" onclick="App.printOrder()">🖨️ ΕΚΤΥΠΩΣΗ</button>
                 <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.openTreatModal()">🎁 ΚΕΡΑΣΜΑ</button>
                 <button class="btn-act" style="background:#635BFF; color:white;" onclick="App.openQrPayment()">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>
                 <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
@@ -791,6 +792,32 @@
                         document.getElementById('qrPaymentModal').style.display = 'flex';
                     } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
                 } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            },
+
+            // ✅ NEW: PRINT ORDER (STAFF)
+            printOrder: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                if(!order) return;
+                
+                const total = calculateOrderTotal(order.text);
+                const date = new Date(order.id).toLocaleString('el-GR');
+                const storeName = userData.store || "BellGo Order";
+                const itemsHtml = order.text.replace(/\n/g, '<br>');
+
+                const win = window.open('', '', 'width=300,height=600');
+                win.document.write(`
+                    <html><head><title>Print</title><style>
+                        body { font-family: 'Courier New', monospace; width: 280px; margin: 0 auto; padding: 10px; color: black; }
+                        .header { text-align: center; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 10px;}
+                        .items { font-size: 14px; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .total { text-align: right; font-size: 18px; font-weight: bold; }
+                    </style></head><body>
+                        <div class="header">${storeName}<br>${date}<br>${order.from}</div>
+                        <div class="items">${itemsHtml}</div>
+                        <div class="total">TOTAL: ${total.toFixed(2)}€</div>
+                        <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }<\/script>
+                    </body></html>`);
             },
 
             handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
