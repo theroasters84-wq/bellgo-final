@@ -1261,7 +1261,7 @@ window.App = {
         const storeParam = encodeURIComponent(userData.store);
         
         tables.forEach(t => {
-            const url = `${baseUrl}/shop/${storeParam}/?table=${encodeURIComponent(t)}`;
+            const url = `${baseUrl}/trapaizei.html?store=${storeParam}&table=${encodeURIComponent(t)}`;
             const wrapper = document.createElement('div');
             wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
             wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
