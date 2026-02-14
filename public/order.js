@@ -121,23 +121,62 @@ window.App = {
 
     checkDetails: () => {
         document.getElementById('loginScreen').style.display = 'none';
+        
+        // ✅ 1. ΡΥΘΜΙΣΗ UI: Εμφάνιση σωστών πεδίων ανάλογα με το Mode
+        if (isDineIn) {
+            document.getElementById('detailsTitle').innerText = "🍽️ Καλώς ήρθατε!";
+            document.getElementById('deliveryFields').style.display = 'none';
+            document.getElementById('dineInFields').style.display = 'block';
+            document.getElementById('tableDisplay').innerText = `Τραπέζι: ${tableNumber}`;
+        } else {
+            document.getElementById('detailsTitle').innerText = "📍 Στοιχεία Παράδοσης";
+            document.getElementById('deliveryFields').style.display = 'block';
+            document.getElementById('dineInFields').style.display = 'none';
+        }
+
+        // ✅ 2. ΕΛΕΓΧΟΣ ΔΕΔΟΜΕΝΩΝ: Αν αλλάξαμε Mode, ανοίγουμε τη φόρμα
+        let shouldOpenForm = false;
+
         if (!customerDetails) {
+            shouldOpenForm = true;
+        } else {
+            if (isDineIn) {
+                // Είμαστε σε τραπέζι, αλλά τα στοιχεία είναι Delivery ή λείπουν άτομα -> ΑΝΟΙΓΜΑ
+                if (customerDetails.type !== 'dinein' || !customerDetails.covers) shouldOpenForm = true;
+            } else {
+                // Είμαστε Delivery, αλλά τα στοιχεία είναι Dine-in -> ΑΝΟΙΓΜΑ
+                if (customerDetails.type === 'dinein') shouldOpenForm = true;
+            }
+        }
+
+        if (shouldOpenForm) {
             document.getElementById('detailsOverlay').style.display = 'flex';
-            if (currentUser && currentUser.displayName) {
+            // Προ-συμπλήρωση ονόματος αν υπάρχει
+            if (currentUser && currentUser.displayName && !document.getElementById('inpName').value) {
                 document.getElementById('inpName').value = currentUser.displayName;
             }
         } else {
-            App.startApp();
+             App.startApp();
         }
     },
 
     saveDetails: () => {
-        const name = document.getElementById('inpName').value.trim();
-        const address = document.getElementById('inpAddress').value.trim();
-        const floor = document.getElementById('inpFloor').value.trim();
-        const phone = document.getElementById('inpPhone').value.trim();
-        if (!name || !address || !phone) return alert("Συμπληρώστε τα βασικά στοιχεία!");
-        customerDetails = { name, address, floor, phone };
+        if (isDineIn) {
+            const covers = document.getElementById('inpCovers').value;
+            if (!covers) return alert("Παρακαλώ εισάγετε αριθμό ατόμων!");
+            // Στο τραπέζι παίρνουμε το όνομα από το Google ή βάζουμε "Πελάτης"
+            const name = (currentUser && currentUser.displayName) ? currentUser.displayName : "Πελάτης";
+            customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
+        } else {
+            const name = document.getElementById('inpName').value.trim();
+            const address = document.getElementById('inpAddress').value.trim();
+            const floor = document.getElementById('inpFloor').value.trim();
+            const phone = document.getElementById('inpPhone').value.trim();
+            const zip = document.getElementById('inpZip').value.trim();
+            if (!name || !address || !phone) return alert("Συμπληρώστε τα βασικά στοιχεία!");
+            customerDetails = { name, address, floor, phone, zip, type: 'delivery' };
+        }
+
         localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
         document.getElementById('detailsOverlay').style.display = 'none';
         App.startApp();
@@ -177,7 +216,13 @@ window.App = {
             document.getElementById('storeNameHeader').innerText = TARGET_STORE.split('@')[0].toUpperCase();
         }
         
-        document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
+        // ✅ Εμφάνιση σωστής επικεφαλίδας (Τραπέζι ή Διεύθυνση)
+        if (isDineIn) {
+             document.getElementById('displayAddress').innerText = `🍽️ Τραπέζι ${tableNumber} (${customerDetails.covers} άτ.)`;
+        } else {
+             document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
+        }
+
         App.checkActiveOrderStorage();
 
         // 🔹 SIMPLIFIED WRITING MODE & VISUAL VIEWPORT (Web & Mobile Fix) - Same as Staff Premium
@@ -616,7 +661,17 @@ window.App = {
     },
 
     sendOrder: (items, method) => {
-        const fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
+        let fullText = "";
+        if (isDineIn) {
+            // ✅ Μορφή για Τραπέζι
+            const payIcon = method.includes('ΚΑΡΤΑ') ? '💳' : '💵';
+            const header = `[ΤΡ: ${tableNumber} | AT: ${customerDetails.covers} | ${payIcon}]`;
+            fullText = `${header}\n👤 ${customerDetails.name}\n${method}\n---\n${items}`;
+        } else {
+            // ✅ Μορφή για Delivery
+            fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n📮 T.K.: ${customerDetails.zip || '-'}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
+        }
+
         const newOrder = { id: Date.now(), status: 'pending', timestamp: Date.now() };
         activeOrders.push(newOrder);
         localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));

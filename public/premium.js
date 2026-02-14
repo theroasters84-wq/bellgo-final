@@ -264,7 +264,7 @@ window.App = {
                 if(settings.googleMapsUrl !== undefined) document.getElementById('inpGoogleMaps').value = settings.googleMapsUrl;
                 if(settings.autoPrint !== undefined) {
                     App.autoPrint = settings.autoPrint;
-                    document.getElementById('switchAutoPrint').checked = App.autoPrint;
+                    document.getElementById('selAutoPrint').value = App.autoPrint.toString();
                 }
                 
                 const statusEl = document.getElementById('stripeStatus');
@@ -301,10 +301,6 @@ window.App = {
             orders.forEach(o => {
                 if (!App.knownOrderIds.has(o.id)) {
                     App.knownOrderIds.add(o.id);
-                    // Αν είναι ενεργό το Auto Print, είναι νέα παραγγελία (pending) και δεν είμαστε στην αρχική φόρτωση σελίδας
-                    if (App.autoPrint && o.status === 'pending' && App.isInitialized) {
-                        App.printOrder(o.id);
-                    }
                 }
             });
             App.isInitialized = true; // Mark as initialized after first batch
@@ -319,6 +315,11 @@ window.App = {
                 existing.status = data.status;
                 if (data.startTime) existing.startTime = data.startTime;
                 App.renderDesktopIcons(App.activeOrders);
+                
+                // ✅ AUTO PRINT: Τυπώνει αυτόματα μόλις γίνει ΑΠΟΔΟΧΗ (Cooking)
+                if (App.autoPrint && data.status === 'cooking') {
+                    App.printOrder(data.id);
+                }
             }
         });
 
@@ -388,7 +389,7 @@ window.App = {
         const hours = document.getElementById('inpHours').value;
         const cp = document.getElementById('inpCoverPrice').value;
         const gmaps = document.getElementById('inpGoogleMaps').value.trim();
-        const ap = document.getElementById('switchAutoPrint').checked;
+        const ap = document.getElementById('selAutoPrint').value === 'true';
         window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap });
     },
     saveSettings: () => {
@@ -1039,8 +1040,10 @@ window.App = {
             } else {
                 // ✅ Μεταφορά Κεράσματος πάνω και αφαίρεση από κάτω
                 treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
-                actions = `<button class="btn-win-action" style="background:#333; color:white; margin-bottom:10px; border:1px solid #555;" onclick="App.printOrder('${order.id}')">🖨️ ΕΚΤΥΠΩΣΗ</button>`;
-                actions += `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
+                // ✅ Μικρό και διακριτικό κουμπί εκτύπωσης δίπλα στο κέρασμα
+                treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+                
+                actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ (ΜΕΤΡΗΤΑ)</button>`;
             }
         }
