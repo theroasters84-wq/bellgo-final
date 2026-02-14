@@ -651,8 +651,22 @@ window.App = {
             // Regex looks for a number at the end of the line (e.g. "Item . 2,50" or "Item 2.50")
             const match = line.match(/[\d,.]+$/);
             if(match) {
+                let numStr = match[0];
+
+                // ✅ FIX: Έλεγχος αν η τελεία/κόμμα στην αρχή είναι διαχωριστικό
+                if (numStr.startsWith('.') || numStr.startsWith(',')) {
+                    // 1. Αν υπάρχει κι άλλη τελεία/κόμμα μέσα (π.χ. .2.50 ή .2,50), τότε το πρώτο είναι σίγουρα διαχωριστικό
+                    if (numStr.slice(1).match(/[.,]/)) {
+                        numStr = numStr.substring(1);
+                    }
+                    // 2. Αν είναι κολλημένο σε λέξη (π.χ. "Ψωμί.2"), τότε το θεωρούμε διαχωριστικό και όχι υποδιαστολή
+                    else if (match.index > 0 && line[match.index - 1].trim() !== '') {
+                        numStr = numStr.substring(1);
+                    }
+                }
+
                 // Replace comma with dot for JS parsing
-                const numStr = match[0].replace(/,/g, '.');
+                numStr = numStr.replace(/,/g, '.');
                 const val = parseFloat(numStr);
                 if(!isNaN(val)) total += val;
             }
@@ -1879,3 +1893,7 @@ window.App = {
     toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () =>
+    startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
+};
+
+window.onload = App.init;
