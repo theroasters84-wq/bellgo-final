@@ -904,23 +904,41 @@ window.App = {
             App.renderSidebarMenu();
         }
     },
-    cut document.getElementById('btnModePaso').style.color = 'white';
-        document.getElementById('btnModeTable').style.background = '#333';
-        document.getElementById('btnModeTable').style.color = 'white';
-        document.getElementById('btnModeDelivery').style.background = '#333';
-        document.getElementById('btnModeDelivery').style.color = 'white';
+    
+    // ✅ FIX: Διόρθωση της συνάρτησης που ήταν κομμένη
+    setSidebarMode: (mode) => {
+        App.sidebarMode = mode;
+        
+        // Reset Buttons
+        const btnPaso = document.getElementById('btnModePaso');
+        const btnTable = document.getElementById('btnModeTable');
+        const btnDel = document.getElementById('btnModeDelivery');
+        
+        if(btnPaso) { btnPaso.style.background = '#333'; btnPaso.style.color = 'white'; }
+        if(btnTable) { btnTable.style.background = '#333'; btnTable.style.color = 'white'; }
+        if(btnDel) { btnDel.style.background = '#333'; btnDel.style.color = 'white'; }
         
         // Hide All Inputs
-        document.getElementById('divTableInputs').style.display = 'none';
-        document.getElementById('divDeliveryInputs').style.display = 'none';
+        const divTable = document.getElementById('divTableInputs');
+        const divDel = document.getElementById('divDeliveryInputs');
+        if(divTable) divTable.style.display = 'none';
+        if(divDel) divDel.style.display = 'none';
 
         // Activate Selected
-        const btn = document.getElementById(mode === 'paso' ? 'btnModePaso' : mode === 'table' ? 'btnModeTable' : 'btnModeDelivery');
-        btn.style.background = '#FFD700';
-        btn.style.color = 'black';
+        const activeBtn = document.getElementById(mode === 'paso' ? 'btnModePaso' : mode === 'table' ? 'btnModeTable' : 'btnModeDelivery');
+        if(activeBtn) {
+            activeBtn.style.background = '#FFD700';
+            activeBtn.style.color = 'black';
+        }
 
-        if (mode === 'table') { document.getElementById('divTableInputs').style.display = 'flex'; setTimeout(()=>document.getElementById('sidebarTable').focus(),100); }
-        if (mode === 'delivery') { document.getElementById('divDeliveryInputs').style.display = 'flex'; setTimeout(()=>document.getElementById('sidebarDelName').focus(),100); }
+        if (mode === 'table' && divTable) { 
+            divTable.style.display = 'flex'; 
+            setTimeout(()=> { const el = document.getElementById('sidebarTable'); if(el) el.focus(); }, 100); 
+        }
+        if (mode === 'delivery' && divDel) { 
+            divDel.style.display = 'flex'; 
+            setTimeout(()=> { const el = document.getElementById('sidebarDelName'); if(el) el.focus(); }, 100); 
+        }
     },
     renderSidebarMenu: () => {
         const container = document.getElementById('sidebarMenuContainer');
@@ -990,18 +1008,18 @@ window.App = {
         
         alert("Εστάλη!");
         document.getElementById('sidebarOrderText').value = '';
-        document.getElementById('sidebarTable').value = '';
-        document.getElementById('sidebarCovers').value = '';
-        document.getElementById('sidebarDelName').value = '';
-        document.getElementById('sidebarDelAddr').value = '';
-        document.getElementById('sidebarDelPhone').value = '';
+        if(document.getElementById('sidebarTable')) document.getElementById('sidebarTable').value = '';
+        if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = '';
+        if(document.getElementById('sidebarDelName')) document.getElementById('sidebarDelName').value = '';
+        if(document.getElementById('sidebarDelAddr')) document.getElementById('sidebarDelAddr').value = '';
+        if(document.getElementById('sidebarDelPhone')) document.getElementById('sidebarDelPhone').value = '';
         App.toggleOrderSidebar(); // Close
     },
 
     renderDesktopIcons: (orders) => {
         const desktop = document.getElementById('desktopArea');
         desktop.innerHTML = '';
-        oorders.forEach(order => {
+        orders.forEach(order => {
        .{hour: '2-digit', minute:'2-digit'});
             let style = '';
             const isPaid = order.text.includes('PAID') || order.text.includes('✅');
