@@ -78,6 +78,12 @@
 
     <div class="login-container">
         <h1 onclick="window.dc=(window.dc||0)+1; if(window.dc===5) { const p = prompt('Developer Password:'); if(p === '19921992') window.location.href='developer.html'; window.dc=0; }" style="cursor:pointer; user-select:none;">BellGo 🔔</h1>
+        
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
+            <button onclick="setLanguage('el')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇬🇷 ΕΛ</button>
+            <button onclick="setLanguage('en')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇺🇸 EN</button>
+        </div>
+
         <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
         <!-- 1. ROLE SELECTION SCREEN -->
@@ -460,6 +466,11 @@
                 document.getElementById('adminEmailInp').value = user.email;
             }
         });
+
+        window.setLanguage = (lang) => {
+            localStorage.setItem('bellgo_lang', lang);
+            alert(lang === 'el' ? 'Η γλώσσα ορίστηκε σε Ελληνικά' : 'Language set to English');
+        };
     </script>
 </body>
 </html>
