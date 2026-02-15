@@ -334,8 +334,8 @@ app.get('/manifest.json', async (req, res) => {
         "theme_color": "#121212",
         "orientation": "portrait",
         "icons": [
-            { "src": `/${iconFile}`, "sizes": "192x192", "type": "image/png" },
-            { "src": `/${iconFile}`, "sizes": "512x512", "type": "image/png" }
+            { "src": `/${iconFile}`, "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+            { "src": `/${iconFile}`, "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
         ]
     });
 });
