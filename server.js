@@ -477,22 +477,11 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // 🔴 ΑΛΛΑΓΗ ΣΕ DATA MESSAGE: Σχολιάζουμε το notification για να αναλάβει το SW.js (Loop Alarm)
-            // notification: { title: title, body: body }, 
+            // ✅ DATA-ONLY MESSAGE: No 'notification' key here to wake up SW properly
             
             android: { 
                 priority: "high", 
-                // 🔴 FIX: Σχολιάζουμε το notification object ΚΑΙ εδώ για να είναι Pure Data Message.
-                // Έτσι αναγκάζουμε το Service Worker (sw.js) να αναλάβει το UI και το Loop.
-                // notification: { 
-                //     title: title, 
-                //     body: body, 
-                //     sound: "default", 
-                //     tag: "bellgo-alarm", 
-                //     clickAction: `${YOUR_DOMAIN}${targetUrl}`,
-                //     visibility: 'public', 
-                //     channelId: 'bellgo_alarm_channel'
-                // } 
+                // No 'notification' key here either
             },
             webpush: { 
                 headers: { "Urgency": "high", "TTL": finalTTL }, 
@@ -957,7 +946,7 @@ setInterval(() => {
             }
         } 
     } 
-}, 10000); // ✅ FIX: Αύξηση σε 10s για να μην το βλέπει ο Browser ως SPAM (Budget Protection)
+}, 10000); // ✅ SERVER LOOP: 10 Seconds (Backup Safety)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

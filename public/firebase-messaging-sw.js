@@ -1,8 +1,8 @@
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-// ✅ 1. Variable for the Loop
 let notificationInterval;
+let badgeCount = 0;
 
 firebase.initializeApp({
   apiKey: "AIzaSyBDOAlwLn4P5PMlwkg_Hms6-4f9fEcBKn8",
@@ -14,77 +14,64 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[firebase-messaging-sw.js] Background message:', payload);
-  
-  // ✅ Clear previous Loop if exists
-  if (notificationInterval) {
-      clearInterval(notificationInterval);
-      notificationInterval = null;
-  }
+// ✅ Force Update: Για να πάρει το νέο SW αμέσως
+self.addEventListener('install', (event) => { self.skipWaiting(); });
+self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); });
 
-  const title = payload.data.title || payload.notification?.title || 'BellGo';
-  const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
+messaging.setBackgroundMessageHandler(function(payload) {
+  console.log('[BG] Message:', payload);
+  
+  // Clear previous loop
+  if (notificationInterval) { clearInterval(notificationInterval); notificationInterval = null; badgeCount = 0; }
+
+  const originalTitle = payload.data.title || 'BellGo';
+  const originalBody = payload.data.body || 'Νέα ειδοποίηση';
   const url = payload.data.url || '/login.html'; 
 
-  // ✅ 2. Check if Alarm
-  const isAlarm = (title + ' ' + body).toLowerCase().includes('paragelia') ||
-                  (title + ' ' + body).toLowerCase().includes('alarm') ||
-                  payload.data.type === 'alarm';
+  // ✅ Check if Alarm
+  const isAlarm = payload.data.type === 'alarm' || 
+                  (originalTitle + originalBody).toLowerCase().includes('paragelia') || 
+                  (originalTitle + originalBody).toLowerCase().includes('alarm');
 
   if (isAlarm) {
-      // ✅ 3. Loop Logic (Alarm)
-      const showNotification = () => {
-          return self.registration.showNotification(title, {
-              body: body,
+      const showLoop = () => {
+          badgeCount++;
+          // 🔴 ANTI-SPAM TRICK: Αλλάζουμε το body για να φαίνεται σαν Update
+          const dynamicBody = `${originalBody} ${"🔔".repeat((badgeCount % 3) + 1)}`;
+          
+          return self.registration.showNotification(originalTitle, {
+              body: dynamicBody,
               icon: '/admin.png',
               tag: 'bellgo-alarm-loop',
-              renotify: true,       
+              renotify: true,           
               requireInteraction: true, 
-              vibrate: [2000, 500, 2000, 500, 2000], 
-              data: { url: url, isLooping: true }    
+              vibrate: [1000, 500, 1000, 500, 1000],
+              data: { url: url, isLooping: true }
           });
       };
 
-      // Start loop every 4 seconds
-      notificationInterval = setInterval(showNotification, 4000);
-
-      // Show first immediately
-      return showNotification();
-
-  } else {
-      // ✅ 4. Simple Notification
-      return self.registration.showNotification(title, {
-        body: body,
-        icon: '/admin.png',
-        tag: 'bellgo-alarm', 
-        renotify: true,      
-        requireInteraction: true,
-        vibrate: [500, 200, 500],
-        data: { url: url }   
-      });
+      // Loop κάθε 6 δευτερόλεπτα (Safe for Chrome)
+      notificationInterval = setInterval(showLoop, 6000);
+      return showLoop();
   }
+
+  // Normal Notification
+  return self.registration.showNotification(originalTitle, {
+      body: originalBody,
+      icon: '/admin.png',
+      tag: 'bellgo-normal',
+      renotify: true,
+      data: { url: url }
+  });
 });
 
 self.addEventListener('notificationclick', function(event) {
-  // ✅ 5. Stop Loop on Click
-  if (event.notification.data?.isLooping) {
-    if (notificationInterval) {
-        clearInterval(notificationInterval);
-        notificationInterval = null;
-    }
-  }
-
+  if (notificationInterval) { clearInterval(notificationInterval); notificationInterval = null; }
   event.notification.close();
   const urlToOpen = event.notification.data?.url || '/login.html';
-
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
-      for (const client of clientsArr) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-            return client.focus();
-        }
-      }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) { if (c.url.includes(urlToOpen) && 'focus' in c) return c.focus(); }
       if (clients.openWindow) return clients.openWindow(urlToOpen);
     })
   );
