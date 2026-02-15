@@ -3,7 +3,24 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 
-})-         total += qty * price;
+const savedSession = localStorage.getItem('bellgo_session');
+if (!savedSession) window.location.href = "login.html";
+const userData = JSON.parse(savedSession || '{}');
+if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access Denied"); window.location.href = "login.html"; }
+
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+const calculateTotal = (text) => {
+    let total = 0;
+    if (!text) return 0;
+    const lines = text.split('\n');
+    lines.forEach(line => {
+        const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
+        if (match) {
+            let qty = parseInt(match[1] || '1');
+            let price = parseFloat(match[3]);
+            total += qty * price;
         }
     });
     return total;
