@@ -3,105 +3,7 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 
-let translations = {};
-
-// Function to set the language
-async function setLanguage(lang) {
-    localStorage.setItem('bellgo_lang', lang);
-    
-    try {
-        const response = await fetch(`/i18n/${lang}.json`);
-        translations = await response.json();
-        applyTranslations();
-        
-        // This page might not have the switcher, so check for existence
-        const langEl = document.getElementById('lang-el');
-        const langEn = document.getElementById('lang-en');
-        if (langEl && langEn) {
-            langEl.classList.toggle('active', lang === 'el');
-            langEn.classList.toggle('active', lang === 'en');
-        }
-        document.documentElement.lang = lang;
-
-    } catch (error) {
-        console.error(`Could not load language file: ${lang}.json`, error);
-    }
-}
-
-// Function to apply translations to the page
-function applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (translations[key]) {
-            element.innerText = translations[key];
-        }
-    });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-        const key = element.getAttribute('data-i18n-placeholder');
-        if (translations[key]) {
-            element.placeholder = translations[key];
-        }
-    });
-    document.querySelectorAll('[data-title-key]').forEach(element => {
-        const key = element.getAttribute('data-title-key');
-        if (translations[key]) {
-            element.title = translations[key];
-        }
-    });
-}
-
-
-// ✅ REGISTER SERVICE WORKER (Για να λειτουργεί κλειστό)
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
-}
-
-// --- MANIFEST LOGIC (Running immediately) ---
-(function() {
-    // PWA LOGIC: Μοναδικό ID για το Admin App
-    const params = new URLSearchParams(window.location.search);
-    const pName = params.get('name');
-    const pStore = params.get('store');
-    const manifestLink = document.getElementById('dynamicManifest');
-    
-    // 🔥 FIX: Μοναδικό ID ανά κατάστημα
-    let url = `manifest.json?icon=admin`;
-    if (pStore) {
-        url += `&store=${pStore}&id=admin_${pStore}`;
-    } else {
-        url += `&id=admin_app_general`;
-    }
-    
-    if (pName) url += `&name=${encodeURIComponent(pName)} (Admin)`;
-    
-    if (manifestLink) manifestLink.href = url;
-    if (pName) document.title = decodeURIComponent(pName) + " (Admin)";
-})();
-
-// --- MAIN APPLICATION LOGIC ---
-
-const savedSession = localStorage.getItem('bellgo_session');
-if (!savedSession) window.location.href = "login.html";
-const userData = JSON.parse(savedSession || '{}');
-if (userData.role !== 'admin') { alert("Access Denied"); window.location.href = "login.html"; }
-
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-
-// ✅ PRESET MENUS LOADED FROM menu-presets.js
-// If file missing, fallback to empty object
-const PRESET_MENUS = window.PRESET_MENUS || {};
-
-const calculateTotal = (text) => {
-    let total = 0;
-    const lines = text.split('\n');
-    lines.forEach(line => {
-        const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
-        if (match) {
-            let qty = parseInt(match[1] || '1');
-            let price = parseFloat(match[3]);
-            total += qty * price;
+})-         total += qty * price;
         }
     });
     return total;
@@ -132,9 +34,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 window.App = {
-    setLanguage,
     activeOrders: [],
-    menuData: [], 
     currentCategoryIndex: null,
     isChatOpen: false, 
     pendingAction: null, 
@@ -182,8 +82,7 @@ window.App = {
             `;
             document.body.appendChild(div);
         }
-
-        document.body.addEventListener('click', () => { 
+.body.addEventListener('click', () => { 
             if(window.AudioEngine) window.AudioEngine.init();
         }, {once:true});
         
@@ -468,6 +367,11 @@ window.App = {
 
         socket.on('ring-bell', (data) => {
             if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+        });
+
+        // ✅ NEW: Stop Alarm when someone else accepts
+        socket.on('stop-bell', () => {
+            if(window.AudioEngine) window.AudioEngine.stopAlarm();
         });
     },
     
@@ -1512,9 +1416,3 @@ window.App = {
 };
 
 window.onload = App.init;
-
-// --- INITIALIZE LANGUAGE ---
-(async () => {
-    const savedLang = localStorage.getItem('bellgo_lang') || 'el';
-    await setLanguage(savedLang);
-})();

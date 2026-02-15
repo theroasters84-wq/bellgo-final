@@ -469,7 +469,7 @@ app.get('/qr-payment-cancel', (req, res) => {
 function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }, ttlSeconds = 86400) {
     if (target && target.fcmToken) { 
         let targetUrl = "/stafpremium.html";
-        if (target.role === 'admin') targetUrl = "/premium.html";
+        if (target.role === 'admin' || target.role === 'kitchen') targetUrl = "/premium.html";
 
         // ✅ TTL Logic: Αν είναι Loop (Alarm), θέλουμε μικρό TTL για να μην "μπουκώνει"
         const finalTTL = ttlSeconds.toString();
@@ -503,7 +503,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 }
 
 function notifyAdmin(storeName, title, body, excludeSocketId = null) {
-    Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'admin').forEach(adm => {
+    Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(adm => {
         if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
         if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
@@ -896,6 +896,19 @@ io.on('connection', (socket) => {
         const t = activeUsers[key]; 
         if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm" }, 10); } 
     });
+    
+    // ✅ NEW: STOP RINGING FOR EVERYONE (Admin & Kitchen)
+    socket.on('admin-stop-ringing', () => { 
+        const store = getMyStore(); 
+        if(store) {
+             Object.values(activeUsers).filter(u => u.store === socket.store && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
+                 u.isRinging = false;
+                 if(u.socketId) io.to(u.socketId).emit('stop-bell');
+             });
+             updateStoreClients(socket.store);
+        }
+    });
+
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
     socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStoreClients(socket.store); } });

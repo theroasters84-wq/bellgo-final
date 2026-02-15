@@ -229,11 +229,21 @@ window.App = {
         let shouldOpenForm = false;
 
         if (!customerDetails) {
-            shouldOpenForm = true;
+            if (isDineIn) {
+                // ✅ FIX: Προσωρινή αποθήκευση για να προχωρήσει στον έλεγχο τραπεζιού (Socket)
+                const name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
+                customerDetails = { name, table: tableNumber, type: 'dinein' };
+                localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
+            } else {
+                shouldOpenForm = true;
+            }
         } else {
             if (isDineIn) {
-                // Είμαστε σε τραπέζι, αλλά τα στοιχεία είναι Delivery ή λείπουν άτομα -> ΑΝΟΙΓΜΑ
-                if (!customerDetails.covers || customerDetails.table != tableNumber) shouldOpenForm = true;
+                // ✅ FIX: Δεν ζητάμε covers εδώ. Θα το ζητήσουμε ΜΟΝΟ αν το τραπέζι είναι ανενεργό (μέσω socket)
+                if (customerDetails.table != tableNumber) {
+                    customerDetails.table = tableNumber;
+                    localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
+                }
             }
         }
 
@@ -251,9 +261,9 @@ window.App = {
     saveDetails: () => {
         if (isDineIn) {
             const covers = document.getElementById('inpCovers').value;
-            if (!covers) return alert("Παρακαλώ εισάγετε αριθμό ατόμων!");
+            if (!covers) return alert(t('enter_covers_error') || "Παρακαλώ εισάγετε αριθμό ατόμων!");
             // Στο τραπέζι παίρνουμε το όνομα από το Google ή βάζουμε "Πελάτης"
-            const name = (currentUser && currentUser.displayName) ? currentUser.displayName : "Πελάτης";
+            const name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
             customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
         } else {
             const name = document.getElementById('inpName').value.trim();
@@ -261,7 +271,7 @@ window.App = {
             const floor = document.getElementById('inpFloor').value.trim();
             const phone = document.getElementById('inpPhone').value.trim();
             const zip = document.getElementById('inpZip').value.trim();
-            if (!name || !address || !phone) return alert("Συμπληρώστε τα βασικά στοιχεία!");
+            if (!name || !address || !phone) return alert(t('enter_details_error') || "Συμπληρώστε τα βασικά στοιχεία!");
             customerDetails = { name, address, floor, phone, zip, type: 'delivery' };
         }
 
@@ -359,7 +369,7 @@ window.App = {
                 await Notification.requestPermission();
                 const result = await Notification.requestPermission();
                 if (result !== 'granted') {
-                    alert('⚠️ Ο Browser μπλόκαρε τις ειδοποιήσεις.\n\nΠατήστε το εικονίδιο 🔒 ή 🔔 στη γραμμή διευθύνσεων (πάνω αριστερά) και επιλέξτε "Allow/Επιτρέπεται".');
+                    alert(t('notifications_blocked_msg') || '⚠️ Ο Browser μπλόκαρε τις ειδοποιήσεις.\n\nΠατήστε το εικονίδιο 🔒 ή 🔔 στη γραμμή διευθύνσεων (πάνω αριστερά) και επιλέξτε "Allow/Επιτρέπεται".');
                     return;
                 }
             }
@@ -397,10 +407,10 @@ window.App = {
             div.id = 'notifPermRequest';
             div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#222; border-top:2px solid #FFD700; padding:20px; z-index:10000; text-align:center; box-shadow:0 -5px 20px rgba(0,0,0,0.5);";
             div.innerHTML = `
-                <div style="color:white; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 Ενεργοποίηση Ειδοποιήσεων</div>
-                <div style="color:#ccc; font-size:12px; margin-bottom:15px;">Για να ενημερωθείτε όταν έρθει η παραγγελία σας!</div>
-                <button id="btnAllowNotif" style="background:#00E676; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer;">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
-                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#777; margin-left:10px; cursor:pointer;">Όχι τώρα</button>
+                <div style="color:white; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 ${t('enable_notifications_title') || 'Ενεργοποίηση Ειδοποιήσεων'}</div>
+                <div style="color:#ccc; font-size:12px; margin-bottom:15px;">${t('enable_notifications_desc') || 'Για να ενημερωθείτε όταν έρθει η παραγγελία σας!'}</div>
+                <button id="btnAllowNotif" style="background:#00E676; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer;">${t('enable_btn') || 'ΕΝΕΡΓΟΠΟΙΗΣΗ'}</button>
+                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#777; margin-left:10px; cursor:pointer;">${t('not_now') || 'Όχι τώρα'}</button>
             `;
             document.body.appendChild(div);
             
@@ -458,7 +468,7 @@ window.App = {
                 App.sendOrder(itemsToSend, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
                 localStorage.removeItem('bellgo_temp_card_order');
                 
-                alert("Η πληρωμή ολοκληρώθηκε και η παραγγελία εστάλη!\nΜπορείτε να επιστρέψετε στην εφαρμογή.");
+                alert(t('payment_success_msg') || "Η πληρωμή ολοκληρώθηκε και η παραγγελία εστάλη!\nΜπορείτε να επιστρέψετε στην εφαρμογή.");
                 
                 // Clear URL
                 const newParams = new URLSearchParams(window.location.search);
@@ -469,7 +479,7 @@ window.App = {
                 window.history.replaceState({}, document.title, cleanUrl);
             }
         } else if (status === 'cancel') {
-            alert("Η πληρωμή ακυρώθηκε.");
+            alert(t('payment_cancelled_msg') || "Η πληρωμή ακυρώθηκε.");
         }
     },
 
@@ -517,6 +527,11 @@ window.App = {
                 // ✅ AUTOMATICALLY LINK TO EXISTING ORDER (DEFAULT)
                 App.existingOrderId = data.orderId;
                 App.showTableOptionsModal(data);
+            } else {
+                // ✅ FIX: Αν το τραπέζι είναι ΝΕΟ (ανενεργό) και δεν έχουμε δηλώσει άτομα -> Ζητάμε τώρα
+                if (!customerDetails.covers) {
+                    App.editDetails();
+                }
             }
         });
 
@@ -658,7 +673,7 @@ window.App = {
             else { const items = (data || "").split('\n'); menu = [{ name: "ΚΑΤΑΛΟΓΟΣ", items: items }]; }
         } catch(e) { menu = []; }
 
-        if (!menu || menu.length === 0) { container.innerHTML = '<div style="text-align:center; color:#555; margin-top:50px;">Ο κατάλογος είναι κενός.</div>'; return; }
+        if (!menu || menu.length === 0) { container.innerHTML = `<div style="text-align:center; color:#555; margin-top:50px;">${t('menu_empty') || 'Ο κατάλογος είναι κενός.'}</div>`; return; }
 
         if(Array.isArray(menu)) {
             menu.sort((a,b) => (a.order || 99) - (b.order || 99));
@@ -738,41 +753,41 @@ window.App = {
         // --- STEP 1: EXISTING OR NEW ---
         const step1Html = `
             <div id="step1" style="background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h2 style="color:#FFD700; margin-top:0;">🍽️ Τραπέζι ${tableNumber}</h2>
-                <p style="color:#ccc;">Το τραπέζι είναι ενεργό.<br>Σύνολο: <b>${total.toFixed(2)}€</b></p>
-                <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ</button>
-                <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)</button>
+                <h2 style="color:#FFD700; margin-top:0;">🍽️ ${t('table') || 'Τραπέζι'} ${tableNumber}</h2>
+                <p style="color:#ccc;">${t('table_active') || 'Το τραπέζι είναι ενεργό.'}<br>${t('total') || 'Σύνολο'}: <b>${total.toFixed(2)}€</b></p>
+                <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ${t('btn_existing_order') || 'ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ'}</button>
+                <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ${t('btn_new_order_reset') || 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)'}</button>
             </div>
         `;
 
         // --- STEP 2: PAY OR SUPPLEMENT ---
         const step2Html = `
             <div id="step2" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#2196F3;">Επιλογές</h3>
-                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ΣΥΜΠΛΗΡΩΣΗ</button>
-                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 /  ΠΛΗΡΩΜΗ</button>
-                <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+                <h3 style="color:#2196F3;">${t('options') || 'Επιλογές'}</h3>
+                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ${t('btn_supplement') || 'ΣΥΜΠΛΗΡΩΣΗ'}</button>
+                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 / 💶 ${t('btn_pay_full') || 'ΠΛΗΡΩΜΗ'}</button>
+                <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 
         // --- STEP 3: NEW PEOPLE ---
         const step3Html = `
             <div id="step3" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#FFD700;">Ήρθαν νέα άτομα;</h3>
-                <p style="color:#ccc; font-size:12px;">Αν ναι, συμπληρώστε τον αριθμό.</p>
-                <input type="number" id="inpNewPeople" placeholder="Αρ. ατόμων (προαιρετικό)" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #555; background:#333; color:white; text-align:center; font-size:16px;">
-                <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶</button>
-                <button id="btnBack2" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+                <h3 style="color:#FFD700;">${t('new_people_question') || 'Ήρθαν νέα άτομα;'}</h3>
+                <p style="color:#ccc; font-size:12px;">${t('new_people_hint') || 'Αν ναι, συμπληρώστε τον αριθμό.'}</p>
+                <input type="number" id="inpNewPeople" placeholder="${t('placeholder_people') || 'Αρ. ατόμων (προαιρετικό)'}" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #555; background:#333; color:white; text-align:center; font-size:16px;">
+                <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">${t('btn_continue_menu') || 'ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶'}</button>
+                <button id="btnBack2" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 
         // --- STEP 4: PAYMENT METHOD ---
         const step4Html = `
             <div id="step4" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#00E676;">Τρόπος Πληρωμής</h3>
-                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#FF9800; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">🛎️ ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ</button>
-                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ONLINE (Stripe)</button>
-                <button id="btnBack3" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+                <h3 style="color:#00E676;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
+                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#FF9800; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
+                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
+                <button id="btnBack3" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 
@@ -814,7 +829,7 @@ window.App = {
         document.getElementById('btnGoToMenu').onclick = () => {
             const extra = document.getElementById('inpNewPeople').value;
             if(extra && parseInt(extra) > 0) {
-                App.addToOrder(`(+ ${extra} ΑΤΟΜΑ)`);
+                App.addToOrder(`(+ ${extra} ${t('people') || 'ΑΤΟΜΑ'})`);
             }
             modal.remove();
         };
@@ -827,12 +842,12 @@ window.App = {
         document.getElementById('btnCallWaiter').onclick = () => {
             if (App.existingOrderId) {
                 window.socket.emit('add-items', { id: App.existingOrderId, items: "❗ ΖΗΤΑΕΙ ΛΟΓΑΡΙΑΣΜΟ (ΚΛΗΣΗ)" });
-                alert("Ειδοποιήσαμε τον σερβιτόρο!");
+                alert(t('waiter_notified') || "Ειδοποιήσαμε τον σερβιτόρο!");
                 modal.remove();
             }
         };
         document.getElementById('btnPayStripe').onclick = () => {
-            if(!storeHasStripe) return alert("Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
+            if(!storeHasStripe) return alert(t('card_unavailable') || "Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
             App.payExistingOrder(data.orderId, total);
             modal.remove();
         };
@@ -850,8 +865,8 @@ window.App = {
             });
             const data = await res.json();
             if(data.url) window.location.href = data.url;
-            else alert("Σφάλμα: " + (data.error || "Άγνωστο"));
-        } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            else alert((t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο"));
+        } catch(e) { alert(t('connection_error') || "Σφάλμα σύνδεσης."); }
     },
 
     addToOrder: (item) => {
@@ -948,7 +963,7 @@ window.App = {
 
     payWithCard: async (items) => {
         const totalAmount = App.handleInput();
-        if(totalAmount <= 0) return alert("Σφάλμα ποσού.");
+        if(totalAmount <= 0) return alert(t('amount_error') || "Σφάλμα ποσού.");
         
         // ✅ FIX: Αποθήκευση κατάστασης (Τραπέζι/Delivery) πριν την πληρωμή
         if (isDineIn) {
@@ -967,8 +982,8 @@ window.App = {
             });
             const data = await res.json();
             if(data.url) { window.location.href = data.url; } 
-            else { alert("Σφάλμα πληρωμής: " + (data.error || "Άγνωστο")); }
-        } catch(e) { alert("Σφάλμα σύνδεσης με τον Server."); }
+            else { alert((t('payment_error') || "Σφάλμα πληρωμής: ") + (data.error || "Άγνωστο")); }
+        } catch(e) { alert(t('server_connection_error') || "Σφάλμα σύνδεσης με τον Server."); }
     },
 
     sendOrder: (items, method) => {
@@ -1009,7 +1024,7 @@ window.App = {
             btn.style.display = 'flex'; 
             // ✅ FIX: Force Top-Left Position
             btn.style.position = 'fixed';
-            btn.style.top = '10px';
+            btn.style.top = '80px';
             btn.style.left = '10px';
             btn.style.right = 'auto';
             btn.style.bottom = 'auto';
@@ -1034,22 +1049,22 @@ window.App = {
         activeOrders.sort((a,b) => b.timestamp - a.timestamp);
 
         if (activeOrders.length === 0) {
-            list.innerHTML = '<div style="color:#aaa; text-align:center; margin-top:20px;">Δεν υπάρχουν ενεργές παραγγελίες.</div>';
+            list.innerHTML = `<div style="color:#aaa; text-align:center; margin-top:20px;">${t('no_active_orders') || 'Δεν υπάρχουν ενεργές παραγγελίες.'}</div>`;
         } else {
             activeOrders.forEach(order => {
                 const el = document.createElement('div');
                 
                 let icon = '⏳';
-                let statusText = 'Στάλθηκε';
-                let subText = 'Αναμονή για αποδοχή...';
+                let statusText = t('status_sent') || 'Στάλθηκε';
+                let subText = t('status_pending_desc') || 'Αναμονή για αποδοχή...';
                 let color = '#FF9800'; // Orange
                 
                 if (order.status === 'cooking') {
-                    icon = '👨‍🍳'; statusText = 'Ετοιμάζεται'; subText = 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
+                    icon = '👨‍🍳'; statusText = t('status_cooking') || 'Ετοιμάζεται'; subText = t('status_cooking_desc') || 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
                 } else if (order.status === 'ready') {
-                    icon = '🛵'; statusText = 'Έρχεται!'; subText = 'Πατήστε για απόκρυψη'; color = '#00E676'; // Green
+                    icon = '🛵'; statusText = t('status_ready') || 'Έρχεται!'; subText = t('status_ready_desc') || 'Πατήστε για απόκρυψη'; color = '#00E676'; // Green
                 } else if (order.status === 'completed') {
-                    icon = '✅'; statusText = 'Ολοκληρώθηκε'; subText = 'Η παραγγελία έκλεισε.'; color = '#888'; // Grey
+                    icon = '✅'; statusText = t('status_completed') || 'Ολοκληρώθηκε'; subText = t('status_completed_desc') || 'Η παραγγελία έκλεισε.'; color = '#888'; // Grey
                 }
 
                 const timeStr = new Date(order.timestamp).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'});
@@ -1068,7 +1083,7 @@ window.App = {
                 
                 el.querySelector('.btn-dismiss').onclick = (e) => {
                     e.stopPropagation();
-                    if (order.status !== 'ready' && order.status !== 'completed' && !confirm("Απόκρυψη παραγγελίας;")) return;
+                    if (order.status !== 'ready' && order.status !== 'completed' && !confirm(t('hide_order_confirm') || "Απόκρυψη παραγγελίας;")) return;
                     App.dismissOrder(order.id);
                 };
                 
