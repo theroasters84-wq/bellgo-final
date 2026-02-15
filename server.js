@@ -934,14 +934,21 @@ setInterval(() => {
     } catch (e) {} 
 }, 60000); 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
+
+let loopCounter = 0; // ✅ Counter για το Bell Trick στο Server
 setInterval(() => { 
     const now = Date.now(); 
+    loopCounter++;
+    const bells = "🔔".repeat((loopCounter % 3) + 1); // Αλλάζει: 🔔, 🔔🔔, 🔔🔔🔔
+
     for (const key in activeUsers) { 
         const user = activeUsers[key]; 
         // ✅ INTENSIVE LOOP: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS)
         if (user.isRinging && user.fcmToken) { 
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
-            const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
+            // ✅ FIX FOR IOS: Προσθήκη bells στο body για να είναι μοναδικό κάθε φορά
+            const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
+            const body = `${baseBody} ${bells}`;
             sendPushNotification(user, msg, body, { type: "alarm" }); 
         } 
     } 
