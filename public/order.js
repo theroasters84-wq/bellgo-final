@@ -159,6 +159,9 @@ function applyTranslations() {
                         break;
                     }
                 }
+            } else if (element.tagName === 'INPUT' && element.type === 'button' || element.type === 'submit') {
+                // ✅ FIX: Support for Input Buttons (value attribute)
+                element.value = translations[key];
             } else {
                 element.innerText = translations[key];
             }
@@ -173,7 +176,8 @@ function applyTranslations() {
     });
 }
 
-const t = (key) => translations[key] || key;
+// ✅ FIX: Return undefined if missing, so || fallback works
+const t = (key) => translations[key];
 
 
 window.App = {
@@ -215,12 +219,12 @@ window.App = {
 
         // ✅ 1. ΡΥΘΜΙΣΗ UI: Εμφάνιση σωστών πεδίων ανάλογα με το Mode
         if (isDineIn) {
-            document.getElementById('detailsTitle').innerText = t('welcome');
+            document.getElementById('detailsTitle').innerText = t('welcome') || 'Καλώς ήρθατε!';
             document.getElementById('deliveryFields').style.display = 'none';
             document.getElementById('dineInFields').style.display = 'block';
             document.getElementById('tableDisplay').innerText = `${t('table')}: ${tableNumber}`;
         } else {
-            document.getElementById('detailsTitle').innerText = t('delivery_title');
+            document.getElementById('detailsTitle').innerText = t('delivery_title') || 'Παράδοση στο χώρο σας';
             document.getElementById('deliveryFields').style.display = 'block';
             document.getElementById('dineInFields').style.display = 'none';
         }
@@ -576,13 +580,13 @@ window.App = {
                     closedOverlay.style.display = 'flex';
                     if(btnSend) { 
                         btnSend.disabled = true; 
-                        btnSend.innerText = t('store_closed'); 
+                        btnSend.innerText = t('store_closed') || 'Το κατάστημα είναι κλειστό'; 
                     }
                 } else {
                     closedOverlay.style.display = 'none';
                     if(btnSend) { 
                         btnSend.disabled = false; 
-                        btnSend.innerText = t('send_order'); 
+                        btnSend.innerText = t('send_order') || 'ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ'; 
                     }
                 }
             }
@@ -932,13 +936,13 @@ window.App = {
         const btnCard = document.getElementById('payCard');
         if (validForCard && total > 0 && storeHasStripe) {
             btnCard.disabled = false;
-            btnCard.innerHTML = t('card');
+            btnCard.innerHTML = t('card') || '💳 ΚΑΡΤΑ';
         } else {
             btnCard.disabled = true;
             if (!storeHasStripe) {
-                btnCard.innerHTML = t('card_inactive');
+                btnCard.innerHTML = t('card_inactive') || '💳 ΚΑΡΤΑ (ΕΛΑΧΙΣΤΗ)';
             } else {
-                btnCard.innerHTML = t('card_unavailable');
+                btnCard.innerHTML = t('card_unavailable') || '💳 ΜΗ ΔΙΑΘΕΣΙΜΗ';
             }
         }
         return total;
@@ -946,7 +950,7 @@ window.App = {
 
     requestPayment: () => {
         const items = document.getElementById('orderText').value.trim();
-        if (!items) return alert(t('empty_cart'));
+        if (!items) return alert(t('empty_cart') || 'Το καλάθι είναι άδειο!');
         App.handleInput();
         document.getElementById('paymentOverlay').style.display = 'flex';
     },
@@ -1001,7 +1005,7 @@ window.App = {
         // ✅ LOGIC: Αν είναι συμπλήρωση, στέλνουμε add-items
         if (App.existingOrderId) {
             window.socket.emit('add-items', { id: App.existingOrderId, items: items });
-            alert(t('order_sent'));
+            alert(t('order_sent') || 'Η παραγγελία εστάλη!');
             App.existingOrderId = null; // Reset
             document.getElementById('orderText').value = ''; 
             document.getElementById('liveTotal').innerText = `${t('total')}: 0.00€`;

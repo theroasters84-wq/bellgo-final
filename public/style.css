@@ -428,25 +428,16 @@ body.alarm-active::after {
     pointer-events: none; /* Επιτρέπει το κλικ από κάτω */
 }
 
-/* --- Language Switcher --- */
-.lang-switcher {
-    display: flex;
-    align-items: center;
-    background: #222;
-    border-radius: 20px;
-    padding: 2px;
-    margin-right: 10px;
+/* --- LANGUAGE SWITCHER HIGHLIGHT --- */
+#lang-el, #lang-en {
+    transition: all 0.3s ease;
+    opacity: 0.6;
 }
-.lang-option {
-    padding: 4px 8px;
-    color: #aaa;
-    font-size: 12px;
+#lang-el.active, #lang-en.active {
+    opacity: 1;
+    background-color: var(--primary) !important;
+    color: black !important;
+    border-color: var(--primary) !important;
     font-weight: bold;
-    cursor: pointer;
-    border-radius: 18px;
-    transition: background-color 0.2s, color 0.2s;
-}
-.lang-option.active {
-    background-color: var(--accent);
-    color: black;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.4);
 }
