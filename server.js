@@ -479,7 +479,18 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             // ✅ FIX: Ενεργοποίηση notification για να ξυπνάει τον browser όταν είναι κλειστός
             notification: { title: title, body: body }, 
             
-            android: { priority: "high", notification: { title: title, body: body, sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } },
+            android: { 
+                priority: "high", 
+                notification: { 
+                    title: title, 
+                    body: body, 
+                    sound: "default", 
+                    tag: "bellgo-alarm", 
+                    clickAction: `${YOUR_DOMAIN}${targetUrl}`,
+                    visibility: 'public', // ✅ Εμφάνιση σε κλειδωμένη οθόνη
+                    channelId: 'bellgo_alarm_channel'
+                } 
+            },
             webpush: { 
                 headers: { "Urgency": "high", "TTL": finalTTL }, 
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
@@ -490,6 +501,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                     tag: 'bellgo-alarm',
                     renotify: true,
                     requireInteraction: true,
+                    timestamp: Date.now(), // ✅ FIX: Προσθήκη ώρας για να θεωρείται "φρέσκια" και σημαντική
                     vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500],
                     data: { url: targetUrl }
                 }
@@ -928,11 +940,9 @@ setInterval(() => {
             if (!isActive) {
                 const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
                 const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
-                sendPushNotification(user, msg, body, { type: "alarm" }, 5); // ✅ TTL 5s για το Loop (να μην στοιβάζονται)
-            }
+                sendPushNotification(user, msg, body, { type: "alarm" }, 5); // ✅ TTL 5s 
         } 
     } 
-}, 3000); 
-
+, 30
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

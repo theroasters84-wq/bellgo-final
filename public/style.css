@@ -411,3 +411,15 @@ input:checked + .slider:before { transform: translateX(18px); }
     margin-top: 0;
     flex-shrink: 0;
 }
+
+/* ✅ NEW: ALARM FLASH ANIMATION (Αναβόσβημα Οθόνης) */
+@keyframes screenFlash {
+    0% { background-color: #000; }
+    50% { background-color: #fff; } /* Άσπρο φλας */
+    100% { background-color: #000; }
+}
+
+body.alarm-active {
+    animation: screenFlash 0.5s infinite; /* Γρήγορο Loop */
+    z-index: 99999; /* Πάνω από όλα */
+}

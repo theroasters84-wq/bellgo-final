@@ -84,6 +84,9 @@ const AudioEngine = {
 
         console.log("🚨 ALARM TRIGGERED");
 
+        // ✅ NEW: Ενεργοποίηση Flashing στην οθόνη
+        document.body.classList.add('alarm-active');
+
         // 1. Αλλάζουμε τα γράμματα στην μπάρα
         this.updateDisplay("alarm", source);
 
@@ -112,6 +115,9 @@ const AudioEngine = {
         this.isRinging = false;
 
         console.log("✅ ALARM STOPPED (Audio Engine)");
+
+        // ✅ NEW: Απενεργοποίηση Flashing
+        document.body.classList.remove('alarm-active');
 
         // 1. Σταματάμε ΜΟΝΟ τον θόρυβο
         this.alarmPlayer.pause();
