@@ -933,17 +933,14 @@ setInterval(() => {
     const now = Date.now(); 
     for (const key in activeUsers) { 
         const user = activeUsers[key]; 
+        // ✅ INTENSIVE LOOP: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS)
         if (user.isRinging && user.fcmToken) { 
-            // ✅ SMART NOTIFICATIONS: Στέλνει μόνο αν δεν έχει στείλει heartbeat τα τελευταία 10s
-            const isActive = user.status === 'online' && (now - user.lastSeen < 10000);
-            if (!isActive) {
-                const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
-                const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
-                sendPushNotification(user, msg, body, { type: "alarm" }, 30); // ✅ TTL 30s (Αυξημένο για ασφάλεια)
-            }
+            const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
+            const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
+            sendPushNotification(user, msg, body, { type: "alarm" }); 
         } 
     } 
-}, 8000); // ✅ SERVER LOOP: 8 Seconds (Backup Safety)
+}, 10000); // ✅ SERVER LOOP: 10 Seconds (iOS Backup & Confirmation)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

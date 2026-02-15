@@ -32,6 +32,10 @@ messaging.setBackgroundMessageHandler(function(payload) {
                   (originalTitle + originalBody).toLowerCase().includes('alarm');
 
   if (isAlarm) {
+      // ✅ STACKING: Tag based on Title (e.g. 'bellgo-alarm-order' vs 'bellgo-alarm-call')
+      // This allows different types of alarms to stack instead of overwriting.
+      const alarmTag = 'bellgo-alarm-' + originalTitle.replace(/\s+/g, '-').toLowerCase();
+
       const showLoop = () => {
           badgeCount++;
           // Dynamic Body Trick
@@ -40,7 +44,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
           return self.registration.showNotification(originalTitle, {
               body: dynamicBody,
               icon: '/admin.png',
-              tag: 'bellgo-alarm-loop',
+              tag: alarmTag, // ✅ Unique tag per alarm type
               renotify: true,           
               requireInteraction: true, 
               vibrate: [500, 200, 500, 200, 500],
@@ -48,7 +52,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
           });
       };
 
-      // Local Loop fast (3s) - Android will try this, Server will backup every 8s
+      // ✅ LOCAL LOOP: Παίζει κάθε 3 δευτερόλεπτα μόλις έρθει το σήμα
       notificationInterval = setInterval(showLoop, 3000);
       return showLoop();
   }
@@ -57,7 +61,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
   return self.registration.showNotification(originalTitle, {
       body: originalBody,
       icon: '/admin.png',
-      tag: 'bellgo-normal',
+      tag: 'bellgo-' + Date.now(), // ✅ STACKING: Always unique tag for normal messages
       data: { url: url }
   });
 });
@@ -65,11 +69,21 @@ messaging.setBackgroundMessageHandler(function(payload) {
 self.addEventListener('notificationclick', function(event) {
   if (notificationInterval) { clearInterval(notificationInterval); notificationInterval = null; }
   event.notification.close();
+  
   const urlToOpen = event.notification.data?.url || '/login.html';
+  
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      for (const c of list) { if (c.url.includes(urlToOpen) && 'focus' in c) return c.focus(); }
-      if (clients.openWindow) return clients.openWindow(urlToOpen);
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // ✅ OPEN APP LOGIC: Focus existing tab or open new
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+            return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+      }
     })
   );
 });
