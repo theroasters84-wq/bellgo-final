@@ -13,17 +13,28 @@ const KeepAlive = {
                     try {
                         wakeLock = await navigator.wakeLock.request('screen');
                         console.log('💡 Screen Wake Lock active');
-                        wakeLock.addEventListener('release', () => console.log('💡 Wake Lock released'));
+                        wakeLock.addEventListener('release', () => {
+                            console.log('💡 Wake Lock released');
+                            wakeLock = null;
+                        });
                     } catch (err) {
                         console.log(`❌ Wake Lock error: ${err.name}, ${err.message}`);
                     }
                 };
                 // Ζητάμε το lock σε κάθε visibility change (αν ο χρήστης βγει και ξαναμπεί)
                 document.addEventListener('visibilitychange', async () => {
-                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                    if (document.visibilityState === 'visible') {
                         await requestLock();
                     }
                 });
+                // ✅ AGGRESSIVE RETRY: Ελέγχουμε κάθε 5 δευτερόλεπτα αν χάθηκε το Lock
+                setInterval(async () => {
+                    if (!wakeLock && document.visibilityState === 'visible') {
+                        console.log("🔄 Re-applying Wake Lock...");
+                        await requestLock();
+                    }
+                }, 5000);
+
                 // Ζητάμε το lock με το που πατήσει ο χρήστης οτιδήποτε (User Gesture)
                 document.addEventListener('click', requestLock, { once: true });
             }
@@ -74,54 +85,99 @@ const KeepAlive = {
         KeepAlive.preventTabClose();
         KeepAlive.startAudioLoop();
     },
+};
 
-    // 5. BOT GUIDE: Οδηγός Κλειδώματος (App Pinning)
-    showLockGuide: () => {
-        const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-        const isAndroid = /android/.test(navigator.userAgent.toLowerCase());
-        
-        let title = "🔒 Κλείδωμα Εφαρμογής";
-        let steps = "";
+// --- BELLGO BOT (Interactive Setup) ---
+const BellGoBot = {
+    currentStep: 0,
+    
+    start: () => {
+        BellGoBot.currentStep = 0;
+        BellGoBot.showOverlay();
+        BellGoBot.nextStep();
+    },
 
-        if (isIos) {
-            title = "🍎 Guided Access (iPhone)";
-            steps = `
-                <ol style="text-align:left; padding-left:20px; margin-bottom:15px; font-size:14px; line-height:1.5;">
-                    <li>Πήγαινε: <b>Settings > Accessibility > Guided Access</b> και ενεργοποίησέ το.</li>
-                    <li>Γύρνα εδώ στο BellGo.</li>
-                    <li>Πάτα <b>3 φορές</b> γρήγορα το πλαϊνό κουμπί (Power).</li>
-                    <li>Πάτα <b>Start</b> (πάνω δεξιά).</li>
-                </ol>
-                <div style="font-size:12px; color:#aaa; margin-top:10px;">🔓 Για έξοδο: Πάτα πάλι 3 φορές το Power και βάλε τον κωδικό σου.</div>
+    showOverlay: () => {
+        if(document.getElementById('botOverlay')) return;
+        const div = document.createElement('div');
+        div.id = 'botOverlay';
+        div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:20000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; text-align:center; font-family:sans-serif;";
+        document.body.appendChild(div);
+    },
+
+    nextStep: () => {
+        BellGoBot.currentStep++;
+        const box = document.getElementById('botOverlay');
+        if(!box) return;
+        box.innerHTML = ''; // Clear
+
+        if(BellGoBot.currentStep === 1) {
+            // Step 1: Intro & Permissions (Audio/WakeLock)
+            box.innerHTML = `
+                <div style="font-size:60px; margin-bottom:20px;">🤖</div>
+                <h2 style="color:#FFD700; margin:0 0 10px 0;">Γεια! Είμαι ο BellGo Bot.</h2>
+                <p style="color:#ccc; margin-bottom:30px; font-size:14px;">Θα σε βοηθήσω να "θωρακίσεις" την εφαρμογή για να μη χάνεις παραγγελίες!</p>
+                <button onclick="BellGoBot.activateShields()" style="background:#00E676; color:black; padding:15px 30px; border:none; border-radius:30px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 15px rgba(0,230,118,0.4);">ΕΝΕΡΓΟΠΟΙΗΣΗ ΠΡΟΣΤΑΣΙΑΣ 🛡️</button>
             `;
-        } else {
-            // Default to Android instructions
-            title = "🤖 App Pinning (Android)";
-            steps = `
-                <ol style="text-align:left; padding-left:20px; margin-bottom:15px; font-size:14px; line-height:1.5;">
-                    <li>Πήγαινε: <b>Ρυθμίσεις > Ασφάλεια > Καρφίτσωμα εφαρμογής</b> (App Pinning) και ενεργοποίησέ το.</li>
-                    <li>Γύρνα εδώ στο BellGo.</li>
-                    <li>Άνοιξε τις <b>Πρόσφατες Εφαρμογές</b> (σύρε από κάτω προς τα πάνω).</li>
-                    <li>Πάτα στο εικονίδιο της εφαρμογής (πάνω μέρος) και επίλεξε <b>"Καρφίτσωμα" (Pin)</b>.</li>
-                </ol>
-                <div style="font-size:12px; color:#aaa; margin-top:10px;">🔓 Για έξοδο: Κράτα πατημένα ταυτόχρονα τα κουμπιά "Πίσω" και "Πρόσφατα".</div>
+        } else if(BellGoBot.currentStep === 2) {
+            // Step 2: Pinning Instructions
+            const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+            let instructions = "";
+            let title = "";
+            
+            if(isIos) {
+                title = "🍎 Guided Access (iPhone)";
+                instructions = `
+                    <ol style="text-align:left; color:#ccc; line-height:1.6; font-size:14px; padding-left:20px;">
+                        <li>Πήγαινε <b>Settings > Accessibility > Guided Access</b> και ενεργοποίησέ το.</li>
+                        <li>Γύρνα εδώ και πάτα <b>3 φορές</b> γρήγορα το πλαϊνό κουμπί (Power).</li>
+                        <li>Πάτα <b>Start</b> (πάνω δεξιά).</li>
+                    </ol>`;
+            } else {
+                title = "🤖 App Pinning (Android)";
+                instructions = `
+                    <ol style="text-align:left; color:#ccc; line-height:1.6; font-size:14px; padding-left:20px;">
+                        <li>Πήγαινε <b>Ρυθμίσεις > Ασφάλεια > Καρφίτσωμα (App Pinning)</b> και ενεργοποίησέ το.</li>
+                        <li>Άνοιξε τις <b>Πρόσφατες Εφαρμογές</b> (Τετράγωνο ή Swipe Up).</li>
+                        <li>Πάτα το εικονίδιο της εφαρμογής (πάνω μέρος) και επίλεξε <b>Καρφίτσωμα (Pin)</b>.</li>
+                    </ol>`;
+            }
+
+            box.innerHTML = `
+                <div style="font-size:50px; margin-bottom:10px;">🔒</div>
+                <h2 style="color:#FFD700; margin:0 0 10px 0;">Κλείδωμα Εφαρμογής</h2>
+                <p style="color:white; font-size:14px;">Για να μην κλείνει κατά λάθος, πρέπει να την "καρφιτσώσεις":</p>
+                <div style="background:#222; padding:15px; border-radius:15px; margin-bottom:20px; border:1px solid #444; text-align:left;">
+                    <h4 style="color:#2196F3; margin:0 0 10px 0;">${title}</h4>
+                    ${instructions}
+                </div>
+                <button onclick="BellGoBot.finish()" style="background:#2196F3; color:white; padding:12px 30px; border:none; border-radius:30px; font-weight:bold; font-size:16px; cursor:pointer;">ΤΟ ΕΚΑΝΑ ✅</button>
+                <button onclick="BellGoBot.finish()" style="background:none; border:none; color:#777; margin-top:15px; cursor:pointer; font-size:12px;">Κλείσιμο</button>
             `;
         }
+    },
 
-        const div = document.createElement('div');
-        div.id = 'lockGuideOverlay';
-        div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px;";
-        div.innerHTML = `
-            <div style="background:#222; border:2px solid #FFD700; border-radius:15px; padding:20px; max-width:400px; color:white; text-align:center; box-shadow:0 0 20px rgba(255, 215, 0, 0.3); animation: popIn 0.3s ease;">
-                <div style="font-size:50px; margin-bottom:10px;">🤖</div>
-                <h3 style="color:#FFD700; margin-top:0;">${title}</h3>
-                <p style="font-size:14px; color:#ccc;">Κλείδωσε την οθόνη για να μην κλείνει κατά λάθος!</p>
-                ${steps}
-                <button onclick="document.getElementById('lockGuideOverlay').remove()" style="margin-top:15px; background:#00E676; color:black; border:none; padding:12px 30px; border-radius:25px; font-weight:bold; cursor:pointer; font-size:16px;">ΚΑΤΑΛΑΒΑ ✅</button>
-            </div>
-            <style>@keyframes popIn { from {transform:scale(0.8); opacity:0;} to {transform:scale(1); opacity:1;} }</style>
-        `;
-        document.body.appendChild(div);
+    activateShields: () => {
+        // 1. Trigger KeepAlive (Audio & WakeLock)
+        if(typeof KeepAlive !== 'undefined') {
+            KeepAlive.init();
+            // Force play audio immediately on user gesture
+            const audio = new Audio('/silence.mp3');
+            audio.play().catch(e => console.log("Audio play error", e));
+        }
+        // 2. Request Notification Permission if needed
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(() => {
+                BellGoBot.nextStep();
+            });
+        } else {
+            BellGoBot.nextStep();
+        }
+    },
+
+    finish: () => {
+        const box = document.getElementById('botOverlay');
+        if(box) box.remove();
     }
 };
 

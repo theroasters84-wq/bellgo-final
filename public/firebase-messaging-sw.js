@@ -47,8 +47,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
               tag: alarmTag, // ✅ Unique tag per alarm type
               renotify: true,           
               requireInteraction: true, 
-              vibrate: [500, 200, 500, 200, 500],
-              sound: '/alert.mp3', // ✅ Προσθήκη ήχου στο Loop
+              vibrate: [lert.mp3', // ✅ Προσθήκη ήχου στο Loop
               data: { url: url, isLooping: true }
           });
       };

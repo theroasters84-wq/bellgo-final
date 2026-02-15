@@ -501,7 +501,10 @@ function notifyAdmin(storeName, title, body, excludeSocketId = null, location = 
         if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
         if (adm.socketId) io.to(adm.socketId).emit('ring-bell', { source: title, location: location });
-        sendPushNotification(adm, title, body, { type: "alarm", location: location }, 86400); // ✅ TTL 24h (Για να φτάνει και με κλειστό browser)
+        // ✅ CHANGE: Στέλνουμε Push ΜΟΝΟ αν δεν είναι online (έχει χαθεί το heartbeat/socket)
+        if (adm.status !== 'online') {
+            sendPushNotification(adm, title, body, { type: "alarm", location: location }, 86400); 
+        }
     });
 }
 
@@ -895,7 +898,12 @@ io.on('connection', (socket) => {
         
         const key = `${socket.store}_${tName}`; 
         const t = activeUsers[key]; // ✅ Pass source as location for staff calls
-        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10); } 
+        if(t){ 
+            t.isRinging = true; updateStoreClients(socket.store); 
+            if(t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source }); 
+            // ✅ CHANGE: Push μόνο αν δεν είναι online
+            if (t.status !== 'online') sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10); 
+        } 
     });
     
     // ✅ NEW: STOP RINGING FOR EVERYONE (Admin & Kitchen)
@@ -944,7 +952,8 @@ setInterval(() => {
     for (const key in activeUsers) { 
         const user = activeUsers[key]; 
         // ✅ INTENSIVE LOOP: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS)
-        if (user.isRinging && user.fcmToken) { 
+        // ✅ CHANGE: Στέλνουμε Push ΜΟΝΟ αν δεν είναι online
+        if (user.isRinging && user.fcmToken && user.status !== 'online') { 
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
             // ✅ FIX FOR IOS: Προσθήκη bells στο body για να είναι μοναδικό κάθε φορά
             const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
