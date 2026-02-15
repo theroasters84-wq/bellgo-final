@@ -739,7 +739,7 @@ window.App = {
         const step1Html = `
             <div id="step1" style="background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
                 <h2 style="color:#FFD700; margin-top:0;">🍽️ Τραπέζι ${tableNumber}</h2>
-                <p style="color:#ccc;">Υπάρχει ανοιχτή παραγγελία.<br>Σύνολο: <b>${total.toFixed(2)}€</b></p>
+                <p style="color:#ccc;">Το τραπέζι είναι ενεργό.<br>Σύνολο: <b>${total.toFixed(2)}€</b></p>
                 <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ</button>
                 <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)</button>
             </div>
@@ -750,7 +750,7 @@ window.App = {
             <div id="step2" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
                 <h3 style="color:#2196F3;">Επιλογές</h3>
                 <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ΣΥΜΠΛΗΡΩΣΗ</button>
-                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ΕΞΟΦΛΗΣΗ</button>
+                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 /  ΠΛΗΡΩΜΗ</button>
                 <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
             </div>
         `;
@@ -766,13 +766,24 @@ window.App = {
             </div>
         `;
 
-        modal.innerHTML = step1Html + step2Html + step3Html;
+        // --- STEP 4: PAYMENT METHOD ---
+        const step4Html = `
+            <div id="step4" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
+                <h3 style="color:#00E676;">Τρόπος Πληρωμής</h3>
+                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#FF9800; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">🛎️ ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ</button>
+                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ONLINE (Stripe)</button>
+                <button id="btnBack3" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ΠΙΣΩ</button>
+            </div>
+        `;
+
+        modal.innerHTML = step1Html + step2Html + step3Html + step4Html;
         document.body.appendChild(modal);
 
         // --- HANDLERS ---
         const s1 = document.getElementById('step1');
         const s2 = document.getElementById('step2');
         const s3 = document.getElementById('step3');
+        const s4 = document.getElementById('step4');
 
         // Step 1 Logic
         document.getElementById('btnExisting').onclick = () => {
@@ -791,9 +802,8 @@ window.App = {
             s3.style.display = 'block';
         };
         document.getElementById('btnPayExisting').onclick = () => {
-            if(!storeHasStripe) return alert("Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
-            App.payExistingOrder(data.orderId, total);
-            modal.remove();
+            s2.style.display = 'none';
+            s4.style.display = 'block';
         };
         document.getElementById('btnBack1').onclick = () => {
             s2.style.display = 'none';
@@ -810,6 +820,24 @@ window.App = {
         };
         document.getElementById('btnBack2').onclick = () => {
             s3.style.display = 'none';
+            s2.style.display = 'block';
+        };
+
+        // Step 4 Logic
+        document.getElementById('btnCallWaiter').onclick = () => {
+            if (App.existingOrderId) {
+                window.socket.emit('add-items', { id: App.existingOrderId, items: "❗ ΖΗΤΑΕΙ ΛΟΓΑΡΙΑΣΜΟ (ΚΛΗΣΗ)" });
+                alert("Ειδοποιήσαμε τον σερβιτόρο!");
+                modal.remove();
+            }
+        };
+        document.getElementById('btnPayStripe').onclick = () => {
+            if(!storeHasStripe) return alert("Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
+            App.payExistingOrder(data.orderId, total);
+            modal.remove();
+        };
+        document.getElementById('btnBack3').onclick = () => {
+            s4.style.display = 'none';
             s2.style.display = 'block';
         };
     },
