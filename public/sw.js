@@ -60,7 +60,8 @@ messaging.setBackgroundMessageHandler(function(payload) {
     const url = payload.data.url || '/login.html';
 
     const isAlarm = (title + ' ' + body).toLowerCase().includes('paragelia') ||
-                    (title + ' ' + body).toLowerCase().includes('alarm');
+                    (title + ' ' + body).toLowerCase().includes('alarm') ||
+                    payload.data.type === 'alarm'; // ✅ Ενεργοποίηση Loop και για Staff Calls
 
     if (isAlarm) {
         const showNotification = () => {
@@ -70,7 +71,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
                 tag: 'bellgo-alarm-loop',
                 renotify: true,
                 requireInteraction: true,
-                vibrate: [300, 100, 400],
+                vibrate: [2000, 500, 2000, 500, 2000], // ✅ CIVIL PROTECTION STYLE (Long Vibration)
                 data: { url: url, isLooping: true }
             });
         };

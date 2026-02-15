@@ -100,7 +100,7 @@ const AudioEngine = {
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'flex';
 
-        this.vibrate(true);
+        this.vibrate(true); // ✅ Now uses the intense pattern from sw.js logic if background, or local here
         
         // 4. ΕΛΕΓΧΟΣ BACKGROUND: Αν η καρτέλα δεν φαίνεται, στείλε Notification
         // (Μόνο αν ΔΕΝ είμαστε σε Native App, γιατί εκεί το κάνει το Plugin)
@@ -157,9 +157,9 @@ const AudioEngine = {
     vibrate(active) {
         if (!navigator.vibrate) return;
         if (active) {
-            navigator.vibrate([1000, 500]);
+            navigator.vibrate([2000, 500, 2000]); // ✅ Intense Vibration
             if (this.vibInt) clearInterval(this.vibInt);
-            this.vibInt = setInterval(() => navigator.vibrate([1000, 500]), 1600);
+            this.vibInt = setInterval(() => navigator.vibrate([2000, 500, 2000]), 5000);
         } else {
             if (this.vibInt) clearInterval(this.vibInt);
             navigator.vibrate(0);

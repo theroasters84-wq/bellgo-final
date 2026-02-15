@@ -496,18 +496,18 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
                 // Αφαιρούμε το notification object και από το webpush για να μην το δείξει ο browser αυτόματα
             }, 
-            data: { ...dataPayload, title: title, body: body, url: targetUrl }
+            data: { ...dataPayload, title: title, body: body, url: targetUrl, location: dataPayload.location || "" }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
     }
 }
 
-function notifyAdmin(storeName, title, body, excludeSocketId = null) {
+function notifyAdmin(storeName, title, body, excludeSocketId = null, location = "") {
     Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(adm => {
         if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
-        if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
-        sendPushNotification(adm, title, body, { type: "alarm" }, 86400); // ✅ TTL 24h (Για να φτάνει και με κλειστό browser)
+        if (adm.socketId) io.to(adm.socketId).emit('ring-bell', { source: title, location: location });
+        sendPushNotification(adm, title, body, { type: "alarm", location: location }, 86400); // ✅ TTL 24h (Για να φτάνει και με κλειστό browser)
     });
 }
 
@@ -670,8 +670,14 @@ io.on('connection', (socket) => {
             const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
             store.orders.push(newOrder);
             console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
+            
+            // ✅ EXTRACT LOCATION (Address or Table) for GPS
+            let locationInfo = "";
+            const addrMatch = orderText.match(/📍\s*(.+)/);
+            if (addrMatch) locationInfo = addrMatch[1].trim();
+
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id);
+            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id, locationInfo);
         }
         
         updateStoreClients(socket.store);
@@ -893,8 +899,8 @@ io.on('connection', (socket) => {
         const source = (typeof data === 'object') ? data.source : "Admin";
         
         const key = `${socket.store}_${tName}`; 
-        const t = activeUsers[key]; 
-        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm" }, 10); } 
+        const t = activeUsers[key]; // ✅ Pass source as location for staff calls
+        if(t){ t.isRinging = true; updateStoreClients(socket.store); if(t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source }); sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10); } 
     });
     
     // ✅ NEW: STOP RINGING FOR EVERYONE (Admin & Kitchen)

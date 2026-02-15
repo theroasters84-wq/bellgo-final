@@ -132,14 +132,20 @@
 
     <div id="alarmOverlay">
         <div class="alarm-circle-btn" onclick="App.acceptAlarm()">
-            <svg class="check-icon" viewBox="0 0 24 24">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            <svg class="check-icon" viewBox="0 0 24 24"> <!-- Warning Triangle -->
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
             </svg>
-            <div style="font-size: 28px; font-weight: 800;">BellGo</div>
-            <div style="font-size: 16px; font-weight: bold; opacity: 0.9;">ΚΛΗΣΗ!</div>
-            <div id="alarmTimeBadge" class="time-badge">--:--</div>
+            <div class="alert-title">EMERGENCY ALERT</div>
+            <div id="alarmText" class="alert-body">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ</div>
+            
+            <div id="alarmLocationBox" style="display:none; flex-direction:column; align-items:center; width:100%;">
+                <div style="color:#aaa; font-size:12px; margin-bottom:5px;">ΤΟΠΟΘΕΣΙΑ:</div>
+                <div id="alarmLocationText" style="font-size:20px; color:#FFD700; font-weight:bold; margin-bottom:15px;">-</div>
+                <a id="btnGps" href="#" target="_blank" class="gps-btn" onclick="event.stopPropagation()">📍 ΑΝΟΙΓΜΑ ΧΑΡΤΗ</a>
+            </div>
+            
+            <div style="margin-top:20px; font-size:12px; color:#777;">ΠΑΤΗΣΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
         </div>
-        <div style="margin-top:20px; color:#aaa; font-size:14px;">(Πάτα τον κύκλο για αποδοχή)</div>
     </div>
 
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
@@ -284,7 +290,7 @@
 
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 
-                socket.on('ring-bell', () => App.triggerAlarmScreen());
+                socket.on('ring-bell', (data) => App.triggerAlarmScreen(data)); // ✅ Pass data
                 
                 socket.on('staff-list-update', (list) => App.renderStaffList(list));
                 socket.on('chat-message', (data) => App.renderChat(data));
@@ -331,7 +337,7 @@
                 App.triggerAlarmScreen(); 
             },
 
-            triggerAlarmScreen: () => {
+            triggerAlarmScreen: (data) => {
                 // Αν είναι ανοιχτό το fake lock, κλείστο για να φανεί ο συναγερμός
                 document.getElementById('fakeLockOverlay').style.display = 'none';
 
@@ -339,10 +345,21 @@
                 localStorage.setItem('isRinging', 'true');
 
                 if (userData.role !== 'admin') keepAliveAudio.pause();
-                if (window.AudioEngine) window.AudioEngine.triggerAlarm();
+                if (window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
                 
-                const now = new Date();
-                document.getElementById('alarmTimeBadge').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
+                // ✅ UPDATE UI WITH LOCATION / MAP
+                if (data && data.location) {
+                    document.getElementById('alarmLocationBox').style.display = 'flex';
+                    document.getElementById('alarmLocationText').innerText = data.location;
+                    // Create Google Maps Link
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location)}`;
+                    document.getElementById('btnGps').href = mapUrl;
+                } else {
+                    document.getElementById('alarmLocationBox').style.display = 'none';
+                }
+                
+                if(data && data.source) document.getElementById('alarmText').innerText = data.source;
+
                 document.getElementById('alarmOverlay').style.display = 'flex';
                 
                 if ('mediaSession' in navigator) {
