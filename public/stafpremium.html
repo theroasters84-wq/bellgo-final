@@ -482,15 +482,35 @@
 
                 App.connectSocket();
                 App.startHeartbeat();
-                // App.requestNotifyPermission();
+                App.checkNotificationPermission();
+            },
+
+            checkNotificationPermission: () => {
+                if (Notification.permission === 'default') {
+                    const div = document.createElement('div');
+                    div.id = 'notifPermRequest';
+                    div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#222; border-top:2px solid #FFD700; padding:20px; z-index:10000; text-align:center; box-shadow:0 -5px 20px rgba(0,0,0,0.5);";
+                    div.innerHTML = `
+                        <div style="color:white; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 Ενεργοποίηση Ειδοποιήσεων</div>
+                        <div style="color:#ccc; font-size:12px; margin-bottom:15px;">Για να λαμβάνετε ειδοποιήσεις για νέες παραγγελίες και κλήσεις.</div>
+                        <button id="btnAllowNotif" style="background:#00E676; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer;">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+                        <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#777; margin-left:10px; cursor:pointer;">Όχι τώρα</button>
+                    `;
+                    document.body.appendChild(div);
+                    
+                    document.getElementById('btnAllowNotif').onclick = async () => {
+                        await App.requestNotifyPermission();
+                        document.getElementById('notifPermRequest').remove();
+                    };
+                } else if (Notification.permission === 'granted') {
+                    App.requestNotifyPermission();
+                }
             },
 
             requestNotifyPermission: async () => {
                 try {
-                    if (Notification.permission === 'default') {
-                        await Notification.requestPermission();
-                    }
-                    if (Notification.permission === "granted") {
+                    const permission = await Notification.requestPermission();
+                    if (permission === "granted") {
                         const registration = await navigator.serviceWorker.ready;
                         const token = await getToken(messaging, { 
                             vapidKey: vapidKey, 
@@ -509,7 +529,6 @@
             unlockAudio: () => {
                 if(window.AudioEngine) window.AudioEngine.init();
                 document.getElementById('startScreen').style.display = 'none';
-                App.requestNotifyPermission();
             },
 
             connectSocket: () => {
@@ -563,6 +582,11 @@
                         else { const items = (data || "ΜΕΝΟΥ").split('\n'); menu = [{ name: "ΓΕΝΙΚΑ", items: items }]; }
                     } catch(e) { menu = []; }
 
+                    const isIos = () => {
+                        const ua = window.navigator.userAgent.toLowerCase();
+                        return /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) || (ua.includes("mac") && "ontouchend" in document);
+                    };
+
                     if(Array.isArray(menu)) {
                         menu.sort((a,b) => (a.order || 99) - (b.order || 99));
                         menu.forEach(cat => {
@@ -587,9 +611,29 @@
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
                                     box.innerHTML = `<span class="item-name">${itemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
-                                    box.addEventListener('dblclick', (e) => { 
-                                        e.preventDefault(); 
-                                        App.handleItemClick(itemName, itemPrice, itemExtras); 
+                                    
+                                    let lastTap = 0;
+                                    box.addEventListener('click', (e) => {
+                                        e.preventDefault();
+                                        
+                                        // On iPhone, Double Tap is hard, so we use Single Tap
+                                        if (isIos()) {
+                                            App.handleItemClick(itemName, itemPrice, itemExtras);
+                                            box.style.opacity = '0.5';
+                                            setTimeout(() => box.style.opacity = '1', 100);
+                                            return;
+                                        }
+
+                                        const currentTime = new Date().getTime();
+                                        const tapLength = currentTime - lastTap;
+                                        if (tapLength < 500 && tapLength > 0) {
+                                            App.handleItemClick(itemName, itemPrice, itemExtras);
+                                            lastTap = 0;
+                                            box.style.opacity = '0.5';
+                                            setTimeout(() => box.style.opacity = '1', 100);
+                                        } else {
+                                            lastTap = currentTime;
+                                        }
                                     });
                                     itemsDiv.appendChild(box);
                                 }
