@@ -43,15 +43,15 @@
 
     <div id="startScreen" style="z-index: 9999;">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Staff 🔔</h1>
-        <button class="btn-start" onclick="App.unlockAudio()">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+        <button class="btn-start" onclick="App.unlockAudio()" data-i18n="start_shift">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
     </div>
 
     <div id="userExtrasModal" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle">Επιλογές</h3>
+            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle" data-i18n="options">Επιλογές</h3>
             <div id="userExtrasList" class="extras-grid"></div>
-            <button class="btn-send" style="background:#00E676; color:black;" onclick="App.confirmExtras()">ΠΡΟΣΘΗΚΗ</button>
-            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+            <button class="btn-send" style="background:#00E676; color:black;" onclick="App.confirmExtras()" data-i18n="add">ΠΡΟΣΘΗΚΗ</button>
+            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
 
@@ -76,8 +76,9 @@
 
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ">🔔</button>
                 
+                <button class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings">⚙️</button>
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
-                <button class="btn-logout" onclick="App.logout()">EXIT</button>
+                <button class="btn-logout" onclick="App.logout()" data-i18n="exit">EXIT</button>
             </div>
         </div>
 
@@ -87,17 +88,17 @@
 
             <div id="orderPanel" class="order-panel minimized">
                 <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
-                    <div style="font-size:12px; color:#aaa; margin-right:10px;">ΠΑΡΑΓΓΕΛΙΑ</div>
+                    <div style="font-size:12px; color:#aaa; margin-right:10px;" data-i18n="order_header">ΠΑΡΑΓΓΕΛΙΑ</div>
                     <div id="panelIcon" class="toggle-icon">▲</div>
                 </div>
                 <div class="panel-content">
                     <div class="form-row">
                         <div class="input-group">
-                            <label>ΤΡΑΠΕΖΙ</label>
+                            <label data-i18n="table">ΤΡΑΠΕΖΙ</label>
                             <input type="text" id="inpTable" class="input-box" placeholder="#">
                         </div>
                         <div class="input-group">
-                            <label>ΚΟΥΒΕΡ</label>
+                            <label data-i18n="covers">ΚΟΥΒΕΡ</label>
                             <input type="number" id="inpCovers" class="input-box" placeholder="0" inputmode="numeric">
                         </div>
                         <div class="pay-method-toggle">
@@ -106,29 +107,29 @@
                         </div>
                     </div>
                     
-                    <textarea id="inpOrderText" class="order-text" placeholder="Προϊόντα..." oninput="App.handleInput()"></textarea>
+                    <textarea id="inpOrderText" class="order-text" placeholder="Προϊόντα..." data-i18n-placeholder="products_placeholder" oninput="App.handleInput()"></textarea>
                     
-                    <div id="liveTotal">ΣΥΝΟΛΟ: 0.00€</div>
+                    <div id="liveTotal" data-i18n="total_label">ΣΥΝΟΛΟ: 0.00€</div>
    
-                    <button id="btnSendOrder" class="btn-send" onclick="App.sendOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
-                    <button id="cancelUpdateBtn" onclick="App.cancelUpdate()">ΑΚΥΡΩΣΗ ΕΝΗΜΕΡΩΣΗΣ</button>
+                    <button id="btnSendOrder" class="btn-send" onclick="App.sendOrder()" data-i18n="send_order">ΑΠΟΣΤΟΛΗ 🚀</button>
+                    <button id="cancelUpdateBtn" onclick="App.cancelUpdate()" data-i18n="cancel_update">ΑΚΥΡΩΣΗ ΕΝΗΜΕΡΩΣΗΣ</button>
                 </div>
             </div>
             
             <div id="closedOverlay">
-                <div class="closed-text">🔴 ΤΟ ΣΥΣΤΗΜΑ ΠΡΟΣΩΠΙΚΟΥ ΕΙΝΑΙ ΚΛΕΙΣΤΟ</div>
+                <div class="closed-text" data-i18n="system_closed">🔴 ΤΟ ΣΥΣΤΗΜΑ ΠΡΟΣΩΠΙΚΟΥ ΕΙΝΑΙ ΚΛΕΙΣΤΟ</div>
             </div>
         </div>
 
         <div id="staffChatOverlay">
             <div class="overlay-header">
-                <span style="font-size:18px; font-weight:bold;">💬 Chat</span>
+                <span style="font-size:18px; font-weight:bold;" data-i18n="chat_title">💬 Chat</span>
                 <button onclick="App.toggleChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
             </div>
             <div class="chat-container">
                 <div id="waiterChatBox" class="chat-messages"></div>
                 <div class="chat-input-area">
-                    <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα...">
+                    <input type="text" id="waiterChatInp" class="chat-inp" placeholder="Μήνυμα..." data-i18n-placeholder="message_placeholder">
                     <button class="chat-btn" onclick="App.sendChat()">➤</button>
                 </div>
             </div>
@@ -141,15 +142,15 @@
         <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
             <div class="orders-box-container" onclick="event.stopPropagation()">
                 <div class="orders-tabs">
-                    <button class="tab-btn active" id="tabMyOrders" onclick="App.switchTab('my')">Οι Παραγγελίες μου</button>
-                    <button class="tab-btn" id="tabAllOrders" onclick="App.switchTab('all')">📂 ΓΕΝΙΚΕΣ</button>
+                    <button class="tab-btn active" id="tabMyOrders" onclick="App.switchTab('my')" data-i18n="my_orders">Οι Παραγγελίες μου</button>
+                    <button class="tab-btn" id="tabAllOrders" onclick="App.switchTab('all')" data-i18n="all_orders">📂 ΓΕΝΙΚΕΣ</button>
                 </div>
                 <div class="search-bar">
-                    <input type="number" id="searchTable" class="search-inp" placeholder="🔍 Αρ. Τραπεζιού" oninput="UI.filterOrders()">
+                    <input type="number" id="searchTable" class="search-inp" placeholder="🔍 Αρ. Τραπεζιού" data-i18n-placeholder="search_table_placeholder" oninput="UI.filterOrders()">
                 </div>
                 <div id="ordersList" class="orders-list"></div>
                 <div class="orders-footer" style="padding:15px; border-top:1px solid #333;">
-                    <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
+                    <button onclick="App.toggleMyOrders()" style="width:100%; padding:12px; background:#D32F2F; color:white; border:none; border-radius:6px; font-weight:bold;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
                 </div>
             </div>
         </div>
@@ -157,35 +158,47 @@
         <!-- ✅ NEW: TREAT SELECTION MODAL -->
         <div id="treatModal" class="overlay-screen" onclick="document.getElementById('treatModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()">
-                <h3 style="color:#FFD700; text-align:center; margin:0;">Επιλογή Κεράσματος</h3>
+                <h3 style="color:#FFD700; text-align:center; margin:0;" data-i18n="treat_selection">Επιλογή Κεράσματος</h3>
                 <div id="treatItemsList" style="max-height:300px; overflow-y:auto; margin:10px 0; display:flex; flex-direction:column; gap:5px;"></div>
-                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.treatFullOrder()">🎁 ΟΛΗ Η ΠΑΡΑΓΓΕΛΙΑ</button>
-                <button class="btn-act" style="background:#555; color:white; margin-top:10px;" onclick="document.getElementById('treatModal').style.display='none'">ΑΚΥΡΟ</button>
+                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.treatFullOrder()" data-i18n="treat_full">🎁 ΟΛΗ Η ΠΑΡΑΓΓΕΛΙΑ</button>
+                <button class="btn-act" style="background:#555; color:white; margin-top:10px;" onclick="document.getElementById('treatModal').style.display='none'" data-i18n="cancel">ΑΚΥΡΟ</button>
             </div>
         </div>
 
         <!-- ✅ NEW: QR PAYMENT MODAL -->
         <div id="qrPaymentModal" class="overlay-screen" onclick="document.getElementById('qrPaymentModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()" style="background:white; color:black;">
-                <h3 style="margin:0;">💳 ΠΛΗΡΩΜΗ</h3>
+                <h3 style="margin:0;" data-i18n="payment_title">💳 ΠΛΗΡΩΜΗ</h3>
                 <div id="qrPaymentCode" style="margin:10px auto; display:flex; justify-content:center;"></div>
                 <div id="qrLinkContainerStaff" style="margin-bottom:10px;"></div>
                 <div style="font-weight:bold; color:red; border:2px solid red; padding:10px; border-radius:8px; font-size:14px;">
                     ⚠️ ΜΗΝ ΞΕΧΑΣΕΤΕ ΝΑ ΖΗΤΗΣΕΤΕ ΤΟ ΝΟΜΙΜΟ ΠΑΡΑΣΤΑΤΙΚΟ (ΑΠΟΔΕΙΞΗ)
                 </div>
-                <button class="btn-act" style="background:#333; color:white; margin-top:10px;" onclick="document.getElementById('qrPaymentModal').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
+                <button class="btn-act" style="background:#333; color:white; margin-top:10px;" onclick="document.getElementById('qrPaymentModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
 
         <div id="actionModal" onclick="document.getElementById('actionModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()">
-                <h3 style="color:white; text-align:center; margin:0;">Επιλογές</h3>
-                <button class="btn-act" style="background:#2196F3;" onclick="App.prepareUpdateOrder()">➕ ΠΡΟΣΘΗΚΗ (ΕΝΗΜΕΡΩΣΗ)</button>
-                <button class="btn-act" style="background:transparent; border:1px solid #555; color:#aaa; font-size:14px; padding:10px;" onclick="App.printOrder()">🖨️ Εκτύπωση</button>
-                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.openTreatModal()">🎁 ΚΕΡΑΣΜΑ</button>
-                <button class="btn-act" style="background:#635BFF; color:white;" onclick="App.openQrPayment()">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>
-                <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
-                <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'">ΑΚΥΡΟ</button>
+                <h3 style="color:white; text-align:center; margin:0;" data-i18n="options">Επιλογές</h3>
+                <button class="btn-act" style="background:#2196F3;" onclick="App.prepareUpdateOrder()" data-i18n="add_update">➕ ΠΡΟΣΘΗΚΗ (ΕΝΗΜΕΡΩΣΗ)</button>
+                <button class="btn-act" style="background:transparent; border:1px solid #555; color:#aaa; font-size:14px; padding:10px;" onclick="App.printOrder()" data-i18n="print">🖨️ Εκτύπωση</button>
+                <button class="btn-act" style="background:#FFD700; color:black;" onclick="App.openTreatModal()" data-i18n="treat">🎁 ΚΕΡΑΣΜΑ</button>
+                <button class="btn-act" style="background:#635BFF; color:white;" onclick="App.openQrPayment()" data-i18n="qr_card">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>
+                <button class="btn-act" style="background:#00E676;" onclick="App.handlePayOrder()" data-i18n="pay_close">💰 ΕΞΟΦΛΗΣΗ (ΚΛΕΙΣΙΜΟ)</button>
+                <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('actionModal').style.display='none'" data-i18n="cancel">ΑΚΥΡΟ</button>
+            </div>
+        </div>
+
+        <!-- ✅ NEW: SETTINGS MODAL -->
+        <div id="settingsModal" class="overlay-screen" onclick="document.getElementById('settingsModal').style.display='none'">
+            <div class="action-box" onclick="event.stopPropagation()">
+                <h3 style="color:#FFD700; text-align:center; margin:0; margin-bottom:15px;" data-i18n="settings">ΡΥΘΜΙΣΕΙΣ</h3>
+                <div style="display:flex; gap:10px; justify-content:center; margin-bottom:15px;">
+                    <button class="btn-act" style="background:#333; border:1px solid #555;" onclick="App.setLanguage('el')">🇬🇷 Ελληνικά</button>
+                    <button class="btn-act" style="background:#333; border:1px solid #555;" onclick="App.setLanguage('en')">🇺🇸 English</button>
+                </div>
+                <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
 
@@ -288,6 +301,32 @@
 
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
+
+        // --- I18N LOGIC ---
+        let translations = {};
+        const t = (key) => translations[key] || key;
+
+        async function setLanguage(lang) {
+            localStorage.setItem('bellgo_lang', lang);
+            try {
+                const response = await fetch(`/i18n/${lang}.json`);
+                translations = await response.json();
+                applyTranslations();
+                document.getElementById('settingsModal').style.display = 'none';
+            } catch (error) { console.error(`Lang Error: ${lang}`, error); }
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[key]) el.innerText = translations[key];
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (translations[key]) el.placeholder = translations[key];
+            });
+            App.handleInput(); // Update Total Text
+        }
 
         const parseItem = (str) => {
             const parts = str.split(':');
@@ -483,6 +522,10 @@
                 App.connectSocket();
                 App.startHeartbeat();
                 App.checkNotificationPermission();
+
+                // Load Language
+                const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+                setLanguage(savedLang);
             },
 
             checkNotificationPermission: () => {
@@ -562,10 +605,10 @@
                         const btnSend = document.getElementById('btnSendOrder');
                         if(settings.statusStaff === false) {
                             closedOverlay.style.display = 'flex';
-                            if(btnSend) { btnSend.disabled = true; btnSend.innerText = "⛔ ΚΛΕΙΣΤΟ"; }
+                            if(btnSend) { btnSend.disabled = true; btnSend.innerText = t('store_closed') || "⛔ ΚΛΕΙΣΤΟ"; }
                         } else {
                             closedOverlay.style.display = 'none';
-                            if(btnSend) { btnSend.disabled = false; btnSend.innerText = "ΑΠΟΣΤΟΛΗ 🚀"; }
+                            if(btnSend) { btnSend.disabled = false; btnSend.innerText = t('send_order') || "ΑΠΟΣΤΟΛΗ 🚀"; }
                         }
                     }
                 });
@@ -744,7 +787,7 @@
                         if(!isNaN(priceVal)) { total += qty * priceVal; } 
                     }
                 }
-                document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+                document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: ${total.toFixed(2)}€`;
             },
 
             acceptAlarmStaff: () => {
@@ -774,20 +817,20 @@
                 document.getElementById('inpTable').value = '';
                 document.getElementById('inpCovers').value = '';
                 document.getElementById('inpOrderText').value = '';
-                document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+                document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: 0.00€`;
                 App.setPayment('cash');
                 alert("Εστάλη!");
             },
             
             setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
-            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText="ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
+            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText=t('send_order')||"ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
             prepareUpdateOrder: () => { 
                 document.getElementById('actionModal').style.display='none'; document.getElementById('myOrdersOverlay').style.display='none';
                 const o = App.allActiveOrders.find(x=>x.id===App.selectedOrderId); if(!o)return;
                 App.updatingOrderId=o.id; 
                 const t=o.text.match(/ΤΡ:\s*(\d+)/); if(t)document.getElementById('inpTable').value=t[1];
                 const c=o.text.match(/AT:\s*(\d+)/); if(c)document.getElementById('inpCovers').value=c[1];
-                const btn=document.getElementById('btnSendOrder'); btn.innerText="➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
+                const btn=document.getElementById('btnSendOrder'); btn.innerText=t('update_order')||"➕ ΕΝΗΜΕΡΩΣΗ"; btn.classList.add('update-mode');
                 document.getElementById('cancelUpdateBtn').style.display='block';
                 const p = document.getElementById('orderPanel');
                 if(p.classList.contains('minimized')) App.toggleOrderPanel();
@@ -896,7 +939,8 @@
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href="login.html"; },
             forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(),500); },
-            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000),
+            setLanguage: setLanguage // Expose for button click
         };
 
         window.onload = App.init;
