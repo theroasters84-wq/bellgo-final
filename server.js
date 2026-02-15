@@ -476,12 +476,24 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ✅ FIX: Στέλνουμε DATA-ONLY για Web. Αφαιρούμε το 'notification' για να αναγκάσουμε 
-            // τον Service Worker να διαχειριστεί την εμφάνιση. Αυτό λύνει το "Site updated in background".
-            // notification: { title: title, body: body }, 
+            // ✅ FIX: Ενεργοποίηση notification για να ξυπνάει τον browser όταν είναι κλειστός
+            notification: { title: title, body: body }, 
             
             android: { priority: "high", notification: { title: title, body: body, sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } },
-            webpush: { headers: { "Urgency": "high", "TTL": finalTTL }, fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` } }, 
+            webpush: { 
+                headers: { "Urgency": "high", "TTL": finalTTL }, 
+                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
+                notification: {
+                    title: title,
+                    body: body,
+                    icon: '/admin.png',
+                    tag: 'bellgo-alarm',
+                    renotify: true,
+                    requireInteraction: true,
+                    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500],
+                    data: { url: targetUrl }
+                }
+            }, 
             data: { ...dataPayload, title: title, body: body, url: targetUrl }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));

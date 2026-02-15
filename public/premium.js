@@ -3,6 +3,11 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 
+// ✅ REGISTER SERVICE WORKER (Για να λειτουργεί κλειστό)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
+}
+
 // --- MANIFEST LOGIC (Running immediately) ---
 (function() {
     // PWA LOGIC: Μοναδικό ID για το Admin App
