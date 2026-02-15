@@ -26,7 +26,7 @@
             </div>
             
             <div class="header-actions">
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings">⚙️</button>
                 <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -125,17 +125,18 @@
 
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <h3 class="modal-title" data-translate-key="settings_title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
             
             <!-- MAIN MENU -->
             <div id="settingsMain">
-                <button class="modal-btn" onclick="App.openSettingsSub('subStore')">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subPrint')">🖨️ ΕΚΤΥΠΩΣΗ</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subQr')">📱 QR & LINKS</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')">⚙️ PIN / CONNECT STRIPE</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subStore')" data-translate-key="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-translate-key="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-translate-key="qr_and_links">📱 QR & LINKS</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-translate-key="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subLang')" data-translate-key="language_settings_button">🌐 ΓΛΩΣΣΑ / LANGUAGE</button>
                 
-                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()">🚪 ΕΞΟΔΟΣ</button>
-                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-translate-key="exit">🚪 ΕΞΟΔΟΣ</button>
+                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-translate-key="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
 
             <!-- SUB: STORE & SCHEDULE -->
@@ -162,7 +163,7 @@
                     </div>
                     <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
                 </div>
-                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: PRINT -->
@@ -179,7 +180,7 @@
                         <label class="switch"><input type="checkbox" id="switchAutoClosePrint" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                 </div>
-                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: QR & LINKS -->
@@ -191,7 +192,7 @@
                 </div>
                 <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</button>
                 <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</button>
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: GENERAL -->
@@ -213,7 +214,17 @@
                     <option value="souvlaki">🍖 Souvlaki / Grill</option>
                 </select>
 
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+            </div>
+
+            <!-- SUB: LANGUAGE -->
+            <div id="subLang" class="settings-sub" style="display:none;">
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-translate-key="language_settings_title">ΓΛΩΣΣΑ / LANGUAGE</h4>
+                <div class="settings-section">
+                    <button class="modal-btn" onclick="App.setLanguage('el')">🇬🇷 Ελληνικά</button>
+                    <button class="modal-btn" onclick="App.setLanguage('en')">🇺🇸 English</button>
+                </div>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
             </div>
         </div>
     </div>
