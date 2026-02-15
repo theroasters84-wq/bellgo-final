@@ -133,7 +133,6 @@
                 <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subLang')" data-i18n="language_settings_button">🌐 ΓΛΩΣΣΑ / LANGUAGE</button>
                 <button class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
@@ -218,15 +217,6 @@
                 <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
-            <!-- SUB: LANGUAGE -->
-            <div id="subLang" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="language_settings_title">ΓΛΩΣΣΑ / LANGUAGE</h4>
-                <div class="settings-section">
-                    <button class="modal-btn" onclick="App.setLanguage('el')">🇬🇷 Ελληνικά</button>
-                    <button class="modal-btn" onclick="App.setLanguage('en')">🇺🇸 English</button>
-                </div>
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
-            </div>
         </div>
     </div>
 

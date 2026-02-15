@@ -233,14 +233,7 @@ window.App = {
         let shouldOpenForm = false;
 
         if (!customerDetails) {
-            if (isDineIn) {
-                // ✅ FIX: Προσωρινή αποθήκευση για να προχωρήσει στον έλεγχο τραπεζιού (Socket)
-                const name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
-                customerDetails = { name, table: tableNumber, type: 'dinein' };
-                localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
-            } else {
-                shouldOpenForm = true;
-            }
+            shouldOpenForm = true;
         } else {
             if (isDineIn) {
                 // ✅ FIX: Δεν ζητάμε covers εδώ. Θα το ζητήσουμε ΜΟΝΟ αν το τραπέζι είναι ανενεργό (μέσω socket)
@@ -266,8 +259,9 @@ window.App = {
         if (isDineIn) {
             const covers = document.getElementById('inpCovers').value;
             if (!covers) return alert(t('enter_covers_error') || "Παρακαλώ εισάγετε αριθμό ατόμων!");
-            // Στο τραπέζι παίρνουμε το όνομα από το Google ή βάζουμε "Πελάτης"
-            const name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
+            // ✅ FIX: Allow name input if available, otherwise default
+            let name = document.getElementById('inpName').value.trim();
+            if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
             customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
         } else {
             const name = document.getElementById('inpName').value.trim();

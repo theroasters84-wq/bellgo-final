@@ -11,6 +11,30 @@ if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access De
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
+// --- I18N LOGIC (FIX FOR TRANSLATIONS) ---
+let translations = {};
+const t = (key) => translations[key] || key;
+
+async function setLanguage(lang) {
+    localStorage.setItem('bellgo_lang', lang);
+    try {
+        const response = await fetch(`/i18n/${lang}.json`);
+        translations = await response.json();
+        applyTranslations();
+    } catch (error) { console.error(`Lang Error: ${lang}`, error); }
+}
+
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[key]) el.innerText = translations[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[key]) el.placeholder = translations[key];
+    });
+}
+
 const calculateTotal = (text) => {
     let total = 0;
     if (!text) return 0;
@@ -142,6 +166,9 @@ window.App = {
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
+    
+    // Expose setLanguage for console or future use
+    setLanguage: setLanguage,
 
     init: () => {
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
@@ -273,6 +300,10 @@ window.App = {
 
         // ✅ Start Bot
         DNDBot.init();
+        
+        // ✅ LOAD LANGUAGE ON INIT
+        const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+        setLanguage(savedLang);
     },
     
     requestNotifyPermission: async () => {
