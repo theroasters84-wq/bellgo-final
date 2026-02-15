@@ -57,7 +57,8 @@ const defaultSettings = {
     googleMapsUrl: "", // ✅ Google Maps Link
     autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
     autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
-    plan: 'basic' // ✅ Καταγραφή Συνδρομής (basic/premium)
+    plan: 'basic', // ✅ Καταγραφή Συνδρομής (basic/premium)
+    visibility: 'public' // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
 }; 
 
 /* ---------------- FIREBASE HELPERS ---------------- */
@@ -594,6 +595,7 @@ io.on('connection', (socket) => {
             if(data.autoClosePrint !== undefined) store.settings.autoClosePrint = data.autoClosePrint; // ✅ Αποθήκευση Auto Close Print
             if(data.expensePresets) store.settings.expensePresets = data.expensePresets; // ✅ Αποθήκευση Presets Εξόδων
             if(data.fixedExpenses) store.settings.fixedExpenses = data.fixedExpenses; // ✅ NEW: Αποθήκευση Πάγιων Εξόδων
+            if(data.visibility) store.settings.visibility = data.visibility; // ✅ NEW: Αποθήκευση Ρύθμισης Ορατότητας (Mini App)
             updateStoreClients(socket.store); 
         } 
     });

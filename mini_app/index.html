@@ -2,130 +2,374 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BellGo Mini</title>
+    <link rel="manifest" id="dynamicManifest" href="/manifest.json?icon=admin">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/player.js"></script> <!-- ✅ Ενσωμάτωση Player -->
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --bg: #121212; --card: #1e1e1e; --primary: #FFD700; --text: #ffffff; --danger: #FF5252; --success: #00E676; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
         
-        body {
-            margin: 0; padding: 0;
-            background-color: #000; color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            height: 100vh; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            overflow: hidden;
-        }
-
-        .btn-call {
-            width: 220px; height: 220px;
-            border-radius: 50%;
-            background: #D32F2F;
-            border: 8px solid #FF5252;
-            color: white;
-            font-size: 32px; font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 40px rgba(211, 47, 47, 0.6);
-            transition: transform 0.1s, background 0.2s;
-            display: flex; align-items: center; justify-content: center;
-            flex-direction: column;
-        }
-
-        .btn-call:active { transform: scale(0.95); background: #B71C1C; }
+        /* --- LOGIN SCREEN --- */
+        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
+        .logo { font-size: 50px; margin-bottom: 20px; }
+        input { background: #333; border: 1px solid #444; color: white; padding: 15px; margin-bottom: 15px; width: 100%; max-width: 300px; border-radius: 10px; font-size: 16px; outline: none; text-align: center; }
+        input:focus { border-color: var(--primary); }
+        .btn { background: var(--primary); color: black; border: none; padding: 15px; width: 100%; max-width: 300px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
         
-        .status-text {
-            margin-top: 30px;
-            font-size: 18px;
-            color: #aaa;
-            font-weight: 500;
-            text-align: center;
-            padding: 0 20px;
-        }
-
-        .status-text.connected { color: #00E676; }
-        .status-text.disconnected { color: #FF5252; }
+        /* --- APP SCREEN --- */
+        #appScreen { display: none; flex-direction: column; height: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        .header-title { font-weight: bold; font-size: 18px; color: var(--primary); }
+        .btn-exit { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-size: 14px; cursor: pointer; }
         
-        .accepted-anim {
-            animation: flashSuccess 1s infinite alternate;
-            color: #00E676;
-            font-size: 22px;
-        }
+        /* --- ADMIN CONTROLS --- */
+        #adminControls { padding: 10px; background: #222; border-bottom: 1px solid #333; display: none; text-align: center; }
+        .toggle-label { font-size: 14px; color: #aaa; margin-right: 10px; }
+        .toggle-btn { background: #444; border: 1px solid #555; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+        .toggle-btn.active { background: var(--primary); color: black; border-color: var(--primary); }
 
-        @keyframes flashSuccess {
-            0% { opacity: 1; text-shadow: 0 0 10px #00E676; }
-            100% { opacity: 0.5; text-shadow: 0 0 20px #00E676; }
-        }
+        /* --- USER LIST --- */
+        #userList { flex: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; align-content: start; }
+        .user-card { background: var(--card); border: 1px solid #333; border-radius: 15px; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: 0.2s; aspect-ratio: 1; }
+        .user-card:active { transform: scale(0.95); background: #2a2a2a; }
+        .user-icon { font-size: 30px; margin-bottom: 5px; }
+        .user-name { font-size: 14px; font-weight: bold; text-align: center; word-break: break-word; }
+        .user-status { font-size: 10px; color: #777; margin-top: 5px; }
+        
+        /* STATES */
+        .user-card.ringing { border-color: var(--danger); background: rgba(255, 82, 82, 0.1); animation: pulse 1s infinite; }
+        .user-card.calling { border-color: var(--primary); opacity: 0.8; }
+        .user-card.accepted { border-color: var(--success); background: rgba(0, 230, 118, 0.1); }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* --- INCOMING CALL OVERLAY --- */
+        #callOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .call-avatar { font-size: 80px; margin-bottom: 20px; animation: shake 0.5s infinite; }
+        .call-text { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .call-sub { font-size: 16px; color: #aaa; margin-bottom: 40px; }
+        .btn-accept { background: var(--success); color: black; font-size: 20px; padding: 20px 50px; border-radius: 50px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(0, 230, 118, 0.5); }
+        
+        @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
+
+        /* --- TOAST --- */
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 2000; }
     </style>
 </head>
 <body>
-    <button id="btnCall" class="btn-call" onclick="triggerCall()">
-        <span style="font-size:40px;">🔔</span>
-        <span>CALL</span>
-    </button>
-    
-    <div id="statusMsg" class="status-text">Connecting...</div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen">
+        <div class="logo">🔔</div>
+        <h2 style="margin-top:0;">BellGo Mini</h2>
+        <input type="text" id="inpStore" placeholder="Όνομα Επιχείρησης (Room)" autocapitalize="off">
+        <input type="password" id="inpPass" placeholder="Κωδικός (Προαιρετικό)">
+        <input type="text" id="inpName" placeholder="Το Όνομά σου">
+        <button class="btn" onclick="App.login()">ΕΙΣΟΔΟΣ</button>
+        <div style="margin-top:20px; font-size:12px; color:#666;">
+            * Αν βάλετε κωδικό και ταιριάζει, γίνεστε Admin (Πομπός).<br>
+            * Αν δεν βάλετε, μπαίνετε ως Χρήστης.
+        </div>
+    </div>
+
+    <!-- APP SCREEN -->
+    <div id="appScreen">
+        <div class="header">
+            <div class="header-title" id="displayStore">Room</div>
+            <button class="btn-exit" onclick="App.logout()">Exit ✕</button>
+        </div>
+
+        <!-- Admin Only Controls -->
+        <div id="adminControls">
+            <span class="toggle-label">Ορατότητα:</span>
+            <button id="btnVisPublic" class="toggle-btn" onclick="App.setVisibility('public')">👁️ Όλοι</button>
+            <button id="btnVisPrivate" class="toggle-btn" onclick="App.setVisibility('private')">🔒 Μόνο Admin</button>
+        </div>
+
+        <div id="userList">
+            <!-- Users will be injected here -->
+        </div>
+    </div>
+
+    <!-- INCOMING CALL OVERLAY -->
+    <div id="callOverlay">
+        <div class="call-avatar">📞</div>
+        <div class="call-text" id="callTitle">Κλήση...</div>
+        <div class="call-sub" id="callSub">Ο χρήστης σας καλεί</div>
+        <button class="btn-accept" onclick="App.acceptCall()">ΑΠΟΔΟΧΗ</button>
+    </div>
+
+    <div id="toast">Message</div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const storeName = params.get('store');
-        const myName = params.get('name') || 'MiniUser';
-        let socket = null;
-
-        if (storeName) {
-            socket = io();
+        const App = {
+            socket: null,
+            store: null,
+            username: null,
+            role: 'staff', // 'admin' or 'staff'
+            myToken: null,
+            users: [],
+            callingTarget: null, // Who am I calling?
             
-            socket.on('connect', () => {
-                document.getElementById('statusMsg').innerText = "🟢 Connected";
-                document.getElementById('statusMsg').className = "status-text connected";
+            init: () => {
+                // Check for saved session
+                const saved = localStorage.getItem('bellgo_mini_session');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    document.getElementById('inpStore').value = data.store;
+                    document.getElementById('inpName').value = data.username;
+                    // Auto-login logic could go here, but for security/pin check we let them click
+                }
+
+                // Service Worker Registration
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('/sw.js').then(reg => {
+                        console.log('SW Registered');
+                    });
+                }
+
+                // Init Audio Engine (Click listener)
+                document.body.addEventListener('click', () => {
+                    if (window.AudioEngine) window.AudioEngine.init();
+                }, { once: true });
+            },
+
+            login: () => {
+                const store = document.getElementById('inpStore').value.trim();
+                const pass = document.getElementById('inpPass').value.trim();
+                const name = document.getElementById('inpName').value.trim();
+
+                if (!store || !name) return alert("Συμπληρώστε Όνομα και Επιχείρηση!");
+
+                App.store = store;
+                App.username = name;
+
+                // Connect Socket
+                App.socket = io();
                 
-                // Σύνδεση στο κατάστημα για να λαμβάνουμε events
-                socket.emit('join-store', { 
-                    storeName: storeName, 
-                    username: myName, 
-                    role: 'waiter', 
-                    isNative: false 
+                App.socket.on('connect', () => {
+                    // 1. Check PIN status first
+                    App.socket.emit('verify-pin', { email: store, pin: pass });
                 });
-            });
-            
-            socket.on('disconnect', () => {
-                document.getElementById('statusMsg').innerText = "🔴 Disconnected";
-                document.getElementById('statusMsg').className = "status-text disconnected";
-            });
 
-            // 👂 ΑΚΡΟΑΣΗ ΑΠΟΔΟΧΗΣ ΚΛΗΣΗΣ
-            socket.on('staff-accepted-alarm', (data) => {
-                const el = document.getElementById('statusMsg');
-                el.innerText = `✅ Η κλήση έγινε αποδεκτή από: ${data.username}`;
-                el.className = "status-text accepted-anim";
-                
-                if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                
-                // Καθαρισμός μετά από 5 δευτερόλεπτα
-                setTimeout(() => { 
-                    el.innerText = "🟢 Ready"; 
-                    el.className = "status-text connected"; 
-                }, 5000);
-            });
-        } else {
-            document.getElementById('statusMsg').innerText = "⚠️ No Store ID provided";
-        }
+                // 2. Handle PIN Verification Result
+                App.socket.on('pin-verified', (res) => {
+                    if (res.success) {
+                        // Password matched -> ADMIN (Pompos)
+                        App.role = 'admin';
+                        App.join(pass); // Send pass to potentially set it if new
+                    } else {
+                        if (pass) {
+                            alert("Λάθος κωδικός! Μπαίνετε ως απλός χρήστης.");
+                        }
+                        // No password or wrong password -> USER
+                        App.role = 'staff';
+                        App.join(null);
+                    }
+                });
+            },
 
-        function triggerCall() {
-            if(!socket || !socket.connected) return alert("No connection!");
-            
-            // Trigger Alarm to Admin/Kitchen
-            socket.emit('trigger-alarm', { target: 'Admin', source: myName });
-            
-            const btn = document.getElementById('btnCall');
-            btn.style.background = "white";
-            btn.style.color = "#D32F2F";
-            setTimeout(() => {
-                btn.style.background = "#D32F2F";
-                btn.style.color = "white";
-            }, 200);
-            
-            document.getElementById('statusMsg').innerText = "🔔 Calling...";
-        }
+            join: (pin) => {
+                // If I am admin and it's a new room, I might need to set the PIN
+                if (App.role === 'admin' && pin) {
+                    App.socket.emit('set-new-pin', { email: App.store, pin: pin });
+                }
+
+                // Request Notification Permission
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') {
+                        // Get Token logic (simplified, assumes firebase-messaging-sw is ready)
+                        // For now, we rely on the fact that sw.js handles background messages
+                        // In a real scenario, we would get the token here.
+                    }
+                });
+
+                // Join Store
+                App.socket.emit('join-store', {
+                    storeName: App.store,
+                    username: App.username,
+                    role: App.role,
+                    isNative: false
+                });
+
+                // Save Session
+                localStorage.setItem('bellgo_mini_session', JSON.stringify({ store: App.store, username: App.username }));
+
+                // UI Switch
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appScreen').style.display = 'flex';
+                document.getElementById('displayStore').innerText = App.store + (App.role === 'admin' ? ' (Admin)' : '');
+
+                if (App.role === 'admin') {
+                    document.getElementById('adminControls').style.display = 'block';
+                }
+
+                App.setupListeners();
+            },
+
+            setupListeners: () => {
+                const socket = App.socket;
+
+                // Update User List
+                socket.on('staff-list-update', (list) => {
+                    App.users = list;
+                    App.renderUsers();
+                });
+
+                // Settings Update (Visibility)
+                socket.on('store-settings-update', (settings) => {
+                    if (settings && settings.visibility) {
+                        App.visibilityMode = settings.visibility;
+                        App.updateVisButtons();
+                        App.renderUsers(); // Re-render based on new visibility
+                    }
+                });
+
+                // Incoming Call (Ring Bell)
+                socket.on('ring-bell', (data) => {
+                    const source = data ? data.source : "Άγνωστος";
+                    // If I am the caller, I don't ring
+                    if (source === App.username) return;
+
+                    // Trigger Audio
+                    if (window.AudioEngine) window.AudioEngine.triggerAlarm(source);
+
+                    // Show Overlay
+                    document.getElementById('callTitle').innerText = `Κλήση από: ${source}`;
+                    document.getElementById('callSub').innerText = "Πατήστε ΑΠΟΔΟΧΗ";
+                    document.getElementById('callOverlay').style.display = 'flex';
+                });
+
+                // Stop Ringing (Accepted by someone or stopped)
+                socket.on('stop-bell', () => {
+                    if (window.AudioEngine) window.AudioEngine.stopAlarm();
+                    document.getElementById('callOverlay').style.display = 'none';
+                });
+
+                // Call Accepted Feedback (For the Caller)
+                socket.on('staff-accepted-alarm', (data) => {
+                    if (App.callingTarget) {
+                        App.showToast(`✅ Ο/Η ${data.username} αποδέχθηκε την κλήση!`);
+                        App.callingTarget = null;
+                        // Reset UI cards
+                        App.renderUsers();
+                    }
+                });
+            },
+
+            renderUsers: () => {
+                const container = document.getElementById('userList');
+                container.innerHTML = '';
+
+                // VISIBILITY LOGIC
+                // If mode is 'private' AND I am NOT admin -> Show only Admin(s) or Empty?
+                // "o pompos exei epilogh ean thelei va vlepoun oloi olous... h mono autos na vlepei"
+                // If 'private': Admin sees everyone. Users see ONLY Admin (or no one?).
+                // Let's assume Users see only Admins in private mode.
+
+                let listToRender = App.users.filter(u => u.username !== App.username); // Don't show self
+
+                if (App.visibilityMode === 'private' && App.role !== 'admin') {
+                    // Show only admins
+                    listToRender = listToRender.filter(u => u.role === 'admin');
+                }
+
+                if (listToRender.length === 0) {
+                    container.innerHTML = '<div style="color:#555; width:100%; text-align:center; margin-top:50px;">Κανένας χρήστης συνδεδεμένος.</div>';
+                    return;
+                }
+
+                listToRender.forEach(u => {
+                    const card = document.createElement('div');
+                    card.className = 'user-card';
+                    
+                    let statusText = "Online";
+                    let icon = "👤";
+                    
+                    if (u.role === 'admin') { icon = "🛡️"; statusText = "Admin"; }
+                    if (u.status === 'away') { statusText = "Away"; card.style.opacity = 0.5; }
+                    
+                    if (u.isRinging) {
+                        card.classList.add('ringing');
+                        statusText = "🔔 Ringing...";
+                    }
+
+                    // If I am calling this user specifically
+                    if (App.callingTarget === u.username) {
+                        card.classList.add('calling');
+                        statusText = "📞 Calling...";
+                    }
+
+                    card.innerHTML = `
+                        <div class="user-icon">${icon}</div>
+                        <div class="user-name">${u.username}</div>
+                        <div class="user-status">${statusText}</div>
+                    `;
+
+                    // Click to Call
+                    card.onclick = () => App.callUser(u.username);
+
+                    container.appendChild(card);
+                });
+            },
+
+            callUser: (targetName) => {
+                if (App.callingTarget) return; // Already calling
+                if (confirm(`Να γίνει κλήση στον χρήστη ${targetName};`)) {
+                    App.callingTarget = targetName;
+                    App.socket.emit('trigger-alarm', { target: targetName, source: App.username });
+                    App.renderUsers(); // Update UI to show "Calling..."
+                    App.showToast(`📞 Καλείτε τον/την ${targetName}...`);
+                }
+            },
+
+            acceptCall: () => {
+                // Stop my sound
+                if (window.AudioEngine) window.AudioEngine.stopAlarm();
+                document.getElementById('callOverlay').style.display = 'none';
+                
+                // Notify Server
+                App.socket.emit('alarm-accepted', { store: App.store, username: App.username });
+                
+                // Also stop ringing for everyone (Admin logic)
+                if (App.role === 'admin') {
+                    App.socket.emit('admin-stop-ringing');
+                }
+            },
+
+            setVisibility: (mode) => {
+                App.socket.emit('save-store-settings', { visibility: mode });
+                App.visibilityMode = mode;
+                App.updateVisButtons();
+            },
+
+            updateVisButtons: () => {
+                document.getElementById('btnVisPublic').classList.toggle('active', App.visibilityMode !== 'private');
+                document.getElementById('btnVisPrivate').classList.toggle('active', App.visibilityMode === 'private');
+            },
+
+            logout: () => {
+                if (App.socket) App.socket.disconnect();
+                localStorage.removeItem('bellgo_mini_session');
+                location.reload();
+            },
+
+            showToast: (msg) => {
+                const t = document.getElementById('toast');
+                t.innerText = msg;
+                t.style.opacity = 1;
+                t.style.bottom = "50px";
+                setTimeout(() => {
+                    t.style.opacity = 0;
+                    t.style.bottom = "20px";
+                }, 3000);
+            }
+        };
+
+        window.onload = App.init;
     </script>
 </body>
 </html>
