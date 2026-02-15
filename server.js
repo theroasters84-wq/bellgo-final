@@ -481,15 +481,17 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             
             android: { 
                 priority: "high", 
-                notification: { 
-                    title: title, 
-                    body: body, 
-                    sound: "default", 
-                    tag: "bellgo-alarm", 
-                    clickAction: `${YOUR_DOMAIN}${targetUrl}`,
-                    visibility: 'public', // ✅ Εμφάνιση σε κλειδωμένη οθόνη
-                    channelId: 'bellgo_alarm_channel'
-                } 
+                // 🔴 FIX: Σχολιάζουμε το notification object ΚΑΙ εδώ για να είναι Pure Data Message.
+                // Έτσι αναγκάζουμε το Service Worker (sw.js) να αναλάβει το UI και το Loop.
+                // notification: { 
+                //     title: title, 
+                //     body: body, 
+                //     sound: "default", 
+                //     tag: "bellgo-alarm", 
+                //     clickAction: `${YOUR_DOMAIN}${targetUrl}`,
+                //     visibility: 'public', 
+                //     channelId: 'bellgo_alarm_channel'
+                // } 
             },
             webpush: { 
                 headers: { "Urgency": "high", "TTL": finalTTL }, 
