@@ -198,6 +198,7 @@
                     <button class="btn-act" style="background:#333; border:1px solid #555;" onclick="App.setLanguage('el')">🇬🇷 Ελληνικά</button>
                     <button class="btn-act" style="background:#333; border:1px solid #555;" onclick="App.setLanguage('en')">🇺🇸 English</button>
                 </div>
+                <button class="btn-act" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="KeepAlive.showLockGuide()">🔒 ΟΔΗΓΟΣ ΚΛΕΙΔΩΜΑΤΟΣ (BOT)</button>
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
@@ -225,6 +226,7 @@
         alarmPlayer: null,      
         isRinging: false,
         wakeLock: null,
+        vibInt: null, // ✅ Added for Vibration Loop
         
         async init() {
             if (!this.keepAlivePlayer) {
@@ -264,7 +266,13 @@
             this.isRinging = true;
             this.alarmPlayer.currentTime = 0;
             try { await this.alarmPlayer.play(); } catch(e) {}
-            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+            // ✅ INTENSE VIBRATION LOOP
+            if (navigator.vibrate) {
+                const pattern = [500, 100, 500, 100, 500, 100, 2000, 500];
+                navigator.vibrate(pattern);
+                if (this.vibInt) clearInterval(this.vibInt);
+                this.vibInt = setInterval(() => navigator.vibrate(pattern), 4500);
+            }
         },
 
         stopAlarm() {
@@ -272,6 +280,9 @@
             this.isRinging = false;
             this.alarmPlayer.pause();
             this.alarmPlayer.currentTime = 0;
+            
+            // ✅ STOP VIBRATION
+            if (this.vibInt) clearInterval(this.vibInt);
             if (navigator.vibrate) navigator.vibrate(0);
         },
 

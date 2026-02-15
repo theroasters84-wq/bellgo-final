@@ -157,9 +157,11 @@ const AudioEngine = {
     vibrate(active) {
         if (!navigator.vibrate) return;
         if (active) {
-            navigator.vibrate([2000, 500, 2000]); // ✅ Intense Vibration
+            // ✅ SUPER INTENSE VIBRATION: 3 Short pulses, 1 Long pulse (SOS style)
+            const pattern = [500, 100, 500, 100, 500, 100, 2000, 500]; 
+            navigator.vibrate(pattern);
             if (this.vibInt) clearInterval(this.vibInt);
-            this.vibInt = setInterval(() => navigator.vibrate([2000, 500, 2000]), 5000);
+            this.vibInt = setInterval(() => navigator.vibrate(pattern), 4500);
         } else {
             if (this.vibInt) clearInterval(this.vibInt);
             navigator.vibrate(0);
