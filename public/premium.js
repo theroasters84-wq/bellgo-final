@@ -797,7 +797,7 @@ window.App = {
         const customName = document.getElementById('inpStoreNameHeader').value.trim();
         
         // 🔥 FIX: Χρήση του userData.store (email/room ID) για να συνδέονται στο ίδιο δωμάτιο
-        let fullLink = `${baseUrl}/order.html?store=${encodeURIComponent(userData.store)}`;
+        let fullLink = `${baseUrl}/shop/${encodeURIComponent(userData.store)}/`;
         if(customName) fullLink += `&name=${encodeURIComponent(customName)}`;
         
         linkEl.href = fullLink;

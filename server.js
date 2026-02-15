@@ -320,7 +320,7 @@ app.get('/manifest.json', async (req, res) => {
     } else {
         iconFile = "admin.png";
         startUrl = `/manage/login.html`; // ✅ Αλλαγή Start URL
-        scopeUrl = "/";                  // ✅ FIX: Scope στο root για να πιάνει και το premium.html
+        scopeUrl = "/manage/";           // ✅ FIX: Scope στο /manage/ για να ΜΗΝ πιάνει τα QR πελατών
     }
 
     res.set('Content-Type', 'application/manifest+json');

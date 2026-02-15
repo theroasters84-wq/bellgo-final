@@ -17,7 +17,7 @@
             const params = new URLSearchParams(window.location.search);
             const pStore = params.get('store');
             const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=admin`; 
+            let url = `/manifest.json?icon=admin`; 
             if (pStore) url += `&store=${pStore}`;
             manifestLink.href = url;
         })();
@@ -338,9 +338,9 @@
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
                                 if (subData.plan === 'premium') {
-                                    window.location.replace("stafpremium.html");
+                                    window.location.replace("/staff/app");
                                 } else {
-                                    window.location.replace("index.html"); 
+                                    window.location.replace("/manage/index.html"); 
                                 }
                             } else {
                                 alert("Δεν βρέθηκε ενεργή συνδρομή για αυτό το κατάστημα.");
@@ -449,8 +449,8 @@
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
-            if(adminPlan === 'premium') window.location.replace("premium.html");
-            else window.location.replace("index.html");
+            if(adminPlan === 'premium') window.location.replace("/manage/premium.html");
+            else window.location.replace("/manage/index.html");
         });
 
         socket.on('pin-verified', (res) => {
@@ -460,8 +460,8 @@
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     
-                    if(adminPlan === 'premium') window.location.replace("premium.html");
-                    else window.location.replace("index.html");
+                    if(adminPlan === 'premium') window.location.replace("/manage/premium.html");
+                    else window.location.replace("/manage/index.html");
                 } else {
                     alert("Λάθος PIN!");
                     PIN.clear();

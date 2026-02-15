@@ -19,7 +19,7 @@
             // PWA LOGIC
             const saved = localStorage.getItem('bellgo_session');
             const manifestLink = document.getElementById('dynamicManifest');
-            let url = `manifest.json?icon=admin`;
+            let url = `/manifest.json?icon=admin`;
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
