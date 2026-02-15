@@ -123,7 +123,61 @@ const ORDER_TIMEOUT_MS = 30 * 60 * 1000; // ✅ 30 Minutes Timeout
 let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
+// --- I18N LOGIC (ΠΟΛΥΓΛΩΣΣΙΚΟΤΗΤΑ) ---
+let translations = {};
+
+// Function to set the language
+async function setLanguage(lang) {
+    localStorage.setItem('bellgo_lang', lang);
+    
+    try {
+        const response = await fetch(`/i18n/${lang}.json`);
+        translations = await response.json();
+        applyTranslations();
+        
+        // Update active class on switcher
+        document.getElementById('lang-el').classList.toggle('active', lang === 'el');
+        document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+        document.documentElement.lang = lang;
+
+    } catch (error) {
+        console.error(`Could not load language file: ${lang}.json`, error);
+    }
+}
+
+// Function to apply translations to the page
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[key]) {
+            // Check if the element has children, if so, we only want to translate the text node
+            if(element.children.length > 0) {
+                // Find the text node that is a direct child of the element
+                for (let i = 0; i < element.childNodes.length; i++) {
+                    if (element.childNodes[i].nodeType === 3) { // Node.TEXT_NODE
+                        element.childNodes[i].nodeValue = translations[key];
+                        break;
+                    }
+                }
+            } else {
+                element.innerText = translations[key];
+            }
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        if (translations[key]) {
+            element.placeholder = translations[key];
+        }
+    });
+}
+
+const t = (key) => translations[key] || key;
+
+
 window.App = {
+    setLanguage, // Make it accessible from HTML
     existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
 
     installPWA: async () => {
@@ -161,12 +215,12 @@ window.App = {
 
         // ✅ 1. ΡΥΘΜΙΣΗ UI: Εμφάνιση σωστών πεδίων ανάλογα με το Mode
         if (isDineIn) {
-            document.getElementById('detailsTitle').innerText = "🍽️ Καλώς ήρθατε!";
+            document.getElementById('detailsTitle').innerText = t('welcome');
             document.getElementById('deliveryFields').style.display = 'none';
             document.getElementById('dineInFields').style.display = 'block';
-            document.getElementById('tableDisplay').innerText = `Τραπέζι: ${tableNumber}`;
+            document.getElementById('tableDisplay').innerText = `${t('table')}: ${tableNumber}`;
         } else {
-            document.getElementById('detailsTitle').innerText = "📍 Στοιχεία Παράδοσης";
+            document.getElementById('detailsTitle').innerText = t('delivery_title');
             document.getElementById('deliveryFields').style.display = 'block';
             document.getElementById('dineInFields').style.display = 'none';
         }
@@ -252,7 +306,7 @@ window.App = {
         
         // ✅ Εμφάνιση σωστής επικεφαλίδας (Τραπέζι ή Διεύθυνση)
         if (isDineIn) {
-             document.getElementById('displayAddress').innerText = `🍽️ Τραπέζι ${tableNumber} (${customerDetails.covers} άτ.)`;
+             document.getElementById('displayAddress').innerText = `🍽️ ${t('table')} ${tableNumber} (${customerDetails.covers} ${t('pax')})`;
         } else {
              document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
         }
@@ -303,6 +357,11 @@ window.App = {
             // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
             if (Notification.permission === 'default') {
                 await Notification.requestPermission();
+                const result = await Notification.requestPermission();
+                if (result !== 'granted') {
+                    alert('⚠️ Ο Browser μπλόκαρε τις ειδοποιήσεις.\n\nΠατήστε το εικονίδιο 🔒 ή 🔔 στη γραμμή διευθύνσεων (πάνω αριστερά) και επιλέξτε "Allow/Επιτρέπεται".');
+                    return;
+                }
             }
             
             if (Notification.permission === "granted") {
@@ -502,13 +561,13 @@ window.App = {
                     closedOverlay.style.display = 'flex';
                     if(btnSend) { 
                         btnSend.disabled = true; 
-                        btnSend.innerText = "⛔ ΤΟ ΚΑΤΑΣΤΗΜΑ ΕΙΝΑΙ ΚΛΕΙΣΤΟ"; 
+                        btnSend.innerText = t('store_closed'); 
                     }
                 } else {
                     closedOverlay.style.display = 'none';
                     if(btnSend) { 
                         btnSend.disabled = false; 
-                        btnSend.innerText = "ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀"; 
+                        btnSend.innerText = t('send_order'); 
                     }
                 }
             }
@@ -826,17 +885,17 @@ window.App = {
             }
         }
 
-        document.getElementById('liveTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+        document.getElementById('liveTotal').innerText = `${t('total')}: ${total.toFixed(2)}€`;
         const btnCard = document.getElementById('payCard');
         if (validForCard && total > 0 && storeHasStripe) {
             btnCard.disabled = false;
-            btnCard.innerHTML = "💳 ΚΑΡΤΑ";
+            btnCard.innerHTML = t('card');
         } else {
             btnCard.disabled = true;
             if (!storeHasStripe) {
-                btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη ενεργή)";
+                btnCard.innerHTML = t('card_inactive');
             } else {
-                btnCard.innerHTML = "💳 ΚΑΡΤΑ (Μη διαθέσιμη)";
+                btnCard.innerHTML = t('card_unavailable');
             }
         }
         return total;
@@ -844,7 +903,7 @@ window.App = {
 
     requestPayment: () => {
         const items = document.getElementById('orderText').value.trim();
-        if (!items) return alert("Το καλάθι είναι άδειο!");
+        if (!items) return alert(t('empty_cart'));
         App.handleInput();
         document.getElementById('paymentOverlay').style.display = 'flex';
     },
@@ -899,10 +958,10 @@ window.App = {
         // ✅ LOGIC: Αν είναι συμπλήρωση, στέλνουμε add-items
         if (App.existingOrderId) {
             window.socket.emit('add-items', { id: App.existingOrderId, items: items });
-            alert("Η παραγγελία ενημερώθηκε!");
+            alert(t('order_sent'));
             App.existingOrderId = null; // Reset
             document.getElementById('orderText').value = ''; 
-            document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+            document.getElementById('liveTotal').innerText = `${t('total')}: 0.00€`;
             return;
         }
 
@@ -912,7 +971,7 @@ window.App = {
         window.socket.emit('new-order', { text: fullText, id: newOrder.id });
         App.updateStatusUI(true); 
         document.getElementById('orderText').value = ''; 
-        document.getElementById('liveTotal').innerText = "ΣΥΝΟΛΟ: 0.00€";
+        document.getElementById('liveTotal').innerText = `${t('total')}: 0.00€`;
     },
 
     minimizeStatus: () => { 
@@ -993,10 +1052,10 @@ window.App = {
         const miniText = document.getElementById('miniStatusText');
         if (miniText && activeOrders.length > 0) {
             const latest = activeOrders[0];
-            if (latest.status === 'ready') miniText.innerText = "Έρχεται!";
-            else if (latest.status === 'cooking') miniText.innerText = "Ετοιμάζεται";
+            if (latest.status === 'ready') miniText.innerText = t('status_ready');
+            else if (latest.status === 'cooking') miniText.innerText = t('status_cooking');
             else if (latest.status === 'completed') miniText.innerText = "✅";
-            else miniText.innerText = "Αναμονή...";
+            else miniText.innerText = "...";
         } else if (miniText) {
             miniText.innerText = "...";
         }
@@ -1040,3 +1099,9 @@ onAuthStateChanged(auth, (user) => {
     if (user) { currentUser = user; App.checkDetails(); } 
     else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContent').style.display = 'none'; }
 });
+
+// --- INITIALIZE LANGUAGE ---
+(async () => {
+    const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+    await setLanguage(savedLang);
+})();

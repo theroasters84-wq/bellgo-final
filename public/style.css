@@ -427,3 +427,26 @@ body.alarm-active::after {
     animation: screenFlash 0.5s infinite; /* Γρήγορο Loop */
     pointer-events: none; /* Επιτρέπει το κλικ από κάτω */
 }
+
+/* --- Language Switcher --- */
+.lang-switcher {
+    display: flex;
+    align-items: center;
+    background: #222;
+    border-radius: 20px;
+    padding: 2px;
+    margin-right: 10px;
+}
+.lang-option {
+    padding: 4px 8px;
+    color: #aaa;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 18px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.lang-option.active {
+    background-color: var(--accent);
+    color: black;
+}

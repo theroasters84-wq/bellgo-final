@@ -49,64 +49,64 @@
 
     <div id="loginScreen" style="display:none;">
         <h1 style="color:#FFD700;">BellGo Delivery 🛵</h1>
-        <p style="color:#aaa;">Συνδεθείτε για να παραγγείλετε</p>
+        <p style="color:#aaa;" data-i18n="login_to_order">Συνδεθείτε για να παραγγείλετε</p>
         <button class="btn-google" onclick="App.loginGoogle()">
-            <span>G</span> Σύνδεση με Google
+            <span>G</span> <span data-i18n="login_with_google">Σύνδεση με Google</span>
         </button>
-        <button id="btnInstallLogin" class="btn-install-app" onclick="App.installPWA()">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</button>
+        <button id="btnInstallLogin" class="btn-install-app" onclick="App.installPWA()"><span data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</span></button>
     </div>
 
     <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; margin:0;" id="detailsTitle"> Καλώς ήρθατε!</h3>
+            <h3 style="color:#FFD700; margin:0;" id="detailsTitle" data-i18n="welcome"> Καλώς ήρθατε!</h3>
             
             <!-- Delivery Fields -->
             <div id="deliveryFields">
-                <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας">
-                <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)">
-                <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι">
-                <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας">
-                <input type="text" id="inpZip" class="inp-detail" placeholder="Τ.Κ. (Προαιρετικό)">
+                <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας" data-i18n-placeholder="your_name">
+                <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)" data-i18n-placeholder="address_placeholder">
+                <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι" data-i18n-placeholder="floor_bell">
+                <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας" data-i18n-placeholder="contact_phone">
+                <input type="text" id="inpZip" class="inp-detail" placeholder="Τ.Κ. (Προαιρετικό)" data-i18n-placeholder="zip_optional">
             </div>
             <!-- Dine-In Fields -->
             <div id="dineInFields" style="display:none;">
                 <div id="tableDisplay" style="color:#00E676; font-weight:bold; margin-bottom:15px; font-size:22px;"></div>
-                <div style="color:#aaa; font-size:14px; margin-bottom:5px;">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
+                <div style="color:#aaa; font-size:14px; margin-bottom:5px;" data-i18n="number_of_people">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
                 <input type="number" id="inpCovers" class="inp-detail" placeholder="π.χ. 4" value="1" inputmode="numeric" style="text-align:center; font-size:20px; width:80px; margin:0 auto;">
             </div>
 
-            <button class="btn-save-details" onclick="App.saveDetails()">ΣΥΝΕΧΕΙΑ</button>
+            <button class="btn-save-details" onclick="App.saveDetails()" data-i18n="continue">ΣΥΝΕΧΕΙΑ</button>
         </div>
     </div>
 
     <div id="paymentOverlay" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700;">Τρόπος Πληρωμής</h3>
-            <button class="btn-pay" id="payCash" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">💵 ΜΕΤΡΗΤΑ</button>
-            <button class="btn-pay" id="payCard" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">💳 ΚΑΡΤΑ</button>
-            <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+            <h3 style="color:#FFD700;" data-i18n="payment_method">Τρόπος Πληρωμής</h3>
+            <button class="btn-pay" id="payCash" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">💵 <span data-i18n="cash">ΜΕΤΡΗΤΑ</span></button>
+            <button class="btn-pay" id="payCard" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">💳 <span data-i18n="card">ΚΑΡΤΑ</span></button>
+            <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
     
     <div id="closedOverlay" class="store-closed-overlay">
-        <div class="closed-text">🔴 ΚΛΕΙΣΤΟ</div>
-        <p style="color:#aaa;">Το κατάστημα δεν δέχεται παραγγελίες αυτή τη στιγμή.</p>
+        <div class="closed-text" data-i18n="closed">🔴 ΚΛΕΙΣΤΟ</div>
+        <p style="color:#aaa;" data-i18n="store_not_accepting_orders">Το κατάστημα δεν δέχεται παραγγελίες αυτή τη στιγμή.</p>
     </div>
     
     <div id="scheduleViewModal" class="overlay-screen" onclick="document.getElementById('scheduleViewModal').style.display='none'">
         <div class="details-box" onclick="event.stopPropagation()">
-            <h3 style="color:#FFD700; margin:0; margin-bottom:15px;">📅 Ωράριο Διανομής</h3>
+            <h3 style="color:#FFD700; margin:0; margin-bottom:15px;" data-i18n="delivery_schedule">📅 Ωράριο Διανομής</h3>
             <div id="scheduleList" style="width:100%;"></div>
-            <button onclick="document.getElementById('scheduleViewModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+            <button onclick="document.getElementById('scheduleViewModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; cursor:pointer;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
     <div id="userExtrasModal" class="overlay-screen">
         <div class="details-box">
-            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle">Επιλογές</h3>
+            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle" data-i18n="options">Επιλογές</h3>
             <div id="userExtrasList" class="extras-grid"></div>
-            <button class="btn-save-details" onclick="App.confirmExtras()">ΠΡΟΣΘΗΚΗ</button>
-            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+            <button class="btn-save-details" onclick="App.confirmExtras()" data-i18n="add">ΠΡΟΣΘΗΚΗ</button>
+            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
         </div>
     </div>
 
@@ -125,42 +125,47 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ ΑΞΙΟΛΟΓΗΣΗ</button>
-                <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 APP</button>
+                 <div class="lang-switcher">
+                    <span id="lang-el" class="lang-option active" onclick="App.setLanguage('el')">EL</span>
+                    <span id="lang-en" class="lang-option" onclick="App.setLanguage('en')">EN</span>
+                </div>
+                <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ <span data-i18n="review">ΑΞΙΟΛΟΓΗΣΗ</span></button>
+                <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 <span data-i18n="app">APP</span></button>
             </div>
         </div>
 
         <div id="menuContainer">
-            <div style="text-align:center; color:#555; margin-top:50px;">Φόρτωση καταλόγου...</div>
+            <div style="text-align:center; color:#555; margin-top:50px;" data-i18n="loading_menu">Φόρτωση καταλόγου...</div>
         </div>
 
         <div id="orderPanel" class="order-panel minimized">
             <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
-                <div style="font-size:12px; color:#aaa; margin-right:10px;">ΚΑΛΑΘΙ / ΑΠΟΣΤΟΛΗ <span id="cartBadge" class="cart-badge" style="display:none">0</span></div>
+                <div style="font-size:12px; color:#aaa; margin-right:10px;" data-i18n="cart_submit">ΚΑΛΑΘΙ / ΑΠΟΣΤΟΛΗ <span id="cartBadge" class="cart-badge" style="display:none">0</span></div>
                 <div id="panelIcon" class="toggle-icon">▲</div>
             </div>
             <div class="panel-content">
                 <div class="address-bar">
                     <span id="displayAddress">...</span>
-                    <button class="btn-edit" onclick="App.editDetails()">✏️ Αλλαγή</button>
+                    <button class="btn-edit" onclick="App.editDetails()">✏️ <span data-i18n="change">Αλλαγή</span></button>
                 </div>
                 
                 <textarea id="orderText" class="order-text" 
                     placeholder="Γράψτε εδώ...&#10;(⚠️ Για πληρωμή με ΚΑΡΤΑ, επιλέξτε προϊόντα από τον κατάλογο!)" 
+                    data-i18n-placeholder="write_here_card_warning"
                     oninput="App.handleInput()">
                 </textarea>
                 
-                <div id="liveTotal">ΣΥΝΟΛΟ: 0.00€</div>
+                <div id="liveTotal" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
 
-                <button id="btnSendOrder" class="btn-send" onclick="App.requestPayment()">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ 🚀</button>
+                <button id="btnSendOrder" class="btn-send" onclick="App.requestPayment()"><span data-i18n="send_order">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ</span> 🚀</button>
             </div>
         </div>
 
         <div id="statusOverlay">
             <div class="status-content">
-                <h2 style="color:#FFD700; margin-top:0;">Κατάσταση Παραγγελιών</h2>
+                <h2 style="color:#FFD700; margin-top:0;" data-i18n="order_status">Κατάσταση Παραγγελιών</h2>
                 <div id="orderStatusList" style="width:100%; overflow-y:auto; max-height:60vh; padding:5px;"></div>
-                <button class="btn-minimize" onclick="App.minimizeStatus()" style="margin-top:20px; width:100%; padding:15px; background:#333; color:white; border:none; border-radius:10px; font-weight:bold;">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
+                <button class="btn-minimize" onclick="App.minimizeStatus()" style="margin-top:20px; width:100%; padding:15px; background:#333; color:white; border:none; border-radius:10px; font-weight:bold;" data-i18n="back_to_menu">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
             </div>
         </div>
     </div>

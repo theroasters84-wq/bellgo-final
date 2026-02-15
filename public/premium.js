@@ -3,6 +3,55 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 
+let translations = {};
+
+// Function to set the language
+async function setLanguage(lang) {
+    localStorage.setItem('bellgo_lang', lang);
+    
+    try {
+        const response = await fetch(`/i18n/${lang}.json`);
+        translations = await response.json();
+        applyTranslations();
+        
+        // This page might not have the switcher, so check for existence
+        const langEl = document.getElementById('lang-el');
+        const langEn = document.getElementById('lang-en');
+        if (langEl && langEn) {
+            langEl.classList.toggle('active', lang === 'el');
+            langEn.classList.toggle('active', lang === 'en');
+        }
+        document.documentElement.lang = lang;
+
+    } catch (error) {
+        console.error(`Could not load language file: ${lang}.json`, error);
+    }
+}
+
+// Function to apply translations to the page
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (translations[key]) {
+            element.innerText = translations[key];
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        if (translations[key]) {
+            element.placeholder = translations[key];
+        }
+    });
+    document.querySelectorAll('[data-title-key]').forEach(element => {
+        const key = element.getAttribute('data-title-key');
+        if (translations[key]) {
+            element.title = translations[key];
+        }
+    });
+}
+
+
 // ✅ REGISTER SERVICE WORKER (Για να λειτουργεί κλειστό)
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
@@ -83,6 +132,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 window.App = {
+    setLanguage,
     activeOrders: [],
     menuData: [], 
     currentCategoryIndex: null,
@@ -1462,3 +1512,9 @@ window.App = {
 };
 
 window.onload = App.init;
+
+// --- INITIALIZE LANGUAGE ---
+(async () => {
+    const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+    await setLanguage(savedLang);
+})();

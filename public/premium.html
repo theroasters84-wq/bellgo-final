@@ -26,7 +26,7 @@
             </div>
             
             <div class="header-actions">
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings">⚙️</button>
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-i18n="settings">⚙️</button>
                 <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -42,15 +42,15 @@
         <div class="admin-main-area">
             <div id="menuFullPanel">
                 <div class="menu-header">
-                    <span class="menu-title">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
+                    <span class="menu-title" data-i18n="edit_menu">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
                     <div style="display:flex; gap:10px;">
-                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 ΠΙΣΩ</button>
+                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 <span data-i18n="back">ΠΙΣΩ</span></button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
                     </div>
                 </div>
                 
                 <div style="margin-bottom:15px; padding:10px; background:#1a1a1a; border:1px solid #333; border-radius:10px; display:flex; align-items:center; justify-content:space-between;">
-                    <span style="color:#aaa; font-size:14px;">Τιμή Κουβέρ (€):</span>
+                    <span style="color:#aaa; font-size:14px;" data-i18n="cover_price">Τιμή Κουβέρ (€):</span>
                     <input type="number" id="inpCoverPrice" style="width:80px; padding:8px; background:#000; border:1px solid #444; color:white; border-radius:6px; text-align:center;" placeholder="0.00" step="0.10" onblur="App.autoSaveSettings()">
                 </div>
 
@@ -63,7 +63,7 @@
             
             <div id="staffContainer">
                 <div class="sidebar-header" onclick="App.toggleStaffPanel()">
-                    <span>ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
+                    <span data-i18n="staff_online">ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
                     <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
                 </div>
                 <div id="staffList"></div>
@@ -73,137 +73,137 @@
         <!-- ✅ NEW: SIDEBAR ORDER PANEL (FULL SCREEN RIGHT) -->
         <div id="orderSidebar" class="order-panel" style="position:fixed; top:0; left:-100%; width:100%; height:100%; transition:left 0.3s; z-index:4000; border-top:none; border-right:2px solid #333; display:flex; flex-direction:column;">
             <div class="panel-header-bar" style="background:#111; justify-content:space-between; padding:0 15px; cursor:default;">
-                <span style="font-weight:bold; color:#00E676;">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
+                <span style="font-weight:bold; color:#00E676;" data-i18n="new_order_cashier">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
                 <button id="btnCloseSidebar" onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:white; font-size:30px; padding:15px; cursor:pointer; z-index:5000;">✕</button>
             </div>
             <div class="panel-content" style="background:#1a1a1a;">
                 <!-- ✅ NEW: Mode Selection (Paso, Table, Delivery) -->
                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:10px;">
-                    <button id="btnModePaso" class="modal-btn" style="background:#FFD700; color:black; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('paso')">PASO</button>
-                    <button id="btnModeTable" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('table')">ΤΡΑΠΕΖΙ</button>
-                    <button id="btnModeDelivery" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('delivery')">DELIVERY</button>
+                    <button id="btnModePaso" class="modal-btn" style="background:#FFD700; color:black; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('paso')" data-i18n="paso">PASO</button>
+                    <button id="btnModeTable" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('table')" data-i18n="table">ΤΡΑΠΕΖΙ</button>
+                    <button id="btnModeDelivery" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('delivery')" data-i18n="delivery">DELIVERY</button>
                 </div>
 
                 <!-- Table Inputs -->
                 <div id="divTableInputs" class="form-row" style="display:none;">
                     <div class="input-group">
-                        <label>ΤΡΑΠΕΖΙ</label>
+                        <label data-i18n="table">ΤΡΑΠΕΖΙ</label>
                         <input type="text" id="sidebarTable" class="input-box" placeholder="#">
                     </div>
                     <div class="input-group">
-                        <label>ΚΟΥΒΕΡ</label>
+                        <label data-i18n="covers">ΚΟΥΒΕΡ</label>
                         <input type="number" id="sidebarCovers" class="input-box" placeholder="0">
                     </div>
                 </div>
 
                 <!-- Delivery Inputs -->
                 <div id="divDeliveryInputs" style="display:none; flex-direction:column; gap:8px; margin-bottom:10px;">
-                    <input type="text" id="sidebarDelName" class="inp-settings" placeholder="Όνομα Πελάτη" style="margin:0; padding:8px;">
-                    <input type="text" id="sidebarDelAddr" class="inp-settings" placeholder="Διεύθυνση" style="margin:0; padding:8px;">
-                    <input type="tel" id="sidebarDelPhone" class="inp-settings" placeholder="Τηλέφωνο" style="margin:0; padding:8px;">
+                    <input type="text" id="sidebarDelName" class="inp-settings" data-i18n-placeholder="customer_name" placeholder="Όνομα Πελάτη" style="margin:0; padding:8px;">
+                    <input type="text" id="sidebarDelAddr" class="inp-settings" data-i18n-placeholder="address" placeholder="Διεύθυνση" style="margin:0; padding:8px;">
+                    <input type="tel" id="sidebarDelPhone" class="inp-settings" data-i18n-placeholder="phone" placeholder="Τηλέφωνο" style="margin:0; padding:8px;">
                 </div>
 
                 <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:8px; padding:5px;"></div>
-                <textarea id="sidebarOrderText" class="order-text" placeholder="Προϊόντα..." style="height:100px;"></textarea>
-                <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;">ΣΥΝΟΛΟ: 0.00€</div>
-                <button class="btn-send" onclick="App.sendSidebarOrder()">ΑΠΟΣΤΟΛΗ 🚀</button>
+                <textarea id="sidebarOrderText" class="order-text" data-i18n-placeholder="products" placeholder="Προϊόντα..." style="height:100px;"></textarea>
+                <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
+                <button class="btn-send" onclick="App.sendSidebarOrder()"><span data-i18n="send_order">ΑΠΟΣΤΟΛΗ</span> 🚀</button>
             </div>
         </div>
     </div>
     
     <div id="adminChatOverlay">
         <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:18px; font-weight:bold; color:var(--text-main);">💬 Ομαδικό Chat</span>
+            <span style="font-size:18px; font-weight:bold; color:var(--text-main);" data-i18n="group_chat">💬 Ομαδικό Chat</span>
             <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
         </div>
         <div class="chat-messages" id="adminChatBox"></div>
         <div class="chat-input-area">
-            <input type="text" id="adminChatInp" class="chat-inp" placeholder="Μήνυμα...">
+            <input type="text" id="adminChatInp" class="chat-inp" data-i18n-placeholder="message" placeholder="Μήνυμα...">
             <button class="btn-icon menu-active" onclick="App.sendChat()">➤</button>
         </div>
     </div>
 
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" data-translate-key="settings_title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <h3 class="modal-title" data-i18n="settings_title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
             
             <!-- MAIN MENU -->
             <div id="settingsMain">
-                <button class="modal-btn" onclick="App.openSettingsSub('subStore')" data-translate-key="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-translate-key="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-translate-key="qr_and_links">📱 QR & LINKS</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-translate-key="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
-                <button class="modal-btn" onclick="App.openSettingsSub('subLang')" data-translate-key="language_settings_button">🌐 ΓΛΩΣΣΑ / LANGUAGE</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subStore')" data-i18n="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
+                <button class="modal-btn" onclick="App.openSettingsSub('subLang')" data-i18n="language_settings_button">🌐 ΓΛΩΣΣΑ / LANGUAGE</button>
                 
-                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-translate-key="exit">🚪 ΕΞΟΔΟΣ</button>
-                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-translate-key="close">ΚΛΕΙΣΙΜΟ</button>
+                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
+                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
 
             <!-- SUB: STORE & SCHEDULE -->
             <div id="subStore" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="store_and_schedule">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</h4>
                 <div class="settings-section">
-                    <div class="settings-label">ΚΑΤΑΣΤΑΣΗ</div>
+                    <div class="settings-label" data-i18n="status">ΚΑΤΑΣΤΑΣΗ</div>
                     <div class="switch-row">
-                        <span>ΠΕΛΑΤΕΣ (Delivery)</span>
+                        <span data-i18n="customers_delivery">ΠΕΛΑΤΕΣ (Delivery)</span>
                         <label class="switch"><input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')"><span class="slider"></span></label>
                     </div>
                     <div class="switch-row">
-                        <span>ΠΡΟΣΩΠΙΚΟ (Staff)</span>
+                        <span data-i18n="staff">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
                         <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
                     </div>
                 </div>
 
                 <div class="settings-section">
-                    <div class="settings-label">ΩΡΑΡΙΑ</div>
-                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;">ΩΡΕΣ ΔΙΑΝΟΜΗΣ & RESET</div>
+                    <div class="settings-label" data-i18n="schedule">ΩΡΑΡΙΑ</div>
+                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;" data-i18n="delivery_hours_reset">ΩΡΕΣ ΔΙΑΝΟΜΗΣ & RESET</div>
                     <div style="display:flex; gap:10px; margin-bottom:5px;">
                         <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
                         <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
                     </div>
-                    <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</button>
+                    <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()"><span data-i18n="weekly_schedule">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</span></button>
                 </div>
-                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: PRINT -->
             <div id="subPrint" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΡΥΘΜΙΣΕΙΣ ΕΚΤΥΠΩΣΗΣ</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="print_settings">ΡΥΘΜΙΣΕΙΣ ΕΚΤΥΠΩΣΗΣ</h4>
                 <div class="settings-section">
-                    <div class="settings-label">ΕΚΤΥΠΩΣΗ</div>
+                    <div class="settings-label" data-i18n="printing">ΕΚΤΥΠΩΣΗ</div>
                     <select id="selAutoPrint" class="inp-settings" onchange="App.autoSaveSettings()">
-                        <option value="false">Χειροκίνητα (Κουμπί)</option>
-                        <option value="true">Αυτόματα (Κατά την Αποδοχή)</option>
+                        <option value="false" data-i18n="manual_button">Χειροκίνητα (Κουμπί)</option>
+                        <option value="true" data-i18n="auto_on_accept">Αυτόματα (Κατά την Αποδοχή)</option>
                     </select>
                     <div class="switch-row" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:13px; color:#ccc;">Κλείσιμο παραθύρου μετά</span>
+                        <span style="font-size:13px; color:#ccc;" data-i18n="close_window_after">Κλείσιμο παραθύρου μετά</span>
                         <label class="switch"><input type="checkbox" id="switchAutoClosePrint" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                 </div>
-                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: QR & LINKS -->
             <div id="subQr" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">QR & LINKS</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="qr_and_links">QR & LINKS</h4>
                 <div class="settings-section">
                     <div class="settings-label">LINKS</div>
-                    <input type="text" id="inpGoogleMaps" class="inp-settings" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpGoogleMaps" class="inp-settings" data-i18n-placeholder="google_maps_url" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
                 </div>
-                <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</button>
-                <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</button>
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()"><span data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</span></button>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.showLink()"><span data-i18n="store_link">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</span></button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / CONNECT STRIPE</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="pin_connect_stripe">PIN / CONNECT STRIPE</h4>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()">🔑 PIN</button>
-                    <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()">📊 ΣΤΑΤΙΣΤΙΚΑ</button>
+                    <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()"><span data-i18n="pin">🔑 PIN</span></button>
+                    <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()"><span data-i18n="statistics">📊 ΣΤΑΤΙΣΤΙΚΑ</span></button>
                 </div>
-                <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'">💳 CONNECT STRIPE</button>
-                <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;">Checking...</div>
+                <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'"><span data-i18n="connect_stripe">💳 CONNECT STRIPE</span></button>
+                <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;" data-i18n="checking">Checking...</div>
 
                 <!-- Hidden Select for JS to grab -->
                 <select id="selShopType" style="display:none;">
@@ -214,17 +214,17 @@
                     <option value="souvlaki">🍖 Souvlaki / Grill</option>
                 </select>
 
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
             <!-- SUB: LANGUAGE -->
             <div id="subLang" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-translate-key="language_settings_title">ΓΛΩΣΣΑ / LANGUAGE</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="language_settings_title">ΓΛΩΣΣΑ / LANGUAGE</h4>
                 <div class="settings-section">
                     <button class="modal-btn" onclick="App.setLanguage('el')">🇬🇷 Ελληνικά</button>
                     <button class="modal-btn" onclick="App.setLanguage('en')">🇺🇸 English</button>
                 </div>
-                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-translate-key="back">🔙 ΠΙΣΩ</button>
+                <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
         </div>
     </div>
@@ -232,48 +232,48 @@
     <!-- ✅ NEW: TABLE QR GENERATOR MODAL -->
     <div id="tableQrModal" class="modal-overlay">
         <div class="modal-box" style="width:90%; max-width:800px; height:90%; max-height:none;">
-            <h3 class="modal-title">🖨️ QR ΤΡΑΠΕΖΙΩΝ</h3>
+            <h3 class="modal-title" data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ</h3>
             <div style="margin-bottom:15px; display:flex; gap:10px;">
-                <input type="text" id="inpTableNumbers" class="inp-settings" placeholder="π.χ. 1-10 ή A1, B2" style="margin:0;">
-                <button class="modal-btn" style="background:#00E676; color:black; width:auto; margin:0;" onclick="App.generateTableQrs()">GENERATE</button>
+                <input type="text" id="inpTableNumbers" class="inp-settings" data-i18n-placeholder="tables_placeholder" placeholder="π.χ. 1-10 ή A1, B2" style="margin:0;">
+                <button class="modal-btn" style="background:#00E676; color:black; width:auto; margin:0;" onclick="App.generateTableQrs()" data-i18n="generate">GENERATE</button>
             </div>
             <div id="qrGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:15px; overflow-y:auto; flex:1; padding:15px; background:#fff; color:black; border-radius:8px; align-content:start;"></div>
-            <button class="modal-btn" style="background:#2196F3; margin-top:10px;" onclick="App.printQrs()">🖨️ ΕΚΤΥΠΩΣΗ</button>
-            <button onclick="document.getElementById('tableQrModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;">ΠΙΣΩ</button>
+            <button class="modal-btn" style="background:#2196F3; margin-top:10px;" onclick="App.printQrs()"><span data-i18n="print">🖨️ ΕΚΤΥΠΩΣΗ</span></button>
+            <button onclick="document.getElementById('tableQrModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="back">ΠΙΣΩ</button>
         </div>
     </div>
 
     <div id="scheduleModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">📅 ΠΡΟΓΡΑΜΜΑ</h3>
+            <h3 class="modal-title" data-i18n="schedule">📅 ΠΡΟΓΡΑΜΜΑ</h3>
             <div id="weekDaysContainer"></div>
-            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:10px;" onclick="App.saveSchedule()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-            <button onclick="document.getElementById('scheduleModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;">ΠΙΣΩ</button>
+            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:10px;" onclick="App.saveSchedule()"><span data-i18n="save">💾 ΑΠΟΘΗΚΕΥΣΗ</span></button>
+            <button onclick="document.getElementById('scheduleModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="back">ΠΙΣΩ</button>
         </div>
     </div>
 
     <div id="extrasModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" id="extrasModalTitle">EXTRA ΥΛΙΚΑ</h3>
+            <h3 class="modal-title" id="extrasModalTitle" data-i18n="extras">EXTRA ΥΛΙΚΑ</h3>
             <div id="extrasListContainer" class="extras-list"></div>
             
             <div style="border-top:1px solid #333; padding-top:15px; margin-top:10px;">
-                <div class="settings-label">ΠΡΟΣΘΗΚΗ ΝΕΟΥ</div>
+                <div class="settings-label" data-i18n="add_new">ΠΡΟΣΘΗΚΗ ΝΕΟΥ</div>
                 <div class="extra-inputs">
-                    <input type="text" id="inpExtraName" class="extra-name-inp" placeholder="Όνομα (π.χ. Σως)">
+                    <input type="text" id="inpExtraName" class="extra-name-inp" data-i18n-placeholder="name_ex_sauce" placeholder="Όνομα (π.χ. Σως)">
                     <input type="number" id="inpExtraPrice" class="extra-price-inp" placeholder="€" step="0.10">
                 </div>
-                <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()">➕ ΠΡΟΣΘΗΚΗ</button>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()"><span data-i18n="add">➕ ΠΡΟΣΘΗΚΗ</span></button>
             </div>
             
-            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:15px;" onclick="App.saveExtras()">💾 ΕΤΟΙΜΟ</button>
-            <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:5px;">ΑΚΥΡΟ</button>
+            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:15px;" onclick="App.saveExtras()"><span data-i18n="ready">💾 ΕΤΟΙΜΟ</span></button>
+            <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:5px;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <div id="pinChangeModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">PIN</h3>
+            <h3 class="modal-title" data-i18n="pin">PIN</h3>
             <div id="pinDisplay" style="font-size:30px; letter-spacing:10px; color:var(--primary); font-weight:bold; margin:10px 0;"></div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
                 <button class="modal-btn" style="background:#333;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(3)">3</button>
@@ -281,51 +281,51 @@
                 <button class="modal-btn" style="background:#333;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(9)">9</button>
                 <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
             </div>
-            <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;">ΑΚΥΡΟ</button>
+            <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <div id="saveModeModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">ΑΠΟΘΗΚΕΥΣΗ</h3>
-            <p style="color:#aaa;">Πώς θέλετε να αποθηκευτεί;</p>
-            <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')">📅 ΣΗΜΕΡΑ ΜΟΝΟ</button>
-            <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')">♾️ ΜΟΝΙΜΑ</button>
-            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;">ΑΚΥΡΟ</button>
+            <h3 class="modal-title" data-i18n="save">ΑΠΟΘΗΚΕΥΣΗ</h3>
+            <p style="color:#aaa;" data-i18n="how_to_save">Πώς θέλετε να αποθηκευτεί;</p>
+            <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')"><span data-i18n="today_only">📅 ΣΗΜΕΡΑ ΜΟΝΟ</span></button>
+            <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')"><span data-i18n="permanently">♾️ ΜΟΝΙΜΑ</span></button>
+            <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <!-- ✅ NEW: EXPENSES MODAL -->
     <div id="expensesModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">💸 ΕΞΟΔΑ ΗΜΕΡΑΣ</h3>
+            <h3 class="modal-title" data-i18n="daily_expenses">💸 ΕΞΟΔΑ ΗΜΕΡΑΣ</h3>
             <div id="expensesTotal" style="font-size:24px; color:#FF5252; font-weight:bold; text-align:center; margin-bottom:15px;">0.00€</div>
             
             <!-- FIXED EXPENSES -->
             <div class="expenses-section" style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
-                <div class="settings-label" style="color:#FFD700;">ΠΑΓΙΑ ΕΞΟΔΑ (Αυτόματος Υπολογισμός)</div>
+                <div class="settings-label" style="color:#FFD700;" data-i18n="fixed_expenses">ΠΑΓΙΑ ΕΞΟΔΑ (Αυτόματος Υπολογισμός)</div>
                 <div id="fixedExpensesContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="inpFixedName" class="inp-settings" placeholder="Όνομα (π.χ. Ενοίκιο)" style="margin:0; flex:2;">
+                    <input type="text" id="inpFixedName" class="inp-settings" data-i18n-placeholder="name_ex_rent" placeholder="Όνομα (π.χ. Ενοίκιο)" style="margin:0; flex:2;">
                     <input type="number" id="inpFixedPrice" class="inp-settings" placeholder="€" style="margin:0; flex:1;">
                     <button class="modal-btn" style="width:auto; margin:0; background:#FFD700; color:black;" onclick="App.addFixedExpense()">➕</button>
                 </div>
             </div>
 
             <div class="expenses-section" style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px;">
-                <div class="settings-label">ΓΡΗΓΟΡΗ ΠΡΟΣΘΗΚΗ (Presets)</div>
+                <div class="settings-label" data-i18n="quick_add_presets">ΓΡΗΓΟΡΗ ΠΡΟΣΘΗΚΗ (Presets)</div>
                 <div id="expensePresetsContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="inpNewPreset" class="inp-settings" placeholder="Όνομα (π.χ. Ψωμί)" style="margin:0; flex:2;">
-                    <input type="number" id="inpNewPresetPrice" class="inp-settings" placeholder="€ (Optional)" style="margin:0; flex:1;">
+                    <input type="text" id="inpNewPreset" class="inp-settings" data-i18n-placeholder="name_ex_bread" placeholder="Όνομα (π.χ. Ψωμί)" style="margin:0; flex:2;">
+                    <input type="number" id="inpNewPresetPrice" class="inp-settings" data-i18n-placeholder="price_optional" placeholder="€ (Optional)" style="margin:0; flex:1;">
                     <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="App.addExpensePreset()">➕</button>
                 </div>
             </div>
 
-            <textarea id="txtExpenses" class="order-text" style="height:200px; font-size:16px;" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
+            <textarea id="txtExpenses" class="order-text" style="height:200px; font-size:16px;" data-i18n-placeholder="expenses_placeholder" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
             
-            <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-            <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+            <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()"><span data-i18n="save">💾 ΑΠΟΘΗΚΕΥΣΗ</span></button>
+            <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
@@ -334,11 +334,11 @@
         <div class="modal-box" style="width:95%; height:95%; max-width:none; max-height:none; display:flex; flex-direction:column; padding:0;">
             <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; background:#1a1a1a;">
                 <button id="btnStatsBack" onclick="App.renderStatsDashboard()" style="display:none; background:none; border:none; color:white; font-size:24px; cursor:pointer; margin-right:10px;">🔙</button>
-                <h3 id="statsTitle" class="modal-title" style="margin:0; font-size:20px; flex:1;">📊 DASHBOARD</h3>
+                <h3 id="statsTitle" class="modal-title" style="margin:0; font-size:20px; flex:1;" data-i18n="dashboard">📊 DASHBOARD</h3>
                 <button onclick="document.getElementById('statsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✕</button>
             </div>
             <div id="statsContent" style="flex:1; overflow-y:auto; padding:20px; text-align:left; background:#121212;">
-                <p style="text-align:center; color:#aaa;">Φόρτωση...</p>
+                <p style="text-align:center; color:#aaa;" data-i18n="loading">Φόρτωση...</p>
             </div>
         </div>
     </div>
@@ -346,22 +346,22 @@
     <!-- ✅ NEW: QR PAYMENT MODAL -->
     <div id="qrPaymentModal" class="modal-overlay">
         <div class="modal-box" style="background:white; color:black;">
-            <h3 style="margin:0;">💳 ΠΛΗΡΩΜΗ ΜΕ ΚΑΡΤΑ</h3>
+            <h3 style="margin:0;" data-i18n="card_payment">💳 ΠΛΗΡΩΜΗ ΜΕ ΚΑΡΤΑ</h3>
             <div id="qrPaymentCode" style="margin:20px auto;"></div>
             <div id="qrLinkContainer" style="margin-bottom:15px;"></div>
-            <div style="font-weight:bold; color:red; border:2px solid red; padding:10px; border-radius:8px; font-size:14px;">
+            <div style="font-weight:bold; color:red; border:2px solid red; padding:10px; border-radius:8px; font-size:14px;" data-i18n="receipt_warning">
                 ⚠️ ΜΗΝ ΞΕΧΑΣΕΤΕ ΝΑ ΖΗΤΗΣΕΤΕ ΤΟ ΝΟΜΙΜΟ ΠΑΡΑΣΤΑΤΙΚΟ (ΑΠΟΔΕΙΞΗ)
             </div>
-            <button onclick="document.getElementById('qrPaymentModal').style.display='none'" style="margin-top:15px; padding:10px 20px; background:#333; color:white; border:none; border-radius:8px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+            <button onclick="document.getElementById('qrPaymentModal').style.display='none'" style="margin-top:15px; padding:10px 20px; background:#333; color:white; border:none; border-radius:8px; cursor:pointer;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
     <div id="qrOverlay" onclick="this.style.display='none'" class="modal-overlay" style="align-items:center; justify-content:center;">
         <div class="qr-box" onclick="event.stopPropagation()" style="background:white; padding:20px; border-radius:16px; text-align:center;">
-            <div style="color:black; font-weight:bold; font-size:18px; margin-bottom:10px;">📲 Link Καταστήματος</div>
+            <div style="color:black; font-weight:bold; font-size:18px; margin-bottom:10px;" data-i18n="store_link">📲 Link Καταστήματος</div>
             <div id="qrcode"></div>
             <a id="storeLink" href="#" target="_blank" style="display:block; margin-top:10px; color:#333; font-size:12px;">...</a>
-            <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:15px; padding:10px 20px; background:var(--danger); color:white; border:none; border-radius:8px;">ΚΛΕΙΣΙΜΟ</button>
+            <button onclick="document.getElementById('qrOverlay').style.display='none'" style="margin-top:15px; padding:10px 20px; background:var(--danger); color:white; border:none; border-radius:8px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
