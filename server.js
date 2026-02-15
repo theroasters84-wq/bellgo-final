@@ -467,28 +467,25 @@ app.get('/qr-payment-cancel', (req, res) => {
 });
 
 /* ---------------- NOTIFICATION LOGIC ---------------- */
-function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }, ttlSeconds = 86400) {
+function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
     if (target && target.fcmToken) { 
         let targetUrl = "/stafpremium.html";
-        if (target.role === 'admin' || target.role === 'kitchen') targetUrl = "/premium.html";
-
-        // ✅ TTL Logic: Αν είναι Loop (Alarm), θέλουμε μικρό TTL για να μην "μπουκώνει"
-        const finalTTL = ttlSeconds.toString();
+        if (target.role === 'admin') targetUrl = "/premium.html";
 
         const msg = {
             token: target.fcmToken,
-            // ✅ DATA-ONLY MESSAGE: No 'notification' key here to wake up SW properly
+            // ✅ ΕΠΑΝΑΦΟΡΑ ΓΙΑ IOS:
+            notification: { title: title, body: body },
             
             android: { 
                 priority: "high", 
-                // No 'notification' key here either
+                notification: { sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } 
             },
             webpush: { 
-                headers: { "Urgency": "high", "TTL": finalTTL }, 
+                headers: { "Urgency": "high" }, 
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
-                // Αφαιρούμε το notification object και από το webpush για να μην το δείξει ο browser αυτόματα
-            }, 
-            data: { ...dataPayload, title: title, body: body, url: targetUrl, location: dataPayload.location || "" }
+            },
+            data: { ...dataPayload, title: title, body: body, url: targetUrl, type: "alarm" }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
     }
@@ -946,7 +943,7 @@ setInterval(() => {
             }
         } 
     } 
-}, 10000); // ✅ SERVER LOOP: 10 Seconds (Backup Safety)
+}, 8000); // ✅ SERVER LOOP: 8 Seconds (Backup Safety)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

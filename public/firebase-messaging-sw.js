@@ -14,18 +14,16 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ✅ Force Update: Για να πάρει το νέο SW αμέσως
+// Force activation
 self.addEventListener('install', (event) => { self.skipWaiting(); });
 self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); });
 
 messaging.setBackgroundMessageHandler(function(payload) {
-  console.log('[BG] Message:', payload);
-  
   // Clear previous loop
   if (notificationInterval) { clearInterval(notificationInterval); notificationInterval = null; badgeCount = 0; }
 
-  const originalTitle = payload.data.title || 'BellGo';
-  const originalBody = payload.data.body || 'Νέα ειδοποίηση';
+  const originalTitle = payload.data.title || payload.notification?.title || 'BellGo';
+  const originalBody = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
   const url = payload.data.url || '/login.html'; 
 
   // ✅ Check if Alarm
@@ -36,7 +34,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
   if (isAlarm) {
       const showLoop = () => {
           badgeCount++;
-          // 🔴 ANTI-SPAM TRICK: Αλλάζουμε το body για να φαίνεται σαν Update
+          // Dynamic Body Trick
           const dynamicBody = `${originalBody} ${"🔔".repeat((badgeCount % 3) + 1)}`;
           
           return self.registration.showNotification(originalTitle, {
@@ -45,13 +43,13 @@ messaging.setBackgroundMessageHandler(function(payload) {
               tag: 'bellgo-alarm-loop',
               renotify: true,           
               requireInteraction: true, 
-              vibrate: [1000, 500, 1000, 500, 1000],
+              vibrate: [500, 200, 500, 200, 500],
               data: { url: url, isLooping: true }
           });
       };
 
-      // Loop κάθε 6 δευτερόλεπτα (Safe for Chrome)
-      notificationInterval = setInterval(showLoop, 6000);
+      // Local Loop fast (3s) - Android will try this, Server will backup every 8s
+      notificationInterval = setInterval(showLoop, 3000);
       return showLoop();
   }
 
@@ -60,7 +58,6 @@ messaging.setBackgroundMessageHandler(function(payload) {
       body: originalBody,
       icon: '/admin.png',
       tag: 'bellgo-normal',
-      renotify: true,
       data: { url: url }
   });
 });
