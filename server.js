@@ -941,8 +941,10 @@ setInterval(() => {
                 const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
                 const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
                 sendPushNotification(user, msg, body, { type: "alarm" }, 5); // ✅ TTL 5s 
+            }
         } 
     } 
-, 30
+}, 3000);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

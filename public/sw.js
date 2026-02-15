@@ -58,7 +58,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
     tag: 'bellgo-alarm',      
     renotify: true,           
     requireInteraction: true, 
-    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500], // ✅ Έντονη Δόνηση (Loop Effect)
+    vibrate: [2000, 500, 2000, 500, 2000, 500, 2000, 500, 2000, 500], // ✅ ΠΟΛΥ Έντονη Δόνηση (Long Loop)
     data: { url: url }        
   });
 });

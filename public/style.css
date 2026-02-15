@@ -414,12 +414,16 @@ input:checked + .slider:before { transform: translateX(18px); }
 
 /* ✅ NEW: ALARM FLASH ANIMATION (Αναβόσβημα Οθόνης) */
 @keyframes screenFlash {
-    0% { background-color: #000; }
-    50% { background-color: #fff; } /* Άσπρο φλας */
-    100% { background-color: #000; }
+    0% { opacity: 0.2; background-color: red; }
+    50% { opacity: 0.8; background-color: white; } /* Άσπρο φλας */
+    100% { opacity: 0.2; background-color: red; }
 }
 
-body.alarm-active {
+body.alarm-active::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 2147483647; /* ✅ Max Z-Index: Πάνω από ΟΛΑ */
     animation: screenFlash 0.5s infinite; /* Γρήγορο Loop */
-    z-index: 99999; /* Πάνω από όλα */
+    pointer-events: none; /* Επιτρέπει το κλικ από κάτω */
 }
