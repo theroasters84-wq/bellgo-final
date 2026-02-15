@@ -4,9 +4,9 @@ import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 
 const savedSession = localStorage.getItem('bellgo_session');
-if (!savedSession) window.location.href = "login.html";
+if (!savedSession) window.location.replace("login.html");
 const userData = JSON.parse(savedSession || '{}');
-if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access Denied"); window.location.href = "login.html"; }
+if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access Denied"); window.location.replace("login.html"); }
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
@@ -1527,7 +1527,7 @@ window.App = {
             box.scrollTop = box.scrollHeight;
         }
     },
-    logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href = "login.html"; },
+    logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
     toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)

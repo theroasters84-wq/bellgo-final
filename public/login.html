@@ -338,9 +338,9 @@
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
                                 if (subData.plan === 'premium') {
-                                    window.location.href = "stafpremium.html";
+                                    window.location.replace("stafpremium.html");
                                 } else {
-                                    window.location.href = "index.html"; 
+                                    window.location.replace("index.html"); 
                                 }
                             } else {
                                 alert("Δεν βρέθηκε ενεργή συνδρομή για αυτό το κατάστημα.");
@@ -449,8 +449,8 @@
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
-            if(adminPlan === 'premium') window.location.href = "premium.html";
-            else window.location.href = "index.html";
+            if(adminPlan === 'premium') window.location.replace("premium.html");
+            else window.location.replace("index.html");
         });
 
         socket.on('pin-verified', (res) => {
@@ -460,8 +460,8 @@
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     
-                    if(adminPlan === 'premium') window.location.href = "premium.html";
-                    else window.location.href = "index.html";
+                    if(adminPlan === 'premium') window.location.replace("premium.html");
+                    else window.location.replace("index.html");
                 } else {
                     alert("Λάθος PIN!");
                     PIN.clear();

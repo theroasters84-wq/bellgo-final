@@ -96,7 +96,7 @@
     <script>
         // AUTH GUARD (Moved to head for immediate check)
         if (!localStorage.getItem('bellgo_session')) {
-            window.location.href = "login.html";
+            window.location.replace("login.html");
         }
     </script>
 </head>
@@ -384,7 +384,7 @@
                 if (socket) socket.emit('manual-logout');
                 localStorage.removeItem('bellgo_session');
                 localStorage.removeItem('isRinging');
-                window.location.href = "login.html";
+                window.location.replace("login.html");
             },
 
             forceReconnect: () => { if(socket) { socket.disconnect(); setTimeout(() => socket.connect(), 300); } },

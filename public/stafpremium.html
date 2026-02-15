@@ -231,11 +231,7 @@
         }
 
         const savedSession = localStorage.getItem('bellgo_session');
-        if (!savedSession) window.location.href = "login.html";
-        const userData = JSON.parse(savedSession || '{}');
-
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
+        if (!savedSession) window.location.;
 
         // --- I18N LOGIC ---
         let translations = {};
@@ -875,14 +871,10 @@
             sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
             appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
-            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.href="login.html"; },
-            forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(),500); },
+            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html");k
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000),
-            setLanguage: setLanguage // Expose for button click
         };
-
         window.onload = App.init;
-
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
                 .then(() => console.log('✅ Staff Service Worker Registered'))
