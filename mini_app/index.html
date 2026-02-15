@@ -2,7 +2,6 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <!-- ✅ VIEWPORT: Το κλειδί για να προσαρμόζεται σε κάθε οθόνη -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>BellGo Mini</title>
     <script src="/socket.io/socket.io.js"></script>
@@ -11,124 +10,121 @@
         
         body {
             margin: 0; padding: 0;
-            background-color: #121212; color: white;
+            background-color: #000; color: white;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            height: 100dvh; /* Dynamic Viewport Height για κινητά */
-            display: flex; flex-direction: column;
+            height: 100vh; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             overflow: hidden;
         }
 
-        /* Κεντρικό Container που προσαρμόζεται */
-        .app-container {
-            flex: 1;
-            width: 100%; 
-            height: 100%;
-            display: flex; flex-direction: column;
-            position: relative;
-            background: #1e1e1e;
-            transition: max-width 0.3s ease;
+        .btn-call {
+            width: 220px; height: 220px;
+            border-radius: 50%;
+            background: #D32F2F;
+            border: 8px solid #FF5252;
+            color: white;
+            font-size: 32px; font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 40px rgba(211, 47, 47, 0.6);
+            transition: transform 0.1s, background 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
         }
 
-        /* Header με Safe Area για Notches (iPhone) */
-        .header {
-            padding: 15px;
-            background: #222;
-            text-align: center;
-            font-weight: bold;
-            border-bottom: 1px solid #333;
-            padding-top: max(15px, env(safe-area-inset-top)); 
-            color: #FFD700;
-        }
-
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center;
-        }
-
-        .device-badge {
-            margin-top: 20px;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            background: #333;
+        .btn-call:active { transform: scale(0.95); background: #B71C1C; }
+        
+        .status-text {
+            margin-top: 30px;
+            font-size: 18px;
             color: #aaa;
+            font-weight: 500;
+            text-align: center;
+            padding: 0 20px;
         }
 
-        .status-box {
-            margin-top: 20px;
-            font-size: 16px;
-            font-weight: bold;
-            min-height: 24px;
+        .status-text.connected { color: #00E676; }
+        .status-text.disconnected { color: #FF5252; }
+        
+        .accepted-anim {
+            animation: flashSuccess 1s infinite alternate;
+            color: #00E676;
+            font-size: 22px;
         }
 
-        /* ✅ DESKTOP DETECTION: Αν η οθόνη είναι μεγάλη, συμπεριφέρεται σαν App στο κέντρο */
-        @media (min-width: 769px) {
-            .app-container {
-                max-width: 400px; /* Εμφάνιση σαν κινητό στο Desktop */
-                margin: 0 auto;
-                border-left: 1px solid #333;
-                border-right: 1px solid #333;
-            }
+        @keyframes flashSuccess {
+            0% { opacity: 1; text-shadow: 0 0 10px #00E676; }
+            100% { opacity: 0.5; text-shadow: 0 0 20px #00E676; }
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="header">BellGo Mini</div>
-        <div class="content">
-            <h2>Mini App</h2>
-            <p>Η οθόνη προσαρμόστηκε αυτόματα.</p>
-            <!-- Εδώ θα εμφανίζεται ο τύπος συσκευής μέσω CSS/JS -->
-            <div class="device-badge" id="deviceInfo">Ανίχνευση...</div>
-            <div class="status-box" id="statusMsg"></div>
-        </div>
-    </div>
+    <button id="btnCall" class="btn-call" onclick="triggerCall()">
+        <span style="font-size:40px;">🔔</span>
+        <span>CALL</span>
+    </button>
+    
+    <div id="statusMsg" class="status-text">Connecting...</div>
 
     <script>
-        function detectDevice() {
-            const width = window.innerWidth;
-            const el = document.getElementById('deviceInfo');
-            if (width > 768) {
-                el.innerText = "💻 Desktop Mode";
-                el.style.color = "#00E676";
-            } else {
-                el.innerText = "📱 Mobile Mode";
-                el.style.color = "#FFD700";
-            }
-        }
-        window.addEventListener('resize', detectDevice);
-        detectDevice();
-
-        // ✅ SOCKET LOGIC: Ενημέρωση όταν ο δέκτης αποδεχτεί την κλήση
         const params = new URLSearchParams(window.location.search);
         const storeName = params.get('store');
         const myName = params.get('name') || 'MiniUser';
+        let socket = null;
 
         if (storeName) {
-            const socket = io();
+            socket = io();
             
             socket.on('connect', () => {
+                document.getElementById('statusMsg').innerText = "🟢 Connected";
+                document.getElementById('statusMsg').className = "status-text connected";
+                
                 // Σύνδεση στο κατάστημα για να λαμβάνουμε events
                 socket.emit('join-store', { 
                     storeName: storeName, 
                     username: myName, 
-                    role: 'waiter', // Ρόλος που επιτρέπει λήψη ειδοποιήσεων
+                    role: 'waiter', 
                     isNative: false 
                 });
+            });
+            
+            socket.on('disconnect', () => {
+                document.getElementById('statusMsg').innerText = "🔴 Disconnected";
+                document.getElementById('statusMsg').className = "status-text disconnected";
             });
 
             // 👂 ΑΚΡΟΑΣΗ ΑΠΟΔΟΧΗΣ ΚΛΗΣΗΣ
             socket.on('staff-accepted-alarm', (data) => {
                 const el = document.getElementById('statusMsg');
                 el.innerText = `✅ Η κλήση έγινε αποδεκτή από: ${data.username}`;
-                el.style.color = "#00E676";
+                el.className = "status-text accepted-anim";
+                
+                if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 
                 // Καθαρισμός μετά από 5 δευτερόλεπτα
-                setTimeout(() => { el.innerText = ""; }, 5000);
+                setTimeout(() => { 
+                    el.innerText = "🟢 Ready"; 
+                    el.className = "status-text connected"; 
+                }, 5000);
             });
+        } else {
+            document.getElementById('statusMsg').innerText = "⚠️ No Store ID provided";
+        }
+
+        function triggerCall() {
+            if(!socket || !socket.connected) return alert("No connection!");
+            
+            // Trigger Alarm to Admin/Kitchen
+            socket.emit('trigger-alarm', { target: 'Admin', source: myName });
+            
+            const btn = document.getElementById('btnCall');
+            btn.style.background = "white";
+            btn.style.color = "#D32F2F";
+            setTimeout(() => {
+                btn.style.background = "#D32F2F";
+                btn.style.color = "white";
+            }, 200);
+            
+            document.getElementById('statusMsg').innerText = "🔔 Calling...";
         }
     </script>
 </body>
