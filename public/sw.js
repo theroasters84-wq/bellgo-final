@@ -9,8 +9,7 @@ let notificationInterval;
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v41'; // ✅ FIX: Budget Protection Update
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'bellgo-v4
   '/',
   '/index.html',
   '/login.html',

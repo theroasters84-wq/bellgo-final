@@ -99,7 +99,7 @@ window.App = {
             `;
             document.body.appendChild(div);
         }
-.body.addEventListener('click', () => { 
+        document.body.addEventListener('click', () => { 
             if(window.AudioEngine) window.AudioEngine.init();
         }, {once:true});
         
