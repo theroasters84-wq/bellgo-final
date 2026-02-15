@@ -944,7 +944,7 @@ setInterval(() => {
             }
         } 
     } 
-}, 10000); // ✅ FIX: Αύξηση σε 10s για να μην το βλέπει ο Browser ως SPAM
+}, 10000); // ✅ FIX: Αύξηση σε 10s για να μην το βλέπει ο Browser ως SPAM (Budget Protection)
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));

@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v40'; // ✅ FIX: Anti-Spam Update
+const CACHE_NAME = 'bellgo-v41'; // ✅ FIX: Budget Protection Update
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -58,7 +58,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
     tag: 'bellgo-alarm',      
     renotify: true,           
     requireInteraction: true, 
-    vibrate: [2000, 1000, 2000, 1000, 2000, 1000, 2000, 1000], // ✅ FIX: Πιο ήπιο pattern για να μην κόβεται
+    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500], // ✅ FIX: Πιο σύντομη δόνηση για οικονομία μπαταρίας/budget
     data: { url: url }        
   });
 });
