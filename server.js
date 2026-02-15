@@ -517,7 +517,7 @@ function notifyAdmin(storeName, title, body, excludeSocketId = null) {
         if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
         adm.isRinging = true;
         if (adm.socketId) io.to(adm.socketId).emit('ring-bell');
-        sendPushNotification(adm, title, body, { type: "alarm" }, 60); // TTL 60s για Admin Alerts
+        sendPushNotification(adm, title, body, { type: "alarm" }, 86400); // ✅ TTL 24h (Για να φτάνει και με κλειστό browser)
     });
 }
 
@@ -940,7 +940,7 @@ setInterval(() => {
             if (!isActive) {
                 const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
                 const body = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
-                sendPushNotification(user, msg, body, { type: "alarm" }, 5); // ✅ TTL 5s 
+                sendPushNotification(user, msg, body, { type: "alarm" }, 30); // ✅ TTL 30s (Αυξημένο για ασφάλεια)
             }
         } 
     } 
