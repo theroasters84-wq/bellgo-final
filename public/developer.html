@@ -71,7 +71,7 @@
 
             <h3 style="color:#00E676; border-bottom:1px solid #333; padding-bottom:5px; margin-top:20px;">🏪 Λίστα Καταστημάτων</h3>
             <table class="data-table">
-                <thead><tr><th>Όνομα</th><th>Email</th><th>Πλάνο</th></tr></thead>
+                <thead><tr><th>Όνομα</th><th>Email</th><th>Πλάνο</th><th>Ημέρα (€/Tmx)</th><th>Μήνας (€/Tmx)</th></tr></thead>
                 <tbody id="clientsTableBody"></tbody>
             </table>
         </div>
@@ -162,7 +162,13 @@
             tbody.innerHTML = '';
             data.stores.forEach(s => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${s.name}</td><td>${s.email}</td><td style="color:${s.plan==='premium'?'#FFD700':'#aaa'}">${s.plan.toUpperCase()}</td>`;
+                
+                const dRev = s.dayRev || 0;
+                const dPcs = s.dayPcs || 0;
+                const mRev = s.monthRev || 0;
+                const mPcs = s.monthPcs || 0;
+
+                tr.innerHTML = `<td>${s.name}</td><td>${s.email}</td><td style="color:${s.plan==='premium'?'#FFD700':'#aaa'}">${s.plan.toUpperCase()}</td><td>${dRev.toFixed(2)}€ / ${dPcs}</td><td>${mRev.toFixed(2)}€ / ${mPcs}</td>`;
                 tbody.appendChild(tr);
             });
         });

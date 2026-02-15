@@ -84,35 +84,35 @@
             <button onclick="setLanguage('en')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇺🇸 EN</button>
         </div>
 
-        <button id="btnInstall" onclick="handleInstall()">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
+        <button id="btnInstall" onclick="handleInstall()" data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
         <!-- 1. ROLE SELECTION SCREEN -->
         <div id="roleSelection" class="form-section active">
-            <p style="color:#aaa; margin-bottom:15px;">Επιλέξτε τον ρόλο σας:</p>
+            <p style="color:#aaa; margin-bottom:15px;" data-i18n="select_role">Επιλέξτε τον ρόλο σας:</p>
             <div class="role-grid">
                 <button class="btn-role" onclick="UI.showAdminLogin('cashier')">
-                    <span class="role-icon">🏪</span> ΤΑΜΕΙΟ
+                    <span class="role-icon">🏪</span> <span data-i18n="cashier">ΤΑΜΕΙΟ</span>
                 </button>
                 <button class="btn-role" onclick="UI.showAdminLogin('kitchen')">
-                    <span class="role-icon">👨‍🍳</span> ΚΟΥΖΙΝΑ
+                    <span class="role-icon">👨‍🍳</span> <span data-i18n="kitchen">ΚΟΥΖΙΝΑ</span>
                 </button>
                 <button class="btn-role" onclick="UI.showStaffLogin('waiter')">
-                    <span class="role-icon">🤵</span> ΣΕΡΒΙΤΟΡΟΣ
+                    <span class="role-icon">🤵</span> <span data-i18n="waiter">ΣΕΡΒΙΤΟΡΟΣ</span>
                 </button>
                 <button class="btn-role" onclick="UI.showStaffLogin('driver')">
-                    <span class="role-icon">🛵</span> ΔΙΑΝΟΜΕΑΣ
+                    <span class="role-icon">🛵</span> <span data-i18n="driver">ΔΙΑΝΟΜΕΑΣ</span>
                 </button>
             </div>
-            <button class="btn-sub-link" onclick="UI.showSubscription()">Αγορά Συνδρομής</button>
+            <button class="btn-sub-link" onclick="UI.showSubscription()" data-i18n="buy_subscription">Αγορά Συνδρομής</button>
         </div>
 
         <!-- 2. STAFF LOGIN FORM -->
         <div id="staffForm" class="form-section">
-            <h3 style="color:#FFD700; margin:0;">Είσοδος Προσωπικού</h3>
-            <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)">
-            <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου">
+            <h3 style="color:#FFD700; margin:0;" data-i18n="staff_login">Είσοδος Προσωπικού</h3>
+            <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
+            <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
             <div class="password-wrapper">
-                <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric">
+                <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin">
                 <button class="password-toggle" onclick="UI.togglePinVisibility()" type="button">👁️</button>
             </div>
             <!-- Hidden Select, controlled by JS -->
@@ -120,43 +120,43 @@
                 <option value="waiter">Σερβιτόρος 🤵</option>
                 <option value="driver">Διανομέας 🛵</option>
             </select>
-            <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()">ΕΙΣΟΔΟΣ</button>
-            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
+            <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
+            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
         </div>
 
         <!-- 3. ADMIN LOGIN FORM -->
         <div id="adminForm" class="form-section">
-            <h3 style="color:#FFD700; margin:0;">Διαχείριση (Admin)</h3>
-            <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)">
-            <input type="text" id="adminNameInp" class="inp" placeholder="Όνομα Ταμείου (π.χ. Μαρία)">
-            <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()">ΕΙΣΟΔΟΣ</button>
-            <div class="divider">Ή</div>
-            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> Σύνδεση Google</button>
-            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
+            <h3 style="color:#FFD700; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
+            <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)" data-i18n-placeholder="placeholder_email_login_buy">
+            <input type="text" id="adminNameInp" class="inp" placeholder="Όνομα Ταμείου (π.χ. Μαρία)" data-i18n-placeholder="placeholder_cashier_name">
+            <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
+            <div class="divider" data-i18n="or">Ή</div>
+            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> <span data-i18n="google_login">Σύνδεση Google</span></button>
+            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
         </div>
 
         <!-- 4. SUBSCRIPTION SCREEN -->
         <div id="subscriptionScreen" class="form-section">
-            <h3 style="color:#FFD700; margin:0;">Επιλογή Πακέτου</h3>
-            <p style="color:#aaa; font-size:12px; margin-bottom:15px;">Εισάγετε το Email σας στο Admin Login πριν την αγορά.</p>
+            <h3 style="color:#FFD700; margin:0;" data-i18n="select_package">Επιλογή Πακέτου</h3>
+            <p style="color:#aaa; font-size:12px; margin-bottom:15px;" data-i18n="enter_email_warning">Εισάγετε το Email σας στο Admin Login πριν την αγορά.</p>
             
             <button class="btn-price" onclick="UI.goToBuy('basic')">
-                <span>BellGo Simple</span>
+                <span data-i18n="plan_simple">BellGo Simple</span>
                 <span class="price-tag">4€</span>
             </button>
             <button class="btn-price" onclick="UI.goToBuy('premium')">
-                <span>BellGo Management Shop</span>
+                <span data-i18n="plan_management">BellGo Management Shop</span>
                 <span class="price-tag">10€</span>
             </button>
             
-            <button class="btn-back" onclick="UI.showRoles()">🔙 ΠΙΣΩ</button>
+            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
         </div>
     </div>
 
     <div id="pinModal">
         <div class="pin-box">
-            <h3 id="pinTitle" style="margin:0; color:#FFD700;">ΕΙΣΑΓΩΓΗ PIN</h3>
-            <p id="pinSub" style="font-size:12px; color:#aaa;">Εισάγετε τον κωδικό καταστήματος</p>
+            <h3 id="pinTitle" style="margin:0; color:#FFD700;" data-i18n="enter_pin">ΕΙΣΑΓΩΓΗ PIN</h3>
+            <p id="pinSub" style="font-size:12px; color:#aaa;" data-i18n="enter_your_pin">Εισάγετε τον κωδικό καταστήματος</p>
             <div id="pinDisplay" class="pin-display"></div>
             <div class="numpad">
                 <button class="num-btn" onclick="PIN.add(1)">1</button>
@@ -172,7 +172,7 @@
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
                 <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
             </div>
-            <button id="btnForgot" class="forgot-link" onclick="PIN.resetFlow()">Ξέχασα το PIN</button>
+            <button id="btnForgot" class="forgot-link" onclick="PIN.resetFlow()" data-i18n="forgot_pin">Ξέχασα το PIN</button>
         </div>
     </div>
 
@@ -225,6 +225,10 @@
         let adminUser = null; 
         let adminPlan = 'basic';
 
+        // --- I18N LOGIC ---
+        let translations = {};
+        const t = (key) => translations[key] || key;
+
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const emailParam = urlParams.get('email');
@@ -235,6 +239,10 @@
                 const savedEmail = localStorage.getItem('bellgo_last_email');
                 if(savedEmail) document.getElementById('adminEmailInp').value = savedEmail;
             }
+
+            // Load Language
+            const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+            setLanguage(savedLang);
         };
 
         // --- UI NAVIGATION ---
@@ -280,8 +288,8 @@
             resetFlow: () => {
                 if(!confirm("Θέλετε να ορίσετε νέο κωδικό;")) return;
                 currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay();
-                document.getElementById('pinTitle').innerText = "ΝΕΟ PIN";
-                document.getElementById('pinSub').innerText = "Ορίστε νέο 4-ψήφιο κωδικό";
+                document.getElementById('pinTitle').innerText = t('create_pin') || "ΝΕΟ PIN";
+                document.getElementById('pinSub').innerText = t('set_new_pin') || "Ορίστε νέο 4-ψήφιο κωδικό";
                 document.getElementById('btnForgot').style.display = 'none';
             },
             submit: () => {
@@ -291,8 +299,8 @@
                 } else if (currentPinMode === 'create') {
                     tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
                     currentPinMode = 'confirm';
-                    document.getElementById('pinTitle').innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
-                    document.getElementById('pinSub').innerText = "Πληκτρολογήστε το ξανά";
+                    document.getElementById('pinTitle').innerText = t('confirm') || "ΕΠΙΒΕΒΑΙΩΣΗ";
+                    document.getElementById('pinSub').innerText = t('type_again') || "Πληκτρολογήστε το ξανά";
                 } else if (currentPinMode === 'confirm') {
                     if (pinValue === tempPin) {
                         socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
@@ -426,13 +434,13 @@
             document.getElementById('pinModal').style.display = 'flex';
             if (data.hasPin) {
                 currentPinMode = 'enter';
-                document.getElementById('pinTitle').innerText = "ΕΙΣΑΓΩΓΗ PIN";
-                document.getElementById('pinSub').innerText = "Βάλτε τον κωδικό σας";
+                document.getElementById('pinTitle').innerText = t('enter_pin') || "ΕΙΣΑΓΩΓΗ PIN";
+                document.getElementById('pinSub').innerText = t('enter_your_pin') || "Βάλτε τον κωδικό σας";
                 document.getElementById('btnForgot').style.display = 'block';
             } else {
                 currentPinMode = 'create';
-                document.getElementById('pinTitle').innerText = "ΔΗΜΙΟΥΡΓΙΑ PIN";
-                document.getElementById('pinSub').innerText = "Ορίστε έναν νέο 4-ψήφιο κωδικό";
+                document.getElementById('pinTitle').innerText = t('create_pin') || "ΔΗΜΙΟΥΡΓΙΑ PIN";
+                document.getElementById('pinSub').innerText = t('set_new_pin') || "Ορίστε έναν νέο 4-ψήφιο κωδικό";
                 document.getElementById('btnForgot').style.display = 'none';
             }
         });
@@ -467,9 +475,20 @@
             }
         });
 
-        window.setLanguage = (lang) => {
+        window.setLanguage = async (lang) => {
             localStorage.setItem('bellgo_lang', lang);
-            alert(lang === 'el' ? 'Η γλώσσα ορίστηκε σε Ελληνικά' : 'Language set to English');
+            try {
+                const response = await fetch(`/i18n/${lang}.json`);
+                translations = await response.json();
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (translations[key]) el.innerText = translations[key];
+                });
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    if (translations[key]) el.placeholder = translations[key];
+                });
+            } catch (error) { console.error(`Lang Error: ${lang}`, error); }
         };
     </script>
 </body>

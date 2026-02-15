@@ -217,78 +217,6 @@
         return total;
     }
 
-    const AudioEngine = {
-        keepAlivePlayer: null, 
-        alarmPlayer: null,      
-        isRinging: false,
-        wakeLock: null,
-        vibInt: null, // ✅ Added for Vibration Loop
-        
-        async init() {
-            if (!this.keepAlivePlayer) {
-                this.keepAlivePlayer = document.createElement("audio");
-                this.keepAlivePlayer.src = "tone19hz.wav"; 
-                this.keepAlivePlayer.loop = true;
-                this.keepAlivePlayer.volume = 1.0; 
-                document.body.appendChild(this.keepAlivePlayer);
-            }
-            if (!this.alarmPlayer) {
-                this.alarmPlayer = document.createElement("audio");
-                this.alarmPlayer.src = "alert.mp3"; 
-                this.alarmPlayer.loop = true;
-                this.alarmPlayer.volume = 1.0;
-                document.body.appendChild(this.alarmPlayer);
-            }
-            this.requestWakeLock();
-            this.setupMediaSession();
-            try { await this.keepAlivePlayer.play(); } catch (e) {}
-        },
-
-        setupMediaSession() {
-            if (!("mediaSession" in navigator)) return;
-            const handleNotificationClick = () => {
-                if (this.isRinging) {
-                    if (window.App && window.App.acceptAlarmStaff) window.App.acceptAlarmStaff(); 
-                    else this.stopAlarm(); 
-                } else {
-                    this.keepAlivePlayer.play();
-                }
-            };
-            ['play','pause','stop','previoustrack','nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handleNotificationClick));
-        },
-
-        async triggerAlarm() {
-            if (this.isRinging) return;
-            this.isRinging = true;
-            this.alarmPlayer.currentTime = 0;
-            try { await this.alarmPlayer.play(); } catch(e) {}
-            // ✅ INTENSE VIBRATION LOOP
-            if (navigator.vibrate) {
-                const pattern = [500, 100, 500, 100, 500, 100, 2000, 500];
-                navigator.vibrate(pattern);
-                if (this.vibInt) clearInterval(this.vibInt);
-                this.vibInt = setInterval(() => navigator.vibrate(pattern), 4500);
-            }
-        },
-
-        stopAlarm() {
-            if (!this.isRinging) return; 
-            this.isRinging = false;
-            this.alarmPlayer.pause();
-            this.alarmPlayer.currentTime = 0;
-            
-            // ✅ STOP VIBRATION
-            if (this.vibInt) clearInterval(this.vibInt);
-            if (navigator.vibrate) navigator.vibrate(0);
-        },
-
-        async requestWakeLock() {
-            if ('wakeLock' in navigator) {
-                try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
-            }
-        }
-    };
-    window.AudioEngine = AudioEngine;
     </script>
 
     <script type="module">
@@ -797,6 +725,9 @@
                 document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: ${total.toFixed(2)}€`;
             },
 
+            // ✅ Bridge for player.js compatibility
+            acceptAlarm: function() { this.acceptAlarmStaff(); },
+
             acceptAlarmStaff: () => {
                 if(window.AudioEngine) window.AudioEngine.stopAlarm();
                 const bell = document.getElementById('staffBellBtn');
@@ -958,6 +889,7 @@
                 .catch(err => console.log('❌ Staff SW Error:', err));
         }
     </script>
+    <script src="player.js"></script>
     <script src="keepalive.js"></script>
 </body>
 </html>
