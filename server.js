@@ -476,8 +476,8 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ✅ FIX: Ενεργοποίηση notification για να ξυπνάει τον browser όταν είναι κλειστός
-            notification: { title: title, body: body }, 
+            // 🔴 ΑΛΛΑΓΗ ΣΕ DATA MESSAGE: Σχολιάζουμε το notification για να αναλάβει το SW.js (Loop Alarm)
+            // notification: { title: title, body: body }, 
             
             android: { 
                 priority: "high", 
@@ -494,17 +494,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             webpush: { 
                 headers: { "Urgency": "high", "TTL": finalTTL }, 
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
-                notification: {
-                    title: title,
-                    body: body,
-                    icon: '/admin.png',
-                    tag: 'bellgo-alarm',
-                    renotify: true,
-                    requireInteraction: true,
-                    timestamp: Date.now(), // ✅ FIX: Προσθήκη ώρας για να θεωρείται "φρέσκια" και σημαντική
-                    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500],
-                    data: { url: targetUrl }
-                }
+                // Αφαιρούμε το notification object και από το webpush για να μην το δείξει ο browser αυτόματα
             }, 
             data: { ...dataPayload, title: title, body: body, url: targetUrl }
         };
