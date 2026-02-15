@@ -48,6 +48,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
               renotify: true,           
               requireInteraction: true, 
               vibrate: [500, 200, 500, 200, 500],
+              sound: '/alert.mp3', // ✅ Προσθήκη ήχου στο Loop
               data: { url: url, isLooping: true }
           });
       };
@@ -62,6 +63,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
       body: originalBody,
       icon: '/admin.png',
       tag: 'bellgo-' + Date.now(), // ✅ STACKING: Always unique tag for normal messages
+      sound: '/alert.mp3', // ✅ Προσθήκη ήχου σε απλή ειδοποίηση
       data: { url: url }
   });
 });

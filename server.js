@@ -479,7 +479,12 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             
             android: { 
                 priority: "high", 
-                notification: { sound: "default", tag: "bellgo-alarm", clickAction: `${YOUR_DOMAIN}${targetUrl}` } 
+                notification: { 
+                    sound: "default", 
+                    tag: "bellgo-alarm", 
+                    clickAction: `${YOUR_DOMAIN}${targetUrl}`,
+                    channelId: "bellgo_alarm_channel" // ✅ Κανάλι για ρύθμιση DND Override
+                } 
             },
             webpush: { 
                 headers: { "Urgency": "high" }, 
