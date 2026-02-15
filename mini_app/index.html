@@ -12,12 +12,16 @@
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; user-select: none; }
         
         /* --- LOGIN SCREEN --- */
-        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; }
+        #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; max-width: 400px; margin: 0 auto; width: 100%; }
         .logo { font-size: 50px; margin-bottom: 20px; }
-        input { background: #333; border: 1px solid #444; color: white; padding: 15px; margin-bottom: 15px; width: 100%; max-width: 300px; border-radius: 10px; font-size: 16px; outline: none; text-align: center; }
+        
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 10px; font-size: 16px; outline: none; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         input:focus { border-color: var(--primary); }
-        .btn { background: var(--primary); color: black; border: none; padding: 15px; width: 100%; max-width: 300px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        
+        .btn { background: var(--primary); color: black; border: none; padding: 15px; width: 100%; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 10px; }
         .btn:active { transform: scale(0.98); opacity: 0.9; }
+        
+        .room-info-display { background: #333; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--primary); color: var(--primary); font-weight: bold; display: none; }
         
         /* --- APP SCREEN --- */
         #appScreen { display: none; flex-direction: column; height: 100%; }
@@ -57,6 +61,10 @@
 
         /* --- TOAST --- */
         #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 2000; }
+
+        /* --- MODAL --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; display: none; align-items: center; justify-content: center; }
+        .modal-box { background: #222; padding: 25px; border-radius: 15px; border: 1px solid #444; text-align: center; width: 80%; max-width: 300px; }
     </style>
 </head>
 <body>
@@ -65,13 +73,11 @@
     <div id="loginScreen">
         <div class="logo">🔔</div>
         <h2 style="margin-top:0;">BellGo Mini</h2>
-        <input type="text" id="inpStore" placeholder="Όνομα Επιχείρησης (Room)" autocapitalize="off">
-        <input type="password" id="inpPass" placeholder="Κωδικός (Προαιρετικό)">
-        <input type="text" id="inpName" placeholder="Το Όνομά σου">
-        <button class="btn" onclick="App.login()">ΕΙΣΟΔΟΣ</button>
-        <div style="margin-top:20px; font-size:12px; color:#666;">
-            * Αν βάλετε κωδικό και ταιριάζει, γίνεστε Admin (Πομπός).<br>
-            * Αν δεν βάλετε, μπαίνετε ως Χρήστης.
+        
+        <div style="width:100%;">
+            <input type="text" id="inpName" placeholder="Το Όνομά σου">
+            <input type="text" id="inpRoom" placeholder="ID Δωματίου (π.χ. 100)" autocapitalize="off">
+            <button class="btn" onclick="App.checkEntry()">ΕΙΣΟΔΟΣ</button>
         </div>
     </div>
 
@@ -79,6 +85,10 @@
     <div id="appScreen">
         <div class="header">
             <div class="header-title" id="displayStore">Room</div>
+            <div id="roomCredentials" style="font-size:12px; color:#aaa; margin-left:10px; display:none;">
+                ID: <span id="headRoomId" style="color:white; font-weight:bold;"></span> | 
+                PIN: <span id="headPin" style="color:white; font-weight:bold;"></span>
+            </div>
             <button class="btn-exit" onclick="App.logout()">Exit ✕</button>
         </div>
 
@@ -104,6 +114,16 @@
 
     <div id="toast">Message</div>
 
+    <!-- ADMIN ASK MODAL -->
+    <div id="adminAskModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:var(--primary); margin-top:0;">Είστε ο Admin;</h3>
+            <p style="color:#ccc; font-size:14px;">Δεν έχει οριστεί διαχειριστής για αυτό το δωμάτιο.</p>
+            <button class="btn" style="background:var(--primary); color:black;" onclick="App.handleAdminClaim(true)">ΝΑΙ (Admin)</button>
+            <button class="btn" style="background:#333; color:white; border:1px solid #555;" onclick="App.handleAdminClaim(false)">ΟΧΙ (User)</button>
+        </div>
+    </div>
+
     <script>
         const App = {
             socket: null,
@@ -115,14 +135,8 @@
             callingTarget: null, // Who am I calling?
             
             init: () => {
-                // Check for saved session
-                const saved = localStorage.getItem('bellgo_mini_session');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    document.getElementById('inpStore').value = data.store;
-                    document.getElementById('inpName').value = data.username;
-                    // Auto-login logic could go here, but for security/pin check we let them click
-                }
+                // Clear session on reload to ensure fresh start or implement auto-rejoin if desired
+                // For security/random rooms, we usually start fresh.
 
                 // Service Worker Registration
                 if ('serviceWorker' in navigator) {
@@ -137,47 +151,48 @@
                 }, { once: true });
             },
 
-            login: () => {
-                const store = document.getElementById('inpStore').value.trim();
-                const pass = document.getElementById('inpPass').value.trim();
+            checkEntry: () => {
                 const name = document.getElementById('inpName').value.trim();
+                const roomId = document.getElementById('inpRoom').value.trim();
+                
+                if (!name || !roomId) return alert("Συμπληρώστε Όνομα και Δωμάτιο!");
 
-                if (!store || !name) return alert("Συμπληρώστε Όνομα και Επιχείρηση!");
-
-                App.store = store;
+                App.store = roomId;
                 App.username = name;
 
-                // Connect Socket
                 App.socket = io();
-                
                 App.socket.on('connect', () => {
-                    // 1. Check PIN status first
-                    App.socket.emit('verify-pin', { email: store, pin: pass });
+                    // Check if room has PIN (Admin)
+                    App.socket.emit('check-pin-status', { email: roomId });
                 });
 
-                // 2. Handle PIN Verification Result
-                App.socket.on('pin-verified', (res) => {
-                    if (res.success) {
-                        // Password matched -> ADMIN (Pompos)
-                        App.role = 'admin';
-                        App.join(pass); // Send pass to potentially set it if new
+                App.socket.on('pin-status', (data) => {
+                    if (data.hasPin) {
+                        // Admin exists -> Join as Staff
+                        App.handleAdminClaim(false);
                     } else {
-                        if (pass) {
-                            alert("Λάθος κωδικός! Μπαίνετε ως απλός χρήστης.");
-                        }
-                        // No password or wrong password -> USER
-                        App.role = 'staff';
-                        App.join(null);
+                        // No Admin -> Ask
+                        document.getElementById('adminAskModal').style.display = 'flex';
                     }
                 });
             },
 
-            join: (pin) => {
-                // If I am admin and it's a new room, I might need to set the PIN
-                if (App.role === 'admin' && pin) {
+            handleAdminClaim: (isAdmin) => {
+                document.getElementById('adminAskModal').style.display = 'none';
+                App.role = isAdmin ? 'admin' : 'staff';
+                
+                let pin = null;
+                if (isAdmin) {
+                    // Generate PIN for new Admin
+                    pin = Math.floor(1000 + Math.random() * 9000).toString();
                     App.socket.emit('set-new-pin', { email: App.store, pin: pin });
                 }
 
+                App.socket.emit('join-store', { storeName: App.store, username: App.username, role: App.role, isNative: false });
+                App.enterApp(App.store, pin);
+            },
+
+            enterApp: (roomId, pin) => {
                 // Request Notification Permission
                 Notification.requestPermission().then(perm => {
                     if (perm === 'granted') {
@@ -187,24 +202,23 @@
                     }
                 });
 
-                // Join Store
-                App.socket.emit('join-store', {
-                    storeName: App.store,
-                    username: App.username,
-                    role: App.role,
-                    isNative: false
-                });
-
-                // Save Session
-                localStorage.setItem('bellgo_mini_session', JSON.stringify({ store: App.store, username: App.username }));
-
                 // UI Switch
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('appScreen').style.display = 'flex';
-                document.getElementById('displayStore').innerText = App.store + (App.role === 'admin' ? ' (Admin)' : '');
+                
+                document.getElementById('displayStore').innerText = (App.role === 'admin' ? 'Admin Panel' : 'Staff Panel');
 
                 if (App.role === 'admin') {
                     document.getElementById('adminControls').style.display = 'block';
+                    // Show Credentials
+                    document.getElementById('roomCredentials').style.display = 'block';
+                    document.getElementById('headRoomId').innerText = roomId;
+                    document.getElementById('headPin').innerText = pin;
+                } else {
+                    // Show Room ID only
+                    document.getElementById('roomCredentials').style.display = 'block';
+                    document.getElementById('headRoomId').innerText = roomId;
+                    document.getElementById('headPin').innerText = "";
                 }
 
                 App.setupListeners();
