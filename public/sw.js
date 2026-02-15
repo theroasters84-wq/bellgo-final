@@ -4,6 +4,8 @@
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
+let notificationInterval;
+
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
@@ -48,25 +50,62 @@ const messaging = firebase.messaging();
    4. BACKGROUND HANDLER (Push Notifications)
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
-  const title = payload.data.title || payload.notification?.title || '🚨 BellGo!';
-  const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
-  const url = payload.data.url || '/login.html';
+    if (notificationInterval) {
+        clearInterval(notificationInterval);
+        notificationInterval = null; // Good practice to nullify
+    }
 
-  return self.registration.showNotification(title, {
-    body: body,
-    icon: '/admin.png',
-    tag: 'bellgo-alarm',      
-    renotify: true,           
-    requireInteraction: true, 
-    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500], // ✅ FIX: Πιο σύντομη δόνηση για οικονομία μπαταρίας/budget
-    data: { url: url }        
-  });
+    const title = payload.data.title || payload.notification?.title || '🚨 BellGo!';
+    const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
+    const url = payload.data.url || '/login.html';
+
+    const isAlarm = (title + ' ' + body).toLowerCase().includes('paragelia') ||
+                    (title + ' ' + body).toLowerCase().includes('alarm');
+
+    if (isAlarm) {
+        const showNotification = () => {
+            return self.registration.showNotification(title, {
+                body: body,
+                icon: '/admin.png',
+                tag: 'bellgo-alarm-loop',
+                renotify: true,
+                requireInteraction: true,
+                vibrate: [300, 100, 400],
+                data: { url: url, isLooping: true }
+            });
+        };
+
+        // Start the loop for subsequent notifications.
+        notificationInterval = setInterval(showNotification, 5000);
+
+        // Show the first notification immediately and return its promise.
+        return showNotification();
+    } else {
+        // Normal, non-looping notification
+        return self.registration.showNotification(title, {
+            body: body,
+            icon: '/admin.png',
+            tag: 'bellgo-alarm',
+            renotify: true,
+            requireInteraction: true,
+            vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500],
+            data: { url: url }
+        });
+    }
 });
 
 /* -----------------------------------------------------------
    5. CLICK HANDLER
 ----------------------------------------------------------- */
 self.addEventListener('notificationclick', function(event) {
+  // Use the data flag to identify the looping notification
+  if (event.notification.data?.isLooping) {
+    if (notificationInterval) {
+        clearInterval(notificationInterval);
+        notificationInterval = null;
+    }
+  }
+
   event.notification.close();
   const urlToOpen = event.notification.data?.url || '/login.html';
 
