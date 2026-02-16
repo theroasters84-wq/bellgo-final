@@ -113,7 +113,8 @@ self.addEventListener('notificationclick', function(event) {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
       for (const client of clientsArr) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
+        // ✅ FIX: Πιο χαλαρός έλεγχος URL για να πιάνει και το PWA
+        if ('focus' in client) {
             return client.focus();
         }
       }

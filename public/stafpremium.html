@@ -878,7 +878,13 @@
             toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },
             sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
             appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
-            toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+            toggleFakeLock: () => { 
+                const el=document.getElementById('fakeLockOverlay'); 
+                const isLocked = (el.style.display !== 'flex');
+                el.style.display = isLocked ? 'flex' : 'none';
+                // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
+                if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
+            },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };

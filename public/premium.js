@@ -1535,7 +1535,13 @@ window.App = {
         }
     },
     logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
-    toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+    toggleFakeLock: () => { 
+        const el=document.getElementById('fakeLockOverlay'); 
+        const isLocked = (el.style.display !== 'flex');
+        el.style.display = isLocked ? 'flex' : 'none';
+        // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
+        if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
+    },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
 };
