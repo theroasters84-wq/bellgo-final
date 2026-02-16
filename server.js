@@ -1031,24 +1031,32 @@ setInterval(() => {
 }, 60000); 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
 
-let loopCounter = 0; // ✅ Counter για το Bell Trick στο Server
 setInterval(() => { 
     const now = Date.now(); 
-    loopCounter++;
-    const bells = "🔔".repeat((loopCounter % 3) + 1); // Αλλάζει: 🔔, 🔔🔔, 🔔🔔🔔
-
+    
     for (const key in activeUsers) { 
         const user = activeUsers[key]; 
-        // ✅ CHANGE: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS/Android)
+        
         if (user.isRinging && user.fcmToken) { 
-            const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
-            // ✅ FIX FOR IOS: Προσθήκη bells στο body για να είναι μοναδικό κάθε φορά
-            const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
-            const body = `${baseBody} ${bells}`;
-            sendPushNotification(user, msg, body, { type: "alarm" }); 
+            // ✅ LOGIC: 3s for Background, 15s for Online (Screen Down/Ignored)
+            const interval = (user.status === 'background') ? 3000 : 15000;
+            
+            if (!user.lastPushTime || (now - user.lastPushTime >= interval)) {
+                user.lastPushTime = now;
+
+                // ✅ ANTI-SPAM: Unique Message Every Time
+                const uniqueId = Math.floor(Math.random() * 10000);
+                const bells = "🔔".repeat((Math.floor(now / 1000) % 3) + 1);
+                
+                const title = user.role === 'admin' ? `ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕 #${uniqueId}` : `📞 ΣΕ ΚΑΛΟΥΝ! #${uniqueId}`;
+                const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
+                const body = `${baseBody} ${bells} [${uniqueId}]`;
+
+                sendPushNotification(user, title, body, { type: "alarm" }); 
+            }
         } 
     } 
-}, 10000); // ✅ SERVER LOOP: 10 Seconds (iOS Backup & Confirmation)
+}, 1000); // ✅ SERVER LOOP: Check every second
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
