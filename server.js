@@ -29,6 +29,20 @@ try {
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
 app.use(express.json());
+
+// ✅ FIX: Redirect Root Admin pages to /manage/ to isolate PWA Scope
+// Αυτό διασφαλίζει ότι το Admin PWA έχει scope /manage/ και ΔΕΝ πιάνει τα QR παραγγελιών (/shop/...)
+app.get(['/login.html', '/index.html', '/premium.html'], (req, res) => {
+    const q = new URLSearchParams(req.query).toString();
+    res.redirect(`/manage${req.path}${q ? '?' + q : ''}`);
+});
+
+// ✅ FIX: Redirect direct Staff access to /staff/ scope
+app.get('/stafpremium.html', (req, res) => {
+    const q = new URLSearchParams(req.query).toString();
+    res.redirect(`/staff/app${q ? '?' + q : ''}`);
+});
+
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/manage', express.static(path.join(__dirname, 'public'))); // ✅ NEW: Εικονικός φάκελος για Admin PWA Isolation
 app.use('/mini', express.static(path.join(__dirname, 'mini_app'))); // ✅ NEW: Εντελώς ξεχωριστός φάκελος (Isolated App)

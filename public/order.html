@@ -31,6 +31,13 @@
                 // Fallback σε query string ?store=xyz
                 const params = new URLSearchParams(window.location.search);
                 store = params.get('store');
+                
+                // ✅ FIX: Force redirect to /shop/ structure if accessed via /order.html
+                // This ensures PWA scope is correct and independent
+                if (store && !window.location.pathname.includes('/shop/')) {
+                     window.location.replace(`/shop/${encodeURIComponent(store)}/${window.location.search}`);
+                     return;
+                }
             }
 
             const manifestLink = document.getElementById('dynamicManifest');
