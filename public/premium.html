@@ -361,5 +361,12 @@
     <script type="module" src="premium.js"></script>
     <script src="player.js"></script>
     <script src="keepalive.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js', { scope: '/manage/' })
+                .then(() => console.log('✅ Admin Service Worker Registered'))
+                .catch(err => console.log('❌ Admin SW Error:', err));
+        }
+    </script>
 </body>
 </html>
