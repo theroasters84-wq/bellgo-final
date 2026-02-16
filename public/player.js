@@ -88,8 +88,19 @@ const AudioEngine = {
         this.updateDisplay("alarm", source);
 
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
+        // ✅ Ensure Player Exists (Lazy Load if init wasn't called)
+        if (!this.alarmPlayer) {
+            this.alarmPlayer = document.createElement("audio");
+            this.alarmPlayer.id = 'alarmSound';
+            this.alarmPlayer.src = "/alarm.mp3"; 
+            this.alarmPlayer.loop = true;
+            document.body.appendChild(this.alarmPlayer);
+        }
+        
+        // ✅ FORCE PATH & VOLUME (Ensure it plays alarm.mp3 from public)
+        this.alarmPlayer.src = "/alarm.mp3";
+        this.alarmPlayer.volume = 1.0;
         this.alarmPlayer.currentTime = 0;
-        this.alarmPlayer.load(); // ✅ Force reload to ensure audio is ready
         try {
             await this.alarmPlayer.play();
         } catch(e) { console.error("Audio Play Error:", e); }

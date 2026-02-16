@@ -1468,7 +1468,8 @@ window.App = {
             if (u.role === 'admin' || u.role === 'customer') return;
 
             const staffDiv = document.createElement('div');
-            const isAway = u.status === 'away';
+            // ✅ FIX: Χειρισμός Offline χρηστών (εμφάνιση ως Ghost/Away)
+            const isAway = u.status === 'away' || u.status === 'offline';
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';
@@ -1479,7 +1480,7 @@ window.App = {
 
             staffDiv.className = `staff-folder ${roleClass} ${isAway ? 'ghost' : ''}`;
 
-            let stTxt = isAway ? "Away" : "Idle";
+            let stTxt = u.status === 'offline' ? "Offline" : (isAway ? "Away" : "Idle");
             const isComing = App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000);
 
             if (u.isRinging) {

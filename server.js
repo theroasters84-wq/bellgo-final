@@ -118,11 +118,29 @@ async function saveStoreToFirebase(storeName) {
 async function updateStoreClients(storeName) {
     if (!storeName || !storesData[storeName]) return;
     const store = storesData[storeName];
-    const list = Object.values(activeUsers)
+    
+    // 1. Active Users (Online/Away in memory)
+    let list = Object.values(activeUsers)
         .filter(u => u.store === storeName && u.role !== 'customer')
         .map(u => ({ 
             name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
         }));
+
+    // 2. Persistent Users (Offline but registered)
+    if (store.staffTokens) {
+        Object.keys(store.staffTokens).forEach(username => {
+            if (!list.find(u => u.username === username)) {
+                const tokenData = store.staffTokens[username];
+                if (tokenData.role !== 'admin' && tokenData.role !== 'customer') {
+                    list.push({
+                        name: username, username: username, 
+                        role: tokenData.role || 'waiter', 
+                        status: 'offline', isRinging: false 
+                    });
+                }
+            }
+        });
+    }
 
     io.to(storeName).emit('staff-list-update', list);
     io.to(storeName).emit('orders-update', store.orders);
@@ -975,9 +993,13 @@ io.on('connection', (socket) => {
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
         const tKey = `${socket.store}_${tUser}`; 
-        if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); }
+        if (activeUsers[tKey]) { delete activeUsers[tKey]; }
         // ✅ Remove from Permanent Storage
-        if (storesData[socket.store] && storesData[socket.store].staffTokens) { delete storesData[socket.store].staffTokens[tUser]; saveStoreToFirebase(socket.store); }
+        if (storesData[socket.store] && storesData[socket.store].staffTokens) { 
+            delete storesData[socket.store].staffTokens[tUser]; 
+            saveStoreToFirebase(socket.store); 
+        }
+        updateStoreClients(socket.store);
     });
     
     // ✅ FIX: Robust Disconnect Handler (Για να πιάνει σίγουρα το κλείσιμο καρτέλας)
