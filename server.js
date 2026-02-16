@@ -541,7 +541,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                     aps: {
                         'content-available': 1, // ✅ Ξυπνάει την εφαρμογή στο background
                         badge: 1,
-                        sound: 'default'
+                        sound: 'alert.mp3'
                     }
                 }
             },
