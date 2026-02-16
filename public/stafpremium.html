@@ -235,6 +235,10 @@
         // ✅ FOREGROUND NOTIFICATION HANDLER
         onMessage(messaging, (payload) => {
             console.log('🔔 Foreground Message:', payload);
+            if (payload.data && payload.data.type === 'logout') {
+                App.logout();
+                return;
+            }
             const title = payload.notification?.title || payload.data?.title || 'BellGo';
             const body = payload.notification?.body || payload.data?.body;
             new Notification(title, { body: body, icon: '/admin.png' });
@@ -244,6 +248,12 @@
             navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation
                 .then(() => console.log('✅ Staff Service Worker Registered'))
                 .catch(err => console.log('❌ Staff SW Error:', err));
+            
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'logout') {
+                    App.logout();
+                }
+            });
         }
 
         const savedSession = localStorage.getItem('bellgo_session');

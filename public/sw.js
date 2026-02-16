@@ -61,6 +61,19 @@ messaging.setBackgroundMessageHandler(function(payload) {
     const body = payload.data.body || payload.notification?.body || 'Νέα ειδοποίηση';
     const url = payload.data.url || '/login.html';
 
+    // ✅ NEW: Logout Handling
+    if (payload.data.type === 'logout') {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+            clients.forEach(client => client.postMessage({ type: 'logout' }));
+        });
+        return self.registration.showNotification('BellGo Staff', {
+            body: 'Αποσύνδεση από διαχειριστή.',
+            icon: '/admin.png',
+            tag: 'logout',
+            data: { url: '/staff/login' }
+        });
+    }
+
     const isAlarm = (title + ' ' + body).toLowerCase().includes('paragelia') ||
                     (title + ' ' + body).toLowerCase().includes('alarm') ||
                     payload.data.type === 'alarm'; // ✅ Ενεργοποίηση Loop και για Staff Calls

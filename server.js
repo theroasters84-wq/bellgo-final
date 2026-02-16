@@ -547,7 +547,7 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
                     }
                 }
             },
-            data: { ...dataPayload, title: title, body: body, url: targetUrl, type: "alarm" }
+            data: { type: "alarm", ...dataPayload, title: title, body: body, url: targetUrl }
         };
         admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
     }
@@ -1029,8 +1029,17 @@ io.on('connection', (socket) => {
             }
             delete activeUsers[tKey]; 
         }
-        // ✅ Remove from Permanent Storage
+        // ✅ Remove from Permanent Storage & Send Push Logout (Background Users)
         if (storesData[socket.store] && storesData[socket.store].staffTokens) { 
+            const tokenData = storesData[socket.store].staffTokens[tUser];
+            if (tokenData && tokenData.token) {
+                 sendPushNotification(
+                     { fcmToken: tokenData.token, role: tokenData.role }, 
+                     "LOGOUT", 
+                     "Αποσύνδεση από διαχειριστή", 
+                     { type: "logout" }
+                 );
+            }
             delete storesData[socket.store].staffTokens[tUser]; 
             saveStoreToFirebase(socket.store); 
         }
