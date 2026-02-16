@@ -535,9 +535,11 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             apns: {
                 headers: {
                     'apns-priority': '10',
+                    'apns-push-type': 'alert', // ✅ Κρίσιμο για iOS 13+
                 },
                 payload: {
                     aps: {
+                        'content-available': 1, // ✅ Ξυπνάει την εφαρμογή στο background
                         badge: 1,
                         sound: 'default'
                     }
