@@ -572,18 +572,16 @@ io.on('connection', (socket) => {
             isRinging: wasRinging, isNative: data.isNative 
         };
 
+        // ✅ FIX: Save Token to Permanent Storage (Merged logic to avoid race condition)
+        if (data.token && storesData[storeName]) {
+            if (!storesData[storeName].staffTokens) storesData[storeName].staffTokens = {};
+            storesData[storeName].staffTokens[username] = { token: data.token, role: socket.role };
+            saveStoreToFirebase(storeName);
+        }
+
         socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket
         updateStoreClients(storeName);
         if(wasRinging) { socket.emit('ring-bell'); }
-    });
-
-    // ✅ NEW: Save Token to Permanent Storage
-    socket.on('join-store', (data) => {
-        if (socket.store && data.token && storesData[socket.store]) {
-            if (!storesData[socket.store].staffTokens) storesData[socket.store].staffTokens = {};
-            storesData[socket.store].staffTokens[socket.username] = { token: data.token, role: socket.role };
-            saveStoreToFirebase(socket.store);
-        }
     });
 
     // ✅ NEW: Έλεγχος αν το τραπέζι έχει ενεργή παραγγελία
