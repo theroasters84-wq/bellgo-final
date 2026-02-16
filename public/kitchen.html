@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo Kitchen Display</title>
+    
+    <link rel="manifest" id="dynamicManifest" href="/manifest.json?icon=admin">
+    
+    <meta name="theme-color" content="#121212">
+    <link rel="apple-touch-icon" href="admin.png"> 
+    
+    <link rel="stylesheet" href="/style.css">
+    
+    <script src="menu-presets.js"></script> 
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div id="mainApp">
+        <div class="header" style="background: #222; border-bottom: 2px solid #FFD700;">
+            <div class="store-identity">
+                <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
+                <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Kitchen View" disabled style="color: #FFD700; font-weight: bold;">
+            </div>
+            
+            <div class="header-actions">
+                <!-- Κρυμμένα κουμπιά διαχείρισης, εμφανίζονται μόνο τα απαραίτητα για την κουζίνα -->
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" style="display:none;">⚙️</button>
+                <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού" style="display:none;">📜</button>
+                
+                <div class="btn-icon-wrapper">
+                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
+                    <div id="chatBadge" class="chat-badge"></div>
+                </div>
+                
+                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
+                
+                <!-- Κουμπί Εξόδου ειδικά για την κουζίνα -->
+                <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
+            </div>
+        </div>
+
+        <div class="admin-main-area">
+            <!-- Το Menu Panel υπάρχει στον κώδικα αλλά το kitchen.js το κρύβει -->
+            <div id="menuFullPanel" style="display:none;">
+                <div id="menuInputContainer"></div>
+            </div>
+
+            <!-- Εδώ εμφανίζονται οι παραγγελίες -->
+            <div id="desktopArea"></div>
+            
+            <!-- Παράθυρα παραγγελιών -->
+            <div id="windowsContainer"></div>
+            
+            <!-- Sidebar Προσωπικού (μπορεί να κρυφτεί από το JS αν δεν χρειάζεται) -->
+            <div id="staffContainer">
+                <div class="sidebar-header" onclick="App.toggleStaffPanel()">
+                    <span data-i18n="staff_online">ΠΡΟΣΩΠΙΚΟ</span>
+                    <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
+                </div>
+                <div id="staffList"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar Παραγγελίας (Κρυφό στην κουζίνα) -->
+        <div id="orderSidebar" class="order-panel" style="display:none;"></div>
+    </div>
+    
+    <!-- Chat Overlay -->
+    <div id="adminChatOverlay">
+        <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:18px; font-weight:bold; color:var(--text-main);" data-i18n="group_chat">💬 Ομαδικό Chat</span>
+            <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
+        </div>
+        <div class="chat-messages" id="adminChatBox"></div>
+        <div class="chat-input-area">
+            <input type="text" id="adminChatInp" class="chat-inp" data-i18n-placeholder="message" placeholder="Μήνυμα...">
+            <button class="btn-icon menu-active" onclick="App.sendChat()">➤</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal (Χρησιμοποιείται ελάχιστα στην κουζίνα, κυρίως για PIN/Logout) -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <div id="settingsMain">
+                <button class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
+                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
+                <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Modal -->
+    <div id="pinChangeModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" data-i18n="pin">PIN</h3>
+            <div id="pinDisplay" style="font-size:30px; letter-spacing:10px; color:var(--primary); font-weight:bold; margin:10px 0;"></div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(3)">3</button>
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(6)">6</button>
+                <button class="modal-btn" style="background:#333;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(9)">9</button>
+                <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
+            </div>
+            <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="cancel">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <!-- Fake Lock Overlay -->
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Tap to Unlock</div></div>
+
+    <!-- Φόρτωση του KITCHEN.JS αντί για το premium.js -->
+    <script type="module" src="kitchen.js"></script>
+    <script src="player.js"></script>
+    <script src="keepalive.js"></script>
+</body>
+</html>

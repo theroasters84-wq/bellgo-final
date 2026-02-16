@@ -189,6 +189,9 @@ self.addEventListener('fetch', (event) => {
         if (url.pathname.startsWith('/staff/')) {
              // Αν ζητάει την εφαρμογή, δίνουμε το cached HTML
              if (url.pathname.includes('app')) return caches.match('/stafpremium.html');
+             // ✅ NEW: Fallback για assets του Staff (π.χ. /staff/player.js -> /player.js)
+             const relative = url.pathname.replace('/staff', '');
+             return caches.match(relative).then(m => m || caches.match(event.request));
         }
         return caches.match(event.request);
       })

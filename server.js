@@ -46,6 +46,7 @@ app.get('/stafpremium.html', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/manage', express.static(path.join(__dirname, 'public'))); // ✅ NEW: Εικονικός φάκελος για Admin PWA Isolation
 app.use('/mini', express.static(path.join(__dirname, 'mini_app'))); // ✅ NEW: Εντελώς ξεχωριστός φάκελος (Isolated App)
+app.use('/staff', express.static(path.join(__dirname, 'public'))); // ✅ NEW: Static files for Staff App
 
 const server = http.createServer(app);
 
