@@ -939,6 +939,8 @@ io.on('connection', (socket) => {
         const tName = (typeof data === 'object') ? data.target : data;
         const source = (typeof data === 'object') ? data.source : "Admin";
         
+        console.log(`🔔 Trigger Alarm for: ${tName} from ${source}`);
+
         // 1. Socket Ring
         const key = `${socket.store}_${tName}`; 
         const t = activeUsers[key]; // ✅ Pass source as location for staff calls
