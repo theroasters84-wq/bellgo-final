@@ -19,6 +19,8 @@ self.addEventListener('install', (event) => { self.skipWaiting(); });
 self.addEventListener('activate', (event) => { event.waitUntil(clients.claim()); });
 
 messaging.setBackgroundMessageHandler(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+
   // Clear previous loop
   if (notificationInterval) { clearInterval(notificationInterval); notificationInterval = null; badgeCount = 0; }
 
@@ -47,7 +49,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
               tag: alarmTag, // ✅ Unique tag per alarm type
               renotify: true,           
               requireInteraction: true, 
-              vibrate: [2000, 500, 2000, 500, 2000], // ✅ Fixed Syntax
+              vibrate: [1000, 500, 1000, 500, 2000], 
               sound: '/alert.mp3', // ✅ Προσθήκη ήχου στο Loop
               data: { url: url, isLooping: true }
           });

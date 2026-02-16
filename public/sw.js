@@ -50,6 +50,8 @@ const messaging = firebase.messaging();
    4. BACKGROUND HANDLER (Push Notifications)
 ----------------------------------------------------------- */
 messaging.setBackgroundMessageHandler(function(payload) {
+    console.log('[sw.js] Received background message ', payload);
+
     if (notificationInterval) {
         clearInterval(notificationInterval);
         notificationInterval = null; // Good practice to nullify
@@ -71,7 +73,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
                 tag: 'bellgo-alarm-loop',
                 renotify: true,
                 requireInteraction: true,
-                vibrate: [2000, 500, 2000, 500, 2000], // ✅ CIVIL PROTECTION STYLE (Long Vibration)
+                vibrate: [1000, 500, 1000, 500, 2000], // ✅ CIVIL PROTECTION STYLE (Long Vibration)
                 data: { url: url, isLooping: true }
             });
         };
@@ -89,7 +91,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
             tag: 'bellgo-alarm',
             renotify: true,
             requireInteraction: true,
-            vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500],
+            vibrate: [500, 200, 500],
             data: { url: url }
         });
     }

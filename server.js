@@ -498,17 +498,12 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ✅ ΕΠΑΝΑΦΟΡΑ ΓΙΑ IOS:
-            notification: { title: title, body: body },
+            // ❌ REMOVE: Αφαιρούμε το notification key για να αναγκάσουμε το sw.js να τρέξει (Data-Only Message)
+            // notification: { title: title, body: body },
             
             android: { 
                 priority: "high", 
-                notification: { 
-                    sound: "default", 
-                    tag: "bellgo-alarm", 
-                    clickAction: `${YOUR_DOMAIN}${targetUrl}`,
-                    channelId: "bellgo_alarm_channel" // ✅ Κανάλι για ρύθμιση DND Override
-                } 
+                // notification: { channelId: "bellgo_alarm_channel" } // Αφαιρούμε και από εδώ για να μην το πάρει το σύστημα
             },
             webpush: { 
                 headers: { "Urgency": "high" }, 
