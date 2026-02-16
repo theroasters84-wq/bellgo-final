@@ -60,6 +60,8 @@ const AudioEngine = {
         // Όταν πατάς κουμπί στην μπάρα (Play/Pause/Next), κάνουμε ΑΠΟΔΟΧΗ
         const handleNotificationClick = () => {
             console.log("👆 Notification Button Clicked");
+            // ✅ FORCE PLAYING STATE (Για να μην κλείνει η μπάρα όταν πατάς Play/Pause)
+            if (navigator.mediaSession) navigator.mediaSession.playbackState = "playing";
             
             if (this.isRinging) {
                 // ΣΗΜΑΝΤΙΚΟ: Καλουμε την Global συνάρτηση του App (premium.html)
@@ -88,11 +90,6 @@ const AudioEngine = {
 
         console.log("🚨 ALARM TRIGGERED");
 
-        // ✅ PAUSE KEEP ALIVE (Για να μην μπερδεύεται ο ήχος)
-        if (this.keepAlivePlayer) {
-            this.keepAlivePlayer.pause();
-        }
-
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
         // ✅ Ensure Player Exists (Lazy Load if init wasn't called)
         if (!this.alarmPlayer) {
@@ -113,6 +110,12 @@ const AudioEngine = {
         
         try {
             await this.alarmPlayer.play();
+            
+            // ✅ PAUSE KEEP ALIVE AFTER ALARM STARTS (Overlap για να μην κλείσει η μπάρα)
+            if (this.keepAlivePlayer) {
+                this.keepAlivePlayer.pause();
+            }
+
             console.log("🔊 Alarm playing successfully");
             // 1. Αλλάζουμε τα γράμματα στην μπάρα (Αφού ξεκινήσει ο ήχος για να πιάσει το focus)
             this.updateDisplay("alarm", source);
@@ -138,14 +141,16 @@ const AudioEngine = {
 
         console.log("✅ ALARM STOPPED (Audio Engine)");
 
-        // 1. Σταματάμε ΜΟΝΟ τον θόρυβο
-        this.alarmPlayer.pause();
-        this.alarmPlayer.currentTime = 0;
-
-        // 1b. Επαναφορά KeepAlive (για να μην χαθεί το session)
+        // 1. Ξεκινάμε το KeepAlive ΠΡΩΤΑ (Overlap για να μην χαθεί το session)
         if (this.keepAlivePlayer) {
             this.keepAlivePlayer.play().catch(e => console.log("KeepAlive Resume Error:", e));
         }
+
+        // 2. Σταματάμε τον θόρυβο με μικρή καθυστέρηση (για να μην υπάρξει κενό ήχου)
+        setTimeout(() => {
+            this.alarmPlayer.pause();
+            this.alarmPlayer.currentTime = 0;
+        }, 150);
 
         // 2. Επαναφέρουμε τα γράμματα
         this.updateDisplay("online");
