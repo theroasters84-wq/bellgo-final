@@ -516,7 +516,6 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ✅ ENABLED: Ενεργοποίηση για σίγουρη παράδοση ειδοποίησης
             notification: { title: title, body: body },
             
             android: { 
@@ -526,6 +525,17 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
             webpush: { 
                 headers: { "Urgency": "high" }, 
                 fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
+            },
+            apns: {
+                headers: {
+                    'apns-priority': '10',
+                },
+                payload: {
+                    aps: {
+                        badge: 1,
+                        sound: 'default'
+                    }
+                }
             },
             data: { ...dataPayload, title: title, body: body, url: targetUrl, type: "alarm" }
         };
