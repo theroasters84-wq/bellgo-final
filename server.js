@@ -76,6 +76,9 @@ const defaultSettings = {
     visibility: 'public' // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
 }; 
 
+// ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
+const tempBlacklist = new Set();
+
 /* ---------------- FIREBASE HELPERS ---------------- */
 async function getStoreData(storeName) {
     if (storesData[storeName]) return storesData[storeName];
@@ -587,6 +590,13 @@ io.on('connection', (socket) => {
         const username = (data.username || '').trim();
         if (!storeName || !username) return;
 
+        // ✅ NEW: Έλεγχος Blacklist (Αν τον διέγραψε ο Admin πριν λίγο, μην τον αφήσεις να μπει)
+        if (tempBlacklist.has(`${storeName}_${username}`)) {
+            socket.emit('force-logout');
+            socket.disconnect(true);
+            return;
+        }
+
         await getStoreData(storeName);
 
         socket.store = storeName;
@@ -1019,6 +1029,11 @@ io.on('connection', (socket) => {
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
         const tKey = `${socket.store}_${tUser}`; 
+
+        // ✅ NEW: Προσθήκη σε Blacklist για 15 δευτερόλεπτα (για να μην κάνει auto-reconnect)
+        const banKey = `${socket.store}_${tUser}`;
+        tempBlacklist.add(banKey);
+        setTimeout(() => tempBlacklist.delete(banKey), 15000);
         
         // ✅ FIX: Force Logout Client-Side if connected (Kick User)
         if (activeUsers[tKey]) { 
@@ -1047,6 +1062,14 @@ io.on('connection', (socket) => {
                  );
             }
             delete storesData[socket.store].staffTokens[tUser]; 
+            
+            // ✅ NEW: Ρητή διαγραφή από τη βάση (γιατί το merge μερικές φορές κρατάει τα παλιά)
+            if (db) {
+                db.collection('stores').doc(socket.store).update({
+                    [`staffTokens.${tUser}`]: admin.firestore.FieldValue.delete()
+                }).catch(e => console.log("Firestore delete error (ignored):", e.message));
+            }
+            
             saveStoreToFirebase(socket.store); 
         }
         updateStoreClients(socket.store);
