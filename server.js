@@ -120,16 +120,25 @@ async function updateStoreClients(storeName) {
     const store = storesData[storeName];
     
     // 1. Active Users (Online/Away in memory)
-    let list = Object.values(activeUsers)
-        .filter(u => u.store === storeName && u.role !== 'customer')
-        .map(u => ({ 
-            name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging 
-        }));
+    let activeList = Object.values(activeUsers)
+        .filter(u => u.store === storeName && u.role !== 'customer');
+
+    let list = [];
+    const seenUsers = new Set();
+
+    activeList.forEach(u => {
+        const lower = u.username.toLowerCase();
+        if (!seenUsers.has(lower)) {
+            seenUsers.add(lower);
+            list.push({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging });
+        }
+    });
 
     // 2. Persistent Users (Offline but registered)
     if (store.staffTokens) {
         Object.keys(store.staffTokens).forEach(username => {
-            if (!list.find(u => u.username === username)) {
+            // ✅ FIX: Case-insensitive check to prevent ghosts
+            if (!seenUsers.has(username.toLowerCase())) {
                 const tokenData = store.staffTokens[username];
                 if (tokenData.role !== 'admin' && tokenData.role !== 'customer') {
                     list.push({
@@ -137,6 +146,7 @@ async function updateStoreClients(storeName) {
                         role: tokenData.role || 'waiter', 
                         status: 'offline', isRinging: false 
                     });
+                    seenUsers.add(username.toLowerCase());
                 }
             }
         });
@@ -1043,7 +1053,17 @@ io.on('connection', (socket) => {
         } 
     });
 
-    socket.on('heartbeat', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key]) { activeUsers[key].lastSeen = Date.now(); } });
+    socket.on('heartbeat', () => { 
+        const key = `${socket.store}_${socket.username}`; 
+        if (activeUsers[key]) { 
+            activeUsers[key].lastSeen = Date.now(); 
+            // ✅ FIX: Recover 'online' status if falsely away (Ghosting fix)
+            if (activeUsers[key].status === 'away') {
+                activeUsers[key].status = 'online';
+                updateStoreClients(socket.store);
+            }
+        } 
+    });
     
     // ✅ NEW: Handle Visibility Status (Online vs Background)
     socket.on('set-user-status', (status) => {

@@ -79,6 +79,8 @@ const AudioEngine = {
         navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
         navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
         navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('seekbackward', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('seekforward', handleNotificationClick);
     },
 
     // --- ΚΛΗΣΗ (Triggered by Socket) ---
@@ -87,9 +89,6 @@ const AudioEngine = {
         this.isRinging = true;
 
         console.log("🚨 ALARM TRIGGERED");
-
-        // 1. Αλλάζουμε τα γράμματα στην μπάρα
-        this.updateDisplay("alarm", source);
 
         // ✅ PAUSE KEEP ALIVE (Για να μην μπερδεύεται ο ήχος)
         if (this.keepAlivePlayer) {
@@ -117,6 +116,8 @@ const AudioEngine = {
         try {
             await this.alarmPlayer.play();
             console.log("🔊 Alarm playing successfully");
+            // 1. Αλλάζουμε τα γράμματα στην μπάρα (Αφού ξεκινήσει ο ήχος για να πιάσει το focus)
+            this.updateDisplay("alarm", source);
         } catch(e) { console.error("Audio Play Error:", e); }
 
         // 3. UI Overlay (Αν υπάρχει στο HTML)
@@ -143,6 +144,11 @@ const AudioEngine = {
         this.alarmPlayer.pause();
         this.alarmPlayer.currentTime = 0;
 
+        // 1b. Επαναφορά KeepAlive (για να μην χαθεί το session)
+        if (this.keepAlivePlayer) {
+            this.keepAlivePlayer.play().catch(()=>{});
+        }
+
         // 2. Επαναφέρουμε τα γράμματα
         this.updateDisplay("online");
 
@@ -159,16 +165,16 @@ const AudioEngine = {
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: source ? `🚨 ${source}` : "🚨 ΚΛΗΣΗ",
-                artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
+                artist: "Πάτα ΠΑΥΣΗ ή ΕΠΟΜΕΝΟ για Αποδοχή",
                 album: "BellGo Alert",
-                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
             });
         } else {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
                 artist: "Σύστημα Ενεργό",
                 album: "Αναμονή...",
-                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
             });
         }
         navigator.mediaSession.playbackState = "playing";
