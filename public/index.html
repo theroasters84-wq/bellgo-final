@@ -161,7 +161,6 @@
     </div>
 
     <script src="player.js"></script>
-    <audio id="snd-silent" loop preload="auto"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -176,11 +175,6 @@
         // STRIPE KEY
         const stripe = Stripe(stripeKey);
 
-        // AUDIO & STATE
-        const SILENT_WAV = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABGDZGF0YQQAAAAAAA==";
-        let keepAliveAudio = document.getElementById('snd-silent');
-        keepAliveAudio.src = SILENT_WAV;
-        keepAliveAudio.volume = 0.01;
         let isAlarmActive = false;
 
         document.addEventListener('visibilitychange', () => {
@@ -188,16 +182,6 @@
                 console.log("⚠️ Screen off -> Auto Accept!");
                 App.acceptAlarm();
             }
-        });
-
-        if ('mediaSession' in navigator) {
-            const handler = () => { if(isAlarmActive) { if(navigator.vibrate) navigator.vibrate(50); App.acceptAlarm(); } };
-            ['play', 'pause', 'stop', 'nexttrack'].forEach(a => navigator.mediaSession.setActionHandler(a, handler));
-        }
-
-        keepAliveAudio.addEventListener('pause', () => {
-            if (userData.role === 'admin') return;
-            if (!isAlarmActive) keepAliveAudio.play().catch(e => {});
         });
 
         // FCM
@@ -270,7 +254,9 @@
                 }
 
                 // Audio Start
-                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
+                if (userData.role !== 'admin' && window.AudioEngine) {
+                    window.AudioEngine.init();
+                }
 
                 // First Login Fake Alarm
                 if(userData.role !== 'admin' && isFirstLogin) {
@@ -352,7 +338,6 @@
                 isAlarmActive = true;
                 localStorage.setItem('isRinging', 'true');
 
-                if (userData.role !== 'admin') keepAliveAudio.pause();
                 if (window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
                 
                 // ✅ UPDATE UI WITH LOCATION / MAP
@@ -369,18 +354,13 @@
                 if(data && data.source) document.getElementById('alarmText').innerText = data.source;
 
                 document.getElementById('alarmOverlay').style.display = 'flex';
-                
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({ title: '🚨 ΚΛΗΣΗ ΑΠΟ ΚΟΥΖΙΝΑ', artist: 'BellGo Alert', album: 'Πατήστε Pause/Next', artwork: [{ src: 'icon.png', sizes: '512x512', type: 'image/png' }] });
-                }
             },
 
             acceptAlarm: () => {
                 isAlarmActive = false;
                 localStorage.removeItem('isRinging');
 
-                if(window.AudioEngine) { AudioEngine.init(); AudioEngine.stopAlarm(true); }
-                if (userData.role !== 'admin') keepAliveAudio.play().catch(()=>{});
+                if(window.AudioEngine) { window.AudioEngine.stopAlarm(); }
                 document.getElementById('alarmOverlay').style.display = 'none';
                 
                 const send = () => socket.emit('alarm-accepted', { store: userData.store, username: userData.name });

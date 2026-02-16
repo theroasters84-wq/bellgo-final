@@ -59,31 +59,11 @@ const KeepAlive = {
         });
     },
 
-    // 4. AUDIO LOOP: Παίζει αθόρυβο ήχο για να μην παγώνει ο Chrome το Tab
-    startAudioLoop: () => {
-        const audio = new Audio('/silence.mp3'); // Βεβαιώσου ότι υπάρχει το silence.mp3
-        audio.loop = true;
-        audio.volume = 0.01; 
-        
-        const tryPlay = () => {
-            audio.play().then(() => {
-                console.log("🔊 Audio Keep-Alive Started");
-            }).catch(() => {
-                // Αν αποτύχει (λόγω autoplay policy), ξαναδοκιμάζουμε στο πρώτο κλικ
-                document.addEventListener('click', () => {
-                    audio.play();
-                }, { once: true });
-            });
-        };
-        tryPlay();
-    },
-
     init: () => {
         console.log("🛡️ Initializing KeepAlive Shields...");
         KeepAlive.enableWakeLock();
         KeepAlive.preventBackExit();
         KeepAlive.preventTabClose();
-        KeepAlive.startAudioLoop();
     },
 };
 
@@ -161,9 +141,6 @@ const BellGoBot = {
         // 1. Trigger KeepAlive (Audio & WakeLock)
         if(typeof KeepAlive !== 'undefined') {
             KeepAlive.init();
-            // Force play audio immediately on user gesture
-            const audio = new Audio('/silence.mp3');
-            audio.play().catch(e => console.log("Audio play error", e));
         }
         // 2. Request Notification Permission if needed
         if (Notification.permission === 'default') {

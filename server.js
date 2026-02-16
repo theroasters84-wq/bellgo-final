@@ -590,11 +590,19 @@ io.on('connection', (socket) => {
             isRinging: wasRinging, isNative: data.isNative 
         };
 
-        // ✅ FIX: Save Token to Permanent Storage (Merged logic to avoid race condition)
-        if (data.token && storesData[storeName]) {
+        // ✅ FIX: Save Staff to Permanent Storage (So they appear in background list)
+        if (storesData[storeName]) {
             if (!storesData[storeName].staffTokens) storesData[storeName].staffTokens = {};
-            storesData[storeName].staffTokens[username] = { token: data.token, role: socket.role };
-            saveStoreToFirebase(storeName);
+            
+            // Save if token exists OR if user is new (even without token)
+            const existing = storesData[storeName].staffTokens[username];
+            if (data.token || !existing) {
+                storesData[storeName].staffTokens[username] = { 
+                    token: data.token || (existing ? existing.token : null), 
+                    role: socket.role 
+                };
+                saveStoreToFirebase(storeName);
+            }
         }
 
         socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket

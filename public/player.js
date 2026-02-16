@@ -91,22 +91,32 @@ const AudioEngine = {
         // 1. Αλλάζουμε τα γράμματα στην μπάρα
         this.updateDisplay("alarm", source);
 
+        // ✅ PAUSE KEEP ALIVE (Για να μην μπερδεύεται ο ήχος)
+        if (this.keepAlivePlayer) {
+            this.keepAlivePlayer.pause();
+        }
+
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
         // ✅ Ensure Player Exists (Lazy Load if init wasn't called)
         if (!this.alarmPlayer) {
             this.alarmPlayer = document.createElement("audio");
             this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.src = "/alarm.mp3"; 
             this.alarmPlayer.loop = true;
+            this.alarmPlayer.setAttribute("playsinline", "");
+            this.alarmPlayer.setAttribute("preload", "auto");
             document.body.appendChild(this.alarmPlayer);
         }
         
         // ✅ FORCE PATH & VOLUME (Ensure it plays alarm.mp3 from public)
         this.alarmPlayer.src = "/alarm.mp3";
         this.alarmPlayer.volume = 1.0;
+        this.alarmPlayer.muted = false; // ✅ Ensure unmuted
         this.alarmPlayer.currentTime = 0;
+        this.alarmPlayer.load(); // ✅ Force reload
+        
         try {
             await this.alarmPlayer.play();
+            console.log("🔊 Alarm playing successfully");
         } catch(e) { console.error("Audio Play Error:", e); }
 
         // 3. UI Overlay (Αν υπάρχει στο HTML)
