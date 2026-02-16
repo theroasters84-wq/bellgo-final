@@ -221,8 +221,24 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
         import { firebaseConfig, vapidKey } from './config.js';
+
+        // ✅ INIT FIREBASE & EXPOSE TO WINDOW
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        window.messaging = messaging;
+        window.getToken = getToken;
+        window.vapidKey = vapidKey;
+
+        // ✅ FOREGROUND NOTIFICATION HANDLER
+        onMessage(messaging, (payload) => {
+            console.log('🔔 Foreground Message:', payload);
+            const title = payload.notification?.title || payload.data?.title || 'BellGo';
+            const body = payload.notification?.body || payload.data?.body;
+            new Notification(title, { body: body, icon: '/admin.png' });
+        });
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation

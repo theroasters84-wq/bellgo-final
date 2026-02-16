@@ -498,12 +498,12 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 
         const msg = {
             token: target.fcmToken,
-            // ❌ REMOVE: Αφαιρούμε το notification key για να αναγκάσουμε το sw.js να τρέξει (Data-Only Message)
-            // notification: { title: title, body: body },
+            // ✅ ENABLED: Ενεργοποίηση για σίγουρη παράδοση ειδοποίησης
+            notification: { title: title, body: body },
             
             android: { 
                 priority: "high", 
-                // notification: { channelId: "bellgo_alarm_channel" } // Αφαιρούμε και από εδώ για να μην το πάρει το σύστημα
+                notification: { channelId: "bellgo_alarm_channel" } 
             },
             webpush: { 
                 headers: { "Urgency": "high" }, 
