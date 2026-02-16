@@ -1476,6 +1476,7 @@ window.App = {
             const staffDiv = document.createElement('div');
             // ✅ FIX: Χειρισμός Offline χρηστών (εμφάνιση ως Ghost/Away)
             const isAway = u.status === 'away' || u.status === 'offline';
+            const isAway = u.status === 'away' || u.status === 'offline' || u.status === 'background';
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';

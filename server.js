@@ -1026,6 +1026,9 @@ io.on('connection', (socket) => {
         if (activeUsers[tKey]) { 
             if (activeUsers[tKey].socketId) {
                 io.to(activeUsers[tKey].socketId).emit('force-logout');
+                // ✅ NEW: Βίαιη αποσύνδεση του Socket για να μην ξαναμπεί αμέσως
+                const targetSocket = io.sockets.sockets.get(activeUsers[tKey].socketId);
+                if (targetSocket) targetSocket.disconnect(true);
             }
             delete activeUsers[tKey]; 
         }
