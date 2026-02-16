@@ -945,6 +945,14 @@ io.on('connection', (socket) => {
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
     socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStoreClients(socket.store); } });
     socket.on('heartbeat', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key]) { activeUsers[key].lastSeen = Date.now(); } });
+    
+    // ✅ NEW: Handle Visibility Status (Online vs Background)
+    socket.on('set-user-status', (status) => {
+        const key = `${socket.store}_${socket.username}`;
+        if (activeUsers[key]) {
+            activeUsers[key].status = status;
+        }
+    });
 });
 
 setInterval(() => { 

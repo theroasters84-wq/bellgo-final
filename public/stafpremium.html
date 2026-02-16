@@ -455,6 +455,13 @@
                 App.startHeartbeat();
                 App.checkNotificationPermission();
 
+                // ✅ NEW: Detect Background/Foreground State
+                document.addEventListener('visibilitychange', () => {
+                    if (window.socket && window.socket.connected) {
+                        window.socket.emit('set-user-status', document.hidden ? 'background' : 'online');
+                    }
+                });
+
                 // Load Language
                 const savedLang = localStorage.getItem('bellgo_lang') || 'el';
                 setLanguage(savedLang);

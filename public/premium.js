@@ -230,6 +230,13 @@ window.App = {
         App.startHeartbeat();
         // App.requestNotifyPermission(); 
         App.checkNotificationPermission(); // ✅ UI Check
+
+        // ✅ NEW: Detect Background/Foreground State
+        document.addEventListener('visibilitychange', () => {
+            if (window.socket && window.socket.connected) {
+                window.socket.emit('set-user-status', document.hidden ? 'background' : 'online');
+            }
+        });
         
         // ✅ FIX: Close Settings on Background Click & Add Back Button
         const settingsModal = document.getElementById('settingsModal');
