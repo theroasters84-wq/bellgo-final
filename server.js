@@ -1038,8 +1038,9 @@ setInterval(() => {
         const user = activeUsers[key]; 
         
         if (user.isRinging && user.fcmToken) { 
-            // ✅ LOGIC: Swapped per request (15s Background, 3s Online)
-            const interval = (user.status === 'background') ? 15000 : 3000;
+            // ✅ LOGIC: 3s for Background/Away (Urgent), 15s for Online (Backup)
+            // iPhone often goes to 'away' (disconnects) or 'background'. Both need fast alerts.
+            const interval = (user.status === 'online') ? 15000 : 3000;
             
             if (!user.lastPushTime || (now - user.lastPushTime >= interval)) {
                 user.lastPushTime = now;
