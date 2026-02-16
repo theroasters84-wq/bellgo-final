@@ -1103,7 +1103,7 @@ io.on('connection', (socket) => {
         if (activeUsers[key]) { 
             activeUsers[key].lastSeen = Date.now(); 
             // ✅ FIX: Recover 'online' status if falsely away (Ghosting fix)
-            if (activeUsers[key].status === 'away') {
+            if (activeUsers[key].status === 'away' || activeUsers[key].status === 'background') { // ✅ FIX: Επαναφορά και από background
                 activeUsers[key].status = 'online';
                 updateStoreClients(socket.store);
             }
@@ -1118,6 +1118,7 @@ io.on('connection', (socket) => {
             // Αγνοούμε το 'background' όσο το socket είναι ενεργό.
             if (status === 'online') {
                 activeUsers[key].status = status;
+                updateStoreClients(socket.store); // ✅ FIX: Ενημέρωση του Admin αμέσως!
             }
         }
     });
