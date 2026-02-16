@@ -535,12 +535,9 @@ function notifyAdmin(storeName, title, body, excludeSocketId = null, location = 
     if (!store.staffTokens) store.staffTokens = {};
     Object.entries(store.staffTokens).forEach(([username, data]) => {
         if (data.role === 'admin' || data.role === 'kitchen') {
-            // Ελέγχουμε αν είναι online για να μην στείλουμε διπλό (αν και το OS το κόβει)
-            const activeKey = `${storeName}_${username}`;
-            const isActive = activeUsers[activeKey] && activeUsers[activeKey].status === 'online';
-            
-            // Στέλνουμε αν ΔΕΝ είναι online (ή αν θέλουμε να είμαστε σίγουροι)
-            if (!isActive) sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, 86400);
+            // ✅ FIX: Στέλνουμε ΠΑΝΤΑ Push. 
+            // Αν ο χρήστης είναι Online, το OS την κρύβει αυτόματα. Αν είναι Background, εμφανίζεται.
+            sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, 86400);
         }
     });
 }
@@ -961,10 +958,8 @@ io.on('connection', (socket) => {
         const store = getMyStore();
         if (store && store.staffTokens && store.staffTokens[tName]) {
             const tokenData = store.staffTokens[tName];
-            // Αν δεν είναι online (ή δεν βρέθηκε στο activeUsers), στείλε Push
-            if (!t || t.status !== 'online') {
-                sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10);
-            }
+            // ✅ FIX: Στέλνουμε ΠΑΝΤΑ Push για να είμαστε σίγουροι ότι θα χτυπήσει
+            sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10);
         } 
     });
     
@@ -1051,9 +1046,8 @@ setInterval(() => {
 
     for (const key in activeUsers) { 
         const user = activeUsers[key]; 
-        // ✅ INTENSIVE LOOP: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS)
-        // ✅ CHANGE: Στέλνουμε Push ΜΟΝΟ αν δεν είναι online
-        if (user.isRinging && user.fcmToken && user.status !== 'online') { 
+        // ✅ CHANGE: Στέλνουμε ΠΑΝΤΑ αν χτυπάει (για να ξυπνάει το iOS/Android)
+        if (user.isRinging && user.fcmToken) { 
             const msg = user.role === 'admin' ? "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕" : "📞 ΣΕ ΚΑΛΟΥΝ!"; 
             // ✅ FIX FOR IOS: Προσθήκη bells στο body για να είναι μοναδικό κάθε φορά
             const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
