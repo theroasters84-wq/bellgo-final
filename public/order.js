@@ -1022,7 +1022,7 @@ window.App = {
             btn.style.display = 'flex'; 
             // ✅ FIX: Force Top-Left Position
             btn.style.position = 'fixed';
-            btn.style.top = '80px';
+            btn.style.top = '15px';
             btn.style.left = '10px';
             btn.style.right = 'auto';
             btn.style.bottom = 'auto';
