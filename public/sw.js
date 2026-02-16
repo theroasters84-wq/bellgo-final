@@ -9,7 +9,7 @@ let notificationInterval;
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v47'; // ✅ Bump Version to force new player.js
+const CACHE_NAME = 'bellgo-v48'; // ✅ Bump Version to force new player.js (Single Player)
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
