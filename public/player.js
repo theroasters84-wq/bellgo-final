@@ -20,7 +20,8 @@ const AudioEngine = {
         if (!this.keepAlivePlayer) {
             this.keepAlivePlayer = document.createElement("audio");
             this.keepAlivePlayer.id = 'keepAlive';
-            this.keepAlivePlayer.src = "/tone19hz.wav"; 
+            // ✅ FIX: Χρήση Base64 για να μην εξαφανίζεται ο Player αν λείπει το αρχείο
+            this.keepAlivePlayer.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; 
             this.keepAlivePlayer.loop = true;
             this.keepAlivePlayer.volume = 1.0; 
             this.keepAlivePlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
@@ -143,7 +144,7 @@ const AudioEngine = {
 
         // 1b. Επαναφορά KeepAlive (για να μην χαθεί το session)
         if (this.keepAlivePlayer) {
-            this.keepAlivePlayer.play().catch(()=>{});
+            this.keepAlivePlayer.play().catch(e => console.log("KeepAlive Resume Error:", e));
         }
 
         // 2. Επαναφέρουμε τα γράμματα
