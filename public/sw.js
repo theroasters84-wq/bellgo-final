@@ -26,7 +26,7 @@ const ASSETS_TO_CACHE = [
   '/admin.png',
   '/shop.png',
   '/staff.png',
-  '/alert.mp3',
+  '/alarm.mp3',
   '/silence.mp3',
   '/tone19hz.wav',
   'https://js.stripe.com/v3/',
@@ -74,6 +74,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
                 renotify: true,
                 requireInteraction: true,
                 vibrate: [1000, 500, 1000, 500, 2000], // ✅ CIVIL PROTECTION STYLE (Long Vibration)
+                sound: '/alarm.mp3',
                 data: { url: url, isLooping: true }
             });
         };
@@ -92,6 +93,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
             renotify: true,
             requireInteraction: true,
             vibrate: [500, 200, 500],
+            sound: '/alarm.mp3',
             data: { url: url }
         });
     }

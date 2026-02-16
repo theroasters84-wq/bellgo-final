@@ -30,7 +30,7 @@ const AudioEngine = {
         if (!this.alarmPlayer) {
             this.alarmPlayer = document.createElement("audio");
             this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.src = "alert.mp3"; 
+            this.alarmPlayer.src = "alarm.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
             document.body.appendChild(this.alarmPlayer);
