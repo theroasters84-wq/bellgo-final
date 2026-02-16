@@ -458,7 +458,14 @@
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
-            if(adminPlan === 'premium') window.location.replace("/manage/premium.html");
+            if(adminPlan === 'premium') {
+                const adminMode = localStorage.getItem('bellgo_admin_mode');
+                if (adminMode === 'kitchen') {
+                    window.location.replace("/manage/kitchen.html");
+                } else {
+                    window.location.replace("/manage/premium.html");
+                }
+            }
             else window.location.replace("/manage/index.html");
         });
 
@@ -469,7 +476,14 @@
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     
-                    if(adminPlan === 'premium') window.location.replace("/manage/premium.html");
+                    if(adminPlan === 'premium') {
+                        const adminMode = localStorage.getItem('bellgo_admin_mode');
+                        if (adminMode === 'kitchen') {
+                            window.location.replace("/manage/kitchen.html");
+                        } else {
+                            window.location.replace("/manage/premium.html");
+                        }
+                    }
                     else window.location.replace("/manage/index.html");
                 } else {
                     alert("Λάθος PIN!");
