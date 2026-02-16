@@ -32,7 +32,7 @@ const AudioEngine = {
         if (!this.alarmPlayer) {
             this.alarmPlayer = document.createElement("audio");
             this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.src = "/alarm.mp3"; 
+            this.alarmPlayer.src = "/alert.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
             this.alarmPlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
@@ -108,7 +108,7 @@ const AudioEngine = {
         }
         
         // ✅ FORCE PATH & VOLUME (Ensure it plays alarm.mp3 from public)
-        this.alarmPlayer.src = "/alarm.mp3";
+        this.alarmPlayer.src = "/alert.mp3";
         this.alarmPlayer.volume = 1.0;
         this.alarmPlayer.muted = false; // ✅ Ensure unmuted
         this.alarmPlayer.currentTime = 0;
