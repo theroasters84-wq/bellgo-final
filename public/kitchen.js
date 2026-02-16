@@ -505,6 +505,12 @@ window.App = {
         socket.on('stop-bell', () => {
             if(window.AudioEngine) window.AudioEngine.stopAlarm();
         });
+
+        // ✅ NEW: Force Logout (Kick)
+        socket.on('force-logout', () => {
+            localStorage.removeItem('bellgo_session');
+            window.location.replace("login.html");
+        });
     },
     
     saveStoreName: () => {

@@ -1021,7 +1021,14 @@ io.on('connection', (socket) => {
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
         const tKey = `${socket.store}_${tUser}`; 
-        if (activeUsers[tKey]) { delete activeUsers[tKey]; }
+        
+        // ✅ FIX: Force Logout Client-Side if connected (Kick User)
+        if (activeUsers[tKey]) { 
+            if (activeUsers[tKey].socketId) {
+                io.to(activeUsers[tKey].socketId).emit('force-logout');
+            }
+            delete activeUsers[tKey]; 
+        }
         // ✅ Remove from Permanent Storage
         if (storesData[socket.store] && storesData[socket.store].staffTokens) { 
             delete storesData[socket.store].staffTokens[tUser]; 

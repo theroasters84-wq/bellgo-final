@@ -75,7 +75,8 @@ messaging.setBackgroundMessageHandler(function(payload) {
                 requireInteraction: true,
                 vibrate: [1000, 500, 1000, 500, 2000], // ✅ CIVIL PROTECTION STYLE (Long Vibration)
                 sound: '/alert.mp3',
-                data: { url: url, isLooping: true }
+                data: { url: url, isLooping: true },
+                actions: [ { action: 'open', title: '✅ ΑΠΟΔΟΧΗ' } ]
             });
         };
 

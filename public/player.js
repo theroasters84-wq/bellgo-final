@@ -74,13 +74,10 @@ const AudioEngine = {
         };
 
         // Συνδέουμε όλα τα κουμπιά
-        navigator.mediaSession.setActionHandler('play', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('seekbackward', handleNotificationClick);
-        navigator.mediaSession.setActionHandler('seekforward', handleNotificationClick);
+        const actions = ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekbackward', 'seekforward', 'seekto'];
+        actions.forEach(action => {
+            try { navigator.mediaSession.setActionHandler(action, handleNotificationClick); } catch(e) {}
+        });
     },
 
     // --- ΚΛΗΣΗ (Triggered by Socket) ---
@@ -165,7 +162,7 @@ const AudioEngine = {
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: source ? `🚨 ${source}` : "🚨 ΚΛΗΣΗ",
-                artist: "Πάτα ΠΑΥΣΗ ή ΕΠΟΜΕΝΟ για Αποδοχή",
+                artist: "Πάτα PLAY/PAUSE για Αποδοχή",
                 album: "BellGo Alert",
                 artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
             });
