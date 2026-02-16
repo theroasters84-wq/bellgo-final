@@ -1089,7 +1089,11 @@ io.on('connection', (socket) => {
     socket.on('set-user-status', (status) => {
         const key = `${socket.store}_${socket.username}`;
         if (activeUsers[key]) {
-            activeUsers[key].status = status;
+            // ✅ FIX: Ο χρήστης ζήτησε να μπαίνει background ΜΟΝΟ αν χαθεί το socket (disconnect).
+            // Αγνοούμε το 'background' όσο το socket είναι ενεργό.
+            if (status === 'online') {
+                activeUsers[key].status = status;
+            }
         }
     });
 });
