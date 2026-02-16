@@ -1038,8 +1038,8 @@ setInterval(() => {
         const user = activeUsers[key]; 
         
         if (user.isRinging && user.fcmToken) { 
-            // ✅ LOGIC: 3s for Background, 15s for Online (Screen Down/Ignored)
-            const interval = (user.status === 'background') ? 3000 : 15000;
+            // ✅ LOGIC: Swapped per request (15s Background, 3s Online)
+            const interval = (user.status === 'background') ? 15000 : 3000;
             
             if (!user.lastPushTime || (now - user.lastPushTime >= interval)) {
                 user.lastPushTime = now;

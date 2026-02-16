@@ -366,6 +366,9 @@ window.App = {
 
         socket.on('connect', () => {
             document.getElementById('connDot').style.background = '#00E676';
+            // ✅ NEW: Send Status Immediately on Connect
+            socket.emit('set-user-status', document.hidden ? 'background' : 'online');
+
             const isNative = !!window.Capacitor;
             socket.emit('join-store', { 
                 storeName: userData.store, 

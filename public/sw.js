@@ -79,7 +79,7 @@ messaging.setBackgroundMessageHandler(function(payload) {
         };
 
         // Start the loop for subsequent notifications.
-        notificationInterval = setInterval(showNotification, 5000);
+        notificationInterval = setInterval(showNotification, 3000); // ✅ Sync with 3s loop
 
         // Show the first notification immediately and return its promise.
         return showNotification();
