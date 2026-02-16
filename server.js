@@ -80,7 +80,7 @@ const defaultSettings = {
 async function getStoreData(storeName) {
     if (storesData[storeName]) return storesData[storeName];
     console.log(`📥 Loading data for: ${storeName}`);
-    let data = { settings: { ...defaultSettings }, menu: [], orders: [] };
+    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {} }; // ✅ NEW: staffTokens init
 
     try {
         if (db) {
@@ -89,6 +89,7 @@ async function getStoreData(storeName) {
                 const firebaseData = doc.data();
                 if (firebaseData.settings) data.settings = { ...defaultSettings, ...firebaseData.settings };
                 if (firebaseData.menu) data.menu = firebaseData.menu;
+                if (firebaseData.staffTokens) data.staffTokens = firebaseData.staffTokens; // ✅ Load Tokens
                 if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
                 // ✅ Load Permanent Menu Backup (για επαναφορά)
                 data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
@@ -520,13 +521,26 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
 }
 
 function notifyAdmin(storeName, title, body, excludeSocketId = null, location = "") {
-    Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(adm => {
-        if (excludeSocketId && adm.socketId === excludeSocketId) return; // ✅ Ο Admin που έβαλε την παραγγελία δεν ακούει alarm
-        adm.isRinging = true;
-        if (adm.socketId) io.to(adm.socketId).emit('ring-bell', { source: title, location: location });
-        // ✅ CHANGE: Στέλνουμε Push ΜΟΝΟ αν δεν είναι online (έχει χαθεί το heartbeat/socket)
-        if (adm.status !== 'online') {
-            sendPushNotification(adm, title, body, { type: "alarm", location: location }, 86400); 
+    const store = storesData[storeName];
+    if (!store) return;
+
+    // 1. Ειδοποίηση μέσω Socket (Για όσους είναι συνδεδεμένοι)
+    Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
+        if (excludeSocketId && u.socketId === excludeSocketId) return;
+        u.isRinging = true;
+        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: title, location: location });
+    });
+
+    // 2. Ειδοποίηση μέσω Push (Από μόνιμη μνήμη - για ΚΛΕΙΣΤΟΥΣ browsers)
+    if (!store.staffTokens) store.staffTokens = {};
+    Object.entries(store.staffTokens).forEach(([username, data]) => {
+        if (data.role === 'admin' || data.role === 'kitchen') {
+            // Ελέγχουμε αν είναι online για να μην στείλουμε διπλό (αν και το OS το κόβει)
+            const activeKey = `${storeName}_${username}`;
+            const isActive = activeUsers[activeKey] && activeUsers[activeKey].status === 'online';
+            
+            // Στέλνουμε αν ΔΕΝ είναι online (ή αν θέλουμε να είμαστε σίγουροι)
+            if (!isActive) sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, 86400);
         }
     });
 }
@@ -571,6 +585,15 @@ io.on('connection', (socket) => {
         if(wasRinging) { socket.emit('ring-bell'); }
     });
 
+    // ✅ NEW: Save Token to Permanent Storage
+    socket.on('join-store', (data) => {
+        if (socket.store && data.token && storesData[socket.store]) {
+            if (!storesData[socket.store].staffTokens) storesData[socket.store].staffTokens = {};
+            storesData[socket.store].staffTokens[socket.username] = { token: data.token, role: socket.role };
+            saveStoreToFirebase(socket.store);
+        }
+    });
+
     // ✅ NEW: Έλεγχος αν το τραπέζι έχει ενεργή παραγγελία
     socket.on('check-table-status', (data) => {
         const store = getMyStore();
@@ -596,7 +619,14 @@ io.on('connection', (socket) => {
     socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await getStoreData(targetEmail); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
     socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await getStoreData(email); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
     socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await getStoreData(email); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); updateStoreClients(email); } });
-    socket.on('update-token', (data) => { const key = `${socket.store}_${data.username}`; if (activeUsers[key]) activeUsers[key].fcmToken = data.token; });
+    
+    socket.on('update-token', (data) => { 
+        const key = `${socket.store}_${data.username}`; 
+        if (activeUsers[key]) activeUsers[key].fcmToken = data.token; 
+        // ✅ Save Permanent
+        if (storesData[socket.store]) { if(!storesData[socket.store].staffTokens) storesData[socket.store].staffTokens={}; storesData[socket.store].staffTokens[data.username] = { token: data.token, role: activeUsers[key].role }; saveStoreToFirebase(socket.store); }
+    });
+
     socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; updateStoreClients(socket.store); } });
     socket.on('save-store-name', (newName) => { const store = getMyStore(); if (store) { store.settings.name = newName; updateStoreClients(socket.store); } });
     socket.on('save-store-settings', (data) => { 
@@ -919,13 +949,22 @@ io.on('connection', (socket) => {
         const tName = (typeof data === 'object') ? data.target : data;
         const source = (typeof data === 'object') ? data.source : "Admin";
         
+        // 1. Socket Ring
         const key = `${socket.store}_${tName}`; 
         const t = activeUsers[key]; // ✅ Pass source as location for staff calls
         if(t){ 
             t.isRinging = true; updateStoreClients(socket.store); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source }); 
-            // ✅ CHANGE: Push μόνο αν δεν είναι online
-            if (t.status !== 'online') sendPushNotification(t, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10); 
+        } 
+
+        // 2. Push Notification (Persistent)
+        const store = getMyStore();
+        if (store && store.staffTokens && store.staffTokens[tName]) {
+            const tokenData = store.staffTokens[tName];
+            // Αν δεν είναι online (ή δεν βρέθηκε στο activeUsers), στείλε Push
+            if (!t || t.status !== 'online') {
+                sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10);
+            }
         } 
     });
     
@@ -942,7 +981,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
-    socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
+    
+    socket.on('manual-logout', (data) => { 
+        const tUser = data && data.targetUser ? data.targetUser : socket.username; 
+        const tKey = `${socket.store}_${tUser}`; 
+        if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); }
+        // ✅ Remove from Permanent Storage
+        if (storesData[socket.store] && storesData[socket.store].staffTokens) { delete storesData[socket.store].staffTokens[tUser]; saveStoreToFirebase(socket.store); }
+    });
     
     // ✅ FIX: Robust Disconnect Handler (Για να πιάνει σίγουρα το κλείσιμο καρτέλας)
     socket.on('disconnect', () => { 

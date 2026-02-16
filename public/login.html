@@ -241,6 +241,32 @@
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const emailParam = urlParams.get('email');
+            
+            // ✅ NEW: Αυτόματη Είσοδος (Αν υπάρχει αποθηκευμένο session και δεν επιστρέφουμε από Stripe)
+            if (!emailParam) {
+                const savedSession = localStorage.getItem('bellgo_session');
+                if (savedSession) {
+                    try {
+                        const session = JSON.parse(savedSession);
+                        if (session && session.role) {
+                            // Έλεγχος Ρόλου και ανακατεύθυνση
+                            if (session.role === 'admin') {
+                                if (session.plan === 'premium') {
+                                    const adminMode = localStorage.getItem('bellgo_admin_mode');
+                                    window.location.replace(adminMode === 'kitchen' ? "/manage/kitchen.html" : "/manage/premium.html");
+                                } else {
+                                    window.location.replace("/manage/index.html");
+                                }
+                            } else {
+                                // Staff (waiter/driver)
+                                window.location.replace(session.plan === 'premium' ? "/staff/app" : "/manage/index.html");
+                            }
+                            return; // Σταματάμε εδώ για να μην φορτώσει η φόρμα
+                        }
+                    } catch (e) { localStorage.removeItem('bellgo_session'); }
+                }
+            }
+
             if (emailParam) {
                 document.getElementById('adminEmailInp').value = emailParam;
                 Admin.manualLogin();
