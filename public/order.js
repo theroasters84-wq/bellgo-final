@@ -235,7 +235,16 @@ window.App = {
         let shouldOpenForm = false;
 
         if (!customerDetails) {
-            shouldOpenForm = true;
+            // ✅ FIX: Αν είναι DineIn, δεν ανοίγουμε φόρμα αμέσως.
+            // Δημιουργούμε προσωρινό session και αφήνουμε το socket να αποφασίσει (Active/Inactive).
+            if (isDineIn) {
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Πελάτης";
+                customerDetails = { name: defaultName, table: tableNumber, type: 'dinein' };
+                localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
+                shouldOpenForm = false;
+            } else {
+                shouldOpenForm = true;
+            }
         } else {
             if (isDineIn) {
                 // ✅ FIX: Δεν ζητάμε covers εδώ. Θα το ζητήσουμε ΜΟΝΟ αν το τραπέζι είναι ανενεργό (μέσω socket)
@@ -260,7 +269,8 @@ window.App = {
     saveDetails: () => {
         if (isDineIn) {
             const covers = document.getElementById('inpCovers').value;
-            if (!covers) return alert(t('enter_covers_error') || "Παρακαλώ εισάγετε αριθμό ατόμων!");
+            // ✅ FIX: Επιτρέπουμε κενά covers αν υπάρχει ήδη ενεργή παραγγελία (για να μην κολλάει στο Edit)
+            if (!covers && !App.existingOrderId) return alert(t('enter_covers_error') || "Παρακαλώ εισάγετε αριθμό ατόμων!");
             // ✅ FIX: Allow name input if available, otherwise default
             let name = document.getElementById('inpName').value.trim();
             if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
