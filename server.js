@@ -1022,9 +1022,14 @@ io.on('connection', (socket) => {
         if (activeUsers[tKey]) { 
             if (activeUsers[tKey].socketId) {
                 io.to(activeUsers[tKey].socketId).emit('force-logout');
-                // ✅ NEW: Βίαιη αποσύνδεση του Socket για να μην ξαναμπεί αμέσως
+                
+                // ✅ FIX: Καθυστέρηση αποσύνδεσης (1 sec)
+                // Δίνουμε χρόνο στο App να λάβει την εντολή, να σβήσει το session και να βγει.
+                // Αν το κόψουμε ακαριαία, το socket.io client κάνει auto-reconnect και ξαναμπαίνει στη λίστα!
                 const targetSocket = io.sockets.sockets.get(activeUsers[tKey].socketId);
-                if (targetSocket) targetSocket.disconnect(true);
+                if (targetSocket) {
+                    setTimeout(() => targetSocket.disconnect(true), 1000);
+                }
             }
             delete activeUsers[tKey]; 
         }
@@ -1063,7 +1068,7 @@ io.on('connection', (socket) => {
         }
 
         if (user) { 
-            user.status = 'away'; 
+            user.status = 'background'; // ✅ FIX: Άμεση μετάβαση σε background αν κλείσει η σύνδεση
             updateStoreClients(user.store); 
         } 
     });
