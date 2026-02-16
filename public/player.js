@@ -20,7 +20,7 @@ const AudioEngine = {
         if (!this.keepAlivePlayer) {
             this.keepAlivePlayer = document.createElement("audio");
             this.keepAlivePlayer.id = 'keepAlive';
-            this.keepAlivePlayer.src = "/tone19hz.wav"; 
+            this.keepAlivePlayer.src = "tone19hz.wav"; 
             this.keepAlivePlayer.loop = true;
             this.keepAlivePlayer.volume = 1.0; 
             document.body.appendChild(this.keepAlivePlayer);
@@ -30,7 +30,7 @@ const AudioEngine = {
         if (!this.alarmPlayer) {
             this.alarmPlayer = document.createElement("audio");
             this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.src = "/alarm.mp3"; 
+            this.alarmPlayer.src = "alarm.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
             document.body.appendChild(this.alarmPlayer);
@@ -89,6 +89,7 @@ const AudioEngine = {
 
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
         this.alarmPlayer.currentTime = 0;
+        this.alarmPlayer.load(); // ✅ Force reload to ensure audio is ready
         try {
             await this.alarmPlayer.play();
         } catch(e) { console.error("Audio Play Error:", e); }
