@@ -943,7 +943,30 @@ io.on('connection', (socket) => {
 
     socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
     socket.on('manual-logout', (data) => { const tUser = data && data.targetUser ? data.targetUser : socket.username; const tKey = `${socket.store}_${tUser}`; if (activeUsers[tKey]) { delete activeUsers[tKey]; updateStoreClients(socket.store); } });
-    socket.on('disconnect', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key] && activeUsers[key].socketId === socket.id) { activeUsers[key].status = 'away'; updateStoreClients(socket.store); } });
+    
+    // ✅ FIX: Robust Disconnect Handler (Για να πιάνει σίγουρα το κλείσιμο καρτέλας)
+    socket.on('disconnect', () => { 
+        let user = null;
+        // 1. Δοκιμή με τον κλασικό τρόπο
+        const key = `${socket.store}_${socket.username}`;
+        if (activeUsers[key] && activeUsers[key].socketId === socket.id) {
+            user = activeUsers[key];
+        } else {
+            // 2. Fallback: Ψάξιμο με βάση το Socket ID (Αν χάθηκαν τα data)
+            for (const k in activeUsers) {
+                if (activeUsers[k].socketId === socket.id) {
+                    user = activeUsers[k];
+                    break;
+                }
+            }
+        }
+
+        if (user) { 
+            user.status = 'away'; 
+            updateStoreClients(user.store); 
+        } 
+    });
+
     socket.on('heartbeat', () => { const key = `${socket.store}_${socket.username}`; if (activeUsers[key]) { activeUsers[key].lastSeen = Date.now(); } });
     
     // ✅ NEW: Handle Visibility Status (Online vs Background)
