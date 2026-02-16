@@ -9,7 +9,7 @@ let notificationInterval;
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v46'; // ✅ Bump Version to force new alarm.mp3
+const CACHE_NAME = 'bellgo-v47'; // ✅ Bump Version to force new player.js
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

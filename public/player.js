@@ -23,6 +23,8 @@ const AudioEngine = {
             this.keepAlivePlayer.src = "/tone19hz.wav"; 
             this.keepAlivePlayer.loop = true;
             this.keepAlivePlayer.volume = 1.0; 
+            this.keepAlivePlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
+            this.keepAlivePlayer.setAttribute("preload", "auto");
             document.body.appendChild(this.keepAlivePlayer);
         }
 
@@ -33,6 +35,8 @@ const AudioEngine = {
             this.alarmPlayer.src = "/alarm.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
+            this.alarmPlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
+            this.alarmPlayer.setAttribute("preload", "auto");
             document.body.appendChild(this.alarmPlayer);
         }
 
