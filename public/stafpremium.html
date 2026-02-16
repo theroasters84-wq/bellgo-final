@@ -43,7 +43,7 @@
 
     <div id="startScreen" style="z-index: 9999;">
         <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Staff 🔔</h1>
-        <button class="btn-start" onclick="AudioEngine.init();this.parentElement.style.display='none';" data-i18n="start_shift">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+        <button class="btn-start" onclick="App.unlockAudio()" data-i18n="start_shift">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
     </div>
 
     <div id="userExtrasModal" class="overlay-screen">
@@ -231,7 +231,8 @@
         }
 
         const savedSession = localStorage.getItem('bellgo_session');
-        if (!savedSession) window.location.replace("login.html");
+        if (!savedSession) window.location.replace("/staff/login");
+        const userData = JSON.parse(savedSession);
 
         // --- I18N LOGIC ---
         let translations = {};
@@ -871,7 +872,7 @@
             sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
             appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
             toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
-            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
+            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
         };
         window.onload = App.init;
