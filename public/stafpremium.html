@@ -556,7 +556,7 @@
                 });
 
                 socket.on('ring-bell', (data) => {
-                    if(window.AudioEngine) window.AudioEngine.triggerAlarm();
+                    if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     // ✅ Εμφάνιση ποιος καλεί (Ταμείο ή Κουζίνα)
