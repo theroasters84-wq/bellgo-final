@@ -182,7 +182,16 @@
         import { firebaseConfig } from './config.js';
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(() => console.log("✅ Login SW Registered"));
+            // ✅ FIX: Καθαρισμός παλιού Root Service Worker που προκαλεί προβλήματα
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(reg => {
+                    if (reg.scope === window.location.origin + '/') {
+                        reg.unregister().then(() => console.log('🧹 Old Root SW Removed'));
+                    }
+                });
+            });
+            // ✅ FIX: Εγγραφή με Scope /manage/ για απομόνωση
+            navigator.serviceWorker.register('/sw.js', { scope: '/manage/' }).then(() => console.log("✅ Login SW Registered"));
         }
 
         let deferredPrompt;
@@ -252,7 +261,7 @@
                 document.getElementById('roleSelection').classList.add('active');
             },
             showAdminLogin: (mode) => {
-                if(mode) localStorage.setItem('bellgo_admin_mode', mode); // ✅ Αποθήκευση Mode (cashier/kitchen)
+                if(mode) { localStorage.setItem('bellgo_admin_mode', mode); } // ✅ Αποθήκευση Mode (cashier/kitchen)
                 document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('adminForm').classList.add('active');
             },

@@ -204,8 +204,16 @@
         async function setupNotifications() {
             if ('serviceWorker' in navigator) {
                 try {
-                    // ✅ FIXED: Changed to /sw.js to match your files
-                    const reg = await navigator.serviceWorker.register('/sw.js');
+                    // ✅ FIX: Καθαρισμός παλιού Root SW
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of regs) {
+                        if (reg.scope === window.location.origin + '/') {
+                            await reg.unregister();
+                            console.log('🧹 Old Root SW Removed');
+                        }
+                    }
+                    // ✅ FIX: Εγγραφή με Scope /manage/
+                    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/manage/' });
                     
                     if (window.Capacitor?.Plugins?.PushNotifications) {
                         const PushNotifications = window.Capacitor.Plugins.PushNotifications;

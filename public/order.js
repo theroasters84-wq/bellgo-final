@@ -4,8 +4,7 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.log('❌ SW Error:', err));
-}
+    
 
 // --- INSTALL LOGIC ---
 let deferredPrompt;

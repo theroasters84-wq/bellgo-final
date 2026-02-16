@@ -225,13 +225,13 @@
         import { firebaseConfig, vapidKey } from './config.js';
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation
                 .then(() => console.log('✅ Staff Service Worker Registered'))
                 .catch(err => console.log('❌ Staff SW Error:', err));
         }
 
         const savedSession = localStorage.getItem('bellgo_session');
-        if (!savedSession) window.location.;
+        if (!savedSession) window.location.replace("login.html");
 
         // --- I18N LOGIC ---
         let translations = {};
@@ -876,7 +876,7 @@
         };
         window.onload = App.init;
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation
                 .then(() => console.log('✅ Staff Service Worker Registered'))
                 .catch(err => console.log('❌ Staff SW Error:', err));
         }
