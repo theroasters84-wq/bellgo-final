@@ -107,7 +107,7 @@ const AudioEngine = {
             document.body.appendChild(this.alarmPlayer);
         }
         
-        // ✅ FORCE PATH & VOLUME (Ensure it plays alarm.mp3 from public)
+        // ✅ FORCE PATH & VOLUME (Ensure it plays alert.mp3 from public)
         this.alarmPlayer.src = "/alert.mp3";
         this.alarmPlayer.volume = 1.0;
         this.alarmPlayer.muted = false; // ✅ Ensure unmuted
