@@ -20,12 +20,9 @@ const AudioEngine = {
         if (!this.keepAlivePlayer) {
             this.keepAlivePlayer = document.createElement("audio");
             this.keepAlivePlayer.id = 'keepAlive';
-            // ✅ FIX: Χρήση Base64 για να μην εξαφανίζεται ο Player αν λείπει το αρχείο
-            this.keepAlivePlayer.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"; 
+            this.keepAlivePlayer.src = "tone19hz.wav"; 
             this.keepAlivePlayer.loop = true;
             this.keepAlivePlayer.volume = 1.0; 
-            this.keepAlivePlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
-            this.keepAlivePlayer.setAttribute("preload", "auto");
             document.body.appendChild(this.keepAlivePlayer);
         }
 
@@ -33,11 +30,9 @@ const AudioEngine = {
         if (!this.alarmPlayer) {
             this.alarmPlayer = document.createElement("audio");
             this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.src = "/alert.mp3"; 
+            this.alarmPlayer.src = "alert.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
-            this.alarmPlayer.setAttribute("playsinline", ""); // ✅ Mobile fix
-            this.alarmPlayer.setAttribute("preload", "auto");
             document.body.appendChild(this.alarmPlayer);
         }
 
@@ -60,8 +55,6 @@ const AudioEngine = {
         // Όταν πατάς κουμπί στην μπάρα (Play/Pause/Next), κάνουμε ΑΠΟΔΟΧΗ
         const handleNotificationClick = () => {
             console.log("👆 Notification Button Clicked");
-            // ✅ FORCE PLAYING STATE (Για να μην κλείνει η μπάρα όταν πατάς Play/Pause)
-            if (navigator.mediaSession) navigator.mediaSession.playbackState = "playing";
             
             if (this.isRinging) {
                 // ΣΗΜΑΝΤΙΚΟ: Καλουμε την Global συνάρτηση του App (premium.html)
@@ -77,60 +70,39 @@ const AudioEngine = {
         };
 
         // Συνδέουμε όλα τα κουμπιά
-        const actions = ['play', 'pause', 'stop', 'previoustrack', 'nexttrack', 'seekbackward', 'seekforward', 'seekto'];
-        actions.forEach(action => {
-            try { navigator.mediaSession.setActionHandler(action, handleNotificationClick); } catch(e) {}
-        });
+        navigator.mediaSession.setActionHandler('play', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('pause', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('stop', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('previoustrack', handleNotificationClick);
+        navigator.mediaSession.setActionHandler('nexttrack', handleNotificationClick);
     },
 
     // --- ΚΛΗΣΗ (Triggered by Socket) ---
-    async triggerAlarm(source) {
+    async triggerAlarm() {
         if (this.isRinging) return;
         this.isRinging = true;
 
         console.log("🚨 ALARM TRIGGERED");
 
+        // 1. Αλλάζουμε τα γράμματα στην μπάρα
+        this.updateDisplay("alarm");
+
         // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
-        // ✅ Ensure Player Exists (Lazy Load if init wasn't called)
-        if (!this.alarmPlayer) {
-            this.alarmPlayer = document.createElement("audio");
-            this.alarmPlayer.id = 'alarmSound';
-            this.alarmPlayer.loop = true;
-            this.alarmPlayer.setAttribute("playsinline", "");
-            this.alarmPlayer.setAttribute("preload", "auto");
-            document.body.appendChild(this.alarmPlayer);
-        }
-        
-        // ✅ FORCE PATH & VOLUME (Ensure it plays alert.mp3 from public)
-        this.alarmPlayer.src = "/alert.mp3";
-        this.alarmPlayer.volume = 1.0;
-        this.alarmPlayer.muted = false; // ✅ Ensure unmuted
         this.alarmPlayer.currentTime = 0;
-        this.alarmPlayer.load(); // ✅ Force reload
-        
         try {
             await this.alarmPlayer.play();
-            
-            // ✅ PAUSE KEEP ALIVE AFTER ALARM STARTS (Overlap για να μην κλείσει η μπάρα)
-            if (this.keepAlivePlayer) {
-                this.keepAlivePlayer.pause();
-            }
-
-            console.log("🔊 Alarm playing successfully");
-            // 1. Αλλάζουμε τα γράμματα στην μπάρα (Αφού ξεκινήσει ο ήχος για να πιάσει το focus)
-            this.updateDisplay("alarm", source);
         } catch(e) { console.error("Audio Play Error:", e); }
 
         // 3. UI Overlay (Αν υπάρχει στο HTML)
         const overlay = document.getElementById('alarmOverlay');
         if (overlay) overlay.style.display = 'flex';
 
-        this.vibrate(true); // ✅ Now uses the intense pattern from sw.js logic if background, or local here
+        this.vibrate(true);
         
         // 4. ΕΛΕΓΧΟΣ BACKGROUND: Αν η καρτέλα δεν φαίνεται, στείλε Notification
         // (Μόνο αν ΔΕΝ είμαστε σε Native App, γιατί εκεί το κάνει το Plugin)
         if (document.hidden && !window.Capacitor) {
-            this.sendNotification(source);
+            this.sendNotification();
         }
     },
 
@@ -141,16 +113,9 @@ const AudioEngine = {
 
         console.log("✅ ALARM STOPPED (Audio Engine)");
 
-        // 1. Ξεκινάμε το KeepAlive ΠΡΩΤΑ (Overlap για να μην χαθεί το session)
-        if (this.keepAlivePlayer) {
-            this.keepAlivePlayer.play().catch(e => console.log("KeepAlive Resume Error:", e));
-        }
-
-        // 2. Σταματάμε τον θόρυβο με μικρή καθυστέρηση (για να μην υπάρξει κενό ήχου)
-        setTimeout(() => {
-            this.alarmPlayer.pause();
-            this.alarmPlayer.currentTime = 0;
-        }, 150);
+        // 1. Σταματάμε ΜΟΝΟ τον θόρυβο
+        this.alarmPlayer.pause();
+        this.alarmPlayer.currentTime = 0;
 
         // 2. Επαναφέρουμε τα γράμματα
         this.updateDisplay("online");
@@ -162,22 +127,22 @@ const AudioEngine = {
         this.vibrate(false);
     },
 
-    updateDisplay(state, source) {
+    updateDisplay(state) {
         if (!("mediaSession" in navigator)) return;
 
         if (state === "alarm") {
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: source ? `🚨 ${source}` : "🚨 ΚΛΗΣΗ",
-                artist: "Πάτα PLAY/PAUSE για Αποδοχή",
+                title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
+                artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 album: "BellGo Alert",
-                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
         } else {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
                 artist: "Σύστημα Ενεργό",
                 album: "Αναμονή...",
-                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
             });
         }
         navigator.mediaSession.playbackState = "playing";
@@ -186,11 +151,9 @@ const AudioEngine = {
     vibrate(active) {
         if (!navigator.vibrate) return;
         if (active) {
-            // ✅ SUPER INTENSE VIBRATION: 3 Short pulses, 1 Long pulse (SOS style)
-            const pattern = [500, 100, 500, 100, 500, 100, 2000, 500]; 
-            navigator.vibrate(pattern);
+            navigator.vibrate([1000, 500]);
             if (this.vibInt) clearInterval(this.vibInt);
-            this.vibInt = setInterval(() => navigator.vibrate(pattern), 4500);
+            this.vibInt = setInterval(() => navigator.vibrate([1000, 500]), 1600);
         } else {
             if (this.vibInt) clearInterval(this.vibInt);
             navigator.vibrate(0);
@@ -204,11 +167,11 @@ const AudioEngine = {
     },
 
     // Τοπικό Notification για Background (Backup στο Server Loop)
-    sendNotification(source) {
+    sendNotification() {
         if (Notification.permission === "granted") {
             try {
                 const notif = new Notification("🚨 ΚΛΗΣΗ!", { 
-                    body: source ? `Ο ${source} σε ζητάει!` : "Πατήστε για αποδοχή",
+                    body: "Πατήστε για αποδοχή",
                     icon: "/admin.png", 
                     tag: 'bellgo-alarm', // Ίδιο tag με το sw.js για να μην γεμίζει
                     renotify: true,
