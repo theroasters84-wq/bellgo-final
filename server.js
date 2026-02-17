@@ -410,23 +410,33 @@ app.post('/check-subscription', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-    const { email, plan } = req.body;
+    const { email, plan, isNative } = req.body; // ✅ Προσθήκη isNative
     let priceId = PRICE_BASIC; 
     if (plan === 'premium') priceId = PRICE_PREMIUM; 
+
+    // ✅ FIX: Δυναμικό Domain για επιστροφή στο App
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.get('host');
+    let returnDomain = `${protocol}://${host}`;
+
+    if (isNative) {
+        returnDomain = `bellgoapp://${host}`;
+    }
+
     try {
         const session = await stripe.checkout.sessions.create({
             line_items: [{ price: priceId, quantity: 1 }],
             mode: 'subscription',
             customer_email: email,
-            success_url: `${YOUR_DOMAIN}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-            cancel_url: `${YOUR_DOMAIN}/login.html`,
+            success_url: `${returnDomain}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+            cancel_url: `${returnDomain}/login.html`,
         });
         res.json({ url: session.url });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/create-order-payment', async (req, res) => {
-    const { amount, storeName, items } = req.body; // ✅ Λήψη items
+    const { amount, storeName, items, isNative } = req.body; // ✅ Λήψη items & isNative
     const data = await getStoreData(storeName);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
@@ -434,7 +444,12 @@ app.post('/create-order-payment', async (req, res) => {
     // ✅ FIX: Δυναμικό Domain για να επιστρέφει ακριβώς εκεί που ήταν ο πελάτης
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const host = req.get('host');
-    const returnDomain = `${protocol}://${host}`;
+    let returnDomain = `${protocol}://${host}`;
+
+    // ✅ FIX: Αν είναι Native App, επιστρέφουμε με Custom Scheme για να ανοίξει η εφαρμογή
+    if (isNative) {
+        returnDomain = `bellgoapp://${host}`;
+    }
 
     try {
         const session = await stripe.checkout.sessions.create({
@@ -458,14 +473,19 @@ app.post('/create-order-payment', async (req, res) => {
 
 // ✅ NEW: QR PAYMENT GENERATION (Admin/Staff initiates)
 app.post('/create-qr-payment', async (req, res) => {
-    const { amount, storeName, orderId } = req.body;
+    const { amount, storeName, orderId, isNative } = req.body; // ✅ isNative
     const data = await getStoreData(storeName);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει Stripe." }); }
     
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const host = req.get('host');
-    const returnDomain = `${protocol}://${host}`;
+    let returnDomain = `${protocol}://${host}`;
+
+    // ✅ FIX: Αν είναι Native App, επιστρέφουμε με Custom Scheme
+    if (isNative) {
+        returnDomain = `bellgoapp://${host}`;
+    }
 
     try {
         const session = await stripe.checkout.sessions.create({

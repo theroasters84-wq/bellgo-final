@@ -868,11 +868,11 @@ window.App = {
     },
 
     payExistingOrder: async (orderId, amount) => {
+        const isNative = !!window.Capacitor || /Android.*wv/.test(window.navigator.userAgent); // ✅ Detect Native
         try {
             const res = await fetch('/create-qr-payment', { // Χρησιμοποιούμε το QR endpoint που δέχεται orderId
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId })
-            });
+                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId
             const data = await res.json();
             if(data.url) window.location.href = data.url;
             else alert((t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο"));
@@ -984,12 +984,12 @@ window.App = {
         }
 
         localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
+        const isNative = !!window.Capacitor || /Android.*wv/.test(window.navigator.userAgent); // ✅ Detect Native
         try {
             const res = await fetch('/create-order-payment', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE, items: items }) // ✅ Στέλνουμε και τα προϊόντα
-            });
+                body: JSON.stringify({ amount: totalAmount, s
             const data = await res.json();
             if(data.url) { window.location.href = data.url; } 
             else { alert((t('payment_error') || "Σφάλμα πληρωμής: ") + (data.error || "Άγνωστο")); }
