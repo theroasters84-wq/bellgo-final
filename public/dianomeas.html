@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BellGo Driver</title>
+    
+    <link rel="manifest" href="/manifest.json?icon=admin&id=staff_app">
+    <meta name="theme-color" content="#121212">
+    
+    <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- ✅ NEW: QRCode Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div id="mainApp">
+        <div class="header">
+            <div class="store-identity">
+                <span id="connDot" class="status-dot"></span>
+                <span id="storeNameHeader" style="margin-left:10px; color:#FFD700; font-weight:bold; font-size:18px;">DRIVER</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
+            </div>
+        </div>
+
+        <div id="driverArea" style="padding:10px; overflow-y:auto; flex:1; background:#121212;">
+            <div id="ordersList" style="display:flex; flex-direction:column; gap:10px; padding-bottom:50px;">
+                <div style="text-align:center; color:#555; margin-top:50px;">Φόρτωση...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: QR Modal -->
+    <div id="qrModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center;">
+        <div class="modal-box" style="background:white; color:black; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px;">
+            <h3 style="margin:0 0 15px 0;">💳 ΠΛΗΡΩΜΗ (SCAN)</h3>
+            <div id="qrcode" style="display:flex; justify-content:center; margin-bottom:15px;"></div>
+            <div style="font-size:12px; color:#555; margin-bottom:15px;">Ο πελάτης σκανάρει για πληρωμή</div>
+            <button onclick="document.getElementById('qrModal').style.display='none'" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; width:100%;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <script type="module" src="dianomeas.js"></script>
+    <script src="keepalive.js"></script>
+</body>
+</html>
