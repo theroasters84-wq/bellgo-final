@@ -22,6 +22,13 @@ window.App = {
         document.getElementById('storeNameHeader').innerText = (userData.store || "Store") + " 🛵";
         App.connectSocket();
         App.requestNotifyPermission();
+        
+        // ✅ Ενεργοποίηση Audio Engine (Silent Tone) με το πρώτο κλικ
+        // Αυτό παίζει το 'tone19hz.wav' για να κρατάει το κινητό ξύπνιο
+        document.body.addEventListener('click', () => { 
+            if(window.AudioEngine) window.AudioEngine.init();
+        }, {once:true});
+        
         if(window.KeepAlive) window.KeepAlive.init();
     },
 
@@ -72,6 +79,28 @@ window.App = {
         });
 
         socket.on('force-logout', () => App.logout());
+
+        // ✅ NEW: ALARM LISTENERS
+        socket.on('ring-bell', (data) => {
+            if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+            
+            // Εμφάνιση κουμπιού
+            const bell = document.getElementById('driverBellBtn');
+            if(bell) {
+                bell.style.display = 'flex';
+                bell.classList.add('ringing');
+                bell.innerText = data && data.source ? `🔔 ${data.source}` : "🔔";
+            }
+        });
+
+        socket.on('stop-bell', () => {
+            if(window.AudioEngine) window.AudioEngine.stopAlarm();
+            const bell = document.getElementById('driverBellBtn');
+            if(bell) {
+                bell.style.display = 'none';
+                bell.classList.remove('ringing');
+            }
+        });
     },
 
     renderOrders: () => {
@@ -152,6 +181,17 @@ window.App = {
             if(data.url) { const c = document.getElementById('qrcode'); c.innerHTML = ""; new QRCode(c, { text: data.url, width: 200, height: 200 }); document.getElementById('qrModal').style.display = 'flex'; } 
             else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
         } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
+
+    // ✅ NEW: ACCEPT ALARM FUNCTION
+    acceptAlarm: () => {
+        if(window.AudioEngine) window.AudioEngine.stopAlarm();
+        const bell = document.getElementById('driverBellBtn');
+        if(bell) {
+            bell.style.display = 'none';
+            bell.classList.remove('ringing');
+        }
+        window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
     }
 };
 window.onload = App.init;
