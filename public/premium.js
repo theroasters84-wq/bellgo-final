@@ -445,7 +445,11 @@ window.App = {
                 }
                 if(settings.expensePresets) App.expensePresets = settings.expensePresets;
                 if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
-                App.staffChargeMode = settings.staffCharge || false; // ✅ Update Local State
+                
+                // ✅ SYNC STAFF CHARGE SWITCHES (Settings & Wallet)
+                App.staffChargeMode = settings.staffCharge || false;
+                const sw1 = document.getElementById('switchStaffCharge'); if(sw1) sw1.checked = App.staffChargeMode;
+                const sw2 = document.getElementById('switchStaffChargeWallet'); if(sw2) sw2.checked = App.staffChargeMode;
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -529,6 +533,11 @@ window.App = {
             ? document.getElementById('switchCust').checked 
             : document.getElementById('switchStaff').checked;
         window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
+    },
+
+    // ✅ NEW: Toggle Staff Charge directly
+    toggleStaffCharge: (isChecked) => {
+        window.socket.emit('save-store-settings', { staffCharge: isChecked });
     },
 
     acceptAlarm: () => {
