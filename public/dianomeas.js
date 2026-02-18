@@ -101,6 +101,30 @@ window.App = {
                 bell.classList.remove('ringing');
             }
         });
+
+        // ✅ NEW: DELIVERY OFFER (BROADCAST)
+        socket.on('delivery-offer', (data) => {
+            if(window.AudioEngine) window.AudioEngine.triggerAlarm("ΝΕΑ ΔΙΑΝΟΜΗ");
+            
+            const modal = document.getElementById('offerModal');
+            const btn = document.getElementById('btnAcceptOffer');
+            
+            btn.onclick = () => {
+                // Ο Διανομέας αποδέχεται και χρεώνεται
+                const order = App.activeOrders.find(o => o.id == data.orderId);
+                if (order) {
+                    const total = App.calculateTotal(order.text);
+                    window.socket.emit('charge-order-to-staff', { orderId: data.orderId, staffName: userData.name, amount: total, method: 'cash' });
+                    alert("Την πήρες! 🚀");
+                } else {
+                    alert("Η παραγγελία δεν βρέθηκε (ίσως την πήρε άλλος).");
+                }
+                modal.style.display = 'none';
+                if(window.AudioEngine) window.AudioEngine.stopAlarm();
+            };
+            
+            modal.style.display = 'flex';
+        });
     },
 
     renderOrders: () => {

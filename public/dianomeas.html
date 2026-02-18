@@ -59,6 +59,17 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: DELIVERY OFFER MODAL -->
+    <div id="offerModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:10000;">
+        <div class="modal-box" style="background:#222; color:white; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px; border:2px solid #FFD700; box-shadow:0 0 30px #FFD700;">
+            <div style="font-size:50px;">🛵</div>
+            <h3 style="color:#FFD700; margin:10px 0;">ΝΕΑ ΔΙΑΝΟΜΗ!</h3>
+            <p>Ποιος θα την αναλάβει;</p>
+            <button id="btnAcceptOffer" style="background:#00E676; color:black; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer;">🙋‍♂️ ΕΓΩ!</button>
+            <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#aaa; margin-top:15px; cursor:pointer;">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
     <script type="module" src="dianomeas.js"></script>
     <script src="player.js"></script> <!-- ✅ Audio Engine -->
     <script src="keepalive.js"></script>
