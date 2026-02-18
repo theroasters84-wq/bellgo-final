@@ -25,8 +25,11 @@
             let store = "";
             const pathParts = window.location.pathname.split('/');
             // Έλεγχος αν είμαστε σε URL μορφής /shop/storeName/
-            if (pathParts.includes('shop') && pathParts.length > 2) {
+            if (pathParts.includes('shop') && pathParts.length > 2) { 
                 store = decodeURIComponent(pathParts[pathParts.indexOf('shop') + 1]); // ✅ FIX: Αποκωδικοποίηση
+            } else if (pathParts.includes('dinein') && pathParts.length > 2) {
+                // ✅ Support Dine-In Route
+                store = decodeURIComponent(pathParts[pathParts.indexOf('dinein') + 1]);
             } else {
                 // Fallback σε query string ?store=xyz
                 const params = new URLSearchParams(window.location.search);
@@ -34,7 +37,7 @@
                 
                 // ✅ FIX: Force redirect to /shop/ structure if accessed via /order.html
                 // This ensures PWA scope is correct and independent
-                if (store && !window.location.pathname.includes('/shop/')) {
+                if (store && !window.location.pathname.includes('/shop/') && !window.location.pathname.includes('/dinein/')) {
                      window.location.replace(`/shop/${encodeURIComponent(store)}/${window.location.search}`);
                      return;
                 }

@@ -196,7 +196,7 @@ self.addEventListener('fetch', (event) => {
       .catch(() => {
         // OFFLINE LOGIC: 
         // Αν ο χρήστης ζητάει ένα URL καταστήματος (/shop/name/), του σερβίρουμε το cached order.html
-        if (url.pathname.startsWith('/shop/')) {
+        if (url.pathname.startsWith('/shop/')) { // ✅ Αφαιρέθηκε το dinein από το offline logic
           return caches.match('/order.html');
         }
         // ✅ NEW: Fallback για το Admin App στο /manage/ (χρησιμοποιεί τα αρχεία του root)

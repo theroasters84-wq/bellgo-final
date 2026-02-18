@@ -20,11 +20,11 @@
             const table = params.get('table');
 
             if (store) {
-                // Redirect to the PWA-friendly URL structure: /shop/STORE_NAME/?table=TABLE_NUM
+                // ✅ Redirect to Pure Web URL (Dine-In) to avoid PWA app opening
                 const cleanStore = encodeURIComponent(store);
                 const cleanTable = table ? encodeURIComponent(table) : '';
                 
-                window.location.replace(`/shop/${cleanStore}/?table=${cleanTable}`);
+                window.location.replace(`/dinein/${cleanStore}?table=${cleanTable}`);
             } else {
                 document.body.innerHTML = "<h3 style='color:red'>Σφάλμα: Δεν βρέθηκε κατάστημα.</h3>";
             }

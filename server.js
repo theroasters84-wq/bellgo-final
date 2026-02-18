@@ -297,6 +297,11 @@ app.get('/shop/:storeName', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'order.html')); 
 });
 
+// ✅ NEW: Dine-In Route (Pure Web - No PWA Scope)
+app.get('/dinein/:storeName', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'order.html'));
+});
+
 // ✅ NEW: Fallback για το Mini App (για να ανοίγει σωστά πάντα)
 app.get('/mini*', (req, res) => {
     res.sendFile(path.join(__dirname, 'mini_app', 'index.html'));

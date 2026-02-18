@@ -4,9 +4,30 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log("✅ Service Worker Registered"))
-        .catch(e => console.log("❌ SW Error:", e));
+    // ✅ FIX: Καθαρισμός παλιού Root Service Worker (που μπλόκαρε το Dine-In)
+    navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => {
+            if (reg.scope === window.location.origin + '/') {
+                console.log("🧹 Removing old Root SW to fix Dine-In:", reg.scope);
+                reg.unregister();
+            }
+        });
+    });
+
+    // ✅ FIX: Register SW ΜΟΝΟ αν είμαστε σε Shop ή Admin (όχι στο Dine-In)
+    const path = window.location.pathname;
+    let swScope = null;
+
+    if (path.includes('/shop/')) swScope = '/shop/';
+    else if (path.includes('/manage/') || path.includes('premium')) swScope = '/manage/';
+
+    if (swScope) {
+        navigator.serviceWorker.register('/sw.js', { scope: swScope })
+            .then(reg => console.log("✅ SW Registered with scope:", reg.scope))
+            .catch(e => console.log("❌ SW Error:", e));
+    } else {
+        console.log("ℹ️ Dine-In Mode: Pure Web (No SW)");
+    }
 }
 
 // --- INSTALL LOGIC ---
@@ -91,7 +112,8 @@ let tableNumber = TABLE_ID;
 // Auto-detect store from path
 if (!TARGET_STORE) {
     const pathParts = window.location.pathname.split('/');
-    const shopIndex = pathParts.indexOf('shop');
+    let shopIndex = pathParts.indexOf('shop');
+    if (shopIndex === -1) shopIndex = pathParts.indexOf('dinein'); // ✅ Support dinein route
     if (shopIndex !== -1 && pathParts[shopIndex + 1]) {
         TARGET_STORE = decodeURIComponent(pathParts[shopIndex + 1]); // ✅ FIX: Αποκωδικοποίηση ονόματος (π.χ. My%20Shop -> My Shop)
     }
