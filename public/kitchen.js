@@ -153,6 +153,7 @@ window.App = {
     adminMode: localStorage.getItem('bellgo_admin_mode') || 'cashier', // 'cashier' or 'kitchen'
     coverPrice: 0,
     sidebarMode: 'paso', // ✅ Default Mode
+    kitchenSettings: JSON.parse(localStorage.getItem('bellgo_kitchen_settings') || '{"autoPrint":false, "autoClose":false}'), // ✅ NEW: Local Settings
     
     // EXTRAS STATE
     currentExtrasItemIndex: null,
@@ -208,7 +209,6 @@ window.App = {
             // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
             const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'none';
             const btnMenu = document.getElementById('btnMenuToggle'); if(btnMenu) btnMenu.style.display = 'none';
-            const btnSet = document.getElementById('btnSettings'); if(btnSet) btnSet.style.display = 'none';
             const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'flex';
             const inpHeader = document.getElementById('inpStoreNameHeader'); if(inpHeader) inpHeader.disabled = true;
             // 🔒 ΚΟΥΖΙΝΑ: Απενεργοποίηση Sidebar
@@ -312,6 +312,10 @@ window.App = {
         // ✅ Start Bot
         DNDBot.init();
         
+        // ✅ Init Kitchen Settings UI
+        const swAP = document.getElementById('swKitchenAutoPrint'); if(swAP) swAP.checked = App.kitchenSettings.autoPrint;
+        const swAC = document.getElementById('swKitchenAutoClose'); if(swAC) swAC.checked = App.kitchenSettings.autoClose;
+
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         setLanguage(savedLang);
@@ -491,7 +495,7 @@ window.App = {
                 App.renderDesktopIcons(App.activeOrders);
                 
                 // ✅ AUTO PRINT: Τυπώνει αυτόματα μόλις γίνει ΑΠΟΔΟΧΗ (Cooking)
-                if (App.autoPrint && data.status === 'cooking') {
+                if (App.kitchenSettings.autoPrint && data.status === 'cooking') { // ✅ Use Local Setting
                     App.printOrder(data.id);
                 }
             }
@@ -513,6 +517,12 @@ window.App = {
         });
     },
     
+    // ✅ NEW: Toggle Local Kitchen Settings
+    toggleKitchenSetting: (key) => {
+        App.kitchenSettings[key] = !App.kitchenSettings[key];
+        localStorage.setItem('bellgo_kitchen_settings', JSON.stringify(App.kitchenSettings));
+    },
+
     saveStoreName: () => {
         const newName = document.getElementById('inpStoreNameHeader').value.trim();
         if(newName) window.socket.emit('save-store-name', newName);
@@ -1322,7 +1332,7 @@ window.App = {
             </body></html>`);
 
         // ✅ Κλείσιμο παραθύρου παραγγελίας μετά την εκτύπωση (Αν είναι ενεργοποιημένο)
-        if (App.autoClosePrint) {
+        if (App.kitchenSettings.autoClose) { // ✅ Use Local Setting
             const winEl = document.getElementById(`win-${id}`);
             if(winEl) winEl.style.display = 'none';
         }

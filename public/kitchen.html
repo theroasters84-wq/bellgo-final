@@ -27,7 +27,7 @@
             
             <div class="header-actions">
                 <!-- Κρυμμένα κουμπιά διαχείρισης, εμφανίζονται μόνο τα απαραίτητα για την κουζίνα -->
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" style="display:none;">⚙️</button>
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού" style="display:none;">📜</button>
                 
                 <div class="btn-icon-wrapper">
@@ -86,6 +86,19 @@
         <div class="modal-box">
             <h3 class="modal-title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
             <div id="settingsMain">
+                <!-- ✅ NEW: Kitchen Printer Settings (Local) -->
+                <div style="background:#333; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid #444;">
+                    <h4 style="margin:0 0 10px 0; color:#FFD700; font-size:14px;">🖨️ ΕΚΤΥΠΩΣΗ (ΤΟΠΙΚΑ)</h4>
+                    <div class="switch-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-size:14px;">Αυτόματη Εκτύπωση</span>
+                        <label class="switch"><input type="checkbox" id="swKitchenAutoPrint" onclick="App.toggleKitchenSetting('autoPrint')"><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:14px;">Κλείσιμο Παραθύρου</span>
+                        <label class="switch"><input type="checkbox" id="swKitchenAutoClose" onclick="App.toggleKitchenSetting('autoClose')"><span class="slider"></span></label>
+                    </div>
+                </div>
+
                 <button class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
                 <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
