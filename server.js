@@ -30,6 +30,11 @@ try {
 const app = express();
 app.use(express.json());
 
+// ✅ NEW: Redirect Root to Login (Admin PWA)
+app.get('/', (req, res) => {
+    res.redirect('/manage/login.html');
+});
+
 // ✅ FIX: Redirect Root Admin pages to /manage/ to isolate PWA Scope
 // Αυτό διασφαλίζει ότι το Admin PWA έχει scope /manage/ και ΔΕΝ πιάνει τα QR παραγγελιών (/shop/...)
 app.get(['/login.html', '/index.html', '/premium.html'], (req, res) => {
