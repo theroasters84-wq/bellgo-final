@@ -294,14 +294,17 @@ window.App = {
                     inpHours.previousElementSibling.style.display = 'none';
                 }
                 const wrapper = document.createElement('div');
-                wrapper.style.cssText = "position:absolute; top:15px; right:60px; display:flex; align-items:center; gap:5px; z-index:100;";
+                wrapper.style.cssText = "display:flex; align-items:center; gap:5px; margin-right:10px;";
                 const lbl = document.createElement('span');
-                lbl.innerText = "Hours:";
+                lbl.innerText = "🕒";
                 lbl.style.cssText = "font-size:10px; color:#666; font-weight:bold;";
                 inpHours.style.cssText = "width:80px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
                 wrapper.appendChild(lbl);
                 wrapper.appendChild(inpHours);
-                menuPanel.appendChild(wrapper);
+                
+                // ✅ FIX: Τοποθέτηση μέσα στα actions για να μην πέφτει πάνω στο κουμπί ΠΙΣΩ
+                const headerActions = menuPanel.querySelector('.menu-header > div');
+                if(headerActions) headerActions.insertBefore(wrapper, headerActions.firstChild);
             }
         }, 500);
 
@@ -524,6 +527,11 @@ window.App = {
     acceptAlarm: () => {
         if(window.AudioEngine) window.AudioEngine.stopAlarm();
         window.socket.emit('admin-stop-ringing'); 
+    },
+
+    togglePresetPanel: () => {
+        const p = document.getElementById('presetPanel');
+        if(p) p.style.display = (p.style.display === 'none' ? 'block' : 'none');
     },
 
     toggleMenuMode: () => {
@@ -792,7 +800,10 @@ window.App = {
 
     // --- TEMPLATE LOGIC ---
     applyPresetMenu: () => {
-        const type = document.getElementById('selShopType').value;
+        // ✅ FIX: Έλεγχος και από το Panel και από τα Settings
+        let type = document.getElementById('selShopTypePanel').value;
+        if (!type) type = document.getElementById('selShopType').value;
+
         if (!type) return alert("Παρακαλώ επιλέξτε είδος καταστήματος!");
         if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού. Συνέχεια;")) return;
         

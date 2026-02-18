@@ -44,8 +44,24 @@
                 <div class="menu-header">
                     <span class="menu-title" data-i18n="edit_menu">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
                     <div style="display:flex; gap:10px;">
+                        <button class="btn-back" onclick="App.togglePresetPanel()" title="Presets" style="background:#FF9800; color:black;">📋</button>
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 <span data-i18n="back">ΠΙΣΩ</span></button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
+                    </div>
+                </div>
+                
+                <!-- ✅ NEW: PRESETS PANEL INSIDE MENU -->
+                <div id="presetPanel" style="display:none; background:#222; padding:10px; margin-bottom:15px; border-radius:10px; border:1px solid #444;">
+                    <span style="color:#aaa; font-size:12px; display:block; margin-bottom:5px;">Φόρτωση Έτοιμου Μενού:</span>
+                    <div style="display:flex; gap:10px;">
+                        <select id="selShopTypePanel" class="inp-settings" style="margin:0; padding:5px; font-size:14px;">
+                            <option value="" disabled selected>Επιλέξτε...</option>
+                            <option value="coffee_takeaway">☕ Cafe Takeaway</option>
+                            <option value="coffee_bar">🍸 Cafe Bar</option>
+                            <option value="pizzeria">🍕 Pizzeria</option>
+                            <option value="souvlaki">🍖 Souvlaki / Grill</option>
+                        </select>
+                        <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="App.applyPresetMenu()">OK</button>
                     </div>
                 </div>
                 
