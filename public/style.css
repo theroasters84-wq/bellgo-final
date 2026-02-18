@@ -452,3 +452,46 @@ body.alarm-active::after {
 .bot-btn:active { transform: scale(0.95); }
 .bot-skip { background: transparent; border: none; color: #666; font-size: 14px; cursor: pointer; text-decoration: underline; }
 @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
+
+/* --- LOGIN SCREEN (ORDER APP) --- */
+#loginScreen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--bg-dark);
+    z-index: 20000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px;
+    text-align: center;
+}
+#loginScreen h1 {
+    color: var(--accent);
+    font-size: 28px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+#loginScreen p {
+    color: #aaa;
+    font-size: 16px;
+    margin-bottom: 40px;
+}
+.btn-google {
+    background: white; color: black;
+    border: none; padding: 15px 25px; border-radius: var(--radius-btn);
+    font-size: 16px; font-weight: bold;
+    width: 100%; max-width: 320px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255,255,255,0.1);
+    transition: transform 0.1s;
+}
+.btn-google:active { transform: scale(0.98); }
+.btn-install-app {
+    background: var(--primary); color: black;
+    border: none; padding: 15px 25px; border-radius: var(--radius-btn);
+    font-size: 16px; font-weight: bold;
+    width: 100%; max-width: 320px;
+    margin-top: 15px; cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);
+    display: none; transition: transform 0.1s;
+}
+.btn-install-app:active { transform: scale(0.98); }

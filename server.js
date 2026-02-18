@@ -866,6 +866,15 @@ io.on('connection', (socket) => {
         if (!store.wallets[targetWallet]) store.wallets[targetWallet] = 0;
         store.wallets[targetWallet] += parseFloat(amount);
 
+        // ✅ NEW: Ειδοποίηση του συγκεκριμένου υπαλλήλου/διανομέα ότι χρεώθηκε/πήρε την παραγγελία
+        if (staffName) {
+            const key = `${socket.store}_${staffName}`;
+            const staffUser = activeUsers[key];
+            if (staffUser && staffUser.socketId) {
+                io.to(staffUser.socketId).emit('ring-bell', { source: "ΤΑΜΕΙΟ 💸", location: "ΝΕΑ ΑΝΑΘΕΣΗ" });
+            }
+        }
+
         // Κλείσιμο παραγγελίας
         const o = store.orders.find(x => x.id == orderId);
         if (o) {
@@ -907,6 +916,12 @@ io.on('connection', (socket) => {
                 const tKey = `${socket.store}_${o.from}`; 
                 const tUser = activeUsers[tKey]; 
                 if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
+
+                // ✅ NEW: Ειδοποίηση ΟΛΩΝ των Διανομέων ότι υπάρχει έτοιμη παραγγελία
+                Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
+                    u.isRinging = true;
+                    if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΟΥΖΙΝΑ 🍳", location: "ΕΤΟΙΜΗ ΠΑΡΑΓΓΕΛΙΑ" });
+                });
             } 
         } 
     });
