@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/style.css">
     
     <script src="menu-presets.js"></script> 
+    <script type="module" src="pay.js"></script> <!-- ✅ NEW: Pay Logic -->
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -28,6 +29,7 @@
             <div class="header-actions">
                 <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings">⚙️</button>
                 <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
+                <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white;">💼</button> <!-- ✅ NEW -->
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
                     <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
@@ -167,6 +169,10 @@
                     <div class="switch-row">
                         <span data-i18n="staff">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
                         <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row">
+                        <span>ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
+                        <label class="switch"><input type="checkbox" id="switchStaffCharge" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                 </div>
 
@@ -333,6 +339,38 @@
             
             <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; margin-top:10px;" onclick="App.saveExpenses()"><span data-i18n="save">💾 ΑΠΟΘΗΚΕΥΣΗ</span></button>
             <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: WALLET MODAL -->
+    <div id="walletModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" style="color:#FFD700;">💼 ΠΟΡΤΟΦΟΛΙ ΠΡΟΣΩΠΙΚΟΥ</h3>
+            
+            <div style="display:flex; justify-content:space-around; margin-bottom:15px; background:#333; padding:10px; border-radius:10px;">
+                <div style="text-align:center;">
+                    <div style="font-size:12px; color:#aaa;">ΜΕΤΡΗΤΑ (ΧΡΕΟΣ)</div>
+                    <div id="walletTotalCash" style="font-size:20px; color:#FFD700; font-weight:bold;">0.00€</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:12px; color:#aaa;">ΚΑΡΤΕΣ (ΤΡΑΠΕΖΑ)</div>
+                    <div id="walletTotalCard" style="font-size:20px; color:#00E676; font-weight:bold;">0.00€</div>
+                </div>
+            </div>
+
+            <div id="walletList" style="flex:1; overflow-y:auto; width:100%;"></div>
+            
+            <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="PaySystem.resetAll()">🗑️ ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
+            <button onclick="document.getElementById('walletModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: DELIVERY ASSIGN MODAL -->
+    <div id="deliveryAssignModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">🛵 ΑΝΑΘΕΣΗ ΔΙΑΝΟΜΗΣ</h3>
+            <div id="driverAssignList" style="display:flex; flex-direction:column; gap:10px; width:100%;"></div>
+            <button onclick="document.getElementById('deliveryAssignModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΑΚΥΡΟ</button>
         </div>
     </div>
 

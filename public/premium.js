@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
+import { PaySystem } from './pay.js'; // ✅ Import PaySystem
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -165,6 +166,7 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
+    staffChargeMode: false, // ✅ NEW: Staff Charge Setting
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     
     // Expose setLanguage for console or future use
@@ -311,6 +313,9 @@ window.App = {
         // ✅ Start Bot
         DNDBot.init();
         
+        // ✅ Init Pay System
+        PaySystem.init();
+
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         setLanguage(savedLang);
@@ -419,6 +424,7 @@ window.App = {
                 if(settings.name && inpHeader) inpHeader.value = settings.name;
                 document.getElementById('switchCust').checked = settings.statusCustomer;
                 document.getElementById('switchStaff').checked = settings.statusStaff;
+                document.getElementById('switchStaffCharge').checked = settings.staffCharge || false; // ✅ Load Setting
                 if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
                 if(settings.hours) document.getElementById('inpHours').value = settings.hours;
                 if(settings.schedule) App.scheduleData = settings.schedule;
@@ -439,6 +445,7 @@ window.App = {
                 }
                 if(settings.expensePresets) App.expensePresets = settings.expensePresets;
                 if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
+                App.staffChargeMode = settings.staffCharge || false; // ✅ Update Local State
                 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -596,7 +603,8 @@ window.App = {
         const gmaps = document.getElementById('inpGoogleMaps').value.trim();
         const ap = document.getElementById('selAutoPrint').value === 'true';
         const acp = document.getElementById('switchAutoClosePrint').checked;
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp });
+        const sc = document.getElementById('switchStaffCharge').checked; // ✅ Save Staff Charge
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1455,9 +1463,58 @@ window.App = {
         if(win) win.style.display = 'none';
     },
     markReady: (id) => {
-        window.socket.emit('ready-order', Number(id)); // Send as Number
-        const win = document.getElementById(`win-${id}`);
-        if(win) win.style.display = 'none';
+        if (App.staffChargeMode) {
+            // ✅ NEW: Αν είναι ενεργή η χρέωση προσωπικού, ανοίγουμε Modal Ανάθεσης
+            App.openDeliveryAssignModal(id);
+        } else {
+            // Κλασική λειτουργία
+            window.socket.emit('ready-order', Number(id)); 
+            const win = document.getElementById(`win-${id}`);
+            if(win) win.style.display = 'none';
+        }
+    },
+
+    openDeliveryAssignModal: (orderId) => {
+        const modal = document.getElementById('deliveryAssignModal');
+        const list = document.getElementById('driverAssignList');
+        list.innerHTML = '';
+
+        // 1. Broadcast Button
+        const btnAll = document.createElement('button');
+        btnAll.className = 'modal-btn';
+        btnAll.style.background = '#FFD700';
+        btnAll.style.color = 'black';
+        btnAll.innerHTML = '🔊 ΟΛΟΙ (Broadcast)';
+        btnAll.onclick = () => {
+            window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: 'ALL' });
+            modal.style.display = 'none';
+            App.minimizeOrder(orderId);
+        };
+        list.appendChild(btnAll);
+
+        // 2. Specific Drivers (Από το lastStaffList που έχουμε ήδη)
+        App.lastStaffList.forEach(u => {
+            if (u.role === 'driver') {
+                const btn = document.createElement('button');
+                btn.className = 'modal-btn';
+                btn.style.background = '#333';
+                btn.innerHTML = `🛵 ${u.username}`;
+                btn.onclick = () => {
+                    // Υπολογισμός ποσού για χρέωση
+                    const order = App.activeOrders.find(o => o.id == orderId);
+                    const total = calculateTotal(order.text);
+                    
+                    // Χρέωση και Ανάθεση
+                    window.socket.emit('charge-order-to-staff', { orderId: orderId, staffName: u.username, amount: total, method: 'cash' });
+                    
+                    modal.style.display = 'none';
+                    App.minimizeOrder(orderId);
+                };
+                list.appendChild(btn);
+            }
+        });
+
+        modal.style.display = 'flex';
     },
     completeOrder: (id) => {
         window.socket.emit('pay-order', Number(id)); 

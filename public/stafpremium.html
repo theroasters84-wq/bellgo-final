@@ -425,6 +425,7 @@
             allActiveOrders: [],
             selectedOrderId: null,
             updatingOrderId: null,
+            staffChargeMode: false, // ✅ NEW
             payMethod: 'cash',
             isChatOpen: false,
             
@@ -577,6 +578,7 @@
 
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
+                        App.staffChargeMode = settings.staffCharge || false; // ✅ Update local state
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
                         if(settings.statusStaff === false) {
@@ -909,7 +911,28 @@
                     </body></html>`);
             },
 
-            handlePayOrder: () => { document.getElementById('actionModal').style.display='none'; if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); },
+            handlePayOrder: () => { 
+                document.getElementById('actionModal').style.display='none'; 
+                
+                if (App.staffChargeMode) {
+                    // ✅ NEW: Staff Charge Logic
+                    const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                    const total = calculateOrderTotal(order.text);
+                    
+                    if(confirm(`💰 Χρέωση ${total.toFixed(2)}€ σε εσένα (Μετρητά); \n\n(Πατήστε Cancel για Κάρτα/Απλό Κλείσιμο)`)) {
+                        // Χρέωση στον σερβιτόρο
+                        window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'cash' });
+                    } else {
+                        // Κάρτα ή Απλό κλείσιμο (δεν χρεώνεται ο σερβιτόρος)
+                        if(confirm("Κλείσιμο ως Κάρτα/Τράπεζα;")) {
+                            window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'card' });
+                        }
+                    }
+                } else {
+                    // Old Logic
+                    if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); 
+                }
+            },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
             switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },
             toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },

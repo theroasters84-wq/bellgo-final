@@ -78,7 +78,8 @@ const defaultSettings = {
     autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
     autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
     plan: 'basic', // ✅ Καταγραφή Συνδρομής (basic/premium)
-    visibility: 'public' // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
+    visibility: 'public', // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
+    staffCharge: false // ✅ NEW: Λειτουργία Χρέωσης Προσωπικού
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -88,7 +89,7 @@ const tempBlacklist = new Set();
 async function getStoreData(storeName) {
     if (storesData[storeName]) return storesData[storeName];
     console.log(`📥 Loading data for: ${storeName}`);
-    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {} }; // ✅ NEW: staffTokens init
+    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {}, wallets: {} }; // ✅ NEW: wallets init
 
     try {
         if (db) {
@@ -99,6 +100,7 @@ async function getStoreData(storeName) {
                 if (firebaseData.menu) data.menu = firebaseData.menu;
                 if (firebaseData.staffTokens) data.staffTokens = firebaseData.staffTokens; // ✅ Load Tokens
                 if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
+                if (firebaseData.wallets) data.wallets = firebaseData.wallets; // ✅ Φόρτωση Πορτοφολιών
                 // ✅ Load Permanent Menu Backup (για επαναφορά)
                 data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
                 if (firebaseData.orders) {
@@ -164,6 +166,7 @@ async function updateStoreClients(storeName) {
     io.to(storeName).emit('orders-update', store.orders);
     io.to(storeName).emit('menu-update', store.menu || []); 
     io.to(storeName).emit('store-settings-update', store.settings);
+    io.to(storeName).emit('wallet-update', store.wallets || {}); // ✅ Ενημέρωση Πορτοφολιών
     saveStoreToFirebase(storeName);
 }
 
@@ -718,6 +721,7 @@ io.on('connection', (socket) => {
             if(data.expensePresets) store.settings.expensePresets = data.expensePresets; // ✅ Αποθήκευση Presets Εξόδων
             if(data.fixedExpenses) store.settings.fixedExpenses = data.fixedExpenses; // ✅ NEW: Αποθήκευση Πάγιων Εξόδων
             if(data.visibility) store.settings.visibility = data.visibility; // ✅ NEW: Αποθήκευση Ρύθμισης Ορατότητας (Mini App)
+            if(data.staffCharge !== undefined) store.settings.staffCharge = data.staffCharge; // ✅ NEW: Staff Charge Setting
             updateStoreClients(socket.store); 
         } 
     });
@@ -848,6 +852,48 @@ io.on('connection', (socket) => {
         } 
     });
 
+    // ✅ NEW: WALLET & CHARGE LOGIC
+    socket.on('charge-order-to-staff', (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        const { orderId, staffName, amount, method } = data; // method: 'cash' (staff debt) or 'card' (bank)
+
+        if (!store.wallets) store.wallets = {};
+        
+        // Αν είναι μετρητά, χρεώνεται στον υπάλληλο. Αν είναι κάρτα, πάει στο "Card" wallet.
+        const targetWallet = method === 'card' ? 'BANK_CARD' : (staffName || 'Admin');
+        
+        if (!store.wallets[targetWallet]) store.wallets[targetWallet] = 0;
+        store.wallets[targetWallet] += parseFloat(amount);
+
+        // Κλείσιμο παραγγελίας
+        const o = store.orders.find(x => x.id == orderId);
+        if (o) {
+            o.text += `\n✅ PAID (${method === 'card' ? '💳' : '💵'} ${staffName})`;
+            updateStoreStats(store, o);
+            store.orders = store.orders.filter(x => x.id != orderId);
+        }
+        
+        updateStoreClients(socket.store);
+    });
+
+    socket.on('reset-wallet', (targetName) => {
+        const store = getMyStore();
+        if (store && store.wallets) {
+            if (targetName === 'ALL') {
+                store.wallets = {}; // Reset All
+            } else if (store.wallets[targetName]) {
+                store.wallets[targetName] = 0; // Reset Specific
+            }
+            updateStoreClients(socket.store);
+        }
+    });
+
+    socket.on('get-wallet-data', () => {
+        const store = getMyStore();
+        if(store) socket.emit('wallet-update', store.wallets || {});
+    });
+
     socket.on('ready-order', (id) => { 
         const store = getMyStore(); 
         if(store){ 
@@ -861,6 +907,24 @@ io.on('connection', (socket) => {
                 const tKey = `${socket.store}_${o.from}`; 
                 const tUser = activeUsers[tKey]; 
                 if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
+            } 
+        } 
+    });
+
+    // ✅ NEW: DELIVERY ASSIGNMENT (BROADCAST OR SPECIFIC)
+    socket.on('assign-delivery', (data) => {
+        const store = getMyStore();
+        if(!store) return;
+        const { orderId, targetDriver } = data; // targetDriver: username or 'ALL'
+        
+        const order = store.orders.find(o => o.id == orderId);
+        if(order) {
+            if (targetDriver === 'ALL') {
+                // Broadcast σε όλους τους οδηγούς
+                io.to(socket.store).emit('delivery-offer', { orderId: orderId });
+            } else {
+                // Ανάθεση σε συγκεκριμένο (θα μπορούσε να στείλει push notification εδώ)
+                notifyAdmin(socket.store, "ΑΝΑΘΕΣΗ ΔΙΑΝΟΜΗΣ 🛵", `Έχεις νέα παραγγελία!`, null, targetDriver); // Χρήση notifyAdmin αλλά με targetDriver logic αν υπήρχε
             } 
         } 
     });
