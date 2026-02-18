@@ -313,6 +313,7 @@ app.get('/manage/kitchen.html', (req, res) => {
 });
 
 app.get('/staff/app', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'stafpremium.html')); });
+app.get('/staff/driver', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'dianomeas.html')); });
 
 // ✅ NEW: Explicit Route για το Trapaizei (Table Ordering)
 app.get('/trapaizei.html', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'trapaizei.html')); });

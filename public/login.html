@@ -259,7 +259,11 @@
                                 }
                             } else {
                                 // Staff (waiter/driver)
-                                window.location.replace(session.plan === 'premium' ? "/staff/app" : "/manage/index.html");
+                                if (session.role === 'driver') {
+                                    window.location.replace("/staff/driver");
+                                } else {
+                                    window.location.replace(session.plan === 'premium' ? "/staff/app" : "/manage/index.html");
+                                }
                             }
                             return; // Σταματάμε εδώ για να μην φορτώσει η φόρμα
                         }
@@ -373,7 +377,11 @@
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
                                 if (subData.plan === 'premium') {
-                                    window.location.replace("/staff/app");
+                                    if (role === 'driver') {
+                                        window.location.replace("/staff/driver");
+                                    } else {
+                                        window.location.replace("/staff/app");
+                                    }
                                 } else {
                                     window.location.replace("/manage/index.html"); 
                                 }
