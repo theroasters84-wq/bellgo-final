@@ -872,7 +872,8 @@ window.App = {
         try {
             const res = await fetch('/create-qr-payment', { // Χρησιμοποιούμε το QR endpoint που δέχεται orderId
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId
+                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId })
+            });
             const data = await res.json();
             if(data.url) window.location.href = data.url;
             else alert((t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο"));
@@ -989,7 +990,8 @@ window.App = {
             const res = await fetch('/create-order-payment', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: totalAmount, s
+                body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })
+            });
             const data = await res.json();
             if(data.url) { window.location.href = data.url; } 
             else { alert((t('payment_error') || "Σφάλμα πληρωμής: ") + (data.error || "Άγνωστο")); }
