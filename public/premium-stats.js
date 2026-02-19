@@ -172,6 +172,8 @@ export const StatsUI = {
         let totalFixed = 0; // Estimate based on current settings * days? Or just sum wages?
         // Note: For global dashboard, "Logistis" is tricky because Fixed Expenses are daily/monthly.
         // We will show Logistis mainly in Month/Day views where it's accurate.
+        
+        let globalHours = {}; // ✅ NEW: Aggregate Hours
 
         months.forEach(m => {
             totalTurnover += (stats[m].turnover || 0);
@@ -181,6 +183,12 @@ export const StatsUI = {
                 Object.values(stats[m].days).forEach(d => {
                     if (d.expenses && d.expenses.total) totalExpenses += d.expenses.total;
                     if (d.expenses && d.expenses.wages) totalWages += d.expenses.wages;
+                });
+            }
+            // ✅ NEW: Aggregate Hours for Global Chart
+            if (stats[m].hours) {
+                Object.keys(stats[m].hours).forEach(h => {
+                    globalHours[h] = (globalHours[h] || 0) + stats[m].hours[h];
                 });
             }
         });
@@ -199,6 +207,12 @@ export const StatsUI = {
                     <div style="font-size:10px; color:#aaa; margin-top:2px;">(Έξοδα: -${totalExpenses.toFixed(2)}€)</div>
                 </div>
             </div>
+            
+            <h3 class="stats-section-title" style="margin-top:20px;">⏰ Ώρες Αιχμής (Συνολικά)</h3>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">
+                ${StatsUI.getPeakHoursHtml(globalHours, null)}
+            </div>
+
             <h3 class="stats-section-title">Ανάλυση ανά Μήνα</h3>
             <div class="stats-list">
         `;
@@ -331,15 +345,14 @@ export const StatsUI = {
 
             ${StatsUI.getQrStatsHtml(monthData.qrStats)}
 
-            <h3 class="stats-section-title">🏆 Top Προϊόντα</h3>
-            <h3 class="stats-section-title">Προϊόντα (Top Sellers)</h3>
+            <h3 class="stats-section-title" style="margin-top:20px;">⏰ Ώρες Αιχμής (Μήνας)</h3>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(monthData.hours, {type:'month', key:monthKey})}</div>
+
+            <h3 class="stats-section-title">🏆 Top Προϊόντα (Top Sellers)</h3>
             <div class="stats-products-list">${productsHtml}</div>
 
             <h3 class="stats-section-title" style="margin-top:20px; color:#aaa; border-color:#444;">📉 Λιγότερο Δημοφιλή</h3>
             <div class="stats-products-list">${leastSoldHtml || '<p style="color:#666;">Δεν υπάρχουν δεδομένα.</p>'}</div>
-
-            <h3 class="stats-section-title" style="margin-top:20px;">⏰ Ώρες Αιχμής (Μήνας)</h3>
-            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(monthData.hours, {type:'month', key:monthKey})}</div>
             
             <h3 class="stats-section-title" style="margin-top:20px;">Ανάλυση ανά Ημέρα</h3>
             <div class="stats-list">
