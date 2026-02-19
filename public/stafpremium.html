@@ -74,6 +74,12 @@
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
 
+                <!-- ✅ NEW: RESERVATIONS ICON (1h Before) -->
+                <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
+                    <button id="btnRes" class="btn-icon" onclick="App.openReservations()" title="Κρατήσεις" style="background:#9C27B0; color:white;">🍽️</button>
+                    <div id="resBadge" class="chat-badge"></div>
+                </div>
+
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ">🔔</button>
                 
                 <button class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings">⚙️</button>
@@ -196,6 +202,15 @@
                 <h3 style="color:#FFD700; text-align:center; margin:0; margin-bottom:15px;" data-i18n="settings">ΡΥΘΜΙΣΕΙΣ</h3>
                 <button class="btn-act" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+            </div>
+        </div>
+
+        <!-- ✅ NEW: RESERVATIONS MODAL -->
+        <div id="staffReservationsModal" class="overlay-screen" onclick="document.getElementById('staffReservationsModal').style.display='none'">
+            <div class="action-box" onclick="event.stopPropagation()">
+                <h3 style="color:#9C27B0; text-align:center; margin:0; margin-bottom:15px;">📅 ΕΠΙΚΕΙΜΕΝΕΣ ΚΡΑΤΗΣΕΙΣ (1h)</h3>
+                <div id="resList" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+                <button class="btn-act" style="background:#555; color:white; margin-top:10px;" onclick="document.getElementById('staffReservationsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
 
@@ -423,6 +438,7 @@
 
         window.App = {
             allActiveOrders: [],
+            allReservations: [], // ✅ NEW
             selectedOrderId: null,
             updatingOrderId: null,
             staffChargeMode: false, // ✅ NEW
@@ -433,6 +449,61 @@
             menuData: [],
             currentItem: null,
             tempSelectedExtras: [],
+
+            // ✅ NEW: Check Reservations Logic
+            checkUpcomingReservations: () => {
+                const list = App.allReservations || [];
+                const now = new Date();
+                const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+                
+                let count = 0;
+                list.forEach(r => {
+                    if(r.status === 'cancelled') return;
+                    try {
+                        // Format assumption: date="YYYY-MM-DD", time="HH:MM"
+                        const d = new Date(r.date + 'T' + r.time);
+                        // Check if valid and within next hour (and not in past)
+                        if(d > now && d <= oneHourLater) {
+                            count++;
+                        }
+                    } catch(e){}
+                });
+                
+                const wrapper = document.getElementById('resWrapper');
+                const badge = document.getElementById('resBadge');
+                
+                if(count > 0) {
+                    wrapper.style.display = 'flex';
+                    badge.style.display = 'flex';
+                    badge.innerText = count;
+                } else {
+                    wrapper.style.display = 'none';
+                }
+            },
+
+            openReservations: () => {
+                const modal = document.getElementById('staffReservationsModal');
+                const listDiv = document.getElementById('resList');
+                listDiv.innerHTML = '';
+                
+                const now = new Date();
+                const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+                
+                const upcoming = App.allReservations.filter(r => {
+                    if(r.status === 'cancelled') return false;
+                    try { const d = new Date(r.date + 'T' + r.time); return d > now && d <= oneHourLater; } catch(e){return false;}
+                });
+                
+                if(upcoming.length === 0) listDiv.innerHTML = '<div style="text-align:center; color:#aaa;">Καμία κράτηση την επόμενη ώρα.</div>';
+                
+                upcoming.forEach(r => {
+                    const div = document.createElement('div');
+                    div.style.cssText = "background:#222; padding:10px; border-radius:8px; border:1px solid #444;";
+                    div.innerHTML = `<div style="color:#FFD700; font-weight:bold;">${r.time} - ${r.name}</div><div style="color:white;">${r.pax || '?'} Άτομα • ${r.phone || ''}</div>${r.notes ? `<div style="color:#aaa; font-size:12px; margin-top:5px;">📝 ${r.notes}</div>` : ''}`;
+                    listDiv.appendChild(div);
+                });
+                modal.style.display = 'flex';
+            },
 
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
@@ -492,6 +563,7 @@
                 // Load Language
                 const savedLang = localStorage.getItem('bellgo_lang') || 'el';
                 setLanguage(savedLang);
+                setInterval(() => App.checkUpcomingReservations(), 60000); // Check every minute
             },
 
             checkNotificationPermission: () => {
@@ -564,6 +636,11 @@
                         token: localStorage.getItem('fcm_token'), 
                         isNative: !!window.Capacitor
                     });
+                });
+
+                socket.on('reservations-update', (data) => {
+                    App.allReservations = data || [];
+                    App.checkUpcomingReservations();
                 });
 
                 socket.on('ring-bell', (data) => {
@@ -882,6 +959,160 @@
 
                         document.getElementById('qrPaymentModal').style.display = 'flex';
                     } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
+                } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            },
+
+            // ✅ NEW: PRINT ORDER (STAFF)
+            printOrder: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                if(!order) return;
+                
+                const total = calculateOrderTotal(order.text);
+                const date = new Date(order.id).toLocaleString('el-GR');
+                const storeName = userData.store || "BellGo Order";
+                const itemsHtml = order.text.replace(/\n/g, '<br>');
+
+                const win = window.open('', '', 'width=300,height=600');
+                win.document.write(`
+                    <html><head><title>Print</title><style>
+                        body { font-family: 'Courier New', monospace; width: 280px; margin: 0 auto; padding: 10px; color: black; }
+                        .header { text-align: center; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 10px;}
+                        .items { font-size: 14px; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .total { text-align: right; font-size: 18px; font-weight: bold; }
+                    </style></head><body>
+                        <div class="header">${storeName}<br>${date}<br>${order.from}</div>
+                        <div class="items">${itemsHtml}</div>
+                        <div class="total">TOTAL: ${total.toFixed(2)}€</div>
+                        <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }<\/script>
+                    </body></html>`);
+            },
+
+            handlePayOrder: () => { 
+                document.getElementById('actionModal').style.display='none'; 
+                
+                if (App.staffChargeMode) {
+                    // ✅ NEW: Staff Charge Logic
+                    const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                    const total = calculateOrderTotal(order.text);
+                    
+                    if(confirm(`💰 Χρέωση ${total.toFixed(2)}€ σε εσένα (Μετρητά); \n\n(Πατήστε Cancel για Κάρτα/Απλό Κλείσιμο)`)) {
+                        // Χρέωση στον σερβιτόρο
+                        window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'cash' });
+                    } else {
+                        // Κάρτα ή Απλό κλείσιμο (δεν χρεώνεται ο σερβιτόρος)
+                        if(confirm("Κλείσιμο ως Κάρτα/Τράπεζα;")) {
+                            window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'card' });
+                        }
+                    }
+                } else {
+                    // Old Logic
+                    if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); 
+                }
+            },
+            toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
+            switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },
+            toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },
+            sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
+            appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
+            toggleFakeLock: () => { 
+                const el=document.getElementById('fakeLockOverlay'); 
+                const isLocked = (el.style.display !== 'flex');
+                el.style.display = isLocked ? 'flex' : 'none';
+                // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
+                if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
+            },
+            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+        };
+        window.onload = App.init;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation
+                .then(() => console.log('✅ Staff Service Worker Registered'))
+                .catch(err => console.log('❌ Staff SW Error:', err));
+        }
+    </script>
+    <script src="player.js"></script>
+    <script src="keepalive.js"></script>
+</body>
+</html>
+                } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            },
+
+            // ✅ NEW: PRINT ORDER (STAFF)
+            printOrder: () => {
+                document.getElementById('actionModal').style.display = 'none';
+                const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                if(!order) return;
+                
+                const total = calculateOrderTotal(order.text);
+                const date = new Date(order.id).toLocaleString('el-GR');
+                const storeName = userData.store || "BellGo Order";
+                const itemsHtml = order.text.replace(/\n/g, '<br>');
+
+                const win = window.open('', '', 'width=300,height=600');
+                win.document.write(`
+                    <html><head><title>Print</title><style>
+                        body { font-family: 'Courier New', monospace; width: 280px; margin: 0 auto; padding: 10px; color: black; }
+                        .header { text-align: center; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 10px;}
+                        .items { font-size: 14px; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                        .total { text-align: right; font-size: 18px; font-weight: bold; }
+                    </style></head><body>
+                        <div class="header">${storeName}<br>${date}<br>${order.from}</div>
+                        <div class="items">${itemsHtml}</div>
+                        <div class="total">TOTAL: ${total.toFixed(2)}€</div>
+                        <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }<\/script>
+                    </body></html>`);
+            },
+
+            handlePayOrder: () => { 
+                document.getElementById('actionModal').style.display='none'; 
+                
+                if (App.staffChargeMode) {
+                    // ✅ NEW: Staff Charge Logic
+                    const order = App.allActiveOrders.find(o => o.id == App.selectedOrderId);
+                    const total = calculateOrderTotal(order.text);
+                    
+                    if(confirm(`💰 Χρέωση ${total.toFixed(2)}€ σε εσένα (Μετρητά); \n\n(Πατήστε Cancel για Κάρτα/Απλό Κλείσιμο)`)) {
+                        // Χρέωση στον σερβιτόρο
+                        window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'cash' });
+                    } else {
+                        // Κάρτα ή Απλό κλείσιμο (δεν χρεώνεται ο σερβιτόρος)
+                        if(confirm("Κλείσιμο ως Κάρτα/Τράπεζα;")) {
+                            window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'card' });
+                        }
+                    }
+                } else {
+                    // Old Logic
+                    if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); 
+                }
+            },
+            toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },
+            switchTab: (m) => { document.getElementById('tabMyOrders').className=m==='my'?'tab-btn active':'tab-btn'; document.getElementById('tabAllOrders').className=m==='all'?'tab-btn active':'tab-btn'; UI.filterOrders(); },
+            toggleChat: () => { const el=document.getElementById('staffChatOverlay'); App.isChatOpen=(el.style.display==='flex'); if(App.isChatOpen){el.style.display='none';App.isChatOpen=false;}else{el.style.display='flex';App.isChatOpen=true;document.getElementById('chatBadge').style.display='none';} },
+            sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
+            appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
+            toggleFakeLock: () => { 
+                const el=document.getElementById('fakeLockOverlay'); 
+                const isLocked = (el.style.display !== 'flex');
+                el.style.display = isLocked ? 'flex' : 'none';
+                // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
+                if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
+            },
+            logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
+            startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)
+        };
+        window.onload = App.init;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js', { scope: '/staff/' }) // ✅ FIX: Scope Isolation
+                .then(() => console.log('✅ Staff Service Worker Registered'))
+                .catch(err => console.log('❌ Staff SW Error:', err));
+        }
+    </script>
+    <script src="player.js"></script>
+    <script src="keepalive.js"></script>
+</body>
+</html>
                 } catch(e) { alert("Σφάλμα σύνδεσης."); }
             },
 
