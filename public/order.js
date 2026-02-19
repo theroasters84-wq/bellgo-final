@@ -1089,10 +1089,21 @@ window.App = {
             return;
         }
         
+        // ✅ FIX: Κρύβουμε το αρχικό παράθυρο επιλογής για να φανεί η λίστα
+        document.getElementById('choiceModal').style.display = 'none';
+        
         document.getElementById('myReservationsModal').style.display = 'flex';
         document.getElementById('myReservationsList').innerHTML = '<p style="text-align:center; color:#aaa;">Φόρτωση...</p>';
         
         window.socket.emit('get-customer-reservations', myResIds);
+    },
+
+    closeMyReservations: () => {
+        document.getElementById('myReservationsModal').style.display = 'none';
+        // Αν δεν έχει επιλέξει ακόμα ενέργεια (είναι στην αρχική οθόνη), επαναφορά του Choice Modal
+        if (!sessionStorage.getItem('bellgo_choice_made')) {
+            document.getElementById('choiceModal').style.display = 'flex';
+        }
     },
 
     renderMyReservations: (list) => {

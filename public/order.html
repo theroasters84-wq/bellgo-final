@@ -146,11 +146,11 @@
     </div>
 
     <!-- ✅ NEW: MY RESERVATIONS MODAL -->
-    <div id="myReservationsModal" class="overlay-screen">
+    <div id="myReservationsModal" class="overlay-screen" style="z-index: 13000;">
         <div class="details-box">
             <h3 style="color:#9C27B0; margin:0;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</h3>
             <div id="myReservationsList" style="margin-top:15px; max-height:300px; overflow-y:auto; width:100%;"></div>
-            <button onclick="document.getElementById('myReservationsModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+            <button onclick="App.closeMyReservations()" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
@@ -170,6 +170,7 @@
                     <span id="lang-el" class="lang-option active" onclick="App.setLanguage('el')">EL</span>
                     <span id="lang-en" class="lang-option" onclick="App.setLanguage('en')">EN</span>
                 </div>
+                <button id="btnHeaderMyRes" class="btn-header-install" style="display:none; background:#333; color:white; margin-right:5px; align-items:center; gap:5px;" onclick="App.openMyReservations()">📋 <span style="font-size:10px;">ΚΡΑΤΗΣΕΙΣ</span></button>
                 <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ <span data-i18n="review">ΑΞΙΟΛΟΓΗΣΗ</span></button>
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 <span data-i18n="app">APP</span></button>
             </div>

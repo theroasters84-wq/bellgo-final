@@ -573,6 +573,10 @@ function sendPushNotification(target, title, body, dataPayload = { type: "alarm"
     if (target && target.fcmToken) { 
         let targetUrl = "/stafpremium.html";
         if (target.role === 'admin') targetUrl = "/premium.html";
+        // ✅ FIX: Αν είναι πελάτης, άνοιξε το order.html (ή το shop link)
+        if (target.role === 'customer') {
+            targetUrl = target.store ? `/shop/${encodeURIComponent(target.store)}/` : "/order.html";
+        }
 
         const msg = {
             token: target.fcmToken,
@@ -1196,6 +1200,7 @@ io.on('connection', (socket) => {
                 // ✅ NEW: Notify Customer if Admin cancels
                 if (r.customerToken) {
                     sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" });
+                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: socket.store }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" });
                 }
                 store.reservations.splice(rIndex, 1);
                 saveStoreToFirebase(socket.store);
@@ -1431,6 +1436,7 @@ setInterval(() => {
                 if (rTime > now && rTime - now <= 10800000 && !r.notifiedCustomer3h && r.customerToken) {
                     r.notifiedCustomer3h = true;
                     sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" });
+                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: storeName }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" });
                     saveStoreToFirebase(storeName);
                 }
 
