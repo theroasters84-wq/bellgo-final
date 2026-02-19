@@ -319,6 +319,7 @@ window.App = {
         document.getElementById('inpAddress').value = customerDetails.address;
         document.getElementById('inpFloor').value = customerDetails.floor;
         document.getElementById('inpPhone').value = customerDetails.phone;
+        document.getElementById('inpZip').value = customerDetails.zip || '';
     },
 
     startApp: () => {

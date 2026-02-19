@@ -1181,9 +1181,11 @@ window.App = {
         } else if (App.sidebarMode === 'delivery') {
             const name = document.getElementById('sidebarDelName').value.trim();
             const addr = document.getElementById('sidebarDelAddr').value.trim();
+            const floor = document.getElementById('sidebarDelFloor').value.trim();
             const phone = document.getElementById('sidebarDelPhone').value.trim();
+            const zip = document.getElementById('sidebarDelZip').value.trim();
             if(!name || !addr || !phone) return alert("Συμπληρώστε τα στοιχεία Delivery!");
-            header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📞 ${phone}\n💵 ΜΕΤΡΗΤΑ`;
+            header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📮 T.K.: ${zip || '-'}\n🏢 ${floor || '-'}\n📞 ${phone}\n💵 ΜΕΤΡΗΤΑ`;
         }
         
         const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
@@ -1195,7 +1197,9 @@ window.App = {
         if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = '';
         if(document.getElementById('sidebarDelName')) document.getElementById('sidebarDelName').value = '';
         if(document.getElementById('sidebarDelAddr')) document.getElementById('sidebarDelAddr').value = '';
+        if(document.getElementById('sidebarDelFloor')) document.getElementById('sidebarDelFloor').value = '';
         if(document.getElementById('sidebarDelPhone')) document.getElementById('sidebarDelPhone').value = '';
+        if(document.getElementById('sidebarDelZip')) document.getElementById('sidebarDelZip').value = '';
         App.toggleOrderSidebar(); // Close
     },
 
