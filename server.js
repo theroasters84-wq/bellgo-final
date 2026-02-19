@@ -79,7 +79,9 @@ const defaultSettings = {
     autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
     plan: 'basic', // ✅ Καταγραφή Συνδρομής (basic/premium)
     visibility: 'public', // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
-    staffCharge: false // ✅ NEW: Λειτουργία Χρέωσης Προσωπικού
+    staffCharge: false, // ✅ NEW: Λειτουργία Χρέωσης Προσωπικού
+    reservationsEnabled: false, // ✅ NEW: Κρατήσεις
+    totalTables: 0 // ✅ NEW: Σύνολο Τραπεζιών
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -89,7 +91,7 @@ const tempBlacklist = new Set();
 async function getStoreData(storeName) {
     if (storesData[storeName]) return storesData[storeName];
     console.log(`📥 Loading data for: ${storeName}`);
-    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {}, wallets: {} }; // ✅ NEW: wallets init
+    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {}, wallets: {}, reservations: [] }; // ✅ NEW: reservations init
 
     try {
         if (db) {
@@ -101,6 +103,7 @@ async function getStoreData(storeName) {
                 if (firebaseData.staffTokens) data.staffTokens = firebaseData.staffTokens; // ✅ Load Tokens
                 if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
                 if (firebaseData.wallets) data.wallets = firebaseData.wallets; // ✅ Φόρτωση Πορτοφολιών
+                if (firebaseData.reservations) data.reservations = firebaseData.reservations; // ✅ Φόρτωση Κρατήσεων
                 // ✅ Load Permanent Menu Backup (για επαναφορά)
                 data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
                 if (firebaseData.orders) {
@@ -736,6 +739,8 @@ io.on('connection', (socket) => {
             if(data.fixedExpenses) store.settings.fixedExpenses = data.fixedExpenses; // ✅ NEW: Αποθήκευση Πάγιων Εξόδων
             if(data.visibility) store.settings.visibility = data.visibility; // ✅ NEW: Αποθήκευση Ρύθμισης Ορατότητας (Mini App)
             if(data.staffCharge !== undefined) store.settings.staffCharge = data.staffCharge; // ✅ NEW: Staff Charge Setting
+            if(data.reservationsEnabled !== undefined) store.settings.reservationsEnabled = data.reservationsEnabled; // ✅ NEW
+            if(data.totalTables !== undefined) store.settings.totalTables = data.totalTables; // ✅ NEW
             updateStoreClients(socket.store); 
         } 
     });
@@ -1050,6 +1055,78 @@ io.on('connection', (socket) => {
             socket.emit('stats-data', {}); // Κενά αν δεν υπάρχουν
         }
     });
+    
+    // ✅✅✅ NEW: RESERVATION LOGIC ✅✅✅
+    socket.on('create-reservation', (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        
+        const { name, phone, date, time, pax } = data; // date: YYYY-MM-DD, time: HH:MM
+        const totalTables = parseInt(store.settings.totalTables) || 0;
+        
+        if (!store.settings.reservationsEnabled || totalTables === 0) {
+             socket.emit('reservation-result', { success: false, error: "Οι κρατήσεις είναι κλειστές." });
+             return;
+        }
+
+        // 1. Υπολογισμός Κρατήσεων που πέφτουν πάνω στην ώρα (±2 ώρες)
+        const reqDate = new Date(`${date}T${time}`);
+        const reqTime = reqDate.getTime();
+        
+        const conflicting = (store.reservations || []).filter(r => {
+            const rTime = new Date(`${r.date}T${r.time}`).getTime();
+            return Math.abs(rTime - reqTime) < 7200000; // 2 hours overlap
+        });
+        
+        // 2. Υπολογισμός Ενεργών Τραπεζιών (ΜΟΝΟ αν η κράτηση είναι για ΤΩΡΑ)
+        let occupied = 0;
+        const now = Date.now();
+        // Αν η κράτηση είναι μέσα στο επόμενο 2ωρο, μετράμε και τα τραπέζια που τρώνε τώρα
+        if (reqTime > now && reqTime - now < 7200000) {
+             const activeTables = new Set();
+             store.orders.forEach(o => {
+                 if (o.status !== 'completed' && !o.text.includes('PAID')) {
+                     const m = o.text.match(/\[ΤΡ:\s*([^|\]]+)/);
+                     if (m) activeTables.add(m[1]);
+                 }
+             });
+             occupied = activeTables.size;
+        }
+
+        if (conflicting.length + occupied >= totalTables) {
+             socket.emit('reservation-result', { success: false, error: "Δεν υπάρχει διαθεσιμότητα για αυτή την ώρα." });
+             return;
+        }
+
+        const newRes = {
+            id: Date.now(),
+            name, phone, date, time, pax,
+            status: 'confirmed',
+            notified: false
+        };
+        
+        if (!store.reservations) store.reservations = [];
+        store.reservations.push(newRes);
+        saveStoreToFirebase(socket.store);
+        
+        socket.emit('reservation-result', { success: true });
+        notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ 📅", `${name} (${pax} άτ.)\n${date} ${time}`);
+        io.to(socket.store).emit('reservations-update', store.reservations);
+    });
+
+    socket.on('get-reservations', () => {
+        const store = getMyStore();
+        if(store) socket.emit('reservations-update', store.reservations || []);
+    });
+    
+    socket.on('delete-reservation', (id) => {
+        const store = getMyStore();
+        if(store && store.reservations) {
+            store.reservations = store.reservations.filter(r => r.id !== id);
+            saveStoreToFirebase(socket.store);
+            io.to(socket.store).emit('reservations-update', store.reservations);
+        }
+    });
 
     // ✅ NEW: DEVELOPER ANALYTICS (Πελάτες, Κέρδη, Emails)
     socket.on('get-dev-analytics', async () => {
@@ -1264,6 +1341,23 @@ setInterval(() => {
             } 
         }); 
     } catch (e) {} 
+    
+    // ✅ NEW: RESERVATION NOTIFICATIONS (1 HOUR BEFORE)
+    Object.keys(storesData).forEach(storeName => {
+        const store = storesData[storeName];
+        if (store.reservations) {
+            const now = Date.now();
+            store.reservations.forEach(r => {
+                const rTime = new Date(`${r.date}T${r.time}`).getTime();
+                // Ειδοποίηση αν είναι σε λιγότερο από 1 ώρα (και δεν έχει ειδοποιηθεί)
+                if (rTime > now && rTime - now <= 3600000 && !r.notified) {
+                    r.notified = true;
+                    notifyAdmin(storeName, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ ⏰", `Σε 1 ώρα:\n${r.name} (${r.pax} άτ.)`);
+                    saveStoreToFirebase(storeName);
+                }
+            });
+        }
+    });
 }, 60000); 
 setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
 

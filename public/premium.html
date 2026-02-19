@@ -29,6 +29,7 @@
             <div class="header-actions">
                 <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings">⚙️</button>
                 <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
+                <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button> <!-- ✅ NEW -->
                 <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white;">💼</button> <!-- ✅ NEW -->
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -175,6 +176,15 @@
                     <div class="switch-row">
                         <span>ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
                         <label class="switch"><input type="checkbox" id="switchStaffCharge" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                    </div>
+                    <!-- ✅ NEW: RESERVATIONS SETTINGS -->
+                    <div class="switch-row">
+                        <span>ONLINE ΚΡΑΤΗΣΕΙΣ</span>
+                        <label class="switch"><input type="checkbox" id="switchReservations" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                        <span style="font-size:12px; color:#aaa;">ΣΥΝΟΛΟ ΤΡΑΠΕΖΙΩΝ:</span>
+                        <input type="number" id="inpTotalTables" class="inp-settings" style="width:60px; text-align:center;" placeholder="0" onblur="App.autoSaveSettings()">
                     </div>
                 </div>
 
@@ -377,6 +387,15 @@
             
             <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="PaySystem.resetAll()">🗑️ ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
             <button onclick="document.getElementById('walletModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: RESERVATIONS MODAL (AGENDA) -->
+    <div id="reservationsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" style="color:#9C27B0;">📅 ΑΤΖΕΝΤΑ ΚΡΑΤΗΣΕΩΝ</h3>
+            <div id="reservationsList" style="flex:1; overflow-y:auto; width:100%; display:flex; flex-direction:column; gap:10px;"></div>
+            <button onclick="document.getElementById('reservationsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 

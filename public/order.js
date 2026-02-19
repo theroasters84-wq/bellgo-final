@@ -678,6 +678,12 @@ window.App = {
                 App.updateStatusUI(false);
             }
         });
+        
+        // ✅ NEW: Reservation Result
+        socket.on('reservation-result', (res) => {
+            if(res.success) { alert("Η κράτηση έγινε επιτυχώς! ✅"); document.getElementById('bookingModal').style.display='none'; }
+            else { alert("Σφάλμα: " + res.error); }
+        });
 
         // ✅ Force Connect / Re-Join if needed
         if (!socket.connected) {
@@ -976,6 +982,28 @@ window.App = {
             }
         }
         return total;
+    },
+    
+    // ✅ NEW: BOOKING LOGIC
+    openBookingModal: () => {
+        document.getElementById('bookingModal').style.display = 'flex';
+        // Pre-fill name/phone if available
+        if(customerDetails) {
+            if(customerDetails.name) document.getElementById('inpBookName').value = customerDetails.name;
+            if(customerDetails.phone) document.getElementById('inpBookPhone').value = customerDetails.phone;
+        }
+    },
+    
+    submitReservation: () => {
+        const date = document.getElementById('inpBookDate').value;
+        const time = document.getElementById('inpBookTime').value;
+        const pax = document.getElementById('inpBookPax').value;
+        const name = document.getElementById('inpBookName').value;
+        const phone = document.getElementById('inpBookPhone').value;
+        
+        if(!date || !time || !pax || !name || !phone) return alert("Συμπληρώστε όλα τα πεδία!");
+        
+        window.socket.emit('create-reservation', { date, time, pax, name, phone });
     },
 
     requestPayment: () => {

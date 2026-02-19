@@ -451,6 +451,10 @@ window.App = {
                 const sw1 = document.getElementById('switchStaffCharge'); if(sw1) sw1.checked = App.staffChargeMode;
                 const sw2 = document.getElementById('switchStaffChargeWallet'); if(sw2) sw2.checked = App.staffChargeMode;
                 
+                // ✅ NEW: Reservations Settings
+                if(settings.reservationsEnabled !== undefined) document.getElementById('switchReservations').checked = settings.reservationsEnabled;
+                if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
+
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
                     statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId;
@@ -470,6 +474,9 @@ window.App = {
             App.renderStaffList(list);
         });
         
+        // ✅ NEW: Reservations Update
+        socket.on('reservations-update', (list) => App.renderReservations(list));
+
         socket.on('staff-accepted-alarm', (data) => {
             if(!App.tempComingState) App.tempComingState = {};
             App.tempComingState[data.username] = Date.now();
@@ -613,7 +620,10 @@ window.App = {
         const ap = document.getElementById('selAutoPrint').value === 'true';
         const acp = document.getElementById('switchAutoClosePrint').checked;
         const sc = document.getElementById('switchStaffCharge').checked; // ✅ Save Staff Charge
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc });
+        const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
+        const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
+
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1622,6 +1632,44 @@ window.App = {
         });
     },
     
+    // ✅ NEW: RESERVATIONS LOGIC
+    openReservationsModal: () => {
+        document.getElementById('reservationsModal').style.display = 'flex';
+        window.socket.emit('get-reservations');
+    },
+    
+    renderReservations: (list) => {
+        const container = document.getElementById('reservationsList');
+        if(!container) return;
+        container.innerHTML = '';
+        
+        if(!list || list.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#555;">Δεν υπάρχουν κρατήσεις.</div>';
+            return;
+        }
+
+        // Sort by Date/Time
+        list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+        list.forEach(r => {
+            const div = document.createElement('div');
+            div.style.cssText = "background:#222; padding:10px; border-radius:8px; border-left:4px solid #9C27B0; display:flex; justify-content:space-between; align-items:center;";
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.)</div>
+                    <div style="color:#FFD700; font-size:14px;">📅 ${r.date} 🕒 ${r.time}</div>
+                    <div style="color:#aaa; font-size:12px;">📞 ${r.phone}</div>
+                </div>
+                <button onclick="App.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
+            `;
+            container.appendChild(div);
+        });
+    },
+    
+    deleteReservation: (id) => {
+        if(confirm("Διαγραφή κράτησης;")) window.socket.emit('delete-reservation', id);
+    },
+
     toggleAdminChat: () => { 
         const el = document.getElementById('adminChatOverlay');
         App.isChatOpen = (el.style.display === 'flex');

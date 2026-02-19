@@ -119,6 +119,22 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: BOOKING MODAL -->
+    <div id="bookingModal" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#9C27B0; margin:0;" data-i18n="book_table">📅 ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+                <input type="date" id="inpBookDate" class="inp-detail" style="text-align:center;">
+                <input type="time" id="inpBookTime" class="inp-detail" style="text-align:center;">
+                <input type="number" id="inpBookPax" class="inp-detail" placeholder="Άτομα" style="text-align:center;">
+                <input type="tel" id="inpBookPhone" class="inp-detail" placeholder="Τηλέφωνο" style="text-align:center;">
+                <input type="text" id="inpBookName" class="inp-detail" placeholder="Όνομα" style="text-align:center;">
+            </div>
+            <button class="btn-save-details" onclick="App.submitReservation()" style="background:#9C27B0; margin-top:15px;" data-i18n="confirm_booking">ΚΡΑΤΗΣΗ</button>
+            <button onclick="document.getElementById('bookingModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
+        </div>
+    </div>
+
     <div id="appContent" style="display:none;">
         <div class="header">
             <div class="header-left">
@@ -155,6 +171,8 @@
             <div class="panel-content">
                 <div class="address-bar">
                     <span id="displayAddress">...</span>
+                    <!-- ✅ NEW: BOOKING BUTTON -->
+                    <button id="btnBookTable" onclick="App.openBookingModal()" style="display:none; background:#9C27B0; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold;">📅 ΚΡΑΤΗΣΗ</button>
                     <button class="btn-edit" onclick="App.editDetails()">✏️ <span data-i18n="change">Αλλαγή</span></button>
                 </div>
                 
