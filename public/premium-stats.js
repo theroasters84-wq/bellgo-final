@@ -57,13 +57,6 @@ export const StatsUI = {
     // ✅ NEW: Helper για Γράφημα Ωρών (Bar Chart)
     getPeakHoursHtml: (hoursData) => {
         if (!hoursData || Object.keys(hoursData).length === 0) return '<p style="color:#666; font-size:12px;">Δεν υπάρχουν δεδομένα ωρών.</p>';
-    // ✅ NEW: LOGISTIS BAR (Ο ΛΟΓΙΣΤΗΣ)
-    // Formula: (Turnover * 0.532) - Fixed - Wages
-    // Explanation: T - 30% (Cost) = 0.7T. VAT is 24% of 0.7T = 0.168T.
-    // Net = 0.7T - 0.168T = 0.532T. Then subtract Fixed (Pagia) and Wages.
-    getLogistisHtml: (turnover, fixedExpenses, wages) => {
-        const estimatedNet = (turnover * 0.532) - fixedExpenses - wages;
-        const color = estimatedNet >= 0 ? '#00E676' : '#FF5252';
         
         const hours = Object.keys(hoursData).sort();
         const max = Math.max(...Object.values(hoursData));
@@ -78,6 +71,16 @@ export const StatsUI = {
         });
         html += '</div><div style="text-align:center; font-size:10px; color:#aaa; margin-top:15px; font-weight:bold;">ΩΡΕΣ ΑΙΧΜΗΣ (Αριθμός Παραγγελιών)</div>';
         return html;
+    },
+
+    // ✅ NEW: LOGISTIS BAR (Ο ΛΟΓΙΣΤΗΣ)
+    // Formula: (Turnover * 0.532) - Fixed - Wages
+    // Explanation: T - 30% (Cost) = 0.7T. VAT is 24% of 0.7T = 0.168T.
+    // Net = 0.7T - 0.168T = 0.532T. Then subtract Fixed (Pagia) and Wages.
+    getLogistisHtml: (turnover, fixedExpenses, wages) => {
+        const estimatedNet = (turnover * 0.532) - fixedExpenses - wages;
+        const color = estimatedNet >= 0 ? '#00E676' : '#FF5252';
+        
         return `
             <div style="margin-top:20px; margin-bottom:20px; background:#111; border:1px solid #333; border-radius:12px; padding:15px; position:relative; overflow:hidden;">
                 <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:${color};"></div>
