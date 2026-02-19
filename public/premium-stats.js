@@ -55,7 +55,7 @@ export const StatsUI = {
     },
 
     // ✅ NEW: Helper για Γράφημα Ωρών (Bar Chart)
-    getPeakHoursHtml: (hoursData) => {
+    getPeakHoursHtml: (hoursData, context) => {
         if (!hoursData || Object.keys(hoursData).length === 0) return '<p style="color:#666; font-size:12px;">Δεν υπάρχουν δεδομένα ωρών.</p>';
         
         const hours = Object.keys(hoursData).sort();
@@ -69,8 +69,60 @@ export const StatsUI = {
                 <span style="position:absolute; bottom:-15px; left:50%; transform:translateX(-50%); font-size:9px; color:#aaa;">${h}</span>
             </div>`;
         });
-        html += '</div><div style="text-align:center; font-size:10px; color:#aaa; margin-top:15px; font-weight:bold;">ΩΡΕΣ ΑΙΧΜΗΣ (Αριθμός Παραγγελιών)</div>';
+        html += '</div>';
+        
+        if (context) {
+            html += `<button onclick='App.openChartModal(${JSON.stringify(context)})' style="width:100%; margin-top:20px; background:#333; color:white; border:1px solid #555; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px;">📊 ΠΡΟΒΟΛΗ ΣΕ ΠΛΗΡΗ ΟΘΟΝΗ</button>`;
+        } else {
+            html += '<div style="text-align:center; font-size:10px; color:#aaa; margin-top:15px; font-weight:bold;">ΩΡΕΣ ΑΙΧΜΗΣ (Αριθμός Παραγγελιών)</div>';
+        }
+        
         return html;
+    },
+
+    // ✅ NEW: Open Chart Modal (Full Screen)
+    openChartModal: (context) => {
+        let data = {};
+        let title = "";
+        
+        if (context.type === 'month') {
+            data = App.cachedStats[context.key].hours;
+            title = `Ώρες Αιχμής: ${context.key}`;
+        } else if (context.type === 'day') {
+            data = App.cachedStats[context.month].days[context.day].hours;
+            title = `Ώρες Αιχμής: ${context.month}-${context.day}`;
+        }
+        
+        if (!data) return;
+
+        const hours = Object.keys(data).sort();
+        const max = Math.max(...Object.values(data));
+        
+        let html = `
+        <div id="chartModal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:20000; display:flex; flex-direction:column; padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="color:white; margin:0; font-size:18px;">${title}</h2>
+                <button onclick="document.getElementById('chartModal').remove()" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:5px; font-size:16px;">✕ ΚΛΕΙΣΙΜΟ</button>
+            </div>
+            <div style="flex:1; display:flex; align-items:flex-end; gap:5px; padding-bottom:30px; overflow-x:auto;">
+        `;
+        
+        hours.forEach(h => {
+            const count = data[h];
+            const height = max > 0 ? (count / max) * 100 : 0;
+            html += `
+                <div style="flex:1; min-width:30px; background:linear-gradient(to top, #2196F3, #64B5F6); height:${Math.max(height, 1)}%; position:relative; border-radius:5px 5px 0 0;" title="${h}:00 - ${count}">
+                    <div style="position:absolute; top:-25px; left:50%; transform:translateX(-50%); color:white; font-weight:bold; font-size:14px;">${count}</div>
+                    <div style="position:absolute; bottom:-25px; left:50%; transform:translateX(-50%); color:#aaa; font-size:12px; font-weight:bold;">${h}:00</div>
+                </div>
+            `;
+        });
+        
+        html += `</div></div>`;
+        
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        document.body.appendChild(div.firstElementChild);
     },
 
     // ✅ NEW: LOGISTIS BAR (Ο ΛΟΓΙΣΤΗΣ)
@@ -78,7 +130,12 @@ export const StatsUI = {
     // Explanation: T - 30% (Cost) = 0.7T. VAT is 24% of 0.7T = 0.168T.
     // Net = 0.7T - 0.168T = 0.532T. Then subtract Fixed (Pagia) and Wages.
     getLogistisHtml: (turnover, fixedExpenses, wages) => {
-        const estimatedNet = (turnover * 0.532) - fixedExpenses - wages;
+        // ✅ FIX: Μετατροπή σε αριθμούς για αποφυγή NaN
+        const t = Number(turnover) || 0;
+        const f = Number(fixedExpenses) || 0;
+        const w = Number(wages) || 0;
+
+        const estimatedNet = (t * 0.532) - f - w;
         const color = estimatedNet >= 0 ? '#00E676' : '#FF5252';
         
         return `
@@ -282,7 +339,7 @@ export const StatsUI = {
             <div class="stats-products-list">${leastSoldHtml || '<p style="color:#666;">Δεν υπάρχουν δεδομένα.</p>'}</div>
 
             <h3 class="stats-section-title" style="margin-top:20px;">⏰ Ώρες Αιχμής (Μήνας)</h3>
-            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(monthData.hours)}</div>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(monthData.hours, {type:'month', key:monthKey})}</div>
             
             <h3 class="stats-section-title" style="margin-top:20px;">Ανάλυση ανά Ημέρα</h3>
             <div class="stats-list">
@@ -372,7 +429,7 @@ export const StatsUI = {
             ${StatsUI.getQrStatsHtml(dayData.qrStats)}
 
             <h3 class="stats-section-title">⏰ Ώρες Αιχμής (Σήμερα)</h3>
-            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(dayData.hours)}</div>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333;">${StatsUI.getPeakHoursHtml(dayData.hours, {type:'day', month:monthKey, day:dayKey})}</div>
 
             <h3 class="stats-section-title">Ανάλυση Προσωπικού</h3>
             <div class="stats-staff-container">${staffHtml || '<p>Δεν υπάρχουν δεδομένα.</p>'}</div>
