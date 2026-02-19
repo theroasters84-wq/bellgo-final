@@ -211,6 +211,10 @@ function updateStoreStats(store, order) {
     const [year, month, day] = dateStr.split('-');
     const monthKey = `${year}-${month}`;
 
+    // ✅ NEW: Υπολογισμός Ώρας (για ώρες αιχμής)
+    const hourStr = now.toLocaleTimeString('en-US', { timeZone: 'Europe/Athens', hour: '2-digit', hour12: false });
+    const hour = hourStr.padStart(2, '0'); // π.χ. "14"
+
     if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {}, products: {} };
     const mStats = store.stats[monthKey];
 
@@ -218,11 +222,21 @@ function updateStoreStats(store, order) {
     mStats.orders++;
     mStats.turnover += total;
 
+    // ✅ NEW: Καταγραφή Ώρας στο Μήνα
+    if (!mStats.hours) mStats.hours = {};
+    if (!mStats.hours[hour]) mStats.hours[hour] = 0;
+    mStats.hours[hour]++;
+
     // 2. Σύνολα Ημέρας
     if (!mStats.days) mStats.days = {};
     if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0, products: {}, staff: {} }; // ✅ Προσθήκη staff
     mStats.days[day].orders++;
     mStats.days[day].turnover += total;
+
+    // ✅ NEW: Καταγραφή Ώρας στην Ημέρα
+    if (!mStats.days[day].hours) mStats.days[day].hours = {};
+    if (!mStats.days[day].hours[hour]) mStats.days[day].hours[hour] = 0;
+    mStats.days[day].hours[hour]++;
 
     // ✅ NEW: QR STATS LOGIC (Πελάτες QR)
     const isQr = (order.from && order.from.includes('(Πελάτης)'));

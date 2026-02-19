@@ -661,6 +661,13 @@ window.App = {
             currentText = App.cachedStats[monthKey].days[day].expenses.text || "";
         }
         document.getElementById('txtExpenses').value = currentText;
+        // ✅ Load Wages
+        let currentWages = 0;
+        if (App.cachedStats && App.cachedStats[monthKey] && App.cachedStats[monthKey].days[day] && App.cachedStats[monthKey].days[day].expenses) {
+            currentWages = App.cachedStats[monthKey].days[day].expenses.wages || 0;
+        }
+        document.getElementById('inpWages').value = currentWages > 0 ? currentWages : '';
+
         App.calcExpensesTotal();
 
         // ✅ NEW: Writing Mode Logic (Auto-Focus & Layout Shift)
@@ -774,7 +781,11 @@ window.App = {
             App.fixedExpenses.forEach(f => total += (f.price || 0));
         }
 
-        // 2. Add Textarea Expenses
+        // 2. Add Wages (Merokamata)
+        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
+        total += wages;
+
+        // 3. Add Textarea Expenses
         const txt = document.getElementById('txtExpenses').value;
         txt.split('\n').forEach(line => {
             // ✅ FIX: Support for comma decimals and various separators
@@ -808,9 +819,10 @@ window.App = {
     saveExpenses: () => {
         const total = App.calcExpensesTotal();
         const text = document.getElementById('txtExpenses').value;
+        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
         // Note: Presets and Fixed are saved via save-store-settings now.
         // We only send the daily text and total here.
-        window.socket.emit('save-expenses', { text: text, total: total });
+        window.socket.emit('save-expenses', { text: text, total: total, wages: wages });
         document.getElementById('expensesModal').style.display = 'none';
         alert("Αποθηκεύτηκε!");
     },

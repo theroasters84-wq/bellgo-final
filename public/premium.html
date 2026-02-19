@@ -335,6 +335,12 @@
                 </div>
             </div>
 
+            <!-- ✅ NEW: WAGES INPUT (ΜΕΡΟΚΑΜΑΤΑ) -->
+            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444; display:flex; align-items:center; justify-content:space-between;">
+                <span style="color:#FFD700; font-weight:bold;" data-i18n="wages">👷 ΜΕΡΟΚΑΜΑΤΑ (Ημέρας)</span>
+                <input type="number" id="inpWages" class="inp-settings" placeholder="0.00€" style="margin:0; width:100px; text-align:center; color:#00E676; font-weight:bold;" oninput="App.calcExpensesTotal()">
+            </div>
+
             <textarea id="txtExpenses" class="order-text" style="height:65vh; font-size:16px;" data-i18n-placeholder="expenses_placeholder" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
             
             <div style="display:flex; justify-content:center; align-items:center; gap:15px; margin-top:5px;">
@@ -390,7 +396,10 @@
                 <button onclick="document.getElementById('statsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✕</button>
             </div>
             <div id="statsContent" style="flex:1; overflow-y:auto; padding:20px; text-align:left; background:#121212;">
-                <p style="text-align:center; color:#aaa;" data-i18n="loading">Φόρτωση...</p>
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+                    <div style="font-size:40px; margin-bottom:10px;">⏳</div>
+                    <p style="text-align:center; color:#aaa;" data-i18n="loading">Φόρτωση Δεδομένων...</p>
+                </div>
             </div>
         </div>
     </div>
