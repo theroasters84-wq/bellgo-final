@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
+import { ReserveTable } from './reserve-table.js';
 
 if ('serviceWorker' in navigator) {
     // ✅ FIX: Καθαρισμός παλιού Root Service Worker (που μπλόκαρε το Dine-In)
@@ -108,6 +109,7 @@ if (TABLE_ID) {
 
 let isDineIn = !!TABLE_ID;
 let tableNumber = TABLE_ID;
+window.tableNumber = tableNumber; // ✅ Expose for ReserveTable
 
 // Auto-detect store from path
 if (!TARGET_STORE) {
@@ -118,6 +120,7 @@ if (!TARGET_STORE) {
         TARGET_STORE = decodeURIComponent(pathParts[shopIndex + 1]); // ✅ FIX: Αποκωδικοποίηση ονόματος (π.χ. My%20Shop -> My Shop)
     }
 }
+window.TARGET_STORE = TARGET_STORE; // ✅ Expose for ReserveTable
 
 const PRELOADED_NAME = params.get('name'); 
 
@@ -143,6 +146,7 @@ let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[
 // (ΑΦΑΙΡΕΘΗΚΕ Η ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΤΡΑΠΕΖΙΟΥ ΓΙΑ ΝΑ ΛΕΙΤΟΥΡΓΕΙ ΤΟ DELIVERY QR)
 
 let storeHasStripe = false;
+window.storeHasStripe = false; // ✅ Expose for ReserveTable
 const ORDER_TIMEOUT_MS = 30 * 60 * 1000; // ✅ 30 Minutes Timeout
 let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
@@ -206,6 +210,7 @@ const t = (key) => translations[key];
 
 window.App = {
     setLanguage, // Make it accessible from HTML
+    t: t, // ✅ Expose translation function
     existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
 
     installPWA: async () => {
@@ -586,16 +591,7 @@ window.App = {
 
         // ✅ NEW: Απάντηση για το αν υπάρχει ενεργό τραπέζι
         socket.on('table-status', (data) => {
-            if (data.active) {
-                // ✅ AUTOMATICALLY LINK TO EXISTING ORDER (DEFAULT)
-                App.existingOrderId = data.orderId;
-                App.showTableOptionsModal(data);
-            } else {
-                // ✅ FIX: Αν το τραπέζι είναι ΝΕΟ (ανενεργό) και δεν έχουμε δηλώσει άτομα -> Ζητάμε τώρα
-                if (!customerDetails.covers) {
-                    App.editDetails();
-                }
-            }
+            ReserveTable.handleTableStatus(data);
         });
 
         // ✅✅✅ ΕΛΕΓΧΟΣ ΚΛΕΙΣΤΟΥ ΚΑΤΑΣΤΗΜΑΤΟΣ (Status Customer) ✅✅✅
@@ -619,6 +615,7 @@ window.App = {
                 }
                 
                 storeHasStripe = !!settings.stripeConnectId;
+                window.storeHasStripe = storeHasStripe; // ✅ Update global
                 
                 // ✅ Google Maps Review Button Logic
                 if (settings.googleMapsUrl) {
@@ -855,142 +852,6 @@ window.App = {
                 container.appendChild(wrapper);
             });
         }
-    },
-
-    // ✅ NEW: Modal Επιλογών Τραπεζιού (Συμπλήρωση / Νέα / Πληρωμή)
-    showTableOptionsModal: (data) => {
-        // Υπολογισμός συνόλου υπάρχουσας παραγγελίας
-        let total = 0;
-        const lines = data.text.split('\n');
-        lines.forEach(line => {
-            const parts = line.split(':');
-            const price = parseFloat(parts[parts.length-1]);
-            const qtyMatch = line.match(/^(\d+)\s+/);
-            const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1;
-            if(!isNaN(price)) total += price * qty;
-        });
-
-        const modal = document.createElement('div');
-        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
-        
-        // --- STEP 1: EXISTING OR NEW ---
-        const step1Html = `
-            <div id="step1" style="background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h2 style="color:#FFD700; margin-top:0;">🍽️ ${t('table') || 'Τραπέζι'} ${tableNumber}</h2>
-                <p style="color:#ccc;">${t('table_active') || 'Το τραπέζι είναι ενεργό.'}<br>${t('total') || 'Σύνολο'}: <b>${total.toFixed(2)}€</b></p>
-                <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ${t('btn_existing_order') || 'ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ'}</button>
-                <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ${t('btn_new_order_reset') || 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)'}</button>
-            </div>
-        `;
-
-        // --- STEP 2: PAY OR SUPPLEMENT ---
-        const step2Html = `
-            <div id="step2" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#2196F3;">${t('options') || 'Επιλογές'}</h3>
-                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ${t('btn_supplement') || 'ΣΥΜΠΛΗΡΩΣΗ'}</button>
-                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 / 💶 ${t('btn_pay_full') || 'ΠΛΗΡΩΜΗ'}</button>
-                <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
-            </div>
-        `;
-
-        // --- STEP 3: NEW PEOPLE ---
-        const step3Html = `
-            <div id="step3" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#FFD700;">${t('new_people_question') || 'Ήρθαν νέα άτομα;'}</h3>
-                <p style="color:#ccc; font-size:12px;">${t('new_people_hint') || 'Αν ναι, συμπληρώστε τον αριθμό.'}</p>
-                <input type="number" id="inpNewPeople" placeholder="${t('placeholder_people') || 'Αρ. ατόμων (προαιρετικό)'}" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #555; background:#333; color:white; text-align:center; font-size:16px;">
-                <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">${t('btn_continue_menu') || 'ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶'}</button>
-                <button id="btnBack2" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
-            </div>
-        `;
-
-        // --- STEP 4: PAYMENT METHOD ---
-        const step4Html = `
-            <div id="step4" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#00E676;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
-                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#FF9800; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
-                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
-                <button id="btnBack3" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
-            </div>
-        `;
-
-        modal.innerHTML = step1Html + step2Html + step3Html + step4Html;
-        document.body.appendChild(modal);
-
-        // --- HANDLERS ---
-        const s1 = document.getElementById('step1');
-        const s2 = document.getElementById('step2');
-        const s3 = document.getElementById('step3');
-        const s4 = document.getElementById('step4');
-
-        // Step 1 Logic
-        document.getElementById('btnExisting').onclick = () => {
-            s1.style.display = 'none';
-            s2.style.display = 'block';
-            App.existingOrderId = data.orderId;
-        };
-        document.getElementById('btnNewOrder').onclick = () => {
-            App.existingOrderId = null;
-            modal.remove();
-        };
-
-        // Step 2 Logic
-        document.getElementById('btnSupplement').onclick = () => {
-            s2.style.display = 'none';
-            s3.style.display = 'block';
-        };
-        document.getElementById('btnPayExisting').onclick = () => {
-            s2.style.display = 'none';
-            s4.style.display = 'block';
-        };
-        document.getElementById('btnBack1').onclick = () => {
-            s2.style.display = 'none';
-            s1.style.display = 'block';
-        };
-
-        // Step 3 Logic
-        document.getElementById('btnGoToMenu').onclick = () => {
-            const extra = document.getElementById('inpNewPeople').value;
-            if(extra && parseInt(extra) > 0) {
-                App.addToOrder(`(+ ${extra} ${t('people') || 'ΑΤΟΜΑ'})`);
-            }
-            modal.remove();
-        };
-        document.getElementById('btnBack2').onclick = () => {
-            s3.style.display = 'none';
-            s2.style.display = 'block';
-        };
-
-        // Step 4 Logic
-        document.getElementById('btnCallWaiter').onclick = () => {
-            if (App.existingOrderId) {
-                window.socket.emit('add-items', { id: App.existingOrderId, items: "❗ ΖΗΤΑΕΙ ΛΟΓΑΡΙΑΣΜΟ (ΚΛΗΣΗ)" });
-                alert(t('waiter_notified') || "Ειδοποιήσαμε τον σερβιτόρο!");
-                modal.remove();
-            }
-        };
-        document.getElementById('btnPayStripe').onclick = () => {
-            if(!storeHasStripe) return alert(t('card_unavailable') || "Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
-            App.payExistingOrder(data.orderId, total);
-            modal.remove();
-        };
-        document.getElementById('btnBack3').onclick = () => {
-            s4.style.display = 'none';
-            s2.style.display = 'block';
-        };
-    },
-
-    payExistingOrder: async (orderId, amount) => {
-        const isNative = !!window.Capacitor || /Android.*wv/.test(window.navigator.userAgent); // ✅ Detect Native
-        try {
-            const res = await fetch('/create-qr-payment', { // Χρησιμοποιούμε το QR endpoint που δέχεται orderId
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId })
-            });
-            const data = await res.json();
-            if(data.url) window.location.href = data.url;
-            else alert((t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο"));
-        } catch(e) { alert(t('connection_error') || "Σφάλμα σύνδεσης."); }
     },
 
     addToOrder: (item) => {
