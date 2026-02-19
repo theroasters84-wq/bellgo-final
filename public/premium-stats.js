@@ -61,11 +61,11 @@ export const StatsUI = {
         const hours = Object.keys(hoursData).sort();
         const max = Math.max(...Object.values(hoursData));
         
-        let html = '<div style="display:flex; align-items:flex-end; height:80px; gap:3px; overflow-x:auto; padding-bottom:5px; margin-top:10px;">';
+        let html = '<div style="display:flex; align-items:flex-end; justify-content:center; height:80px; gap:3px; overflow-x:auto; padding-bottom:5px; margin-top:10px;">';
         hours.forEach(h => {
             const count = hoursData[h];
             const height = max > 0 ? (count / max) * 100 : 0;
-            html += `<div style="flex:1; min-width:15px; background:linear-gradient(to top, #2196F3, #64B5F6); height:${Math.max(height, 5)}%; position:relative; border-radius:3px 3px 0 0;" title="${h}:00 - ${count} παρ.">
+            html += `<div style="flex:1; max-width:30px; min-width:15px; background:linear-gradient(to top, #2196F3, #64B5F6); height:${Math.max(height, 5)}%; position:relative; border-radius:3px 3px 0 0;" title="${h}:00 - ${count} παρ.">
                 <span style="position:absolute; bottom:-15px; left:50%; transform:translateX(-50%); font-size:9px; color:#aaa;">${h}</span>
             </div>`;
         });
@@ -104,14 +104,14 @@ export const StatsUI = {
                 <h2 style="color:white; margin:0; font-size:18px;">${title}</h2>
                 <button onclick="document.getElementById('chartModal').remove()" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:5px; font-size:16px;">✕ ΚΛΕΙΣΙΜΟ</button>
             </div>
-            <div style="flex:1; display:flex; align-items:flex-end; gap:5px; padding-bottom:30px; overflow-x:auto;">
+            <div style="flex:1; display:flex; align-items:flex-end; justify-content:center; gap:5px; padding-bottom:30px; overflow-x:auto;">
         `;
         
         hours.forEach(h => {
             const count = data[h];
             const height = max > 0 ? (count / max) * 100 : 0;
             html += `
-                <div style="flex:1; min-width:30px; background:linear-gradient(to top, #2196F3, #64B5F6); height:${Math.max(height, 1)}%; position:relative; border-radius:5px 5px 0 0;" title="${h}:00 - ${count}">
+                <div style="flex:1; max-width:80px; min-width:30px; background:linear-gradient(to top, #2196F3, #64B5F6); height:${Math.max(height, 1)}%; position:relative; border-radius:5px 5px 0 0;" title="${h}:00 - ${count}">
                     <div style="position:absolute; top:-25px; left:50%; transform:translateX(-50%); color:white; font-weight:bold; font-size:14px;">${count}</div>
                     <div style="position:absolute; bottom:-25px; left:50%; transform:translateX(-50%); color:#aaa; font-size:12px; font-weight:bold;">${h}:00</div>
                 </div>
