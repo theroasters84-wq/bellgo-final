@@ -7,7 +7,7 @@ import { PaySystem } from './pay.js'; // ✅ Import PaySystem
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
 const userData = JSON.parse(savedSession || '{}');
-if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access Denied"); window.location.replace("login.html"); }
+if (userData.role !== 'admin' && userData.role !== 'kitchen' && userData.role !== 'waiter') { alert("Access Denied"); window.location.replace("login.html"); }
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
@@ -1656,16 +1656,18 @@ window.App = {
         list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
         list.forEach(r => {
+            if (r.status === 'completed') return; // ✅ Hide completed
             const isPending = r.status === 'pending';
             const div = document.createElement('div');
             div.style.cssText = `background:#222; padding:10px; border-radius:8px; border-left:4px solid ${isPending ? '#FF9800' : '#9C27B0'}; display:flex; justify-content:space-between; align-items:center;`;
             div.innerHTML = `
-                <div>
+                <div onclick="App.processReservation(${r.id}, ${r.pax})" style="cursor:pointer;">
                     <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.) ${isPending ? '<span style="color:#FF9800; font-size:12px;">(ΑΝΑΜΟΝΗ)</span>' : ''}</div>
                     <div style="color:#FFD700; font-size:14px;">📅 ${r.date} 🕒 ${r.time}</div>
                     <div style="color:#aaa; font-size:12px;">📞 ${r.phone}</div>
                 </div>
                 <div style="display:flex; gap:5px;">
+                    <button onclick="App.processReservation(${r.id}, ${r.pax})" style="background:#2196F3; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;" title="Έναρξη & Ολοκλήρωση">🚀</button>
                     ${isPending ? `<button onclick="App.acceptReservation(${r.id})" style="background:#00E676; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅</button>` : ''}
                     <button onclick="App.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
                 </div>
@@ -1673,8 +1675,25 @@ window.App = {
             container.appendChild(div);
         });
     },
+
+    // ✅ NEW: Process Reservation (Open Sidebar & Complete)
+    processReservation: (id, pax) => {
+        // 1. Open Sidebar
+        const sb = document.getElementById('orderSidebar');
+        if (sb.style.left !== '0px' && sb.style.left !== '0') {
+            App.toggleOrderSidebar();
+        }
+        // 2. Set Mode Table & Covers
+        App.setSidebarMode('table');
+        if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = pax;
+        
+        // 3. Mark as Completed
+        window.socket.emit('complete-reservation', id);
+    },
     
     acceptReservation: (id) => {
+        if(window.AudioEngine) window.AudioEngine.stopAlarm();
+        window.socket.emit('admin-stop-ringing');
         window.socket.emit('accept-reservation', id);
     },
     

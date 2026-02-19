@@ -1061,7 +1061,7 @@ io.on('connection', (socket) => {
         const store = getMyStore();
         if (!store) return;
         
-        const { name, phone, date, time, pax } = data; // date: YYYY-MM-DD, time: HH:MM
+        const { name, phone, date, time, pax, customerToken } = data; // ✅ Add customerToken
         const totalTables = parseInt(store.settings.totalTables) || 0;
         
         if (!store.settings.reservationsEnabled || totalTables === 0) {
@@ -1102,7 +1102,9 @@ io.on('connection', (socket) => {
             id: Date.now(),
             name, phone, date, time, pax,
             status: 'pending', // ✅ Changed to pending
-            notified: false
+            notified: false,
+            customerToken: customerToken || null, // ✅ Store Token
+            notifiedCustomer3h: false // ✅ Flag for 3h reminder
         };
         
         if (!store.reservations) store.reservations = [];
@@ -1128,17 +1130,77 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ✅ NEW: Complete Reservation (Processed)
+    socket.on('complete-reservation', (id) => {
+        const store = getMyStore();
+        if(store && store.reservations) {
+            const r = store.reservations.find(x => x.id === id);
+            if(r) {
+                r.status = 'completed'; // ✅ Mark as completed
+                saveStoreToFirebase(socket.store);
+                io.to(socket.store).emit('reservations-update', store.reservations);
+            }
+        }
+    });
+
+    // ✅ NEW: Complete Reservation (Processed)
+    socket.on('complete-reservation', (id) => {
+        const store = getMyStore();
+        if(store && store.reservations) {
+            const r = store.reservations.find(x => x.id === id);
+            if(r) {
+                r.status = 'completed'; // ✅ Mark as completed
+                saveStoreToFirebase(socket.store);
+                io.to(socket.store).emit('reservations-update', store.reservations);
+            }
+        }
+    });
+
     socket.on('get-reservations', () => {
         const store = getMyStore();
         if(store) socket.emit('reservations-update', store.reservations || []);
+    });
+
+    // ✅ NEW: Get Customer Reservations (by IDs)
+    socket.on('get-customer-reservations', (ids) => {
+        const store = getMyStore();
+        if(store && store.reservations && Array.isArray(ids)) {
+            const myRes = store.reservations.filter(r => ids.includes(r.id));
+            socket.emit('my-reservations-data', myRes);
+        } else {
+            socket.emit('my-reservations-data', []);
+        }
+    });
+
+    // ✅ NEW: Cancel Reservation by Customer
+    socket.on('cancel-reservation-customer', (id) => {
+        const store = getMyStore();
+        if(store && store.reservations) {
+            const r = store.reservations.find(x => x.id === id);
+            if(r) {
+                notifyAdmin(socket.store, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Ο πελάτης ${r.name} ακύρωσε την κράτηση (${r.date} ${r.time}).`);
+                store.reservations = store.reservations.filter(x => x.id !== id);
+                saveStoreToFirebase(socket.store);
+                io.to(socket.store).emit('reservations-update', store.reservations);
+                socket.emit('reservation-cancelled-success', id);
+            }
+        }
     });
     
     socket.on('delete-reservation', (id) => {
         const store = getMyStore();
         if(store && store.reservations) {
-            store.reservations = store.reservations.filter(r => r.id !== id);
-            saveStoreToFirebase(socket.store);
-            io.to(socket.store).emit('reservations-update', store.reservations);
+            const rIndex = store.reservations.findIndex(r => r.id === id);
+            if (rIndex > -1) {
+                const r = store.reservations[rIndex];
+                // ✅ NEW: Notify Customer if Admin cancels
+                if (r.customerToken) {
+                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" });
+                }
+                store.reservations.splice(rIndex, 1);
+                saveStoreToFirebase(socket.store);
+                io.to(socket.store).emit('reservations-update', store.reservations);
+            }
         }
     });
 
@@ -1363,10 +1425,50 @@ setInterval(() => {
             const now = Date.now();
             store.reservations.forEach(r => {
                 const rTime = new Date(`${r.date}T${r.time}`).getTime();
+                
+                // ✅ NEW: 3-HOUR REMINDER FOR CUSTOMER
+                // (10800000 ms = 3 hours)
+                if (rTime > now && rTime - now <= 10800000 && !r.notifiedCustomer3h && r.customerToken) {
+                    r.notifiedCustomer3h = true;
+                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" });
+                    saveStoreToFirebase(storeName);
+                }
+
                 // Ειδοποίηση αν είναι σε λιγότερο από 1 ώρα (και δεν έχει ειδοποιηθεί)
                 if (rTime > now && rTime - now <= 3600000 && !r.notified) {
                     r.notified = true;
-                    notifyAdmin(storeName, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ ⏰", `Σε 1 ώρα:\n${r.name} (${r.pax} άτ.)`);
+                    // ❌ REMOVED notifyAdmin to exclude Kitchen
+                    const title = "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ ⏰";
+                    const body = `Σε 1 ώρα:\n${r.name} (${r.pax} άτ.)`;
+
+                    // 1. ✅ FIX: Ειδοποίηση Admin ONLY (Όχι Kitchen)
+                    Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'admin').forEach(u => {
+                        u.isRinging = true;
+                        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΡΑΤΗΣΗ", location: "Σε 1 ώρα" });
+                    });
+
+                    if (store.staffTokens) {
+                        Object.entries(store.staffTokens).forEach(([username, data]) => {
+                            if (data.role === 'admin') {
+                                sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
+                            }
+                        });
+                    }
+
+                    // 2. ✅ NEW: Ειδοποίηση ΚΑΙ στους Σερβιτόρους
+                    Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'waiter').forEach(u => {
+                        u.isRinging = true;
+                        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΡΑΤΗΣΗ", location: "Σε 1 ώρα" });
+                    });
+                    
+                    if (store.staffTokens) {
+                        Object.entries(store.staffTokens).forEach(([username, data]) => {
+                            if (data.role === 'waiter') {
+                                sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
+                            }
+                        });
+                    }
+
                     saveStoreToFirebase(storeName);
                 }
             });

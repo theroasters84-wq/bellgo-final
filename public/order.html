@@ -71,6 +71,7 @@
             <h3 style="color:#FFD700; margin-bottom:20px;" data-i18n="what_would_you_like">Τι θέλετε να κάνετε;</h3>
             <button class="btn-save-details" onclick="App.chooseAction('order')" style="margin-bottom:15px; background:#2196F3;">🛵 <span data-i18n="order_delivery">ΠΑΡΑΓΓΕΛΙΑ DELIVERY</span></button>
             <button class="btn-save-details" onclick="App.chooseAction('book')" style="background:#9C27B0;">📅 <span data-i18n="book_table">ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</span></button>
+            <button class="btn-save-details" onclick="App.openMyReservations()" style="background:#333; margin-top:15px; font-size:14px;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</button>
         </div>
     </div>
 
@@ -144,6 +145,15 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: MY RESERVATIONS MODAL -->
+    <div id="myReservationsModal" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#9C27B0; margin:0;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</h3>
+            <div id="myReservationsList" style="margin-top:15px; max-height:300px; overflow-y:auto; width:100%;"></div>
+            <button onclick="document.getElementById('myReservationsModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
     <div id="appContent" style="display:none;">
         <div class="header">
             <div class="header-left">
@@ -178,6 +188,7 @@
                 <div class="address-bar">
                     <span id="displayAddress">...</span>
                     <!-- ✅ NEW: BOOKING BUTTON -->
+                    <button id="btnMyRes" onclick="App.openMyReservations()" style="display:none; background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold;">📋</button>
                     <button id="btnBookTable" onclick="App.openBookingModal()" style="display:none; background:#9C27B0; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold;">📅 ΚΡΑΤΗΣΗ</button>
                     <button class="btn-edit" onclick="App.editDetails()">✏️ <span data-i18n="change">Αλλαγή</span></button>
                 </div>

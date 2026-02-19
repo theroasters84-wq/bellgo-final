@@ -714,6 +714,11 @@ window.App = {
                     btn.style.background = "#555";
                 }
                 App.pendingReservationId = res.reservationId;
+                
+                // ✅ NEW: Save ID to LocalStorage
+                let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
+                if(!myRes.includes(res.reservationId)) myRes.push(res.reservationId);
+                localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
             }
             else { alert("Σφάλμα: " + res.error); }
         });
@@ -728,6 +733,21 @@ window.App = {
                 const btn = document.querySelector('#bookingModal button.btn-save-details');
                 if(btn) { btn.innerText = "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
             }
+        });
+
+        // ✅ NEW: Receive My Reservations Data
+        socket.on('my-reservations-data', (list) => {
+            App.renderMyReservations(list);
+        });
+
+        // ✅ NEW: Cancel Success
+        socket.on('reservation-cancelled-success', (id) => {
+            alert("Η κράτηση ακυρώθηκε.");
+            // Remove from local storage
+            let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
+            myRes = myRes.filter(rid => rid !== id);
+            localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
+            App.openMyReservations(); // Refresh list
         });
 
         // ✅ Force Connect / Re-Join if needed
@@ -1045,10 +1065,72 @@ window.App = {
         const pax = document.getElementById('inpBookPax').value;
         const name = document.getElementById('inpBookName').value;
         const phone = document.getElementById('inpBookPhone').value;
+        const token = localStorage.getItem('fcm_token'); // ✅ Send Token
         
         if(!date || !time || !pax || !name || !phone) return alert("Συμπληρώστε όλα τα πεδία!");
         
-        window.socket.emit('create-reservation', { date, time, pax, name, phone });
+        window.socket.emit('create-reservation', { date, time, pax, name, phone, customerToken: token });
+    },
+
+    // ✅ NEW: MY RESERVATIONS LOGIC
+    openMyReservations: () => {
+        // Αν δεν είναι συνδεδεμένο, κάνε connect (για την περίπτωση που πατάει από το αρχικό modal)
+        if (!window.socket || !window.socket.connected) {
+             if (!customerDetails) {
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Επισκέπτης";
+                customerDetails = { name: defaultName, type: 'delivery' };
+            }
+            App.startApp();
+        }
+
+        const myResIds = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
+        if (myResIds.length === 0) {
+            alert("Δεν βρέθηκαν κρατήσεις σε αυτή τη συσκευή.");
+            return;
+        }
+        
+        document.getElementById('myReservationsModal').style.display = 'flex';
+        document.getElementById('myReservationsList').innerHTML = '<p style="text-align:center; color:#aaa;">Φόρτωση...</p>';
+        
+        window.socket.emit('get-customer-reservations', myResIds);
+    },
+
+    renderMyReservations: (list) => {
+        const container = document.getElementById('myReservationsList');
+        container.innerHTML = '';
+        
+        if (list.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#aaa;">Δεν υπάρχουν ενεργές κρατήσεις.</p>';
+            return;
+        }
+
+        list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+        list.forEach(r => {
+            const div = document.createElement('div');
+            div.style.cssText = "background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;";
+            
+            let statusColor = '#FF9800'; // Pending
+            let statusText = 'ΑΝΑΜΟΝΗ';
+            if (r.status === 'confirmed') { statusColor = '#00E676'; statusText = 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
+            if (r.status === 'completed') { statusColor = '#aaa'; statusText = 'ΟΛΟΚΛΗΡΩΘΗΚΕ'; }
+
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <span style="font-weight:bold; color:white;">${r.date} - ${r.time}</span>
+                    <span style="font-size:10px; padding:2px 5px; border-radius:4px; background:${statusColor}; color:black; font-weight:bold;">${statusText}</span>
+                </div>
+                <div style="color:#ccc; font-size:14px;">${r.pax} Άτομα • ${r.name}</div>
+                ${r.status !== 'completed' ? `<button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#D32F2F; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>` : ''}
+            `;
+            container.appendChild(div);
+        });
+    },
+
+    cancelMyReservation: (id) => {
+        if(confirm("Είστε σίγουροι ότι θέλετε να ακυρώσετε την κράτηση;")) {
+            window.socket.emit('cancel-reservation-customer', id);
+        }
     },
 
     requestPayment: () => {
