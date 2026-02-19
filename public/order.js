@@ -251,6 +251,12 @@ window.App = {
             document.getElementById('detailsTitle').innerText = t('delivery_title') || 'Παράδοση στο χώρο σας';
             document.getElementById('deliveryFields').style.display = 'block';
             document.getElementById('dineInFields').style.display = 'none';
+            
+            // ✅ NEW: Ερώτηση για Παραγγελία ή Κράτηση (Μόνο στο Delivery)
+            if (!sessionStorage.getItem('bellgo_choice_made')) {
+                document.getElementById('choiceModal').style.display = 'flex';
+                return; // Σταματάμε εδώ μέχρι να επιλέξει
+            }
         }
 
         // ✅ 2. ΕΛΕΓΧΟΣ ΔΕΔΟΜΕΝΩΝ: Αν αλλάξαμε Mode, ανοίγουμε τη φόρμα
@@ -310,6 +316,24 @@ window.App = {
         localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
         document.getElementById('detailsOverlay').style.display = 'none';
         App.startApp();
+    },
+    
+    // ✅ NEW: Διαχείριση Αρχικής Επιλογής
+    chooseAction: (action) => {
+        sessionStorage.setItem('bellgo_choice_made', action);
+        document.getElementById('choiceModal').style.display = 'none';
+        
+        if (action === 'order') {
+            App.checkDetails(); // Συνεχίζει κανονικά για παραγγελία
+        } else if (action === 'book') {
+            // Αν δεν υπάρχουν στοιχεία, φτιάχνουμε προσωρινά για να συνδεθεί το socket
+            if (!customerDetails) {
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Επισκέπτης";
+                customerDetails = { name: defaultName, type: 'delivery' };
+            }
+            App.startApp(); // Εκκίνηση εφαρμογής (Socket connection)
+            setTimeout(App.openBookingModal, 100); // Άνοιγμα Κράτησης
+        }
     },
 
     editDetails: () => {
@@ -1087,7 +1111,7 @@ window.App = {
             btn.style.display = 'flex'; 
             // ✅ FIX: Force Top-Left Position
             btn.style.position = 'fixed';
-            btn.style.top = '15px';
+            btn.style.top = '70px';
             btn.style.left = '10px';
             btn.style.right = 'auto';
             btn.style.bottom = 'auto';

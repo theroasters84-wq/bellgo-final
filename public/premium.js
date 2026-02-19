@@ -452,7 +452,11 @@ window.App = {
                 const sw2 = document.getElementById('switchStaffChargeWallet'); if(sw2) sw2.checked = App.staffChargeMode;
                 
                 // ✅ NEW: Reservations Settings
-                if(settings.reservationsEnabled !== undefined) document.getElementById('switchReservations').checked = settings.reservationsEnabled;
+                if(settings.reservationsEnabled !== undefined) {
+                    document.getElementById('switchReservations').checked = settings.reservationsEnabled;
+                    const btnRes = document.getElementById('btnReservations');
+                    if(btnRes) btnRes.style.display = settings.reservationsEnabled ? 'flex' : 'none';
+                }
                 if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
 
                 const statusEl = document.getElementById('stripeStatus');

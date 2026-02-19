@@ -65,6 +65,15 @@
         <button id="btnInstallLogin" class="btn-install-app" onclick="App.installPWA()"><span data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</span></button>
     </div>
 
+    <!-- ✅ NEW: CHOICE MODAL (Delivery Only) -->
+    <div id="choiceModal" class="overlay-screen" style="display:none; z-index: 12000;">
+        <div class="details-box" style="text-align:center;">
+            <h3 style="color:#FFD700; margin-bottom:20px;" data-i18n="what_would_you_like">Τι θέλετε να κάνετε;</h3>
+            <button class="btn-save-details" onclick="App.chooseAction('order')" style="margin-bottom:15px; background:#2196F3;">🛵 <span data-i18n="order_delivery">ΠΑΡΑΓΓΕΛΙΑ DELIVERY</span></button>
+            <button class="btn-save-details" onclick="App.chooseAction('book')" style="background:#9C27B0;">📅 <span data-i18n="book_table">ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</span></button>
+        </div>
+    </div>
+
     <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box">
             <h3 style="color:#FFD700; margin:0;" id="detailsTitle" data-i18n="welcome"> Καλώς ήρθατε!</h3>
@@ -145,9 +154,6 @@
 
             <div class="store-info">
                 <span id="storeNameHeader">...</span>
-                <div id="headerSchedule" class="schedule-badge" onclick="App.showFullSchedule()">
-                    <span>🕒</span> <span id="todayHours">--:--</span>
-                </div>
             </div>
             <div class="header-actions">
                  <div class="lang-switcher">
