@@ -1247,6 +1247,9 @@ window.App = {
             // ✅ NEW: Kitchen Mode - Hide Ready/Completed orders (Φεύγουν από την οθόνη της κουζίνας)
             if (App.adminMode === 'kitchen' && (order.status === 'ready' || order.status === 'completed')) return;
 
+            // ✅ NEW: Waiter Mode - Hide Delivery Orders (Only Tables)
+            if (userData.role === 'waiter' && order.text.includes('[DELIVERY')) return;
+
             const time = new Date(order.id).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             let style = '';
             const isPaid = order.text.includes('PAID');
