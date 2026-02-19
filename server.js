@@ -1441,7 +1441,8 @@ setInterval(() => {
                 }
 
                 // Ειδοποίηση αν είναι σε λιγότερο από 1 ώρα (και δεν έχει ειδοποιηθεί)
-                if (rTime > now && rTime - now <= 3600000 && !r.notified) {
+                // ✅ FIX: Μην ειδοποιείς αν έχει ολοκληρωθεί (completed)
+                if (r.status !== 'completed' && rTime > now && rTime - now <= 3600000 && !r.notified) {
                     r.notified = true;
                     // ❌ REMOVED notifyAdmin to exclude Kitchen
                     const title = "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ ⏰";
@@ -1462,17 +1463,20 @@ setInterval(() => {
                     }
 
                     // 2. ✅ NEW: Ειδοποίηση ΚΑΙ στους Σερβιτόρους
-                    Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'waiter').forEach(u => {
-                        u.isRinging = true;
-                        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΡΑΤΗΣΗ", location: "Σε 1 ώρα" });
-                    });
-                    
-                    if (store.staffTokens) {
-                        Object.entries(store.staffTokens).forEach(([username, data]) => {
-                            if (data.role === 'waiter') {
-                                sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
-                            }
+                    // ✅ FIX: Μόνο αν είναι επιβεβαιωμένη (confirmed)
+                    if (r.status === 'confirmed') {
+                        Object.values(activeUsers).filter(u => u.store === storeName && u.role === 'waiter').forEach(u => {
+                            u.isRinging = true;
+                            if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΡΑΤΗΣΗ", location: "Σε 1 ώρα" });
                         });
+                        
+                        if (store.staffTokens) {
+                            Object.entries(store.staffTokens).forEach(([username, data]) => {
+                                if (data.role === 'waiter') {
+                                    sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
+                                }
+                            });
+                        }
                     }
 
                     saveStoreToFirebase(storeName);

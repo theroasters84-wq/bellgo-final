@@ -565,6 +565,12 @@ window.App = {
                 socket.emit('check-table-status', { table: tableNumber });
             }
             
+            // ✅ NEW: Έλεγχος για ενεργές κρατήσεις (για το Badge)
+            const myResIds = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
+            if (myResIds.length > 0) {
+                socket.emit('get-customer-reservations', myResIds);
+            }
+            
             // Αφαιρέθηκε το setTimeout. Ο έλεγχος γίνεται πλέον στο 'menu-update'
         });
 
@@ -729,6 +735,9 @@ window.App = {
                 let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
                 if(!myRes.includes(res.reservationId)) myRes.push(res.reservationId);
                 localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
+                
+                // ✅ NEW: Ανανέωση Badge άμεσα
+                window.socket.emit('get-customer-reservations', myRes);
             }
             else { alert("Σφάλμα: " + res.error); }
         });
@@ -1120,21 +1129,30 @@ window.App = {
         const container = document.getElementById('myReservationsList');
         container.innerHTML = '';
         
-        if (list.length === 0) {
+        // ✅ NEW: Φιλτράρισμα ολοκληρωμένων κρατήσεων (να μην φαίνονται)
+        const activeList = list.filter(r => r.status !== 'completed');
+
+        // ✅ NEW: Ενημέρωση Badge (Αριθμός Κρατήσεων)
+        const count = activeList.length;
+        const b1 = document.getElementById('resBadgeHeader');
+        const b2 = document.getElementById('resBadge');
+        if(b1) { b1.innerText = count; b1.style.display = count > 0 ? 'inline-block' : 'none'; }
+        if(b2) { b2.innerText = count; b2.style.display = count > 0 ? 'inline-block' : 'none'; }
+
+        if (activeList.length === 0) {
             container.innerHTML = '<p style="text-align:center; color:#aaa;">Δεν υπάρχουν ενεργές κρατήσεις.</p>';
             return;
         }
 
-        list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+        activeList.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
-        list.forEach(r => {
+        activeList.forEach(r => {
             const div = document.createElement('div');
             div.style.cssText = "background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;";
             
             let statusColor = '#FF9800'; // Pending
             let statusText = 'ΑΝΑΜΟΝΗ';
             if (r.status === 'confirmed') { statusColor = '#00E676'; statusText = 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
-            if (r.status === 'completed') { statusColor = '#aaa'; statusText = 'ΟΛΟΚΛΗΡΩΘΗΚΕ'; }
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
@@ -1142,7 +1160,7 @@ window.App = {
                     <span style="font-size:10px; padding:2px 5px; border-radius:4px; background:${statusColor}; color:black; font-weight:bold;">${statusText}</span>
                 </div>
                 <div style="color:#ccc; font-size:14px;">${r.pax} Άτομα • ${r.name}</div>
-                ${r.status !== 'completed' ? `<button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#D32F2F; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>` : ''}
+                <button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#D32F2F; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
             `;
             container.appendChild(div);
         });
