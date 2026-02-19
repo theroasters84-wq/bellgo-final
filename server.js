@@ -1101,7 +1101,7 @@ io.on('connection', (socket) => {
         const newRes = {
             id: Date.now(),
             name, phone, date, time, pax,
-            status: 'confirmed',
+            status: 'pending', // ✅ Changed to pending
             notified: false
         };
         
@@ -1109,9 +1109,23 @@ io.on('connection', (socket) => {
         store.reservations.push(newRes);
         saveStoreToFirebase(socket.store);
         
-        socket.emit('reservation-result', { success: true });
-        notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ 📅", `${name} (${pax} άτ.)\n${date} ${time}`);
+        socket.emit('reservation-result', { success: true, reservationId: newRes.id }); // ✅ Send ID back
+        notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ (ΑΝΑΜΟΝΗ) 📅", `${name} (${pax} άτ.)\n${date} ${time}`);
         io.to(socket.store).emit('reservations-update', store.reservations);
+    });
+
+    // ✅ NEW: Accept Reservation
+    socket.on('accept-reservation', (id) => {
+        const store = getMyStore();
+        if(store && store.reservations) {
+            const r = store.reservations.find(x => x.id === id);
+            if(r) {
+                r.status = 'confirmed';
+                saveStoreToFirebase(socket.store);
+                io.to(socket.store).emit('reservations-update', store.reservations);
+                io.to(socket.store).emit('reservation-confirmed', { id: id }); // ✅ Notify Customer
+            }
+        }
     });
 
     socket.on('get-reservations', () => {

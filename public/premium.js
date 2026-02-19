@@ -1656,18 +1656,26 @@ window.App = {
         list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
         list.forEach(r => {
+            const isPending = r.status === 'pending';
             const div = document.createElement('div');
-            div.style.cssText = "background:#222; padding:10px; border-radius:8px; border-left:4px solid #9C27B0; display:flex; justify-content:space-between; align-items:center;";
+            div.style.cssText = `background:#222; padding:10px; border-radius:8px; border-left:4px solid ${isPending ? '#FF9800' : '#9C27B0'}; display:flex; justify-content:space-between; align-items:center;`;
             div.innerHTML = `
                 <div>
-                    <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.)</div>
+                    <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.) ${isPending ? '<span style="color:#FF9800; font-size:12px;">(ΑΝΑΜΟΝΗ)</span>' : ''}</div>
                     <div style="color:#FFD700; font-size:14px;">📅 ${r.date} 🕒 ${r.time}</div>
                     <div style="color:#aaa; font-size:12px;">📞 ${r.phone}</div>
                 </div>
-                <button onclick="App.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
+                <div style="display:flex; gap:5px;">
+                    ${isPending ? `<button onclick="App.acceptReservation(${r.id})" style="background:#00E676; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅</button>` : ''}
+                    <button onclick="App.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
+                </div>
             `;
             container.appendChild(div);
         });
+    },
+    
+    acceptReservation: (id) => {
+        window.socket.emit('accept-reservation', id);
     },
     
     deleteReservation: (id) => {

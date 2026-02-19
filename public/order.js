@@ -705,8 +705,29 @@ window.App = {
         
         // ✅ NEW: Reservation Result
         socket.on('reservation-result', (res) => {
-            if(res.success) { alert("Η κράτηση έγινε επιτυχώς! ✅"); document.getElementById('bookingModal').style.display='none'; }
+            if(res.success) { 
+                // ✅ Show Waiting State
+                const btn = document.querySelector('#bookingModal button.btn-save-details');
+                if(btn) {
+                    btn.innerText = "⏳ ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ...";
+                    btn.disabled = true;
+                    btn.style.background = "#555";
+                }
+                App.pendingReservationId = res.reservationId;
+            }
             else { alert("Σφάλμα: " + res.error); }
+        });
+
+        // ✅ NEW: Reservation Confirmed
+        socket.on('reservation-confirmed', (data) => {
+            if (App.pendingReservationId && data.id === App.pendingReservationId) {
+                alert("✅ Η κράτηση σας ΕΓΙΝΕ ΔΕΚΤΗ!");
+                document.getElementById('bookingModal').style.display='none';
+                App.pendingReservationId = null;
+                // Reset Button
+                const btn = document.querySelector('#bookingModal button.btn-save-details');
+                if(btn) { btn.innerText = "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
+            }
         });
 
         // ✅ Force Connect / Re-Join if needed
@@ -1111,7 +1132,7 @@ window.App = {
             btn.style.display = 'flex'; 
             // ✅ FIX: Force Top-Left Position
             btn.style.position = 'fixed';
-            btn.style.top = '70px';
+            btn.style.top = '50px';
             btn.style.left = '10px';
             btn.style.right = 'auto';
             btn.style.bottom = 'auto';
