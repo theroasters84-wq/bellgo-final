@@ -623,6 +623,16 @@ window.App = {
                     const btn = document.getElementById('btnReview');
                     if(btn) btn.style.display = 'none';
                 }
+                
+                // ✅ NEW: Show/Hide Reservation Buttons
+                const btnBook = document.getElementById('btnBookTable');
+                if(btnBook) btnBook.style.display = settings.reservationsEnabled ? 'inline-block' : 'none';
+
+                const btnMyRes = document.getElementById('btnMyRes');
+                if(btnMyRes) btnMyRes.style.display = settings.reservationsEnabled ? 'inline-block' : 'none';
+                
+                const btnHeaderMyRes = document.getElementById('btnHeaderMyRes');
+                if(btnHeaderMyRes) btnHeaderMyRes.style.display = settings.reservationsEnabled ? 'inline-flex' : 'none';
 
                 App.handleInput();
                 
