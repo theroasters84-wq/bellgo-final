@@ -454,8 +454,8 @@ window.App = {
                 // ✅ NEW: Reservations Settings
                 if(settings.reservationsEnabled !== undefined) {
                     document.getElementById('switchReservations').checked = settings.reservationsEnabled;
-                    const btnRes = document.getElementById('btnReservations');
-                    if(btnRes) btnRes.style.display = settings.reservationsEnabled ? 'flex' : 'none';
+                    const resWrapper = document.getElementById('resWrapper');
+                    if(resWrapper) resWrapper.style.display = settings.reservationsEnabled ? 'block' : 'none';
                 }
                 if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
 
@@ -479,7 +479,10 @@ window.App = {
         });
         
         // ✅ NEW: Reservations Update
-        socket.on('reservations-update', (list) => App.renderReservations(list));
+        socket.on('reservations-update', (list) => {
+            App.updateReservationsBadge(list);
+            App.renderReservations(list);
+        });
 
         socket.on('staff-accepted-alarm', (data) => {
             if(!App.tempComingState) App.tempComingState = {};
@@ -1640,6 +1643,45 @@ window.App = {
     openReservationsModal: () => {
         document.getElementById('reservationsModal').style.display = 'flex';
         window.socket.emit('get-reservations');
+    },
+
+    updateReservationsBadge: (list) => {
+        if (!list) return;
+        const badge = document.getElementById('resBadge');
+        if (!badge) return;
+
+        const pending = list.filter(r => r.status === 'pending');
+        const confirmed = list.filter(r => r.status === 'confirmed');
+
+        let count = 0;
+        let color = '';
+
+        if (userData.role === 'admin') {
+            // Ο Admin βλέπει Κόκκινο αν υπάρχει Αναμονή, αλλιώς Πράσινο
+            if (pending.length > 0) {
+                count = pending.length;
+                color = '#FF5252'; // Red (Pending)
+            } else if (confirmed.length > 0) {
+                count = confirmed.length;
+                color = '#00E676'; // Green (Confirmed)
+            }
+        } else {
+            // Οι Σερβιτόροι βλέπουν Πράσινο αν υπάρχει Επιβεβαιωμένη
+            if (confirmed.length > 0) {
+                count = confirmed.length;
+                color = '#00E676'; // Green (Confirmed)
+            }
+        }
+
+        if (count > 0) {
+            badge.style.display = 'flex';
+            badge.innerText = count;
+            badge.style.background = color;
+            badge.style.animation = 'pulse 2s infinite';
+        } else {
+            badge.style.display = 'none';
+            badge.style.animation = 'none';
+        }
     },
     
     renderReservations: (list) => {
