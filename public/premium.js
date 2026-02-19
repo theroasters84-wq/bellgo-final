@@ -166,6 +166,7 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
+    hasCheckedPendingReservations: false, // ✅ NEW: Flag για έλεγχο κρατήσεων κατά την είσοδο
     staffChargeMode: false, // ✅ NEW: Staff Charge Setting
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     
@@ -395,6 +396,9 @@ window.App = {
                     localStorage.removeItem('temp_stripe_connect_id');
                     alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
                 }
+                
+                // ✅ NEW: Ζητάμε τις κρατήσεις μόλις συνδεθούμε (αφού μπούμε στο δωμάτιο)
+                socket.emit('get-reservations');
             });
         });
 
@@ -403,7 +407,10 @@ window.App = {
             socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
         }
 
-        socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
+        socket.on('disconnect', () => { 
+            document.getElementById('connDot').style.background = 'red'; 
+            App.hasCheckedPendingReservations = false; // ✅ Reset για να ξαναελέγξει όταν συνδεθεί
+        });
         
         socket.on('menu-update', (data) => {
             try {
@@ -482,6 +489,19 @@ window.App = {
         socket.on('reservations-update', (list) => {
             App.updateReservationsBadge(list);
             App.renderReservations(list);
+            
+            // ✅ NEW: Έλεγχος για εκκρεμείς κρατήσεις κατά την είσοδο (Popup)
+            if (!App.hasCheckedPendingReservations) {
+                App.hasCheckedPendingReservations = true;
+                const pending = list ? list.filter(r => r.status === 'pending') : [];
+                if (pending.length > 0) {
+                    setTimeout(() => {
+                        if(confirm(`📅 Έχετε ${pending.length} κρατήσεις σε αναμονή!\n\nΘέλετε να τις δείτε τώρα;`)) {
+                            App.openReservationsModal();
+                        }
+                    }, 1000);
+                }
+            }
         });
 
         socket.on('staff-accepted-alarm', (data) => {
