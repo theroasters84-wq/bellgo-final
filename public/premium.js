@@ -165,6 +165,12 @@ window.App = {
     knownOrderIds: new Set(), // ✅ Track printed orders
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
+    
+    einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
+    // ✅ NEW: Cash Register State
+    cashRegValue: "0",
+    cashRegItems: [],
+    tempPasoText: "", // ✅ Store PASO order text temporarily
 
     hasCheckedPendingReservations: false, // ✅ NEW: Flag για έλεγχο κρατήσεων κατά την είσοδο
     staffChargeMode: false, // ✅ NEW: Staff Charge Setting
@@ -453,6 +459,10 @@ window.App = {
                 if(settings.expensePresets) App.expensePresets = settings.expensePresets;
                 if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
                 
+                // ✅ NEW: Load E-Invoicing State
+                if(settings.einvoicing && settings.einvoicing.enabled) App.einvoicingEnabled = true;
+                else App.einvoicingEnabled = false;
+
                 // ✅ SYNC STAFF CHARGE SWITCHES (Settings & Wallet)
                 App.staffChargeMode = settings.staffCharge || false;
                 const sw1 = document.getElementById('switchStaffCharge'); if(sw1) sw1.checked = App.staffChargeMode;
@@ -465,6 +475,13 @@ window.App = {
                     if(resWrapper) resWrapper.style.display = settings.reservationsEnabled ? 'block' : 'none';
                 }
                 if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
+                
+                // ✅ NEW: Load POS Settings
+                if(settings.pos) {
+                    document.getElementById('inpPosProvider').value = settings.pos.provider || '';
+                    document.getElementById('inpPosId').value = settings.pos.id || '';
+                    document.getElementById('inpPosKey').value = settings.pos.key || '';
+                }
 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
@@ -524,6 +541,14 @@ window.App = {
             App.isInitialized = true; // Mark as initialized after first batch
             App.activeOrders = orders;
             App.renderDesktopIcons(orders);
+        });
+
+        // ✅ NEW: Listen for Quick Order Print (PASO)
+        socket.on('print-quick-order', (data) => {
+            const mockOrder = { id: data.id, text: data.text, from: 'PASO' };
+            if (data.signature) mockOrder.text += `\n\nSIGNATURE: ${data.signature}`;
+            // Print immediately
+            App.printOrder(null, mockOrder);
         });
 
         // ✅ IMMEDIATE STATUS CHANGE (Fixes delays)
@@ -649,8 +674,15 @@ window.App = {
         const sc = document.getElementById('switchStaffCharge').checked; // ✅ Save Staff Charge
         const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
         const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
+        
+        // ✅ NEW: POS Settings
+        const posData = {
+            provider: document.getElementById('inpPosProvider').value,
+            id: document.getElementById('inpPosId').value,
+            key: document.getElementById('inpPosKey').value
+        };
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables });
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, pos: posData });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -966,6 +998,18 @@ window.App = {
         input.className = 'menu-input-box';
         input.value = displayText;
         input.placeholder = "Προϊόν:Τιμή"; 
+
+        // ✅ NEW: VAT INPUT (Κουτάκι ΦΠΑ)
+        const vatInput = document.createElement('input');
+        vatInput.type = 'number';
+        vatInput.placeholder = 'ΦΠΑ';
+        vatInput.style.cssText = "width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px;";
+        
+        if (itemObj && itemObj.vat !== undefined) {
+            vatInput.value = itemObj.vat;
+        } else {
+            vatInput.value = 24; // Default
+        }
         
         // EXTRAS BUTTON
         const extrasBtn = document.createElement('button');
@@ -988,7 +1032,10 @@ window.App = {
             App.openSaveModal();
         };
         
-        input.addEventListener('blur', () => {
+        // ✅ NEW: Unified Update Logic (Handles both Name/Price and VAT)
+        const updateItem = (e) => {
+            if (e.relatedTarget === input || e.relatedTarget === vatInput) return; // Ignore internal focus change
+
             const newVal = input.value.trim();
             if (!newVal) return;
             
@@ -1002,13 +1049,15 @@ window.App = {
                  name = parts.slice(0, -1).join(':').trim();
                  price = parseFloat(parts[parts.length-1]) || 0;
             }
+            
+            const vat = parseInt(vatInput.value) || 24;
 
             // Preserve existing object structure if it exists
             let newItem;
             if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: name, price: price };
+                newItem = { ...cat.items[index], name: name, price: price, vat: vat };
             } else {
-                newItem = { name: name, price: price, extras: [] };
+                newItem = { name: name, price: price, vat: vat, extras: [] };
             }
 
             App.pendingAction = () => {
@@ -1016,9 +1065,13 @@ window.App = {
                 else cat.items[index] = newItem;
             };
             App.openSaveModal();
-        });
+        };
+        
+        input.addEventListener('blur', updateItem);
+        vatInput.addEventListener('blur', updateItem);
         
         wrapper.appendChild(input);
+        wrapper.appendChild(vatInput); // ✅ Add VAT Input to DOM
         wrapper.appendChild(extrasBtn);
         if (index !== null) wrapper.appendChild(delBtn); 
         container.appendChild(wrapper);
@@ -1199,6 +1252,12 @@ window.App = {
         const txt = document.getElementById('sidebarOrderText').value.trim();
         if(!txt) return alert("Κενή παραγγελία");
         
+        // ✅ NEW: PASO LOGIC (Quick Checkout)
+        if (App.sidebarMode === 'paso') {
+            App.openPasoCheckout(txt);
+            return;
+        }
+        
         let header = "";
         let finalBody = txt;
 
@@ -1238,6 +1297,53 @@ window.App = {
         if(document.getElementById('sidebarDelPhone')) document.getElementById('sidebarDelPhone').value = '';
         if(document.getElementById('sidebarDelZip')) document.getElementById('sidebarDelZip').value = '';
         App.toggleOrderSidebar(); // Close
+    },
+
+    // ✅ NEW: PASO CHECKOUT FUNCTIONS
+    openPasoCheckout: (text) => {
+        App.tempPasoText = text;
+        const total = calculateTotal(text);
+        document.getElementById('pasoTotal').innerText = total.toFixed(2) + '€';
+        
+        const divEinv = document.getElementById('pasoEinvoicingOptions');
+        const divSimple = document.getElementById('pasoSimpleOptions');
+        
+        // Show options based on E-Invoicing setting
+        if (App.einvoicingEnabled) {
+            divEinv.style.display = 'grid';
+            divSimple.style.display = 'none';
+        } else {
+            divEinv.style.display = 'none';
+            divSimple.style.display = 'flex';
+        }
+        
+        document.getElementById('pasoCheckoutModal').style.display = 'flex';
+    },
+
+    processPasoOrder: (method, type) => { // type: 'receipt', 'simple', 'qr'
+        const text = App.tempPasoText;
+        const total = calculateTotal(text);
+        
+        if (type === 'qr') {
+             // Open QR Modal logic
+             // We use a temporary ID for the QR
+             const tempId = Date.now();
+             App.openQrPayment(tempId, true); // true = isPaso
+             // We don't close the modal yet, waiting for QR scan or manual close
+             return;
+        }
+
+        // Send to server for recording (Stats) & Printing
+        window.socket.emit('quick-order', {
+            text: text,
+            total: total,
+            method: method, // 'cash', 'card'
+            issueReceipt: (type === 'receipt')
+        });
+        
+        document.getElementById('pasoCheckoutModal').style.display = 'none';
+        App.toggleOrderSidebar(); // Close sidebar
+        document.getElementById('sidebarOrderText').value = '';
     },
 
     renderDesktopIcons: (orders) => {
@@ -1327,6 +1433,14 @@ window.App = {
         const total = calculateTotal(order.text);
         let actions = '';
         let treatBtn = ''; // ✅ Κουμπί Κεράσματος για το Header
+        let receiptBtn = ''; // ✅ NEW: Κουμπί Απόδειξης
+
+        // ✅ NEW: E-Invoicing Button Logic
+        if (App.einvoicingEnabled) {
+            const hasReceipt = order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]');
+            const btnColor = hasReceipt ? '#00E676' : '#FF9800';
+            receiptBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid ${btnColor}; color:${btnColor}; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:bold;" onclick="App.issueReceipt('${order.id}')" title="Ηλ. Τιμολόγηση">${hasReceipt ? '🧾 ΕΚΔΟΘΗΚΕ' : '🧾 ΑΠΟΔΕΙΞΗ'}</button>`;
+        }
 
         // ✅ Εμφάνιση κουμπιών (Κέρασμα + Εκτύπωση) σε ΟΛΑ τα στάδια (εκτός αν είναι Kitchen Mode)
         if (App.adminMode !== 'kitchen') {
@@ -1356,6 +1470,7 @@ window.App = {
             <div class="win-header">
                 <span style="font-weight:bold; color:white; font-size:24px;">${order.from}</span>
                 <div class="win-controls" style="display:flex; align-items:center;">
+                    ${receiptBtn}
                     ${treatBtn}
                     <button class="win-btn-top" style="background:#FF9800; color:black; padding:6px 12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="App.minimizeOrder('${order.id}')">🔙 ΠΙΣΩ</button>
                 </div>
@@ -1374,8 +1489,14 @@ window.App = {
     },
     
     // ✅ NEW: PRINT ORDER FUNCTION
-    printOrder: (id) => {
-        const order = App.activeOrders.find(o => o.id == id);
+    printOrder: (id, directObj = null) => {
+        let order = null;
+        if (directObj) {
+            order = directObj; // Use passed object (for PASO)
+        } else {
+            order = App.activeOrders.find(o => o.id == id);
+        }
+        
         if(!order) return;
         
         const total = calculateTotal(order.text);
@@ -1409,6 +1530,43 @@ window.App = {
             const winEl = document.getElementById(`win-${id}`);
             if(winEl) winEl.style.display = 'none';
         }
+    },
+
+    // ✅ NEW: ISSUE RECEIPT (Manual)
+    issueReceipt: (id) => {
+        const order = App.activeOrders.find(o => o.id == id);
+        if(order && order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) return alert("Η απόδειξη έχει ήδη εκδοθεί!");
+        
+        if(confirm("Έκδοση απόδειξης (myDATA);")) {
+            window.socket.emit('issue-receipt', Number(id));
+        }
+    },
+
+    // ✅ NEW: DIALOG FOR CLOSING ORDER
+    showReceiptDialog: (id) => {
+        const div = document.createElement('div');
+        div.className = 'modal-overlay';
+        div.style.display = 'flex';
+        div.style.zIndex = '10000';
+        div.innerHTML = `
+           <div class="modal-box" style="text-align:center; max-width:350px;">
+               <h3 style="color:#FFD700;">Κλείσιμο Παραγγελίας</h3>
+               <p style="color:#ccc;">Δεν έχει εκδοθεί απόδειξη. Τι θέλετε να κάνετε;</p>
+               <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.issueAndClose(${id}, this)">🧾 ΕΚΔΟΣΗ & ΚΛΕΙΣΙΜΟ</button>
+               <button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.forceCompleteOrder(${id}); this.closest('.modal-overlay').remove();">🚪 ΜΟΝΟ ΚΛΕΙΣΙΜΟ</button>
+               <button class="modal-btn" style="background:#555;" onclick="this.closest('.modal-overlay').remove()">ΑΚΥΡΟ</button>
+           </div>
+        `;
+        document.body.appendChild(div);
+    },
+
+    issueAndClose: (id, btn) => {
+        window.socket.emit('issue-receipt', Number(id));
+        btn.innerText = "⏳ ΕΚΔΟΣΗ...";
+        setTimeout(() => {
+            App.forceCompleteOrder(id);
+            btn.closest('.modal-overlay').remove();
+        }, 1000); // Μικρή καθυστέρηση για να προλάβει να πάρει το tag
     },
 
     showTreatOptions: (id) => {
@@ -1449,10 +1607,16 @@ window.App = {
     },
 
     // ✅ NEW: QR PAYMENT LOGIC
-    openQrPayment: async (id) => {
-        const order = App.activeOrders.find(o => o.id == id);
-        if(!order) return;
-        const total = calculateTotal(order.text);
+    openQrPayment: async (id, isPaso = false) => {
+        let total = 0;
+        if (isPaso) {
+            total = calculateTotal(App.tempPasoText);
+        } else {
+            const order = App.activeOrders.find(o => o.id == id);
+            if(!order) return;
+            total = calculateTotal(order.text);
+        }
+        
         if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
 
         try {
@@ -1469,6 +1633,13 @@ window.App = {
                 const linkContainer = document.getElementById('qrLinkContainer');
                 if(linkContainer) {
                     linkContainer.innerHTML = `<button onclick="window.open('${data.url}', '_blank')" style="background:#2196F3; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold;">🔗 ΠΛΗΡΩΜΗ ΕΔΩ (MANUAL)</button>`;
+                }
+                
+                // If PASO, add a "Complete" button to finish the flow manually
+                if (isPaso) {
+                    linkContainer.innerHTML += `<button onclick="App.processPasoOrder('card', 'receipt')" style="background:#00E676; color:black; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold; margin-top:10px;">✅ ΟΛΟΚΛΗΡΩΣΗ (ΕΚΤΥΠΩΣΗ)</button>`;
+                    // Hide checkout modal to avoid confusion
+                    document.getElementById('pasoCheckoutModal').style.display = 'none';
                 }
 
                 document.getElementById('qrPaymentModal').style.display = 'flex';
@@ -1582,6 +1753,16 @@ window.App = {
         modal.style.display = 'flex';
     },
     completeOrder: (id) => {
+        // ✅ NEW: Check if receipt is needed
+        const order = App.activeOrders.find(o => o.id == id);
+        if (App.einvoicingEnabled && order && !order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) {
+             App.showReceiptDialog(id);
+             return;
+        }
+        App.forceCompleteOrder(id);
+    },
+    // ✅ NEW: Helper to bypass check
+    forceCompleteOrder: (id) => {
         window.socket.emit('pay-order', Number(id)); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
@@ -1764,6 +1945,130 @@ window.App = {
     
     deleteReservation: (id) => {
         if(confirm("Διαγραφή κράτησης;")) window.socket.emit('delete-reservation', id);
+    },
+
+    // ✅ NEW: CASH REGISTER LOGIC (ΤΑΜΕΙΑΚΗ)
+    openCashRegister: () => {
+        App.cashRegValue = "0";
+        App.cashRegItems = [];
+        App.updateCashRegUI();
+        document.getElementById('cashRegisterModal').style.display = 'flex';
+    },
+
+    cashRegInput: (val) => {
+        if (App.cashRegValue === "0" && val !== ".") App.cashRegValue = val;
+        else App.cashRegValue += val;
+        App.updateCashRegUI();
+    },
+
+    cashRegClear: () => {
+        if (App.cashRegValue === "0") {
+            // Αν είναι ήδη 0, καθαρίζουμε τη λίστα
+            App.cashRegItems = [];
+        } else {
+            App.cashRegValue = "0";
+        }
+        App.updateCashRegUI();
+    },
+
+    cashRegAddItem: (vat) => {
+        const amount = parseFloat(App.cashRegValue);
+        if (isNaN(amount) || amount <= 0) return;
+
+        App.cashRegItems.push({
+            name: `Είδος ${vat}%`,
+            price: amount,
+            vat: vat
+        });
+        
+        App.cashRegValue = "0"; // Reset screen
+        App.updateCashRegUI();
+    },
+
+    updateCashRegUI: () => {
+        document.getElementById('cashRegScreen').innerText = App.cashRegValue;
+        
+        const listEl = document.getElementById('cashRegList');
+        listEl.innerHTML = '';
+        let total = 0;
+        
+        App.cashRegItems.forEach(item => {
+            total += item.price;
+            const div = document.createElement('div');
+            div.innerText = `${item.name}: ${item.price.toFixed(2)}€`;
+            listEl.appendChild(div);
+        });
+        
+        document.getElementById('cashRegTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+    },
+
+    cashRegPay: (method) => {
+        let total = App.cashRegItems.reduce((sum, item) => sum + item.price, 0);
+        
+        // Αν δεν υπάρχουν είδη στη λίστα, αλλά υπάρχει ποσό στην οθόνη, το παίρνουμε ως "Γενικό"
+        if (total === 0) {
+            const screenVal = parseFloat(App.cashRegValue);
+            if (screenVal > 0) {
+                total = screenVal;
+                App.cashRegItems.push({ name: "Γενικό Είδος", price: total, vat: 24 });
+            } else {
+                return alert("Το ποσό είναι μηδενικό!");
+            }
+        }
+
+        if (method === 'card') {
+            // ✅ REAL POS INTEGRATION LOGIC
+            const btn = document.getElementById('btnCashRegPos');
+            const originalText = btn.innerText;
+            
+            // 1. Αλλαγή UI σε "Αναμονή"
+            btn.innerText = "⏳ ΑΠΟΣΤΟΛΗ...";
+            btn.disabled = true;
+            btn.style.background = "#555";
+
+            // 2. Listener για την απάντηση του Server
+            const handlePosResult = (res) => {
+                window.socket.off('pos-result', handlePosResult); // Καθαρισμός listener
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.style.background = "#2196F3";
+
+                if (res.success) {
+                    alert("✅ Πληρωμή POS Επιτυχής!");
+                    App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
+                } else {
+                    alert("❌ Σφάλμα POS: " + res.error);
+                    // Fallback: Αν ο χρήστης είδε ότι πέρασε αλλά κόλλησε το ίντερνετ
+                    if(confirm("Αν η πληρωμή εγκρίθηκε στο τερματικό αλλά δεν ήρθε σήμα, πατήστε ΟΚ για κλείσιμο.")) {
+                        App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
+                    }
+                }
+            };
+
+            window.socket.on('pos-result', handlePosResult);
+            window.socket.emit('pos-pay', { amount: total });
+        } else {
+            App.finalizeCashRegOrder(total, '💵 ΜΕΤΡΗΤΑ');
+        }
+    },
+
+    finalizeCashRegOrder: (total, methodLabel) => {
+        // Δημιουργία κειμένου παραγγελίας για εκτύπωση/αποθήκευση
+        let orderText = `[ΤΑΜΕΙΑΚΗ 📠]\n${methodLabel}\n---\n`;
+        App.cashRegItems.forEach(item => {
+            orderText += `${item.name}: ${item.price.toFixed(2)}\n`;
+        });
+        orderText += `✅ PAID`;
+
+        // Αποστολή στον Server ως ολοκληρωμένη παραγγελία
+        const newOrder = { id: Date.now(), text: orderText, status: 'completed', from: 'Admin (Ταμείο)' };
+        window.socket.emit('new-order', newOrder);
+        
+        // Εκτύπωση (αν θέλουμε)
+        // App.printOrder(newOrder.id); // Προαιρετικό: Αν θέλουμε να τυπώνει αυτόματα
+
+        document.getElementById('cashRegisterModal').style.display = 'none';
+        alert("Η απόδειξη εκδόθηκε!");
     },
 
     toggleAdminChat: () => { 

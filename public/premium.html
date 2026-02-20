@@ -14,6 +14,7 @@
     
     <script src="menu-presets.js"></script> 
     <script type="module" src="pay.js"></script> <!-- ✅ NEW: Pay Logic -->
+    <script type="module" src="apodiksh.js"></script> <!-- ✅ NEW: E-Invoicing Logic -->
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -33,6 +34,7 @@
                     <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button>
                     <div id="resBadge" class="chat-badge" style="display:none;"></div>
                 </div>
+                <button id="btnCashRegister" class="btn-icon" onclick="App.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white;">📠</button> <!-- ✅ NEW: Cash Register -->
                 <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white;">💼</button> <!-- ✅ NEW -->
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -157,6 +159,7 @@
                 <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
                 <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
+                <button class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
                 <button class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
@@ -235,6 +238,15 @@
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="pin_connect_stripe">PIN / CONNECT STRIPE</h4>
+                
+                <!-- ✅ NEW: POS TERMINAL SETTINGS -->
+                <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                    <div class="settings-label" style="color:#00BCD4;">📡 ΣΥΝΔΕΣΗ ΤΕΡΜΑΤΙΚΟΥ (POS)</div>
+                    <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option></select>
+                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Terminal ID / TID" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="API Key / Token" onblur="App.autoSaveSettings()">
+                </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()"><span data-i18n="pin">🔑 PIN</span></button>
                     <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()"><span data-i18n="statistics">📊 ΣΤΑΤΙΣΤΙΚΑ</span></button>
@@ -320,6 +332,68 @@
             <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')"><span data-i18n="today_only">📅 ΣΗΜΕΡΑ ΜΟΝΟ</span></button>
             <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')"><span data-i18n="permanently">♾️ ΜΟΝΙΜΑ</span></button>
             <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;" data-i18n="cancel">ΑΚΥΡΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: CASH REGISTER MODAL (ΤΑΜΕΙΑΚΗ) -->
+    <div id="cashRegisterModal" class="modal-overlay">
+        <div class="modal-box" style="max-width:400px; background:#1a1a1a;">
+            <h3 class="modal-title" style="color:#00BCD4;">📠 ΤΑΜΕΙΑΚΗ</h3>
+            
+            <!-- Screen -->
+            <div style="background:#000; color:#00E676; font-family:'Courier New', monospace; font-size:32px; text-align:right; padding:15px; border-radius:8px; margin-bottom:10px; border:2px solid #333;">
+                <span id="cashRegScreen">0</span><span style="font-size:16px;">€</span>
+            </div>
+
+            <!-- Receipt Preview (Mini List) -->
+            <div id="cashRegList" style="max-height:100px; overflow-y:auto; background:#222; padding:5px; margin-bottom:10px; font-size:12px; color:#ccc; border-radius:4px;"></div>
+            <div id="cashRegTotal" style="text-align:right; font-weight:bold; color:white; margin-bottom:10px;">ΣΥΝΟΛΟ: 0.00€</div>
+
+            <!-- VAT Buttons -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; margin-bottom:10px;">
+                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(13)">+ ΦΑΓ (13%)</button>
+                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(24)">+ ΠΟΤΟ (24%)</button>
+                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(6)">+ EID (6%)</button>
+            </div>
+
+            <!-- Numpad -->
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:15px;">
+                <button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('7')">7</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('8')">8</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('9')">9</button>
+                <button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('4')">4</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('5')">5</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('6')">6</button>
+                <button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('1')">1</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('2')">2</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('3')">3</button>
+                <button class="modal-btn" style="background:#D32F2F; font-size:16px; margin:0;" onclick="App.cashRegClear()">C</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('0')">0</button><button class="modal-btn" style="background:#333; font-size:20px; margin:0;" onclick="App.cashRegInput('.')">.</button>
+            </div>
+
+            <!-- Payment Actions -->
+            <div style="display:flex; gap:10px;">
+                <button class="modal-btn" style="background:#00E676; color:black; font-weight:bold;" onclick="App.cashRegPay('cash')">💵 ΜΕΤΡΗΤΑ</button>
+                <button id="btnCashRegPos" class="modal-btn" style="background:#2196F3; color:white; font-weight:bold;" onclick="App.cashRegPay('card')">💳 ΚΑΡΤΑ (POS)</button>
+            </div>
+            <button onclick="document.getElementById('cashRegisterModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px; width:100%;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: PASO CHECKOUT MODAL -->
+    <div id="pasoCheckoutModal" class="modal-overlay">
+        <div class="modal-box" style="max-width:400px; text-align:center;">
+            <h3 class="modal-title" style="color:#FFD700;">PASO CHECKOUT</h3>
+            <div id="pasoTotal" style="font-size:32px; font-weight:bold; color:white; margin-bottom:20px;">0.00€</div>
+            
+            <!-- E-Invoicing Options (Hidden by default) -->
+            <div id="pasoEinvoicingOptions" style="display:none; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <button class="modal-btn" style="background:#00E676; color:black; font-size:12px;" onclick="App.processPasoOrder('cash', 'receipt')">🧾 ΑΠΟΔΕΙΞΗ<br>ΜΕΤΡΗΤΑ</button>
+                <button class="modal-btn" style="background:#00E676; color:black; font-size:12px;" onclick="App.processPasoOrder('card', 'receipt')">🧾 ΑΠΟΔΕΙΞΗ<br>ΚΑΡΤΑ</button>
+                <button class="modal-btn" style="background:#2196F3; color:white; font-size:12px;" onclick="App.processPasoOrder('card', 'qr')">💳 QR CARD<br>(+ΑΠΟΔΕΙΞΗ)</button>
+                <button class="modal-btn" style="background:#555; color:white; font-size:12px;" onclick="App.processPasoOrder('cash', 'simple')">🚪 ΑΠΛΟ<br>ΚΛΕΙΣΙΜΟ</button>
+            </div>
+
+            <!-- Simple Options (Default) -->
+            <div id="pasoSimpleOptions" style="display:flex; flex-direction:column; gap:10px;">
+                <button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.processPasoOrder('card', 'qr')">💳 QR CARD</button>
+                <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.processPasoOrder('cash', 'simple')">💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ</button>
+            </div>
+
+            <button onclick="document.getElementById('pasoCheckoutModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΑΚΥΡΟ</button>
         </div>
     </div>
 

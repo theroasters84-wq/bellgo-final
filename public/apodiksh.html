@@ -1,0 +1,35 @@
+<div id="einvoicingModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3 class="modal-title">🔌 E-INVOICING (myDATA)</h3>
+        
+        <div class="settings-section">
+            <div class="settings-label">ΠΑΡΟΧΟΣ</div>
+            <select id="inpEinvProvider" class="inp-settings" onchange="Apodiksh.updateProviderInfo()">
+                <option value="" disabled selected>Επιλέξτε Πάροχο...</option>
+                <option value="epsilon">Epsilon Net</option>
+                <option value="softone">SoftOne</option>
+                <option value="aade">myDATA (Generic)</option>
+            </select>
+            
+            <!-- ✅ NEW: Κουμπί Εγγραφής στον Πάροχο -->
+            <button id="btnProviderRegister" class="modal-btn" style="display:none; background:#2196F3; margin-top:10px; font-size:13px;" onclick="Apodiksh.openProviderPage()">📝 ΕΓΓΡΑΦΗ / ΑΠΟΚΤΗΣΗ ΚΛΕΙΔΙΩΝ ↗</button>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-label">ΣΤΟΙΧΕΙΑ ΣΥΝΔΕΣΗΣ</div>
+            <input type="text" id="inpEinvApiKey" class="inp-settings" placeholder="API Key / Subscription Key">
+            <input type="text" id="inpEinvUserId" class="inp-settings" placeholder="User ID (Αν απαιτείται)">
+            <input type="text" id="inpEinvDomain" class="inp-settings" placeholder="Domain / URL (Optional)">
+        </div>
+
+        <div class="switch-row" style="margin-top:15px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
+            <span style="font-weight:bold; color:white;">ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
+            <label class="switch"><input type="checkbox" id="switchEinvEnabled"><span class="slider"></span></label>
+        </div>
+
+        <div style="margin-top:10px; font-size:11px; color:#aaa;">* Τα στοιχεία αποθηκεύονται με ασφάλεια στον server.</div>
+
+        <button class="modal-btn" style="background:#00E676; color:black; margin-top:15px;" onclick="Apodiksh.saveSettings()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+        <button class="modal-btn" style="background:#555;" onclick="Apodiksh.closeSettings()">🔙 ΠΙΣΩ</button>
+    </div>
+</div>

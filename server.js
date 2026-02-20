@@ -81,7 +81,9 @@ const defaultSettings = {
     visibility: 'public', // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
     staffCharge: false, // ✅ NEW: Λειτουργία Χρέωσης Προσωπικού
     reservationsEnabled: false, // ✅ NEW: Κρατήσεις
-    totalTables: 0 // ✅ NEW: Σύνολο Τραπεζιών
+    totalTables: 0, // ✅ NEW: Σύνολο Τραπεζιών
+    einvoicing: {}, // ✅ NEW: E-Invoicing Settings
+    pos: { provider: '', id: '', key: '' } // ✅ NEW: POS Settings
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -745,6 +747,8 @@ io.on('connection', (socket) => {
             if(data.staffCharge !== undefined) store.settings.staffCharge = data.staffCharge; // ✅ NEW: Staff Charge Setting
             if(data.reservationsEnabled !== undefined) store.settings.reservationsEnabled = data.reservationsEnabled; // ✅ NEW
             if(data.totalTables !== undefined) store.settings.totalTables = data.totalTables; // ✅ NEW
+            if(data.einvoicing) store.settings.einvoicing = data.einvoicing; // ✅ NEW: Save E-Invoicing
+            if(data.pos) store.settings.pos = data.pos; // ✅ NEW: Save POS Settings
             updateStoreClients(socket.store); 
         } 
     });
@@ -873,6 +877,80 @@ io.on('connection', (socket) => {
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime }); 
             } 
         } 
+    });
+
+    // ✅ NEW: POS PAYMENT REQUEST (Server-Side Bridge)
+    socket.on('pos-pay', async (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        const { amount } = data;
+        const pos = store.settings.pos || {};
+
+        if (!pos.provider || !pos.id) {
+            socket.emit('pos-result', { success: false, error: "Δεν έχουν οριστεί ρυθμίσεις POS." });
+            return;
+        }
+
+        console.log(`📡 Sending ${amount}€ to ${pos.provider} POS (ID: ${pos.id})...`);
+
+        try {
+            // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΠΡΑΓΜΑΤΙΚΗ ΚΛΗΣΗ API (VIVA / CARDLINK)
+            // Π.χ. await axios.post('https://api.vivapayments.com/...', { amount: amount, terminalId: pos.id ... })
+            
+            // Προσομοίωση καθυστέρησης δικτύου (3 δευτερόλεπτα)
+            await new Promise(r => setTimeout(r, 3000));
+
+            // Επιστροφή επιτυχίας
+            socket.emit('pos-result', { success: true });
+
+        } catch (e) {
+            socket.emit('pos-result', { success: false, error: e.message || "Σφάλμα επικοινωνίας" });
+        }
+    });
+
+    // ✅ NEW: QUICK ORDER (PASO) - Records stats but doesn't save to active orders
+    socket.on('quick-order', (data) => {
+        const store = getMyStore();
+        if (!store) return;
+        
+        // 1. Create a temporary order object for stats
+        const tempOrder = {
+            id: Date.now(),
+            text: data.text,
+            from: 'Admin (Paso)',
+            status: 'completed'
+        };
+        
+        // 2. Add Payment Tag
+        if (data.method === 'card') tempOrder.text += '\n💳 PAID';
+        else tempOrder.text += '\n💵 PAID';
+        
+        // 3. E-Invoicing (Placeholder)
+        let signature = null;
+        if (data.issueReceipt) {
+            tempOrder.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]';
+            // Here you would call Epsilon/MyData API
+        }
+        
+        // 4. Update Stats & Save
+        updateStoreStats(store, tempOrder);
+        saveStoreToFirebase(socket.store);
+        
+        // 5. Send back to client for printing
+        socket.emit('print-quick-order', { text: tempOrder.text, id: tempOrder.id, signature: signature });
+    });
+
+    // ✅ NEW: ISSUE RECEIPT (E-INVOICING)
+    socket.on('issue-receipt', (id) => {
+        const store = getMyStore();
+        if(store) {
+            const o = store.orders.find(x => x.id == id);
+            if(o && !o.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) {
+                o.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]'; // Tag που δείχνει ότι εκδόθηκε
+                // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΚΛΗΣΗ ΣΤΗΝ EPSILON NET / MYDATA
+                updateStoreClients(socket.store);
+            }
+        }
     });
 
     // ✅ NEW: WALLET & CHARGE LOGIC
