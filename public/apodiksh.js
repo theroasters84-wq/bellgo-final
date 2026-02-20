@@ -7,8 +7,17 @@ export const Apodiksh = {
     },
 
     cashRegButtons: [], // ✅ Local state for buttons
+    settingsCache: null, // ✅ NEW: Cache settings to avoid race conditions
 
     init: async () => {
+        // ✅ FIX: Register Listener IMMEDIATELY (Before Fetch)
+        if (window.socket) {
+            window.socket.on('store-settings-update', (settings) => {
+                Apodiksh.settingsCache = settings; // Save to cache
+                Apodiksh.populateUI(); // Try to update UI if ready
+            });
+        }
+
         // 1. Φόρτωση του HTML αρχείου δυναμικά
         try {
             const res = await fetch('apodiksh.html');
@@ -16,31 +25,34 @@ export const Apodiksh = {
                 const html = await res.text();
                 document.body.insertAdjacentHTML('beforeend', html);
                 console.log("✅ E-Invoicing Module Loaded");
+                Apodiksh.populateUI(); // ✅ Update UI once HTML is loaded
             }
         } catch (e) { console.error("Failed to load apodiksh.html", e); }
-        
-        // 2. Ακρόαση για ρυθμίσεις από τον Server (για να γεμίσουν τα πεδία)
-        if (window.socket) {
-            window.socket.on('store-settings-update', (settings) => {
-                if (settings.einvoicing) {
-                    const e = settings.einvoicing;
-                    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
-                    
-                    setVal('inpEinvProvider', e.provider);
-                    setVal('inpEinvApiKey', e.apiKey);
-                    setVal('inpEinvUserId', e.userId);
-                    setVal('inpEinvDomain', e.domain);
-                    
-                    const sw = document.getElementById('switchEinvEnabled');
-                    if(sw) sw.checked = e.enabled || false;
-                    
-                    // ✅ Load Buttons
-                    Apodiksh.cashRegButtons = settings.cashRegButtons || [];
-                    Apodiksh.renderCashRegButtons();
-                    Apodiksh.updateProviderInfo(); // ✅ Ενημέρωση κουμπιού κατά τη φόρτωση
-                }
-            });
+    },
+
+    // ✅ NEW: Separate Populate Function
+    populateUI: () => {
+        const settings = Apodiksh.settingsCache;
+        if (!settings || !document.getElementById('inpEinvProvider')) return; // Wait for HTML & Data
+
+        if (settings.einvoicing) {
+            const e = settings.einvoicing;
+            const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+            
+            setVal('inpEinvProvider', e.provider);
+            setVal('inpEinvApiKey', e.apiKey);
+            setVal('inpEinvUserId', e.userId);
+            setVal('inpEinvDomain', e.domain);
+            
+            const sw = document.getElementById('switchEinvEnabled');
+            if(sw) sw.checked = e.enabled || false;
+            
+            Apodiksh.updateProviderInfo();
         }
+
+        // ✅ Load Buttons (Always load, even if einvoicing is empty/new)
+        Apodiksh.cashRegButtons = settings.cashRegButtons || [];
+        Apodiksh.renderCashRegButtons();
     },
 
     openSettings: () => {
