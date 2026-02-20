@@ -17,6 +17,7 @@ const messaging = getMessaging(app);
 
 window.App = {
     activeOrders: [],
+    currentQrOrderId: null, // ✅ NEW: Track open QR
 
     init: () => {
         document.getElementById('storeNameHeader').innerText = (userData.store || "Store") + " 🛵";
@@ -124,6 +125,15 @@ window.App = {
             };
             
             modal.style.display = 'flex';
+        });
+
+        // ✅ NEW: Αυτόματο κλείσιμο QR
+        socket.on('payment-confirmed', (data) => {
+            if (App.currentQrOrderId && App.currentQrOrderId == data.orderId) {
+                document.getElementById('qrModal').style.display = 'none';
+                alert("Η πληρωμή έγινε δεκτή! ✅");
+                App.currentQrOrderId = null;
+            }
         });
     },
 
@@ -234,6 +244,7 @@ window.App = {
     logout: () => { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
 
     openQrPayment: async (id) => {
+        App.currentQrOrderId = id; // ✅ Save ID
         const order = App.activeOrders.find(o => o.id == id);
         if(!order) return;
         const total = App.calculateTotal(order.text);
@@ -279,6 +290,7 @@ window.onload = App.init;) => { let t=0; if(!text)return 0; text.split('\n').for
     logout: () => { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
 
     openQrPayment: async (id) => {
+        App.currentQrOrderId = id; // ✅ Save ID
         const order = App.activeOrders.find(o => o.id == id);
         if(!order) return;
         const total = App.calculateTotal(order.text);

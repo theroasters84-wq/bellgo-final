@@ -322,6 +322,29 @@ window.App = {
         document.getElementById('detailsOverlay').style.display = 'none';
         App.startApp();
     },
+
+    // ✅ NEW: GPS Location for Delivery
+    getGpsLocation: (btn) => {
+        if (!navigator.geolocation) return alert("Η γεωθεσία δεν υποστηρίζεται.");
+        
+        const originalText = btn.innerText;
+        btn.innerText = "⏳";
+        btn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                // Google Maps Link
+                const link = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+                document.getElementById('inpAddress').value = link;
+                btn.innerText = "✅";
+                setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 2000);
+            },
+            (err) => { alert("Σφάλμα GPS: " + err.message); btn.innerText = originalText; btn.disabled = false; },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    },
     
     // ✅ NEW: Διαχείριση Αρχικής Επιλογής
     chooseAction: (action) => {

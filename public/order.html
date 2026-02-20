@@ -82,7 +82,10 @@
             <!-- Delivery Fields -->
             <div id="deliveryFields">
                 <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας" data-i18n-placeholder="your_name">
-                <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)" data-i18n-placeholder="address_placeholder">
+                <div style="display:flex; gap:5px; align-items:center; width:100%; margin-bottom:15px;">
+                    <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)" data-i18n-placeholder="address_placeholder" style="flex:1; margin-bottom:0;">
+                    <button onclick="App.getGpsLocation(this)" style="background:#333; border:1px solid #555; color:#FFD700; border-radius:6px; width:50px; height:50px; cursor:pointer; font-size:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Εντοπισμός (GPS)">📍</button>
+                </div>
                 <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι" data-i18n-placeholder="floor_bell">
                 <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας" data-i18n-placeholder="contact_phone">
                 <input type="text" id="inpZip" class="inp-detail" placeholder="Τ.Κ. (Προαιρετικό)" data-i18n-placeholder="zip_optional">

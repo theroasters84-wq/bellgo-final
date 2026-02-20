@@ -84,7 +84,8 @@ const defaultSettings = {
     reservationsEnabled: false, // ✅ NEW: Κρατήσεις
     totalTables: 0, // ✅ NEW: Σύνολο Τραπεζιών
     einvoicing: {}, // ✅ NEW: E-Invoicing Settings
-    pos: { provider: '', id: '', key: '' } // ✅ NEW: POS Settings
+    pos: { provider: '', id: '', key: '' }, // ✅ NEW: POS Settings
+    cashRegButtons: [] // ✅ NEW: Custom Cash Register Buttons
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -427,6 +428,50 @@ app.get('/manifest.json', async (req, res) => {
 });
 
 /* ---------------- STRIPE PAYMENTS ---------------- */
+// ✅ NEW: Stripe Terminal Connection Token (Tap to Pay)
+app.post('/connection-token', async (req, res) => {
+  const { storeName } = req.body; // ✅ Support Multi-Tenant (Stripe Connect)
+  let stripeOptions = undefined;
+
+  if (storeName) {
+      const data = await getStoreData(storeName);
+      if (data && data.settings && data.settings.stripeConnectId) {
+          stripeOptions = { stripeAccount: data.settings.stripeConnectId };
+      }
+  }
+
+  try {
+    let connectionToken = await stripe.terminal.connectionTokens.create();
+    let connectionToken = await stripe.terminal.connectionTokens.create({}, stripeOptions);
+    res.json({ secret: connectionToken.secret });
+  } catch (error) {
+    console.error("Stripe Connection Token Error:", error);
+    res.status(500).send({ error: error.message });
+  }
+});
+
+// ✅ NEW: Capture Payment (Tap to Pay)
+app.post('/capture-payment', async (req, res) => {
+  const { paymentIntentId } = req.body;
+  const { paymentIntentId, storeName } = req.body;
+  let stripeOptions = undefined;
+
+  if (storeName) {
+      const data = await getStoreData(storeName);
+      if (data && data.settings && data.settings.stripeConnectId) {
+          stripeOptions = { stripeAccount: data.settings.stripeConnectId };
+      }
+  }
+
+  try {
+    const intent = await stripe.paymentIntents.capture(paymentIntentId);
+    const intent = await stripe.paymentIntents.capture(paymentIntentId, {}, stripeOptions);
+    res.send(intent);
+  } catch (error) {
+    res.status(500).send({ error: error.message });
+  }
+});
+
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
@@ -554,6 +599,9 @@ app.get('/qr-payment-success', async (req, res) => {
                  notifyAdmin(store, "ΠΛΗΡΩΜΗ QR 💳", `Η παραγγελία εξοφλήθηκε!`);
              }
         }
+        
+        // ✅ NEW: Ειδοποίηση για αυτόματο κλείσιμο του QR Modal (Admin/Driver)
+        io.to(store).emit('payment-confirmed', { orderId: orderId });
     }
     res.send(`
         <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;padding:20px;}</style></head><body>
@@ -751,6 +799,7 @@ io.on('connection', (socket) => {
             if(data.totalTables !== undefined) store.settings.totalTables = data.totalTables; // ✅ NEW
             if(data.einvoicing) store.settings.einvoicing = data.einvoicing; // ✅ NEW: Save E-Invoicing
             if(data.pos) store.settings.pos = data.pos; // ✅ NEW: Save POS Settings
+            if(data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons; // ✅ NEW: Save Cash Reg Buttons
             updateStoreClients(socket.store); 
         } 
     });
@@ -911,15 +960,30 @@ io.on('connection', (socket) => {
     });
 
     // ✅ NEW: QUICK ORDER (PASO) - Records stats but doesn't save to active orders
-    socket.on('quick-order', (data) => {
+    socket.on('quick-order', async (data) => {
         const store = getMyStore();
         if (!store) return;
         
+        // ✅ NEW: Stripe Terminal Verification (Tap to Pay)
+        if (data.method === 'card' && data.stripeId) {
+            console.log(`💳 Η παραγγελία ${data.stripeId} εξοφλήθηκε με κάρτα: ${data.total}€`); // ✅ Log requested
+            try {
+                const paymentIntent = await stripe.paymentIntents.retrieve(data.stripeId);
+                const stripeOptions = store.settings.stripeConnectId ? { stripeAccount: store.settings.stripeConnectId } : undefined;
+                const paymentIntent = await stripe.paymentIntents.retrieve(data.stripeId, stripeOptions);
+                if (paymentIntent.status !== 'succeeded') {
+                    console.log("⚠️ Warning: Payment not succeeded yet:", paymentIntent.status);
+                }
+            } catch (e) {
+                console.error("❌ Stripe verification failed:", e.message);
+            }
+        }
+
         // 1. Create a temporary order object for stats
         const tempOrder = {
             id: Date.now(),
             text: data.text,
-            from: 'Admin (Paso)',
+            from: data.source || 'Admin (Paso)',
             status: 'completed'
         };
         
@@ -931,7 +995,10 @@ io.on('connection', (socket) => {
         let signature = null;
         if (data.issueReceipt) {
             tempOrder.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]';
-            // Here you would call Epsilon/MyData API
+            
+            // 🔌 MOCK AADE QR (Προσομοίωση για δοκιμή εκτύπωσης)
+            // Στο μέλλον αυτό θα έρχεται από την Epsilon Net
+            tempOrder.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=1234567890&uid=EXAMPLE_UID";
         }
         
         // 4. Update Stats & Save
@@ -948,8 +1015,18 @@ io.on('connection', (socket) => {
         if(store) {
             const o = store.orders.find(x => x.id == id);
             if(o && !o.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) {
+                const einv = store.settings.einvoicing || {};
+                
                 o.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]'; // Tag που δείχνει ότι εκδόθηκε
-                // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΚΛΗΣΗ ΣΤΗΝ EPSILON NET / MYDATA
+                
+                // ✅ ΕΛΕΓΧΟΣ: Αν είναι ενεργοποιημένο, προετοιμασία για σύνδεση
+                if (einv.enabled) {
+                    console.log(`📡 Σύνδεση με ${einv.provider || 'Πάροχο'}... (Mock Mode)`);
+                    // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΠΡΑΓΜΑΤΙΚΗ ΚΛΗΣΗ API ΣΤΟ ΜΕΛΛΟΝ
+                    // Προς το παρόν βάζουμε το Mock για να δεις ότι δουλεύει η εκτύπωση
+                    o.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=1234567890&uid=EXAMPLE_UID";
+                }
+
                 updateStoreClients(socket.store);
             }
         }
@@ -1047,14 +1124,37 @@ io.on('connection', (socket) => {
         } 
     });
 
-    socket.on('pay-order', (id) => { 
+    socket.on('pay-order', async (data) => { 
         const store = getMyStore(); 
         if(store) { 
-            const o = store.orders.find(x => x.id == id);
+            // data μπορεί να είναι ID (παλιό) ή Object { id, method, stripeId, issueReceipt }
+            const orderId = typeof data === 'object' ? data.id : data;
+            const method = data.method || 'cash';
+            const stripeId = data.stripeId || null;
+            let issueReceipt = data.issueReceipt || false;
+
+            const o = store.orders.find(x => x.id == orderId);
             if (o) {
+                // ΑΥΤΟΜΑΤΗ ΑΠΟΔΕΙΞΗ: Αν το e-invoicing είναι ενεργό και πατηθεί πληρωμή
+                if (store.settings.einvoicing && store.settings.einvoicing.enabled) {
+                    issueReceipt = true; 
+                }
+
+                // Προσθήκη πληροφοριών στο κείμενο για την εκτύπωση/στατιστικά
+                if (method === 'card') o.text += `\n💳 PAID (CARD${stripeId ? ': ' + stripeId : ''})`;
+                else o.text += '\n💵 PAID (CASH)';
+
+                if (issueReceipt) {
+                    o.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]';
+                    o.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=1234567890&uid=MOCK"; // Mock QR
+                }
+
                 updateStoreStats(store, o); // ✅ Καταγραφή στατιστικών πριν τη διαγραφή
-                store.orders = store.orders.filter(x => x.id != id); 
+                store.orders = store.orders.filter(x => x.id != orderId); 
                 updateStoreClients(socket.store); 
+                
+                // Ενημέρωση για το Web App αν χρειάζεται να τυπώσει
+                socket.emit('print-order', { text: o.text, aadeQr: o.aadeQr });
             }
         } 
     });

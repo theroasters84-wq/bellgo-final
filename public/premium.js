@@ -171,6 +171,7 @@ window.App = {
     // ✅ NEW: Cash Register State
     cashRegValue: "0",
     cashRegItems: [],
+    cashRegButtons: [], // ✅ Store custom buttons
     tempPasoText: "", // ✅ Store PASO order text temporarily
 
     hasCheckedPendingReservations: false, // ✅ NEW: Flag για έλεγχο κρατήσεων κατά την είσοδο
@@ -469,6 +470,13 @@ window.App = {
                 if(settings.einvoicing && settings.einvoicing.enabled) App.einvoicingEnabled = true;
                 else App.einvoicingEnabled = false;
 
+                // ✅ NEW: Visibility of Cash Register Button
+                const btnCash = document.getElementById('btnCashRegister');
+                if(btnCash) btnCash.style.display = App.einvoicingEnabled ? 'flex' : 'none';
+                
+                // ✅ NEW: Load Cash Register Buttons
+                if(settings.cashRegButtons) App.cashRegButtons = settings.cashRegButtons;
+
                 // ✅ SYNC STAFF CHARGE SWITCHES (Settings & Wallet)
                 App.staffChargeMode = settings.staffCharge || false;
                 const sw1 = document.getElementById('switchStaffCharge'); if(sw1) sw1.checked = App.staffChargeMode;
@@ -586,6 +594,22 @@ window.App = {
         socket.on('force-logout', () => {
             localStorage.removeItem('bellgo_session');
             window.location.replace("login.html");
+        });
+
+        // ✅ NEW: Αυτόματο κλείσιμο QR όταν πληρωθεί
+        socket.on('payment-confirmed', (data) => {
+            if (App.currentQrOrderId && App.currentQrOrderId == data.orderId) {
+                document.getElementById('qrPaymentModal').style.display = 'none';
+                alert("Η πληρωμή έγινε δεκτή! ✅");
+                
+                if (App.currentQrIsPaso) {
+                    // Ολοκλήρωση ροής PASO (Εκτύπωση & Κλείσιμο)
+                    App.processPasoOrder('card', 'receipt');
+                }
+                
+                App.currentQrOrderId = null;
+                App.currentQrIsPaso = false;
+            }
         });
     },
     
@@ -1011,7 +1035,10 @@ window.App = {
         const vatInput = document.createElement('input');
         vatInput.type = 'number';
         vatInput.placeholder = 'ΦΠΑ';
-        vatInput.style.cssText = "width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px;";
+        
+        // ✅ FIX: Show only if E-Invoicing is enabled
+        const vatDisplay = App.einvoicingEnabled ? 'inline-block' : 'none';
+        vatInput.style.cssText = `width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px; display:${vatDisplay};`;
         
         if (itemObj && itemObj.vat !== undefined) {
             vatInput.value = itemObj.vat;
@@ -1522,6 +1549,30 @@ window.App = {
         const storeName = document.getElementById('inpStoreNameHeader').value || "BellGo Order";
         const itemsHtml = order.text.replace(/\n/g, '<br>');
 
+        // ✅ NEW: AADE QR Code Generation (Για την Απόδειξη)
+        let qrHtml = '';
+        if (order.aadeQr) {
+            const div = document.createElement('div');
+            // Χρήση της βιβλιοθήκης QRCode που έχουμε ήδη
+            new QRCode(div, { text: order.aadeQr, width: 100, height: 100, correctLevel: QRCode.CorrectLevel.L });
+            
+            // Παίρνουμε την εικόνα από το div (Canvas ή Img)
+            const img = div.querySelector('img');
+            const canvas = div.querySelector('canvas');
+            let src = '';
+            if (canvas) src = canvas.toDataURL();
+            else if (img) src = img.src;
+            
+            if (src) {
+                qrHtml = `
+                    <div style="text-align:center; margin-top:20px; border-top:1px dashed #000; padding-top:10px;">
+                        <div style="font-size:10px; font-weight:bold; margin-bottom:5px;">QR Code ΑΑΔΕ</div>
+                        <img src="${src}" style="width:100px; height:100px;"/>
+                    </div>
+                `;
+            }
+        }
+
         const win = window.open('', '', 'width=300,height=600');
         win.document.write(`
             <html>
@@ -1540,6 +1591,7 @@ window.App = {
                 <div class="meta">${date}<br>${order.from}</div>
                 <div class="items">${itemsHtml}</div>
                 <div class="total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
+                ${qrHtml} <!-- ✅ QR Code Here -->
                 <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
             </body></html>`);
 
@@ -1626,6 +1678,9 @@ window.App = {
 
     // ✅ NEW: QR PAYMENT LOGIC
     openQrPayment: async (id, isPaso = false) => {
+        App.currentQrOrderId = id; // ✅ Save ID to track payment
+        App.currentQrIsPaso = isPaso;
+
         let total = 0;
         if (isPaso) {
             total = calculateTotal(App.tempPasoText);
@@ -1970,6 +2025,7 @@ window.App = {
         App.cashRegValue = "0";
         App.cashRegItems = [];
         App.updateCashRegUI();
+        App.renderCashRegButtonsUI(); // ✅ Render dynamic buttons
         document.getElementById('cashRegisterModal').style.display = 'flex';
     },
 
@@ -1989,14 +2045,42 @@ window.App = {
         App.updateCashRegUI();
     },
 
-    cashRegAddItem: (vat) => {
-        const amount = parseFloat(App.cashRegValue);
-        if (isNaN(amount) || amount <= 0) return;
+    // ✅ NEW: Render Dynamic Buttons
+    renderCashRegButtonsUI: () => {
+        const container = document.getElementById('cashRegButtonsContainer');
+        container.innerHTML = '';
+        
+        // Αν δεν υπάρχουν κουμπιά, βάλε default
+        const buttons = (App.cashRegButtons && App.cashRegButtons.length > 0) 
+            ? App.cashRegButtons 
+            : [{label:'ΦΑΓΗΤΟ', vat:13}, {label:'ΠΟΤΟ', vat:24}, {label:'ΕΙΔΗ', vat:24}];
+
+        buttons.forEach(btn => {
+            const el = document.createElement('button');
+            el.className = 'modal-btn';
+            el.style.cssText = "background:#444; font-size:14px; margin:0; font-weight:bold; height:50px;";
+            el.innerText = `${btn.label}\n${btn.vat}%${btn.price ? ` (${btn.price}€)` : ''}`;
+            el.onclick = () => App.cashRegAddItem(btn);
+            container.appendChild(el);
+        });
+    },
+
+    cashRegAddItem: (btn) => {
+        let amount = 0;
+        
+        // Αν το κουμπί έχει preset τιμή, τη χρησιμοποιούμε
+        if (btn.price && btn.price > 0) {
+            amount = btn.price;
+        } else {
+            // Αλλιώς παίρνουμε από την οθόνη
+            amount = parseFloat(App.cashRegValue);
+            if (isNaN(amount) || amount <= 0) return; // Δεν κάνει τίποτα αν είναι 0
+        }
 
         App.cashRegItems.push({
-            name: `Είδος ${vat}%`,
+            name: btn.label,
             price: amount,
-            vat: vat
+            vat: btn.vat
         });
         
         App.cashRegValue = "0"; // Reset screen
@@ -2024,14 +2108,9 @@ window.App = {
         let total = App.cashRegItems.reduce((sum, item) => sum + item.price, 0);
         
         // Αν δεν υπάρχουν είδη στη λίστα, αλλά υπάρχει ποσό στην οθόνη, το παίρνουμε ως "Γενικό"
+        // ✅ NEW LOGIC: Δεν επιτρέπεται πληρωμή αν η λίστα είναι άδεια (πρέπει να πατηθεί τμήμα)
         if (total === 0) {
-            const screenVal = parseFloat(App.cashRegValue);
-            if (screenVal > 0) {
-                total = screenVal;
-                App.cashRegItems.push({ name: "Γενικό Είδος", price: total, vat: 24 });
-            } else {
-                return alert("Το ποσό είναι μηδενικό!");
-            }
+            return alert("⚠️ Πρέπει να επιλέξετε Τμήμα/ΦΠΑ για το ποσό πριν την έκδοση!");
         }
 
         if (method === 'card') {
@@ -2078,15 +2157,16 @@ window.App = {
         });
         orderText += `✅ PAID`;
 
-        // Αποστολή στον Server ως ολοκληρωμένη παραγγελία
-        const newOrder = { id: Date.now(), text: orderText, status: 'completed', from: 'Admin (Ταμείο)' };
-        window.socket.emit('new-order', newOrder);
-        
-        // Εκτύπωση (αν θέλουμε)
-        // App.printOrder(newOrder.id); // Προαιρετικό: Αν θέλουμε να τυπώνει αυτόματα
+        // ✅ NEW: Χρήση 'quick-order' για να ΜΗΝ μπαίνει στις ενεργές παραγγελίες
+        window.socket.emit('quick-order', {
+            text: orderText,
+            total: total,
+            method: methodLabel.includes('ΚΑΡΤΑ') ? 'card' : 'cash',
+            issueReceipt: true, // Πάντα true για την ταμειακή
+            source: 'Admin (Ταμείο)'
+        });
 
         document.getElementById('cashRegisterModal').style.display = 'none';
-        alert("Η απόδειξη εκδόθηκε!");
     },
 
     toggleAdminChat: () => { 

@@ -258,6 +258,12 @@
                 <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'"><span data-i18n="connect_stripe">💳 CONNECT STRIPE</span></button>
                 <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;" data-i18n="checking">Checking...</div>
 
+                <!-- ✅ NEW: Tap to Pay Setup Link -->
+                <div id="tapToPaySection" style="display:none; margin-top:5px; border-top:1px solid #444; padding-top:10px;">
+                    <button class="modal-btn" style="background:transparent; border:1px solid #635BFF; color:#635BFF;" onclick="window.open('https://dashboard.stripe.com/terminal/locations', '_blank')">📱 ΕΝΕΡΓΟΠΟΙΗΣΗ TAP TO PAY</button>
+                    <div style="font-size:10px; color:#aaa; text-align:center; margin-top:5px;">* Πατήστε για να δημιουργήσετε "Location" στο Stripe Dashboard.</div>
+                </div>
+
                 <!-- Hidden Select for JS to grab -->
                 <select id="selShopType" style="display:none;">
                     <option value="" disabled selected>Template...</option>
@@ -341,24 +347,20 @@
 
     <!-- ✅ NEW: CASH REGISTER MODAL (ΤΑΜΕΙΑΚΗ) -->
     <div id="cashRegisterModal" class="modal-overlay">
-        <div class="modal-box" style="max-width:400px; background:#1a1a1a;">
+        <div class="modal-box" style="width:95%; max-width:600px; height:85%; background:#1a1a1a; display:flex; flex-direction:column;">
             <h3 class="modal-title" style="color:#00BCD4;">📠 ΤΑΜΕΙΑΚΗ</h3>
             
             <!-- Screen -->
-            <div style="background:#000; color:#00E676; font-family:'Courier New', monospace; font-size:32px; text-align:right; padding:15px; border-radius:8px; margin-bottom:10px; border:2px solid #333;">
-                <span id="cashRegScreen">0</span><span style="font-size:16px;">€</span>
+            <div style="background:#000; color:#00E676; font-family:'Courier New', monospace; font-size:48px; text-align:right; padding:20px; border-radius:8px; margin-bottom:15px; border:2px solid #333; font-weight:bold;">
+                <span id="cashRegScreen">0</span><span style="font-size:24px;">€</span>
             </div>
 
             <!-- Receipt Preview (Mini List) -->
-            <div id="cashRegList" style="max-height:100px; overflow-y:auto; background:#222; padding:5px; margin-bottom:10px; font-size:12px; color:#ccc; border-radius:4px;"></div>
-            <div id="cashRegTotal" style="text-align:right; font-weight:bold; color:white; margin-bottom:10px;">ΣΥΝΟΛΟ: 0.00€</div>
+            <div id="cashRegList" style="flex:1; overflow-y:auto; background:#222; padding:10px; margin-bottom:15px; font-size:16px; color:#ccc; border-radius:4px; border:1px solid #444;"></div>
+            <div id="cashRegTotal" style="text-align:right; font-weight:bold; color:white; margin-bottom:15px; font-size:20px;">ΣΥΝΟΛΟ: 0.00€</div>
 
             <!-- VAT Buttons -->
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:5px; margin-bottom:10px;">
-                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(13)">+ ΦΑΓ (13%)</button>
-                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(24)">+ ΠΟΤΟ (24%)</button>
-                <button class="modal-btn" style="background:#444; font-size:12px; margin:0;" onclick="App.cashRegAddItem(6)">+ EID (6%)</button>
-            </div>
+            <div id="cashRegButtonsContainer" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:15px;"></div>
 
             <!-- Numpad -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:15px;">

@@ -1,30 +1,41 @@
 <div id="einvoicingModal" class="modal-overlay">
     <div class="modal-box">
-        <h3 class="modal-title">🔌 E-INVOICING (myDATA)</h3>
+        <h3 class="modal-title" style="color:#009688;">🔌 E-INVOICING (myDATA)</h3>
         
         <div class="settings-section">
             <div class="settings-label">ΠΑΡΟΧΟΣ</div>
             <select id="inpEinvProvider" class="inp-settings" onchange="Apodiksh.updateProviderInfo()">
-                <option value="" disabled selected>Επιλέξτε Πάροχο...</option>
-                <option value="epsilon">Epsilon Net</option>
-                <option value="softone">SoftOne</option>
-                <option value="aade">myDATA (Generic)</option>
+                <option value="">Επιλέξτε Πάροχο...</option>
+                <option value="epsilon">Epsilon Smart (Epsilon Net)</option>
+                <option value="softone">SoftOne (Einvoicing)</option>
+                <option value="aade">AADE (myDATA - Testing)</option>
             </select>
-            
-            <!-- ✅ NEW: Κουμπί Εγγραφής στον Πάροχο -->
-            <button id="btnProviderRegister" class="modal-btn" style="display:none; background:#2196F3; margin-top:10px; font-size:13px;" onclick="Apodiksh.openProviderPage()">📝 ΕΓΓΡΑΦΗ / ΑΠΟΚΤΗΣΗ ΚΛΕΙΔΙΩΝ ↗</button>
+            <button id="btnProviderRegister" class="modal-btn" style="background:#FF9800; color:black; display:none; margin-bottom:10px;" onclick="Apodiksh.openProviderPage()">📝 ΕΓΓΡΑΦΗ ΣΤΟΝ ΠΑΡΟΧΟ</button>
         </div>
 
         <div class="settings-section">
             <div class="settings-label">ΣΤΟΙΧΕΙΑ ΣΥΝΔΕΣΗΣ</div>
             <input type="text" id="inpEinvApiKey" class="inp-settings" placeholder="API Key / Subscription Key">
-            <input type="text" id="inpEinvUserId" class="inp-settings" placeholder="User ID (Αν απαιτείται)">
+            <input type="text" id="inpEinvUserId" class="inp-settings" placeholder="User ID / AADE User">
             <input type="text" id="inpEinvDomain" class="inp-settings" placeholder="Domain / URL (Optional)">
         </div>
 
-        <div class="switch-row" style="margin-top:15px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
+        <div class="switch-row" style="margin-top:15px; background:#222; padding:10px; border-radius:8px;">
             <span style="font-weight:bold; color:white;">ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
             <label class="switch"><input type="checkbox" id="switchEinvEnabled"><span class="slider"></span></label>
+        </div>
+        
+        <!-- ✅ NEW: ΡΥΘΜΙΣΗ ΚΟΥΜΠΙΩΝ ΤΑΜΕΙΑΚΗΣ -->
+        <div class="settings-section" style="margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+            <div class="settings-label">ΤΜΗΜΑΤΑ / ΚΟΥΜΠΙΑ ΤΑΜΕΙΑΚΗΣ</div>
+            <div id="cashRegButtonsList" style="margin-bottom:10px; max-height:150px; overflow-y:auto; background:#111; padding:5px; border-radius:4px;"></div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="inpCrLabel" class="inp-settings" placeholder="Όνομα (π.χ. ΦΑΓΗΤΟ)" style="flex:2; margin:0;">
+                <input type="number" id="inpCrVat" class="inp-settings" placeholder="ΦΠΑ%" style="flex:1; margin:0;">
+                <input type="number" id="inpCrPrice" class="inp-settings" placeholder="€ (Optional)" style="flex:1; margin:0;">
+                <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="Apodiksh.addCashRegButton()">➕</button>
+            </div>
+            <div style="font-size:10px; color:#aaa; margin-top:5px;">* Αν βάλετε τιμή, το κουμπί λειτουργεί ως Preset. Αν όχι, παίρνει την τιμή από την οθόνη.</div>
         </div>
 
         <div style="margin-top:10px; font-size:11px; color:#aaa;">* Τα στοιχεία αποθηκεύονται με ασφάλεια στον server.</div>
