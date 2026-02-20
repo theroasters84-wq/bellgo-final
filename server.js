@@ -441,7 +441,6 @@ app.post('/connection-token', async (req, res) => {
   }
 
   try {
-    let connectionToken = await stripe.terminal.connectionTokens.create();
     let connectionToken = await stripe.terminal.connectionTokens.create({}, stripeOptions);
     res.json({ secret: connectionToken.secret });
   } catch (error) {
@@ -452,7 +451,6 @@ app.post('/connection-token', async (req, res) => {
 
 // ✅ NEW: Capture Payment (Tap to Pay)
 app.post('/capture-payment', async (req, res) => {
-  const { paymentIntentId } = req.body;
   const { paymentIntentId, storeName } = req.body;
   let stripeOptions = undefined;
 
@@ -464,7 +462,6 @@ app.post('/capture-payment', async (req, res) => {
   }
 
   try {
-    const intent = await stripe.paymentIntents.capture(paymentIntentId);
     const intent = await stripe.paymentIntents.capture(paymentIntentId, {}, stripeOptions);
     res.send(intent);
   } catch (error) {
