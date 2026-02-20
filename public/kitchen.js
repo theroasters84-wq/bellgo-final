@@ -1450,17 +1450,17 @@ window.App = {
     acceptOrder: (id) => {
         if(window.AudioEngine) window.AudioEngine.stopAlarm();
         window.socket.emit('admin-stop-ringing'); 
-        window.socket.emit('accept-order', Number(id)); // Send as Number
+        window.socket.emit('accept-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.style.display = 'none';
     },
     markReady: (id) => {
-        window.socket.emit('ready-order', Number(id)); // Send as Number
+        window.socket.emit('ready-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.style.display = 'none';
     },
     completeOrder: (id) => {
-        window.socket.emit('pay-order', Number(id)); 
+        window.socket.emit('pay-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
     },

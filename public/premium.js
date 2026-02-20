@@ -1608,7 +1608,7 @@ window.App = {
         if(order && order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) return alert("Η απόδειξη έχει ήδη εκδοθεί!");
         
         if(confirm("Έκδοση απόδειξης (myDATA);")) {
-            window.socket.emit('issue-receipt', Number(id));
+            window.socket.emit('issue-receipt', id);
         }
     },
 
@@ -1631,7 +1631,7 @@ window.App = {
     },
 
     issueAndClose: (id, btn) => {
-        window.socket.emit('issue-receipt', Number(id));
+        window.socket.emit('issue-receipt', id);
         btn.innerText = "⏳ ΕΚΔΟΣΗ...";
         setTimeout(() => {
             App.forceCompleteOrder(id);
@@ -1767,7 +1767,7 @@ window.App = {
     acceptOrder: (id) => {
         if(window.AudioEngine) window.AudioEngine.stopAlarm();
         window.socket.emit('admin-stop-ringing'); 
-        window.socket.emit('accept-order', Number(id)); // Send as Number
+        window.socket.emit('accept-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.style.display = 'none';
     },
@@ -1777,7 +1777,7 @@ window.App = {
             App.openDeliveryAssignModal(id);
         } else {
             // Κλασική λειτουργία
-            window.socket.emit('ready-order', Number(id)); 
+            window.socket.emit('ready-order', id); 
             const win = document.getElementById(`win-${id}`);
             if(win) win.style.display = 'none';
         }
@@ -1836,7 +1836,7 @@ window.App = {
     },
     // ✅ NEW: Helper to bypass check
     forceCompleteOrder: (id) => {
-        window.socket.emit('pay-order', Number(id)); 
+        window.socket.emit('pay-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
     },
