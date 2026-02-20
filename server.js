@@ -967,8 +967,6 @@ io.on('connection', (socket) => {
         if (data.method === 'card' && data.stripeId) {
             console.log(`💳 Η παραγγελία ${data.stripeId} εξοφλήθηκε με κάρτα: ${data.total}€`); // ✅ Log requested
             try {
-                const paymentIntent = await stripe.paymentIntents.retrieve(data.stripeId);
-                const stripeOptions = store.settings.stripeConnectId ? { stripeAccount: store.settings.stripeConnectId } : undefined;
                 const paymentIntent = await stripe.paymentIntents.retrieve(data.stripeId, stripeOptions);
                 if (paymentIntent.status !== 'succeeded') {
                     console.log("⚠️ Warning: Payment not succeeded yet:", paymentIntent.status);
