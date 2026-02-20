@@ -162,6 +162,7 @@ window.App = {
     cachedStats: null, // ✅ Store stats for navigation
     autoPrint: false, // ✅ Auto Print State
     autoClosePrint: false, // ✅ Auto Close Window State
+    printerEnabled: true, // ✅ NEW: Master Printer Switch
     knownOrderIds: new Set(), // ✅ Track printed orders
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
@@ -451,6 +452,11 @@ window.App = {
                     App.autoPrint = settings.autoPrint;
                     document.getElementById('selAutoPrint').value = App.autoPrint.toString();
                 }
+                if(settings.printerEnabled !== undefined) {
+                    App.printerEnabled = settings.printerEnabled;
+                    const swP = document.getElementById('switchPrinterEnabled');
+                    if(swP) swP.checked = App.printerEnabled;
+                }
                 if(settings.autoClosePrint !== undefined) {
                     App.autoClosePrint = settings.autoClosePrint;
                     const sw = document.getElementById('switchAutoClosePrint');
@@ -545,6 +551,7 @@ window.App = {
 
         // ✅ NEW: Listen for Quick Order Print (PASO)
         socket.on('print-quick-order', (data) => {
+            if (!App.printerEnabled) return; // ✅ Check setting
             const mockOrder = { id: data.id, text: data.text, from: 'PASO' };
             if (data.signature) mockOrder.text += `\n\nSIGNATURE: ${data.signature}`;
             // Print immediately
@@ -671,6 +678,7 @@ window.App = {
         const gmaps = document.getElementById('inpGoogleMaps').value.trim();
         const ap = document.getElementById('selAutoPrint').value === 'true';
         const acp = document.getElementById('switchAutoClosePrint').checked;
+        const pe = document.getElementById('switchPrinterEnabled').checked; // ✅ NEW
         const sc = document.getElementById('switchStaffCharge').checked; // ✅ Save Staff Charge
         const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
         const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
@@ -682,7 +690,7 @@ window.App = {
             key: document.getElementById('inpPosKey').value
         };
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, pos: posData });
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, pos: posData });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1308,6 +1316,12 @@ window.App = {
         const divEinv = document.getElementById('pasoEinvoicingOptions');
         const divSimple = document.getElementById('pasoSimpleOptions');
         
+        // ✅ NEW: Update Button Text based on printerEnabled
+        const btnClose = document.getElementById('btnPasoClosePrint');
+        if(btnClose) {
+            btnClose.innerText = App.printerEnabled ? "💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ" : "💵 ΚΛΕΙΣΙΜΟ";
+        }
+
         // Show options based on E-Invoicing setting
         if (App.einvoicingEnabled) {
             divEinv.style.display = 'grid';
@@ -1446,6 +1460,8 @@ window.App = {
         if (App.adminMode !== 'kitchen') {
              treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
              treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+             // ✅ NEW: Hide Print Button if disabled
+             if (!App.printerEnabled) treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
         }
 
         if (order.status === 'pending') {
@@ -1459,7 +1475,9 @@ window.App = {
                 // ✅ Μεταφορά Κεράσματος πάνω και αφαίρεση από κάτω
                 treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
                 // ✅ Μικρό και διακριτικό κουμπί εκτύπωσης δίπλα στο κέρασμα
-                treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+                if (App.printerEnabled) {
+                    treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+                }
                 
                 actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;

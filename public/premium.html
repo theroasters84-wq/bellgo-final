@@ -211,6 +211,10 @@
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="print_settings">ΡΥΘΜΙΣΕΙΣ ΕΚΤΥΠΩΣΗΣ</h4>
                 <div class="settings-section">
                     <div class="settings-label" data-i18n="printing">ΕΚΤΥΠΩΣΗ</div>
+                    <div class="switch-row" style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold; color:white;">ΕΝΕΡΓΟΠΟΙΗΣΗ ΕΚΤΥΠΩΤΗ</span>
+                        <label class="switch"><input type="checkbox" id="switchPrinterEnabled" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                    </div>
                     <select id="selAutoPrint" class="inp-settings" onchange="App.autoSaveSettings()">
                         <option value="false" data-i18n="manual_button">Χειροκίνητα (Κουμπί)</option>
                         <option value="true" data-i18n="auto_on_accept">Αυτόματα (Κατά την Αποδοχή)</option>
@@ -390,7 +394,7 @@
             <!-- Simple Options (Default) -->
             <div id="pasoSimpleOptions" style="display:flex; flex-direction:column; gap:10px;">
                 <button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.processPasoOrder('card', 'qr')">💳 QR CARD</button>
-                <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.processPasoOrder('cash', 'simple')">💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ</button>
+                <button id="btnPasoClosePrint" class="modal-btn" style="background:#00E676; color:black;" onclick="App.processPasoOrder('cash', 'simple')">💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ</button>
             </div>
 
             <button onclick="document.getElementById('pasoCheckoutModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΑΚΥΡΟ</button>

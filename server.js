@@ -76,6 +76,7 @@ const defaultSettings = {
     coverPrice: 0, // ✅ Default τιμή κουβέρ
     googleMapsUrl: "", // ✅ Google Maps Link
     autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
+    printerEnabled: true, // ✅ NEW: Master Printer Switch
     autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
     plan: 'basic', // ✅ Καταγραφή Συνδρομής (basic/premium)
     visibility: 'public', // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
@@ -740,6 +741,7 @@ io.on('connection', (socket) => {
             if(data.coverPrice !== undefined) store.settings.coverPrice = data.coverPrice; // ✅ Αποθήκευση Κουβέρ
             if(data.googleMapsUrl !== undefined) store.settings.googleMapsUrl = data.googleMapsUrl; // ✅ Αποθήκευση Google Maps
             if(data.autoPrint !== undefined) store.settings.autoPrint = data.autoPrint; // ✅ Αποθήκευση Auto Print
+            if(data.printerEnabled !== undefined) store.settings.printerEnabled = data.printerEnabled; // ✅ NEW
             if(data.autoClosePrint !== undefined) store.settings.autoClosePrint = data.autoClosePrint; // ✅ Αποθήκευση Auto Close Print
             if(data.expensePresets) store.settings.expensePresets = data.expensePresets; // ✅ Αποθήκευση Presets Εξόδων
             if(data.fixedExpenses) store.settings.fixedExpenses = data.fixedExpenses; // ✅ NEW: Αποθήκευση Πάγιων Εξόδων
