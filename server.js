@@ -441,6 +441,7 @@ app.post('/connection-token', async (req, res) => {
   }
 
   try {
+    // ✅ FIX: Ensure only one declaration
     let connectionToken = await stripe.terminal.connectionTokens.create({}, stripeOptions);
     res.json({ secret: connectionToken.secret });
   } catch (error) {
@@ -462,6 +463,7 @@ app.post('/capture-payment', async (req, res) => {
   }
 
   try {
+    // ✅ FIX: Ensure only one declaration
     const intent = await stripe.paymentIntents.capture(paymentIntentId, {}, stripeOptions);
     res.send(intent);
   } catch (error) {
