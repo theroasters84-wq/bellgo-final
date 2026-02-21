@@ -482,7 +482,12 @@ window.App = {
                     // Update UI if modal is open (optional, usually handled on open)
                 }
 
-                if(settings.einvoicing && settings.einvoicing.enabled) App.einvoicingEnabled = true;
+                // ✅ FIX: Check for keys before enabling Cash Register
+                const einv = settings.einvoicing || {};
+                // Απαιτούμε Provider, API Key και User ID για να θεωρηθεί ενεργό
+                const hasKeys = einv.provider && einv.apiKey && einv.userId;
+
+                if(einv.enabled && hasKeys) App.einvoicingEnabled = true;
                 else App.einvoicingEnabled = false;
 
                 // ✅ NEW: Visibility of Cash Register Button

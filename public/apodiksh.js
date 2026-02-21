@@ -129,14 +129,21 @@ export const Apodiksh = {
 
     saveSettings: () => {
         const getVal = (id) => document.getElementById(id).value.trim();
+        const isEnabled = document.getElementById('switchEinvEnabled').checked;
+
         const data = {
             provider: getVal('inpEinvProvider'),
             apiKey: getVal('inpEinvApiKey'),
             userId: getVal('inpEinvUserId'),
             domain: getVal('inpEinvDomain'),
-            enabled: document.getElementById('switchEinvEnabled').checked
+            enabled: isEnabled
         };
         
+        // ✅ Validation: Check required fields if enabled
+        if (isEnabled && (!data.provider || !data.apiKey || !data.userId)) {
+            return alert("Για ενεργοποίηση, πρέπει να συμπληρώσετε Πάροχο, API Key και User ID.");
+        }
+
         window.socket.emit('save-store-settings', { einvoicing: data, cashRegButtons: Apodiksh.cashRegButtons });
         Apodiksh.closeSettings();
         alert("Οι ρυθμίσεις E-Invoicing αποθηκεύτηκαν!");
