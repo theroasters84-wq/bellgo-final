@@ -18,6 +18,7 @@ const messaging = getMessaging(app);
 window.App = {
     activeOrders: [],
     currentQrOrderId: null, // ✅ NEW: Track open QR
+    softPosSettings: {}, // ✅ NEW: SoftPOS Settings
 
     init: () => {
         document.getElementById('storeNameHeader').innerText = (userData.store || "Store") + " 🛵";
@@ -30,6 +31,9 @@ window.App = {
             if(window.AudioEngine) window.AudioEngine.init();
         }, {once:true});
         
+        // ✅ Check SoftPOS Return
+        App.checkSoftPosReturn();
+
         if(window.KeepAlive) window.KeepAlive.init();
     },
 
@@ -62,6 +66,13 @@ window.App = {
                 token: localStorage.getItem('fcm_token'),
                 isNative: !!window.Capacitor 
             });
+
+            // ✅ NEW: Handle SoftPOS Completion after reload
+            if (App.pendingSoftPosCompletion) {
+                const { id, amount } = App.pendingSoftPosCompletion;
+                window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: parseFloat(amount), method: 'card' });
+                App.pendingSoftPosCompletion = null;
+            }
         });
 
         socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
@@ -80,6 +91,11 @@ window.App = {
         });
 
         socket.on('force-logout', () => App.logout());
+
+        // ✅ NEW: Listen for Settings (SoftPOS)
+        socket.on('store-settings-update', (settings) => {
+            if(settings && settings.softPos) App.softPosSettings = settings.softPos;
+        });
 
         // ✅ NEW: ALARM LISTENERS
         socket.on('ring-bell', (data) => {
@@ -233,6 +249,19 @@ window.App = {
 
     // ✅ FIX: Complete Order now charges the staff wallet
     completeOrder: (id) => { 
+        // ✅ NEW: SoftPOS Choice
+        if (App.softPosSettings && App.softPosSettings.enabled) {
+            const choice = prompt("Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (SoftPOS)", "1");
+            if (choice === '2') {
+                const order = App.activeOrders.find(o => o.id == id);
+                const total = App.calculateTotal(order.text);
+                App.triggerSoftPosPayment(total, id);
+                return;
+            } else if (choice !== '1') {
+                return; // Cancel
+            }
+        }
+
         if(confirm("Η παραγγελία παραδόθηκε και εισπράχθηκε;")) {
             const order = App.activeOrders.find(o => o.id == id);
             const total = App.calculateTotal(order.text);
@@ -266,6 +295,45 @@ window.App = {
             bell.classList.remove('ringing');
         }
         window.socket.emit('alarm-accepted', { store: userData.store, username: userData.name });
+    },
+
+    // ✅ NEW: Trigger SoftPOS App
+    triggerSoftPosPayment: (amount, context) => {
+        const s = App.softPosSettings;
+        if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
+
+        const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
+        
+        let scheme = "intent://pay";
+        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
+        
+        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
+        
+        window.location.href = scheme + params;
+    },
+
+    // ✅ NEW: Check Return from SoftPOS
+    checkSoftPosReturn: () => {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('softpos_status');
+        
+        if (status === 'success') {
+            const amount = params.get('amount');
+            const context = params.get('context'); // orderId
+            
+            const audio = new Audio('/alert.mp3');
+            audio.play().catch(e=>{});
+            
+            alert(`✅ Η πληρωμή ${amount}€ ολοκληρώθηκε!`);
+            
+            if (context) {
+                App.pendingSoftPosCompletion = { id: context, amount: amount };
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (status === 'cancel') {
+            alert("❌ Ακυρώθηκε.");
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }
 };
 window.onload = App.init;

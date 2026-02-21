@@ -241,27 +241,56 @@
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="pin_connect_stripe">PIN / CONNECT STRIPE</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / EASY TAP TO PAY</h4>
                 
-                <!-- ✅ NEW: POS TERMINAL SETTINGS -->
+                <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
-                    <div class="settings-label" style="color:#00BCD4;">📡 ΣΥΝΔΕΣΗ ΤΕΡΜΑΤΙΚΟΥ (POS)</div>
-                    <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option></select>
-                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Terminal ID / TID" onblur="App.autoSaveSettings()">
-                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="API Key / Token" onblur="App.autoSaveSettings()">
+                    <div class="settings-label" style="color:#00E676;">📱 EASY TAP TO PAY (SoftPOS)</div>
+                    <select id="selSoftPosProvider" class="inp-settings" onchange="App.updateSoftPosUI()">
+                        <option value="">Επιλέξτε Πάροχο...</option>
+                        <option value="viva">Viva Wallet</option>
+                        <option value="alpha">Alpha Bank (Nexi)</option>
+                        <option value="eurobank">Eurobank (Worldline)</option>
+                        <option value="piraeus">Piraeus (Epay)</option>
+                        <option value="custom">Άλλο / Custom</option>
+                    </select>
+                    
+                    <div id="softPosLinks" style="margin:10px 0; font-size:12px; color:#aaa; display:none; text-align:center;">
+                        <a id="linkSoftPosReg" href="#" target="_blank" style="color:#2196F3; text-decoration:underline; font-weight:bold;">🔗 Εγγραφή στον Πάροχο</a>
+                    </div>
+
+                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Merchant ID / TID" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="API Key / Token (Optional)" onblur="App.autoSaveSettings()">
+                    
+                    <div class="switch-row" style="margin-top:5px;">
+                        <span>ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
+                        <label class="switch"><input type="checkbox" id="switchSoftPosEnabled" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                    </div>
+
+                    <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
+                        <div class="settings-label" style="color:#aaa;">ΛΕΙΤΟΥΡΓΙΑ POS (Admin/Waiter)</div>
+                        <select id="selPosMode" class="inp-settings" onchange="App.autoSaveSettings()">
+                            <option value="auto">⚡ Αυτόματη Αποστολή</option>
+                            <option value="ask">❓ Ερώτηση Επιβεβαίωσης</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BANNERS -->
+                <div id="softPosSetupBanner" style="display:none; background:#FF9800; color:black; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
+                    <b>⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
+                    <span style="font-size:12px;">Συμπληρώστε τα στοιχεία (Merchant ID) για να ενεργοποιηθεί η χρέωση.</span>
+                </div>
+
+                <div id="softPosDownloadBanner" style="display:none; background:#2196F3; color:white; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
+                    <b>📲 ΚΑΤΕΒΑΣΤΕ ΤΗΝ ΕΦΑΡΜΟΓΗ</b><br>
+                    <span style="font-size:12px;">Admin, Σερβιτόροι & Διανομείς πρέπει να έχουν το App του παρόχου.</span>
+                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="App.openSoftPosDownload()">Download App</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()"><span data-i18n="pin">🔑 PIN</span></button>
                     <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()"><span data-i18n="statistics">📊 ΣΤΑΤΙΣΤΙΚΑ</span></button>
-                </div>
-                <button class="modal-btn" style="background:#635BFF; margin-top:10px;" onclick="window.location.href='/connect-stripe'"><span data-i18n="connect_stripe">💳 CONNECT STRIPE</span></button>
-                <div id="stripeStatus" style="font-size:10px; color:#aaa; text-align:center; margin-bottom:10px;" data-i18n="checking">Checking...</div>
-
-                <!-- ✅ NEW: Tap to Pay Setup Link -->
-                <div id="tapToPaySection" style="display:none; margin-top:5px; border-top:1px solid #444; padding-top:10px;">
-                    <button class="modal-btn" style="background:transparent; border:1px solid #635BFF; color:#635BFF;" onclick="window.open('https://dashboard.stripe.com/terminal/locations', '_blank')">📱 ΕΝΕΡΓΟΠΟΙΗΣΗ TAP TO PAY</button>
-                    <div style="font-size:10px; color:#aaa; text-align:center; margin-top:5px;">* Πατήστε για να δημιουργήσετε "Location" στο Stripe Dashboard.</div>
                 </div>
 
                 <!-- Hidden Select for JS to grab -->

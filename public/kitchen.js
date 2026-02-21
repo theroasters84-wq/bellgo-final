@@ -166,6 +166,8 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
+    softPosSettings: {}, // ✅ NEW: SoftPOS Settings
+    posMode: 'auto', // ✅ NEW: POS Mode
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     
     // Expose setLanguage for console or future use
@@ -312,6 +314,9 @@ window.App = {
         // ✅ Start Bot
         DNDBot.init();
         
+        // ✅ Check SoftPOS Return
+        App.checkSoftPosReturn();
+
         // ✅ Init Kitchen Settings UI
         const swAP = document.getElementById('swKitchenAutoPrint'); if(swAP) swAP.checked = App.kitchenSettings.autoPrint;
         const swAC = document.getElementById('swKitchenAutoClose'); if(swAC) swAC.checked = App.kitchenSettings.autoClose;
@@ -386,6 +391,13 @@ window.App = {
                 isNative: isNative 
             });
 
+            // ✅ NEW: Handle SoftPOS Completion
+            if (App.pendingSoftPosCompletion) {
+                const { id, amount } = App.pendingSoftPosCompletion;
+                window.socket.emit('pay-order', { id: id, method: 'card' });
+                App.pendingSoftPosCompletion = null;
+            }
+
             // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
             // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
             socket.once('menu-update', () => {
@@ -445,6 +457,10 @@ window.App = {
                 if(settings.expensePresets) App.expensePresets = settings.expensePresets;
                 if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
                 
+                // ✅ NEW: Load SoftPOS Settings
+                if(settings.softPos) App.softPosSettings = settings.softPos;
+                if(settings.posMode) App.posMode = settings.posMode;
+
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {
                     statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId;
@@ -1047,6 +1063,45 @@ window.App = {
         App.renderMenu(); 
     },
 
+    // ✅ NEW: Trigger SoftPOS App
+    triggerSoftPosPayment: (amount, context) => {
+        const s = App.softPosSettings;
+        if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
+
+        const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
+        
+        let scheme = "intent://pay";
+        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
+        
+        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
+        
+        window.location.href = scheme + params;
+    },
+
+    // ✅ NEW: Check Return from SoftPOS
+    checkSoftPosReturn: () => {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('softpos_status');
+        
+        if (status === 'success') {
+            const amount = params.get('amount');
+            const context = params.get('context'); // orderId
+            
+            const audio = new Audio('/alert.mp3');
+            audio.play().catch(e=>{});
+            
+            alert(`✅ Η πληρωμή ${amount}€ ολοκληρώθηκε!`);
+            
+            if (context) {
+                App.pendingSoftPosCompletion = { id: context, amount: amount };
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (status === 'cancel') {
+            alert("❌ Ακυρώθηκε.");
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    },
+
     // --- SIDEBAR ORDER LOGIC (CASHIER) ---
     toggleOrderSidebar: () => {
         const sb = document.getElementById('orderSidebar');
@@ -1277,6 +1332,10 @@ window.App = {
                 actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
             }
+            // ✅ NEW: SoftPOS Button
+            if (App.softPosSettings && App.softPosSettings.enabled && userData.role !== 'kitchen') {
+                actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>` + actions;
+            }
         }
         win.style.border = `none`;
         win.innerHTML = `
@@ -1369,6 +1428,24 @@ window.App = {
     },
     treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
     treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+
+    // ✅ NEW: Pay with SoftPOS
+    payWithSoftPos: (id) => {
+        // ✅ Check POS Mode (Auto vs Ask)
+        if (App.posMode === 'ask') {
+            if (!confirm("Αποστολή ποσού στο τερματικό;")) {
+                if(confirm("Να καταγραφεί ως πληρωμένο με ΚΑΡΤΑ (Χωρίς τερματικό);")) {
+                    // Manual Card Payment
+                    window.socket.emit('pay-order', { id: id, method: 'card' });
+                }
+                return;
+            }
+        }
+
+        const order = App.activeOrders.find(o => o.id == id);
+        const total = calculateTotal(order.text);
+        App.triggerSoftPosPayment(total, id);
+    },
 
     // ✅ NEW: PARTIAL PAYMENT (Cash/Card)
     payItemPartial: (id, index, method) => {

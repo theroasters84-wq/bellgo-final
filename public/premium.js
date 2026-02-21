@@ -167,6 +167,8 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
     
+    softPosSettings: {}, // ✅ NEW: SoftPOS Settings
+    posMode: 'auto', // ✅ NEW: POS Mode (auto/ask)
     einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
     // ✅ NEW: Cash Register State
     cashRegValue: "0",
@@ -325,6 +327,9 @@ window.App = {
         // ✅ Init Pay System
         PaySystem.init();
 
+        // ✅ Check SoftPOS Return
+        App.checkSoftPosReturn();
+
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         setLanguage(savedLang);
@@ -398,12 +403,6 @@ window.App = {
             // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
             // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
             socket.once('menu-update', () => {
-                const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
-                if (pendingStripe) {
-                    socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
-                    localStorage.removeItem('temp_stripe_connect_id');
-                    alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
-                }
                 
                 // ✅ NEW: Ζητάμε τις κρατήσεις μόλις συνδεθούμε (αφού μπούμε στο δωμάτιο)
                 socket.emit('get-reservations');
@@ -490,21 +489,20 @@ window.App = {
                 }
                 if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
                 
-                // ✅ NEW: Load POS Settings
-                if(settings.pos) {
-                    document.getElementById('inpPosProvider').value = settings.pos.provider || '';
-                    document.getElementById('inpPosId').value = settings.pos.id || '';
-                    document.getElementById('inpPosKey').value = settings.pos.key || '';
+                // ✅ NEW: Load SoftPOS Settings
+                if(settings.softPos) {
+                    App.softPosSettings = settings.softPos;
+                    document.getElementById('selSoftPosProvider').value = settings.softPos.provider || '';
+                    document.getElementById('inpSoftPosMerchantId').value = settings.softPos.merchantId || '';
+                    document.getElementById('inpSoftPosApiKey').value = settings.softPos.apiKey || '';
+                    document.getElementById('switchSoftPosEnabled').checked = settings.softPos.enabled || false;
+                    App.updateSoftPosUI();
+                }
+                if(settings.posMode) {
+                    App.posMode = settings.posMode;
+                    document.getElementById('selPosMode').value = App.posMode;
                 }
 
-                const statusEl = document.getElementById('stripeStatus');
-                if (settings.stripeConnectId) {
-                    statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId;
-                    statusEl.style.color = "#00E676";
-                } else {
-                    statusEl.innerText = "Μη συνδεδεμένο";
-                    statusEl.style.color = "#aaa";
-                }
             }
         });
 
@@ -563,6 +561,14 @@ window.App = {
             const mockOrder = { id: data.id, text: data.text, from: 'PASO' };
             if (data.signature) mockOrder.text += `\n\nSIGNATURE: ${data.signature}`;
             // Print immediately
+            App.printOrder(null, mockOrder);
+        });
+
+        // ✅ NEW: Listen for Standard Order Print (e.g. after Card Payment)
+        socket.on('print-order', (data) => {
+            if (!App.printerEnabled) return;
+            // Δημιουργία προσωρινού αντικειμένου για εκτύπωση
+            const mockOrder = { id: Date.now(), text: data.text, from: 'System', aadeQr: data.aadeQr };
             App.printOrder(null, mockOrder);
         });
 
@@ -694,6 +700,58 @@ window.App = {
         const main = document.getElementById('settingsMain');
         if(main) main.style.display = 'block';
     },
+
+    // ✅ NEW: SoftPOS Logic
+    updateSoftPosUI: () => {
+        const provider = document.getElementById('selSoftPosProvider').value;
+        const linkDiv = document.getElementById('softPosLinks');
+        const linkA = document.getElementById('linkSoftPosReg');
+        const setupBanner = document.getElementById('softPosSetupBanner');
+        const downloadBanner = document.getElementById('softPosDownloadBanner');
+        const merchantId = document.getElementById('inpSoftPosMerchantId').value;
+        const isEnabled = document.getElementById('switchSoftPosEnabled').checked;
+
+        // Links
+        const urls = {
+            'viva': 'https://www.vivawallet.com/gr_el',
+            'alpha': 'https://www.alpha.gr/el/epixeiriseis/myalpha-pos/softpos',
+            'eurobank': 'https://www.eurobank.gr/el/epixeiriseis/proionta-upiresies/eisprakseis-pliromes/eisprakseis/pos/smart-pos',
+            'piraeus': 'https://www.piraeusbank.gr/el/epixeiriseis/eisprakseis-pliromes/eisprakseis/epay-pos/softpos'
+        };
+
+        if (provider && urls[provider]) {
+            linkDiv.style.display = 'block';
+            linkA.href = urls[provider];
+        } else {
+            linkDiv.style.display = 'none';
+        }
+
+        // Banners
+        if (isEnabled && !merchantId) {
+            setupBanner.style.display = 'block';
+            downloadBanner.style.display = 'none';
+        } else if (isEnabled && merchantId) {
+            setupBanner.style.display = 'none';
+            downloadBanner.style.display = 'block';
+        } else {
+            setupBanner.style.display = 'none';
+            downloadBanner.style.display = 'none';
+        }
+        
+        App.autoSaveSettings();
+    },
+
+    openSoftPosDownload: () => {
+        const provider = document.getElementById('selSoftPosProvider').value;
+        // Generic Play Store Search or specific links
+        let url = "https://play.google.com/store/search?q=softpos&c=apps";
+        if (provider === 'viva') url = "https://play.google.com/store/apps/details?id=com.vivawallet.terminal";
+        else if (provider === 'alpha') url = "https://play.google.com/store/apps/details?id=gr.alpha.nexi.softpos";
+        else if (provider === 'eurobank') url = "https://play.google.com/store/apps/details?id=com.worldline.smartpos";
+        else if (provider === 'piraeus') url = "https://play.google.com/store/apps/details?id=gr.epay.softpos";
+        
+        window.open(url, '_blank');
+    },
     
     autoSaveSettings: () => {
         const time = document.getElementById('inpResetTime').value;
@@ -707,14 +765,16 @@ window.App = {
         const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
         const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
         
-        // ✅ NEW: POS Settings
-        const posData = {
-            provider: document.getElementById('inpPosProvider').value,
-            id: document.getElementById('inpPosId').value,
-            key: document.getElementById('inpPosKey').value
+        // ✅ NEW: SoftPOS Settings
+        const softPosData = {
+            provider: document.getElementById('selSoftPosProvider').value,
+            merchantId: document.getElementById('inpSoftPosMerchantId').value,
+            apiKey: document.getElementById('inpSoftPosApiKey').value,
+            enabled: document.getElementById('switchSoftPosEnabled').checked
         };
+        const posMode = document.getElementById('selPosMode').value;
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, pos: posData });
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1365,6 +1425,12 @@ window.App = {
         const text = App.tempPasoText;
         const total = calculateTotal(text);
         
+        // ✅ NEW: Check for SoftPOS
+        if (method === 'card' && App.softPosSettings && App.softPosSettings.enabled) {
+            App.triggerSoftPosPayment(total, 'paso');
+            return;
+        }
+
         if (type === 'qr') {
              // Open QR Modal logic
              // We use a temporary ID for the QR
@@ -1506,6 +1572,11 @@ window.App = {
                     treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
                 }
                 
+                // ✅ NEW: SoftPOS Button (Admin & Waiter Only)
+                if (App.softPosSettings && App.softPosSettings.enabled) {
+                    actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>`;
+                }
+
                 actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
             }
@@ -1670,6 +1741,24 @@ window.App = {
     },
     treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
     treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+
+    // ✅ NEW: Pay with SoftPOS
+    payWithSoftPos: (id) => {
+        // ✅ Check POS Mode (Auto vs Ask)
+        if (App.posMode === 'ask') {
+            if (!confirm("Αποστολή ποσού στο τερματικό;")) {
+                if(confirm("Να καταγραφεί ως πληρωμένο με ΚΑΡΤΑ (Χωρίς τερματικό);")) {
+                    // Manual Card Payment
+                    window.socket.emit('pay-order', { id: id, method: 'card' });
+                }
+                return;
+            }
+        }
+
+        const order = App.activeOrders.find(o => o.id == id);
+        const total = calculateTotal(order.text);
+        App.triggerSoftPosPayment(total, id);
+    },
 
     // ✅ NEW: PARTIAL PAYMENT (Cash/Card)
     payItemPartial: (id, index, method) => {
@@ -2114,36 +2203,21 @@ window.App = {
         }
 
         if (method === 'card') {
-            // ✅ REAL POS INTEGRATION LOGIC
-            const btn = document.getElementById('btnCashRegPos');
-            const originalText = btn.innerText;
-            
-            // 1. Αλλαγή UI σε "Αναμονή"
-            btn.innerText = "⏳ ΑΠΟΣΤΟΛΗ...";
-            btn.disabled = true;
-            btn.style.background = "#555";
-
-            // 2. Listener για την απάντηση του Server
-            const handlePosResult = (res) => {
-                window.socket.off('pos-result', handlePosResult); // Καθαρισμός listener
-                btn.innerText = originalText;
-                btn.disabled = false;
-                btn.style.background = "#2196F3";
-
-                if (res.success) {
-                    alert("✅ Πληρωμή POS Επιτυχής!");
-                    App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
-                } else {
-                    alert("❌ Σφάλμα POS: " + res.error);
-                    // Fallback: Αν ο χρήστης είδε ότι πέρασε αλλά κόλλησε το ίντερνετ
-                    if(confirm("Αν η πληρωμή εγκρίθηκε στο τερματικό αλλά δεν ήρθε σήμα, πατήστε ΟΚ για κλείσιμο.")) {
-                        App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
+            // ✅ NEW: Check SoftPOS
+            if (App.softPosSettings && App.softPosSettings.enabled) {
+                if (App.posMode === 'ask') {
+                    if (!confirm("Αποστολή ποσού στο τερματικό;")) {
+                        if(confirm("Να καταγραφεί ως πληρωμένο με ΚΑΡΤΑ (Χωρίς τερματικό);")) {
+                            App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (Manual)');
+                        }
+                        return;
                     }
                 }
-            };
-
-            window.socket.on('pos-result', handlePosResult);
-            window.socket.emit('pos-pay', { amount: total });
+                App.triggerSoftPosPayment(total, 'cashreg');
+            } else {
+                // Fallback to manual logging if no SoftPOS
+                App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
+            }
         } else {
             App.finalizeCashRegOrder(total, '💵 ΜΕΤΡΗΤΑ');
         }
