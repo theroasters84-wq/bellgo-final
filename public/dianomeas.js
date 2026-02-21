@@ -21,7 +21,11 @@ window.App = {
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
 
     init: () => {
-        document.getElementById('storeNameHeader').innerText = (userData.store || "Store") + " 🛵";
+        // ✅ FIX: Άμεση εμφάνιση ονόματος (Cache) για να μην φαίνεται το email
+        const cachedName = localStorage.getItem('bellgo_store_name');
+        const displayName = cachedName || userData.store || "Store";
+        document.getElementById('storeNameHeader').innerText = displayName + " 🛵";
+
         App.connectSocket();
         App.requestNotifyPermission();
         
@@ -92,9 +96,15 @@ window.App = {
 
         socket.on('force-logout', () => App.logout());
 
-        // ✅ NEW: Listen for Settings (SoftPOS)
+        // ✅ NEW: Listen for Settings (Name & SoftPOS)
         socket.on('store-settings-update', (settings) => {
-            if(settings && settings.softPos) App.softPosSettings = settings.softPos;
+            if(settings) {
+                if(settings.name) {
+                    document.getElementById('storeNameHeader').innerText = settings.name + " 🛵";
+                    localStorage.setItem('bellgo_store_name', settings.name); // ✅ Cache Name
+                }
+                if(settings.softPos) App.softPosSettings = settings.softPos;
+            }
         });
 
         // ✅ NEW: ALARM LISTENERS

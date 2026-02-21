@@ -215,9 +215,10 @@ window.App = {
         
         // ✅ UI SETUP BASED ON MODE
         // ✅ FIX: Άμεση εμφάνιση ονόματος (για να μην φαίνεται κενό μέχρι να συνδεθεί)
-        if (userData.store) {
-            const inpHeader = document.getElementById('inpStoreNameHeader');
-            if (inpHeader) inpHeader.value = userData.store;
+        const cachedName = localStorage.getItem('bellgo_store_name');
+        const inpHeader = document.getElementById('inpStoreNameHeader');
+        if (inpHeader && cachedName) {
+            inpHeader.value = cachedName;
         }
 
         if (App.adminMode === 'kitchen') {
@@ -442,7 +443,10 @@ window.App = {
         socket.on('store-settings-update', (settings) => {
             if(settings) {
                 const inpHeader = document.getElementById('inpStoreNameHeader');
-                if(settings.name && inpHeader) inpHeader.value = settings.name;
+                if(settings.name) {
+                    if(inpHeader) inpHeader.value = settings.name;
+                    localStorage.setItem('bellgo_store_name', settings.name); // ✅ Cache Name
+                }
                 document.getElementById('switchCust').checked = settings.statusCustomer;
                 document.getElementById('switchStaff').checked = settings.statusStaff;
                 document.getElementById('switchStaffCharge').checked = settings.staffCharge || false; // ✅ Load Setting
