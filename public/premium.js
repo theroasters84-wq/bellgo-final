@@ -835,6 +835,15 @@ window.App = {
         } else if (type === 'reset') {
             const el = document.getElementById('inpResetTime');
             if(el) { el.value = val; App.autoSaveSettings(); }
+        } else if (type === 'cust') {
+            const el = document.getElementById('switchCust');
+            if(el) { el.checked = val; App.toggleStatus('customer'); }
+        } else if (type === 'staff') {
+            const el = document.getElementById('switchStaff');
+            if(el) { el.checked = val; App.toggleStatus('staff'); }
+        } else if (type === 'charge') {
+            const el = document.getElementById('switchStaffCharge');
+            if(el) { el.checked = val; App.toggleStaffCharge(val); }
         }
     },
 
