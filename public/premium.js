@@ -729,14 +729,14 @@ window.App = {
 
                     <!-- ✅ EXCEPTION: STORE & HOURS -->
                     <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; width:100%; max-width:300px; margin-bottom:20px; text-align:left;">
-                        <h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px; border-bottom:1px solid #333; padding-bottom:5px;">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ (ΕΞΑΙΡΕΣΗ)</h4>
+                        <h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px; border-bottom:1px solid #333; padding-bottom:5px;">ΒΑΣΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (ΕΞΑΙΡΕΣΗ)</h4>
                         
                         <div style="margin-bottom:10px;">
                             <label style="color:#ccc; font-size:12px; display:block;">Όνομα Καταστήματος</label>
                             <input type="text" id="inpLockStoreName" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('name', this.value)">
                         </div>
 
-                        <div style="display:flex; gap:10px;">
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
                             <div style="flex:1;">
                                 <label style="color:#ccc; font-size:12px; display:block;">Ωράριο</label>
                                 <input type="text" id="inpLockHours" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('hours', this.value)">
@@ -744,6 +744,21 @@ window.App = {
                             <div style="flex:1;">
                                 <label style="color:#ccc; font-size:12px; display:block;">Reset</label>
                                 <input type="time" id="inpLockReset" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('reset', this.value)">
+                            </div>
+                        </div>
+
+                        <div style="border-top:1px solid #333; padding-top:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="color:#ccc; font-size:12px;">ΠΕΛΑΤΕΣ (Delivery)</span>
+                                <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="color:#ccc; font-size:12px;">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
+                                <label class="switch"><input type="checkbox" id="switchLockStaff" onchange="App.updateFromLock('staff', this.checked)"><span class="slider round"></span></label>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:#ccc; font-size:12px;">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
+                                <label class="switch"><input type="checkbox" id="switchLockCharge" onchange="App.updateFromLock('charge', this.checked)"><span class="slider round"></span></label>
                             </div>
                         </div>
                     </div>
@@ -768,6 +783,15 @@ window.App = {
             if(realName) document.getElementById('inpLockStoreName').value = realName.value;
             if(realHours) document.getElementById('inpLockHours').value = realHours.value;
             if(realReset) document.getElementById('inpLockReset').value = realReset.value;
+
+            // ✅ POPULATE SWITCHES
+            const swCust = document.getElementById('switchCust');
+            const swStaff = document.getElementById('switchStaff');
+            const swCharge = document.getElementById('switchStaffCharge');
+
+            if(swCust) document.getElementById('switchLockCust').checked = swCust.checked;
+            if(swStaff) document.getElementById('switchLockStaff').checked = swStaff.checked;
+            if(swCharge) document.getElementById('switchLockCharge').checked = swCharge.checked;
 
         } else {
             const lock = document.getElementById('settingsLockOverlay');
