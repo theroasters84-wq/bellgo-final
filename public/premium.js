@@ -331,6 +331,10 @@ window.App = {
         // ✅ Check SoftPOS Return
         App.checkSoftPosReturn();
 
+        // ✅ FIX: Hide Cash Register by default (until settings load)
+        const btnCash = document.getElementById('btnCashRegister');
+        if(btnCash) btnCash.style.display = 'none';
+
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         setLanguage(savedLang);

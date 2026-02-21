@@ -34,7 +34,7 @@
                     <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button>
                     <div id="resBadge" class="chat-badge" style="display:none;"></div>
                 </div>
-                <button id="btnCashRegister" class="btn-icon" onclick="App.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white;">📠</button> <!-- ✅ NEW: Cash Register -->
+                <button id="btnCashRegister" class="btn-icon" onclick="App.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white; display:none;">📠</button> <!-- ✅ NEW: Cash Register -->
                 <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white;">💼</button> <!-- ✅ NEW -->
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
                 <div class="btn-icon-wrapper">
@@ -241,26 +241,26 @@
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / EASY TAP TO PAY</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (TAP TO PAY)</h4>
                 
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
-                    <div class="settings-label" style="color:#00E676;">📱 EASY TAP TO PAY (SoftPOS)</div>
+                    <div class="settings-label" style="color:#00E676;">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
                     <select id="selSoftPosProvider" class="inp-settings" onchange="App.updateSoftPosUI()">
                         <option value="">Επιλέξτε Πάροχο...</option>
                         <option value="viva">Viva Wallet</option>
                         <option value="alpha">Alpha Bank (Nexi)</option>
                         <option value="eurobank">Eurobank (Worldline)</option>
                         <option value="piraeus">Piraeus (Epay)</option>
-                        <option value="custom">Άλλο / Custom</option>
+                        <option value="custom">Άλλο / Προσαρμοσμένο</option>
                     </select>
                     
                     <div id="softPosLinks" style="margin:10px 0; font-size:12px; color:#aaa; display:none; text-align:center;">
                         <a id="linkSoftPosReg" href="#" target="_blank" style="color:#2196F3; text-decoration:underline; font-weight:bold;">🔗 Εγγραφή στον Πάροχο</a>
                     </div>
 
-                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Merchant ID / TID" onblur="App.autoSaveSettings()">
-                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="API Key / Token (Optional)" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Αναγνωριστικό Εμπόρου / TID" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="Κλειδί API / Token (Προαιρετικό)" onblur="App.autoSaveSettings()">
                     
                     <div class="switch-row" style="margin-top:5px;">
                         <span>ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
@@ -268,7 +268,7 @@
                     </div>
 
                     <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
-                        <div class="settings-label" style="color:#aaa;">ΛΕΙΤΟΥΡΓΙΑ POS (Admin/Waiter)</div>
+                        <div class="settings-label" style="color:#aaa;">ΛΕΙΤΟΥΡΓΙΑ POS (Admin/Σερβιτόρος)</div>
                         <select id="selPosMode" class="inp-settings" onchange="App.autoSaveSettings()">
                             <option value="auto">⚡ Αυτόματη Αποστολή</option>
                             <option value="ask">❓ Ερώτηση Επιβεβαίωσης</option>
@@ -280,8 +280,8 @@
                 <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
                     <div class="settings-label" style="color:#00BCD4;">📡 ΦΥΣΙΚΟ ΤΕΡΜΑΤΙΚΟ (WiFi/Ethernet)</div>
                     <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
-                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Terminal ID / IP" onblur="App.autoSaveSettings()">
-                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="API Key / Port" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Αναγνωριστικό Τερματικού / IP" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="Κλειδί API / Θύρα" onblur="App.autoSaveSettings()">
                 </div>
 
                 <!-- BANNERS -->
@@ -293,7 +293,7 @@
                 <div id="softPosDownloadBanner" style="display:none; background:#2196F3; color:white; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
                     <b>📲 ΚΑΤΕΒΑΣΤΕ ΤΗΝ ΕΦΑΡΜΟΓΗ</b><br>
                     <span style="font-size:12px;">Admin, Σερβιτόροι & Διανομείς πρέπει να έχουν το App του παρόχου.</span>
-                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="App.openSoftPosDownload()">Download App</button>
+                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="App.openSoftPosDownload()">Λήψη Εφαρμογής</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -303,7 +303,7 @@
 
                 <!-- Hidden Select for JS to grab -->
                 <select id="selShopType" style="display:none;">
-                    <option value="" disabled selected>Template...</option>
+                    <option value="" disabled selected>Πρότυπο...</option>
                     <option value="coffee_takeaway">☕ Cafe Takeaway</option>
                     <option value="coffee_bar">🍸 Cafe Bar</option>
                     <option value="pizzeria">🍕 Pizzeria</option>
@@ -322,7 +322,7 @@
             <h3 class="modal-title" data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ</h3>
             <div style="margin-bottom:15px; display:flex; gap:10px;">
                 <input type="text" id="inpTableNumbers" class="inp-settings" data-i18n-placeholder="tables_placeholder" placeholder="π.χ. 1-10 ή A1, B2" style="margin:0;">
-                <button class="modal-btn" style="background:#00E676; color:black; width:auto; margin:0;" onclick="App.generateTableQrs()" data-i18n="generate">GENERATE</button>
+                <button class="modal-btn" style="background:#00E676; color:black; width:auto; margin:0;" onclick="App.generateTableQrs()" data-i18n="generate">ΔΗΜΙΟΥΡΓΙΑ</button>
             </div>
             <div id="qrGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:15px; overflow-y:auto; flex:1; padding:15px; background:#fff; color:black; border-radius:8px; align-content:start;"></div>
             <button class="modal-btn" style="background:#2196F3; margin-top:10px;" onclick="App.printQrs()"><span data-i18n="print">🖨️ ΕΚΤΥΠΩΣΗ</span></button>
@@ -464,7 +464,7 @@
                 <div id="expensePresetsContainer" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
                 <div style="display:flex; gap:5px;">
                     <input type="text" id="inpNewPreset" class="inp-settings" data-i18n-placeholder="name_ex_bread" placeholder="Όνομα (π.χ. Ψωμί)" style="margin:0; flex:2;">
-                    <input type="number" id="inpNewPresetPrice" class="inp-settings" data-i18n-placeholder="price_optional" placeholder="€ (Optional)" style="margin:0; flex:1;">
+                    <input type="number" id="inpNewPresetPrice" class="inp-settings" data-i18n-placeholder="price_optional" placeholder="€ (Προαιρετικό)" style="margin:0; flex:1;">
                     <button class="modal-btn" style="width:auto; margin:0; background:#2196F3;" onclick="App.addExpensePreset()">➕</button>
                 </div>
             </div>
@@ -478,8 +478,8 @@
             <textarea id="txtExpenses" class="order-text" style="height:65vh; font-size:16px;" data-i18n-placeholder="expenses_placeholder" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
             
             <div style="display:flex; justify-content:center; align-items:center; gap:15px; margin-top:5px;">
-                <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; width:auto; padding:4px 15px; font-size:12px; margin:0;" onclick="App.saveExpenses()"><span data-i18n="save">💾 SAVE</span></button>
-                <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; font-size:12px; cursor:pointer; padding:5px;" data-i18n="close">CLOSE</button>
+                <button class="modal-btn btn-save-expenses" style="background:#00E676; color:black; width:auto; padding:4px 15px; font-size:12px; margin:0;" onclick="App.saveExpenses()"><span data-i18n="save">💾 ΑΠΟΘΗΚΕΥΣΗ</span></button>
+                <button onclick="document.getElementById('expensesModal').style.display='none'" style="background:none; border:none; color:#777; font-size:12px; cursor:pointer; padding:5px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
     </div>
@@ -569,7 +569,7 @@
         </div>
     </div>
 
-    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Tap to Unlock</div></div>
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Πατήστε για Ξεκλείδωμα</div></div>
 
     <script type="module" src="premium.js"></script>
     <script src="player.js"></script>
