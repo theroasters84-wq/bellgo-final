@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Επιβράβευση Πελάτη</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+        }
+        .card {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #333;
+        }
+        h1 { color: #FFD700; margin-bottom: 10px; }
+        p { color: #ccc; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background: #2c2c2c;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(45deg, #FFD700, #FFC107);
+            color: black;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+        .result-box {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #333;
+        }
+        .confetti { font-size: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="inputSection">
+        <h1>🎁 Επιβράβευση</h1>
+        <p>Συμπληρώστε το κινητό σας για να κερδίσετε πόντους!</p>
+        <input type="tel" id="inpPhone" placeholder="Αρ. Κινητού (π.χ. 69...)" maxlength="10">
+        <button onclick="claimReward()">ΚΑΤΑΧΩΡΗΣΗ</button>
+    </div>
+
+    <div class="card" id="resultSection" style="display:none;">
+        <div id="resultIcon" class="confetti">🎉</div>
+        <h2 id="resultTitle"></h2>
+        <p id="resultMsg"></p>
+    </div>
+
+    <script>
+        async function claimReward() {
+            const params = new URLSearchParams(window.location.search);
+            const storeName = params.get('store');
+            const orderId = params.get('order');
+            const phone = document.getElementById('inpPhone').value.trim();
+
+            if(!phone || phone.length < 10) return alert("Παρακαλώ εισάγετε έγκυρο αριθμό κινητού.");
+            if(!storeName || !orderId) return alert("Μη έγκυρο QR Code.");
+
+            const btn = document.querySelector('button');
+            btn.disabled = true;
+            btn.innerText = "⏳ ΕΛΕΓΧΟΣ...";
+
+            try {
+                const res = await fetch('/claim-reward', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ storeName, orderId, phone })
+                });
+                const data = await res.json();
+
+                document.getElementById('inputSection').style.display = 'none';
+                const resBox = document.getElementById('resultSection');
+                resBox.style.display = 'block';
+
+                if(data.success) {
+                    const isWinner = (data.count % data.target === 0);
+                    document.getElementById('resultTitle').innerText = isWinner ? "ΣΥΓΧΑΡΗΤΗΡΙΑ! 🎁" : "Πόντος Καταχωρήθηκε!";
+                    document.getElementById('resultMsg').innerHTML = isWinner 
+                        ? `Κερδίσατε: <b style="color:#FFD700; font-size:20px;">${data.gift}</b><br>Δείξτε αυτό το μήνυμα στο ταμείο.` 
+                        : `Έχετε <b>${data.count % data.target} / ${data.target}</b> πόντους.<br>Στους ${data.target} κερδίζετε ${data.gift}!`;
+                    if(!isWinner) document.getElementById('resultIcon').innerText = "✅";
+                } else {
+                    document.getElementById('resultIcon').innerText = "❌";
+                    document.getElementById('resultTitle').innerText = "Σφάλμα";
+                    document.getElementById('resultMsg').innerText = data.error;
+                    document.getElementById('resultMsg').style.color = "#FF5252";
+                }
+            } catch(e) {
+                alert("Σφάλμα σύνδεσης.");
+                btn.disabled = false;
+                btn.innerText = "ΚΑΤΑΧΩΡΗΣΗ";
+            }
+        }
+    </script>
+</body>
+</html>

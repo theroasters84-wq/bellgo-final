@@ -169,6 +169,7 @@ export const StatsUI = {
         let totalOrders = 0;
         let totalExpenses = 0; // ✅ NEW: Global Expenses
         let totalWages = 0;
+        let totalRewards = 0; // ✅ NEW: Total Rewards
         let totalFixed = 0; // Estimate based on current settings * days? Or just sum wages?
         // Note: For global dashboard, "Logistis" is tricky because Fixed Expenses are daily/monthly.
         // We will show Logistis mainly in Month/Day views where it's accurate.
@@ -178,6 +179,7 @@ export const StatsUI = {
         months.forEach(m => {
             totalTurnover += (stats[m].turnover || 0);
             totalOrders += (stats[m].orders || 0);
+            if (stats[m].rewardsGiven) totalRewards += stats[m].rewardsGiven; // ✅ Sum Rewards
             // Calc expenses for month
             if (stats[m].days) {
                 Object.values(stats[m].days).forEach(d => {
@@ -205,6 +207,10 @@ export const StatsUI = {
                     <div class="stat-value" style="color:${totalNet >= 0 ? '#00E676' : '#FF5252'}">${totalNet.toFixed(2)}€</div>
                     <div class="stat-label">Καθαρό Κέρδος</div>
                     <div style="font-size:10px; color:#aaa; margin-top:2px;">(Έξοδα: -${totalExpenses.toFixed(2)}€)</div>
+                </div>
+                <div class="stat-card" style="background:#222; border:1px solid #E91E63;">
+                    <div class="stat-value" style="color:#E91E63;">${totalRewards} 🎁</div>
+                    <div class="stat-label">Δώρα που δόθηκαν</div>
                 </div>
             </div>
             
@@ -259,6 +265,7 @@ export const StatsUI = {
         }
         const netProfit = (monthData.turnover || 0) - totalExpenses;
         const avgOrder = monthData.orders > 0 ? (monthData.turnover / monthData.orders) : 0;
+        const rewardsGiven = monthData.rewardsGiven || 0; // ✅ NEW
 
         // Calculate totals for products
         const products = monthData.products || {};
@@ -339,6 +346,10 @@ export const StatsUI = {
                     <div class="stat-value" style="color:#FFD700;">${avgOrder.toFixed(2)}€</div>
                     <div class="stat-label">Μέση Παραγγελία</div>
                 </div>
+                <div class="stat-card" style="background:#222; border:1px solid #E91E63;">
+                    <div class="stat-value" style="color:#E91E63;">${rewardsGiven} 🎁</div>
+                    <div class="stat-label">Δώρα Μήνα</div>
+                </div>
             </div>
 
             ${StatsUI.getLogistisHtml(monthData.turnover || 0, totalFixed, totalWages)}
@@ -397,6 +408,7 @@ export const StatsUI = {
 
         const expenses = dayData.expenses || { text: 'Δεν καταγράφηκαν έξοδα.', total: 0 };
         const net = (dayData.turnover || 0) - (expenses.total || 0);
+        const rewardsGiven = dayData.rewardsGiven || 0; // ✅ NEW
 
         let staffHtml = '';
         sortedStaff.forEach(([name, data]) => {
@@ -434,6 +446,10 @@ export const StatsUI = {
                 <div class="stat-card" style="background:#222; border:1px solid #444;">
                     <div class="stat-value" style="color:${net >= 0 ? '#00E676' : '#FF5252'}">${net.toFixed(2)}€</div>
                     <div class="stat-label">Καθαρό</div>
+                </div>
+                <div class="stat-card" style="background:#222; border:1px solid #E91E63;">
+                    <div class="stat-value" style="color:#E91E63;">${rewardsGiven} 🎁</div>
+                    <div class="stat-label">Δώρα Σήμερα</div>
                 </div>
             </div>
 

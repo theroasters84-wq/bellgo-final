@@ -167,10 +167,12 @@ window.App = {
     expensePresets: [], // ✅ Local storage for presets
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
     
+    rewardSettings: { enabled: false, gift: '', target: 5 }, // ✅ NEW: Reward Settings
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
     posSettings: {}, // ✅ NEW: Physical POS Settings
     posMode: 'auto', // ✅ NEW: POS Mode (auto/ask)
     einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
+    settingsUnlocked: false, // ✅ NEW: Flag για κλείδωμα ρυθμίσεων
     // ✅ NEW: Cash Register State
     cashRegValue: "0",
     cashRegItems: [],
@@ -471,6 +473,11 @@ window.App = {
                 if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
                 
                 // ✅ NEW: Load E-Invoicing State
+                if(settings.reward) {
+                    App.rewardSettings = settings.reward;
+                    // Update UI if modal is open (optional, usually handled on open)
+                }
+
                 if(settings.einvoicing && settings.einvoicing.enabled) App.einvoicingEnabled = true;
                 else App.einvoicingEnabled = false;
 
@@ -698,8 +705,139 @@ window.App = {
     openSettingsModal: () => { 
         document.getElementById('settingsModal').style.display = 'flex';
         App.closeSettingsSub(); // Reset to main view
+
+        // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
+        const main = document.getElementById('settingsMain');
+        if (!App.settingsUnlocked) {
+            // Βεβαιωνόμαστε ότι το main είναι relative για να κάτσει το overlay από πάνω
+            if (window.getComputedStyle(main).position === 'static') main.style.position = 'relative';
+            
+            let lock = document.getElementById('settingsLockOverlay');
+            if (!lock) {
+                lock = document.createElement('div');
+                lock.id = 'settingsLockOverlay';
+                lock.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; backdrop-filter:blur(5px); border-radius:10px; overflow-y:auto; padding:20px; box-sizing:border-box;";
+                lock.innerHTML = `
+                    <div style="font-size:50px; margin-bottom:20px;">🔒</div>
+                    <h3 style="color:white; margin-bottom:10px;">Ρυθμίσεις Κλειδωμένες</h3>
+                    <p style="color:#aaa; margin-bottom:20px; font-size:14px;">Απαιτείται PIN διαχειριστή.</p>
+                    
+                    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:30px;">
+                        <input type="password" id="inpUnlockPin" placeholder="PIN" style="padding:12px; border-radius:8px; border:1px solid #444; background:#222; color:white; text-align:center; font-size:18px; width:100px; outline:none;">
+                        <button onclick="App.unlockSettings()" style="padding:12px 20px; background:#FFD700; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
+                    </div>
+
+                    <!-- ✅ EXCEPTION: STORE & HOURS -->
+                    <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; width:100%; max-width:300px; margin-bottom:20px; text-align:left;">
+                        <h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px; border-bottom:1px solid #333; padding-bottom:5px;">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ (ΕΞΑΙΡΕΣΗ)</h4>
+                        
+                        <div style="margin-bottom:10px;">
+                            <label style="color:#ccc; font-size:12px; display:block;">Όνομα Καταστήματος</label>
+                            <input type="text" id="inpLockStoreName" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('name', this.value)">
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="color:#ccc; font-size:12px; display:block;">Ωράριο</label>
+                                <input type="text" id="inpLockHours" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('hours', this.value)">
+                            </div>
+                            <div style="flex:1;">
+                                <label style="color:#ccc; font-size:12px; display:block;">Reset</label>
+                                <input type="time" id="inpLockReset" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('reset', this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #333; padding-top:20px; width:80%;">
+                        <p style="color:#aaa; font-size:12px; margin-bottom:10px;">Εργαλεία Προσωπικού:</p>
+                        <button onclick="DNDBot.init(); DNDBot.showIntro();" style="background:#333; color:white; border:1px solid #555; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px; margin:0 auto;">
+                            <span>🤖</span> BellGo Bot (Setup)
+                        </button>
+                    </div>
+                `;
+                main.appendChild(lock);
+            } else {
+                lock.style.display = 'flex';
+            }
+
+            // ✅ POPULATE VALUES (Συγχρονισμός με τα πραγματικά πεδία)
+            const realName = document.getElementById('inpStoreNameHeader');
+            const realHours = document.getElementById('inpHours');
+            const realReset = document.getElementById('inpResetTime');
+            
+            if(realName) document.getElementById('inpLockStoreName').value = realName.value;
+            if(realHours) document.getElementById('inpLockHours').value = realHours.value;
+            if(realReset) document.getElementById('inpLockReset').value = realReset.value;
+
+        } else {
+            const lock = document.getElementById('settingsLockOverlay');
+            if(lock) lock.style.display = 'none';
+        }
+        
+        // ✅ NEW: Inject Reward Settings UI if not exists
+        if(!document.getElementById('rewardSettingsContainer')) {
+            const container = document.createElement('div');
+            container.id = 'rewardSettingsContainer';
+            container.className = 'settings-group';
+            container.innerHTML = `
+                <h3>🎁 Επιβράβευση Πελατών</h3>
+                <div class="setting-row">
+                    <span>Ενεργοποίηση</span>
+                    <label class="switch"><input type="checkbox" id="switchRewardEnabled"><span class="slider round"></span></label>
+                </div>
+                <div class="setting-row">
+                    <span>Δώρο (π.χ. Καφές)</span>
+                    <input type="text" id="inpRewardGift" class="setting-input" placeholder="Όνομα Δώρου">
+                </div>
+                <div class="setting-row">
+                    <span>Στόχος (Αρ. Παραγγελιών)</span>
+                    <input type="number" id="inpRewardTarget" class="setting-input" placeholder="5" style="width:60px;">
+                </div>
+            `;
+            // Insert before the Save button or at the end of settingsMain
+            const main = document.getElementById('settingsMain');
+            const saveBtn = main.querySelector('button[onclick="App.saveSettings()"]');
+            main.insertBefore(container, saveBtn);
+        }
+
+        // Populate Values
+        document.getElementById('switchRewardEnabled').checked = App.rewardSettings.enabled || false;
+        document.getElementById('inpRewardGift').value = App.rewardSettings.gift || '';
+        document.getElementById('inpRewardTarget').value = App.rewardSettings.target || 5;
+    },
+
+    // ✅ NEW: Ξεκλείδωμα Ρυθμίσεων
+    unlockSettings: () => {
+        const pin = document.getElementById('inpUnlockPin').value;
+        if(!pin) return;
+        
+        window.socket.emit('verify-pin', { pin: pin, email: userData.store });
+        window.socket.once('pin-verified', (data) => {
+            if (data.success) {
+                App.settingsUnlocked = true;
+                const lock = document.getElementById('settingsLockOverlay');
+                if(lock) lock.style.display = 'none';
+            } else {
+                alert("Λάθος PIN!");
+                document.getElementById('inpUnlockPin').value = '';
+            }
+        });
     },
     
+    // ✅ NEW: Helper για συγχρονισμό από την οθόνη κλειδώματος
+    updateFromLock: (type, val) => {
+        if (type === 'name') {
+            const el = document.getElementById('inpStoreNameHeader');
+            if(el) { el.value = val; App.saveStoreName(); }
+        } else if (type === 'hours') {
+            const el = document.getElementById('inpHours');
+            if(el) { el.value = val; App.autoSaveSettings(); }
+        } else if (type === 'reset') {
+            const el = document.getElementById('inpResetTime');
+            if(el) { el.value = val; App.autoSaveSettings(); }
+        }
+    },
+
     openSettingsSub: (id) => {
         document.getElementById('settingsMain').style.display = 'none';
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
@@ -777,6 +915,13 @@ window.App = {
         const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
         const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
         
+        // ✅ NEW: Reward Settings
+        const rewardData = {
+            enabled: document.getElementById('switchRewardEnabled').checked,
+            gift: document.getElementById('inpRewardGift').value,
+            target: parseInt(document.getElementById('inpRewardTarget').value) || 5
+        };
+
         // ✅ NEW: SoftPOS Settings
         const softPosData = {
             provider: document.getElementById('selSoftPosProvider').value,
@@ -793,7 +938,7 @@ window.App = {
             key: document.getElementById('inpPosKey').value
         };
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData });
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData });
     },
     saveSettings: () => {
         App.autoSaveSettings();
@@ -1561,6 +1706,12 @@ window.App = {
         let treatBtn = ''; // ✅ Κουμπί Κεράσματος για το Header
         let receiptBtn = ''; // ✅ NEW: Κουμπί Απόδειξης
 
+        // ✅ NEW: Reward Button
+        let rewardBtn = '';
+        if (App.rewardSettings && App.rewardSettings.enabled) {
+            rewardBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid #E91E63; color:#E91E63; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:bold;" onclick="App.openRewardQr('${order.id}')" title="QR Επιβράβευσης">🎁 QR</button>`;
+        }
+
         // ✅ NEW: E-Invoicing Button Logic
         if (App.einvoicingEnabled) {
             const hasReceipt = order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]');
@@ -1605,6 +1756,7 @@ window.App = {
             <div class="win-header">
                 <span style="font-weight:bold; color:white; font-size:24px;">${order.from}</span>
                 <div class="win-controls" style="display:flex; align-items:center;">
+                    ${rewardBtn}
                     ${receiptBtn}
                     ${treatBtn}
                     <button class="win-btn-top" style="background:#FF9800; color:black; padding:6px 12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="App.minimizeOrder('${order.id}')">🔙 ΠΙΣΩ</button>
@@ -1826,6 +1978,21 @@ window.App = {
                 document.getElementById('qrPaymentModal').style.display = 'flex';
             } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
         } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
+
+    // ✅ NEW: REWARD QR GENERATOR
+    openRewardQr: (orderId) => {
+        const baseUrl = window.location.origin;
+        const storeParam = encodeURIComponent(userData.store);
+        const url = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${orderId}`;
+        
+        document.getElementById('qrPaymentCode').innerHTML = "";
+        new QRCode(document.getElementById('qrPaymentCode'), { text: url, width: 200, height: 200 });
+        
+        // Reuse the QR Payment Modal for simplicity, just change title
+        const modal = document.getElementById('qrPaymentModal');
+        modal.querySelector('h2').innerText = "🎁 QR Επιβράβευσης";
+        modal.style.display = 'flex';
     },
 
     // ✅ NEW: TABLE QR GENERATOR

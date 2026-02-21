@@ -85,7 +85,8 @@ const defaultSettings = {
     totalTables: 0, // ✅ NEW: Σύνολο Τραπεζιών
     einvoicing: {}, // ✅ NEW: E-Invoicing Settings
     pos: { provider: '', id: '', key: '' }, // ✅ NEW: POS Settings
-    cashRegButtons: [] // ✅ NEW: Custom Cash Register Buttons
+    cashRegButtons: [], // ✅ NEW: Custom Cash Register Buttons
+    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 } // ✅ NEW: Reward Settings
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -107,6 +108,7 @@ async function getStoreData(storeName) {
                 if (firebaseData.staffTokens) data.staffTokens = firebaseData.staffTokens; // ✅ Load Tokens
                 if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
                 if (firebaseData.wallets) data.wallets = firebaseData.wallets; // ✅ Φόρτωση Πορτοφολιών
+                if (firebaseData.rewards) data.rewards = firebaseData.rewards; // ✅ Φόρτωση Πόντων Πελατών
                 if (firebaseData.reservations) data.reservations = firebaseData.reservations; // ✅ Φόρτωση Κρατήσεων
                 // ✅ Load Permanent Menu Backup (για επαναφορά)
                 data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
@@ -799,6 +801,7 @@ io.on('connection', (socket) => {
             if(data.einvoicing) store.settings.einvoicing = data.einvoicing; // ✅ NEW: Save E-Invoicing
             if(data.pos) store.settings.pos = data.pos; // ✅ NEW: Save POS Settings
             if(data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons; // ✅ NEW: Save Cash Reg Buttons
+            if(data.reward) store.settings.reward = data.reward; // ✅ NEW: Save Reward Settings
             updateStoreClients(socket.store); 
         } 
     });
@@ -1068,8 +1071,8 @@ io.on('connection', (socket) => {
         if (store && store.wallets) {
             if (targetName === 'ALL') {
                 store.wallets = {}; // Reset All
-            } else if (store.wallets[targetName]) {
-                store.wallets[targetName] = 0; // Reset Specific
+            } else if (store.wallets[targetName] !== undefined) {
+                delete store.wallets[targetName]; // ✅ DELETE: Διαγραφή για να φύγει από το panel
             }
             updateStoreClients(socket.store);
         }
@@ -1691,6 +1694,70 @@ setInterval(() => {
         } 
     } 
 }, 1000); // ✅ SERVER LOOP: Check every second
+
+// ✅ NEW: REWARD CLAIM ENDPOINT
+app.post('/claim-reward', async (req, res) => {
+    const { storeName, orderId, phone } = req.body;
+    
+    if (!storeName || !orderId || !phone) return res.json({ success: false, error: "Λείπουν στοιχεία." });
+    
+    const store = await getStoreData(storeName);
+    if (!store) return res.json({ success: false, error: "Το κατάστημα δεν βρέθηκε." });
+    
+    // 1. Έλεγχος αν είναι ενεργή η επιβράβευση
+    if (!store.settings.reward || !store.settings.reward.enabled) {
+        return res.json({ success: false, error: "Το πρόγραμμα επιβράβευσης είναι ανενεργό." });
+    }
+
+    // 2. Εύρεση Παραγγελίας
+    const order = store.orders.find(o => o.id == orderId);
+    // Σημείωση: Αν η παραγγελία έχει διαγραφεί (π.χ. κλείσιμο ημέρας), δεν μπορεί να πάρει πόντο.
+    // Αν θέλουμε να δουλεύει και σε παλιές, πρέπει να ψάξουμε στα stats ή να εμπιστευτούμε το ID αν είναι valid timestamp.
+    // Εδώ αυστηρά: Πρέπει να υπάρχει στα active orders ή να έχουμε ιστορικό. 
+    // Για απλότητα, αν δεν βρεθεί στα active, ελέγχουμε αν το ID είναι έγκυρο timestamp του τελευταίου 24ωρου.
+    const isValidId = (Date.now() - orderId) < 86400000; // 24 ώρες
+    
+    if (!order && !isValidId) return res.json({ success: false, error: "Η παραγγελία έληξε ή δεν βρέθηκε." });
+
+    // 3. Έλεγχος Μοναδικότητας (One-Time Scan)
+    // Χρησιμοποιούμε ένα Set ή Map στο store data για τα claimed IDs
+    if (!store.claimedRewards) store.claimedRewards = {};
+    if (store.claimedRewards[orderId]) {
+        return res.json({ success: false, error: "Το QR έχει ήδη χρησιμοποιηθεί!" });
+    }
+
+    // 4. Καταγραφή Πόντου
+    store.claimedRewards[orderId] = { phone, date: Date.now() };
+    
+    if (!store.rewards) store.rewards = {};
+    if (!store.rewards[phone]) store.rewards[phone] = 0;
+    store.rewards[phone]++;
+
+    // ✅ NEW: Καταγραφή Στατιστικών αν κέρδισε δώρο
+    const target = parseInt(store.settings.reward.target) || 5;
+    if (store.rewards[phone] % target === 0) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
+        const [year, month, day] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+
+        if (!store.stats) store.stats = {};
+        if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {} };
+        
+        // Καταγραφή στο Μήνα
+        if (!store.stats[monthKey].rewardsGiven) store.stats[monthKey].rewardsGiven = 0;
+        store.stats[monthKey].rewardsGiven++;
+
+        // Καταγραφή στην Ημέρα
+        if (!store.stats[monthKey].days[day]) store.stats[monthKey].days[day] = { orders: 0, turnover: 0 };
+        if (!store.stats[monthKey].days[day].rewardsGiven) store.stats[monthKey].days[day].rewardsGiven = 0;
+        store.stats[monthKey].days[day].rewardsGiven++;
+    }
+    
+    saveStoreToFirebase(storeName);
+
+    res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
+});
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
