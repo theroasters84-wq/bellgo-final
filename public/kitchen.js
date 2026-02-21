@@ -167,6 +167,7 @@ window.App = {
     fixedExpenses: [], // ✅ NEW: Fixed Expenses
 
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
+    posSettings: {}, // ✅ NEW: Physical POS Settings
     posMode: 'auto', // ✅ NEW: POS Mode
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     
@@ -460,6 +461,7 @@ window.App = {
                 // ✅ NEW: Load SoftPOS Settings
                 if(settings.softPos) App.softPosSettings = settings.softPos;
                 if(settings.posMode) App.posMode = settings.posMode;
+                if(settings.pos) App.posSettings = settings.pos; // ✅ Load Physical POS
 
                 const statusEl = document.getElementById('stripeStatus');
                 if (settings.stripeConnectId) {

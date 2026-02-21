@@ -276,6 +276,14 @@
                     </div>
                 </div>
 
+                <!-- ✅ NEW: PHYSICAL POS SETTINGS -->
+                <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                    <div class="settings-label" style="color:#00BCD4;">📡 ΦΥΣΙΚΟ ΤΕΡΜΑΤΙΚΟ (WiFi/Ethernet)</div>
+                    <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
+                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Terminal ID / IP" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="API Key / Port" onblur="App.autoSaveSettings()">
+                </div>
+
                 <!-- BANNERS -->
                 <div id="softPosSetupBanner" style="display:none; background:#FF9800; color:black; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
                     <b>⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
