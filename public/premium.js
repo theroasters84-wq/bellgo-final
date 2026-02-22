@@ -716,7 +716,7 @@ window.App = {
         App.closeSettingsSub(); // Reset to main view
 
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
-        const main = document.getElementById('settingsMain');
+        const main = document.getElementById('settingsLockedArea');
         if (!App.settingsUnlocked) {
             // Βεβαιωνόμαστε ότι το main είναι relative για να κάτσει το overlay από πάνω
             if (window.getComputedStyle(main).position === 'static') main.style.position = 'relative';
@@ -828,7 +828,7 @@ window.App = {
                 </div>
             `;
             // Insert before the Save button or at the end of settingsMain
-            const main = document.getElementById('settingsMain');
+            const main = document.getElementById('settingsLockedArea');
             const saveBtn = main.querySelector('button[onclick="App.saveSettings()"]');
             main.insertBefore(container, saveBtn);
         }
