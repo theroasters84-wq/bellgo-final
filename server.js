@@ -991,7 +991,8 @@ io.on('connection', (socket) => {
 
         // 1. Create a temporary order object for stats
         const tempOrder = {
-            id: : data.text,
+            id: data.id || Date.now(),
+            text: data.text,
             from: data.source || 'Admin (Paso)',
             status: 'completed'
         };
@@ -1630,16 +1631,22 @@ setInterval(() => {
         Object.keys(storesData).forEach(storeName => { 
             const store = storesData[storeName]; 
             if (store.settings.resetTime && nowInGreece === store.settings.resetTime) { 
-                // ✅ ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΜΕΝΟΥ (Reset)
-                if (store.permanentMenu) {
-                    store.menu = JSON.parse(JSON.stringify(store.permanentMenu));
-                    io.to(storeName).emit('menu-update', store.menu); 
-                    saveStoreToFirebase(storeName);
-                    console.log(`🔄 Menu reset for ${storeName}`);
-                }
+                    // ✅ FIX: Έλεγχος για να τρέξει ΜΙΑ φορά την ημέρα
+                    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+                    if (store.lastResetDate !== today) {
+                        store.lastResetDate = today;
 
-                // ✅ NEW: Αποστολή Email με Στατιστικά (Cron Job)
-                sendDailyReport(store);
+                        // ✅ ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΜΕΝΟΥ (Reset)
+                        if (store.permanentMenu) {
+                            store.menu = JSON.parse(JSON.stringify(store.permanentMenu));
+                            io.to(storeName).emit('menu-update', store.menu); 
+                            console.log(`🔄 Menu reset for ${storeName}`);
+                        }
+                        // ✅ NEW: Αποστολή Email με Στατιστικά (Cron Job)
+                        sendDailyReport(store);
+                        
+                        saveStoreToFirebase(storeName);
+                }
             } 
         }); 
     } catch (e) {} 
