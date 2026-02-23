@@ -1508,6 +1508,10 @@ window.App = {
         if(divTable) divTable.style.display = 'none';
         if(divDel) divDel.style.display = 'none';
 
+        // ✅ NEW: Hide Toggle Button if exists
+        const btnToggle = document.getElementById('btnToggleDeliveryDetails');
+        if(btnToggle) btnToggle.style.display = 'none';
+
         // Activate Selected
         const activeBtn = document.getElementById(mode === 'paso' ? 'btnModePaso' : mode === 'table' ? 'btnModeTable' : 'btnModeDelivery');
         if(activeBtn) {
@@ -1522,6 +1526,47 @@ window.App = {
         if (mode === 'delivery' && divDel) { 
             divDel.style.display = 'flex'; 
             setTimeout(()=> { const el = document.getElementById('sidebarDelName'); if(el) el.focus(); }, 100); 
+            // ✅ NEW: Collapsible Delivery Details
+            let btn = document.getElementById('btnToggleDeliveryDetails');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = 'btnToggleDeliveryDetails';
+                btn.className = 'sidebar-btn';
+                btn.style.cssText = "background:#444; color:#FFD700; margin-bottom:10px; width:100%; padding:10px; border:1px solid #FFD700; border-radius:5px; font-weight:bold; cursor:pointer;";
+                btn.innerHTML = "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
+                btn.onclick = () => {
+                    divDel.style.display = 'flex';
+                    btn.style.display = 'none';
+                    const firstInp = document.getElementById('sidebarDelName');
+                    if(firstInp) firstInp.focus();
+                };
+                divDel.parentNode.insertBefore(btn, divDel);
+                
+                // Add Close Button inside divDel
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = "OK (ΚΛΕΙΣΙΜΟ)";
+                closeBtn.style.cssText = "background:#00E676; color:black; border:none; padding:8px; width:100%; margin-top:5px; border-radius:5px; font-weight:bold; cursor:pointer;";
+                closeBtn.onclick = () => {
+                    divDel.style.display = 'none';
+                    btn.style.display = 'block';
+                    // Update label
+                    const name = document.getElementById('sidebarDelName').value;
+                    const phone = document.getElementById('sidebarDelPhone').value;
+                    if(name || phone) {
+                        btn.innerHTML = `📝 ${name || ''} ${phone ? '('+phone+')' : ''} <br><span style='font-size:10px; color:#aaa;'>(Πατήστε για αλλαγή)</span>`;
+                    } else {
+                        btn.innerHTML = "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
+                    }
+                };
+                divDel.appendChild(closeBtn);
+            }
+            
+            btn.style.display = 'block';
+            divDel.style.display = 'none'; // Initially hidden
+            
+            // Update label if already filled
+            const name = document.getElementById('sidebarDelName').value;
+            if(name) btn.innerHTML = `📝 ${name} <span style='font-size:10px; color:#aaa;'>(Πατήστε για αλλαγή)</span>`;
         }
     },
     renderSidebarMenu: () => {
@@ -1656,8 +1701,11 @@ window.App = {
              return;
         }
 
+        const pasoId = Date.now(); // ✅ Generate ID for Reward
+
         // Send to server for recording (Stats) & Printing
         window.socket.emit('quick-order', {
+            id: pasoId,
             text: text,
             total: total,
             method: method, // 'cash', 'card'
@@ -1667,6 +1715,16 @@ window.App = {
         document.getElementById('pasoCheckoutModal').style.display = 'none';
         App.toggleOrderSidebar(); // Close sidebar
         document.getElementById('sidebarOrderText').value = '';
+
+        // ✅ NEW: Reward Prompt for PASO
+        if (App.rewardSettings && App.rewardSettings.enabled) {
+            setTimeout(() => {
+                // ✅ FIX: Αν δεν τυπώνει, εμφάνισε το QR αυτόματα. Αλλιώς ρώτα.
+                if(!App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) {
+                    App.openRewardQr(pasoId);
+                }
+            }, 500);
+        }
     },
 
     renderDesktopIcons: (orders) => {
@@ -1867,6 +1925,32 @@ window.App = {
             }
         }
 
+        // ✅ NEW: Reward QR Logic for Print
+        let rewardQrHtml = '';
+        if (App.rewardSettings && App.rewardSettings.enabled) {
+             const baseUrl = window.location.origin;
+             const storeParam = encodeURIComponent(userData.store);
+             const rewardUrl = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${order.id}`;
+             
+             const divReward = document.createElement('div');
+             new QRCode(divReward, { text: rewardUrl, width: 100, height: 100, correctLevel: QRCode.CorrectLevel.L });
+             
+             const imgR = divReward.querySelector('img');
+             const canvasR = divReward.querySelector('canvas');
+             let srcR = '';
+             if (canvasR) srcR = canvasR.toDataURL();
+             else if (imgR) srcR = imgR.src;
+             
+             if (srcR) {
+                 rewardQrHtml = `
+                    <div style="text-align:center; margin-top:20px; border-top:1px dashed #000; padding-top:10px;">
+                        <div style="font-size:12px; font-weight:bold; margin-bottom:5px;">🎁 ΣΚΑΝΑΡΕ ΓΙΑ ΔΩΡΟ!</div>
+                        <img src="${srcR}" style="width:100px; height:100px;"/>
+                    </div>
+                 `;
+             }
+        }
+
         const win = window.open('', '', 'width=300,height=600');
         win.document.write(`
             <html>
@@ -1886,6 +1970,7 @@ window.App = {
                 <div class="items">${itemsHtml}</div>
                 <div class="total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
                 ${qrHtml} <!-- ✅ QR Code Here -->
+                ${rewardQrHtml} <!-- ✅ Reward QR Code Here -->
                 <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
             </body></html>`);
 
@@ -2136,12 +2221,8 @@ window.App = {
                 btn.style.background = '#333';
                 btn.innerHTML = `🛵 ${u.username}`;
                 btn.onclick = () => {
-                    // Υπολογισμός ποσού για χρέωση
-                    const order = App.activeOrders.find(o => o.id == orderId);
-                    const total = calculateTotal(order.text);
-                    
-                    // Χρέωση και Ανάθεση
-                    window.socket.emit('charge-order-to-staff', { orderId: orderId, staffName: u.username, amount: total, method: 'cash' });
+                    // ✅ FIX: Ανάθεση στον διανομέα (χωρίς κλείσιμο)
+                    window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username });
                     
                     modal.style.display = 'none';
                     App.minimizeOrder(orderId);
@@ -2149,6 +2230,19 @@ window.App = {
                 list.appendChild(btn);
             }
         });
+
+        // 3. ✅ NEW: Κουμπί "Χωρίς Κλήση" (Silent Ready)
+        const btnSilent = document.createElement('button');
+        btnSilent.className = 'modal-btn';
+        btnSilent.style.background = '#607D8B'; // Grey/Blue
+        btnSilent.style.color = 'white';
+        btnSilent.innerHTML = '🔕 ΕΤΟΙΜΟ (ΧΩΡΙΣ ΚΛΗΣΗ)';
+        btnSilent.onclick = () => {
+            window.socket.emit('ready-order', orderId, true); // true = silent
+            modal.style.display = 'none';
+            App.minimizeOrder(orderId);
+        };
+        list.appendChild(btnSilent);
 
         modal.style.display = 'flex';
     },
@@ -2166,6 +2260,16 @@ window.App = {
         window.socket.emit('pay-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
+
+        // ✅ NEW: Reward Prompt for Delivery/Table
+        if (App.rewardSettings && App.rewardSettings.enabled) {
+            setTimeout(() => {
+                // ✅ FIX: Αν δεν τυπώνει, εμφάνισε το QR αυτόματα. Αλλιώς ρώτα.
+                if(!App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) {
+                    App.openRewardQr(id);
+                }
+            }, 500);
+        }
     },
     removeStaff: (username) => {
         if(confirm(`Αφαίρεση χρήστη ${username};`)) {

@@ -981,8 +981,7 @@ io.on('connection', (socket) => {
 
         // 1. Create a temporary order object for stats
         const tempOrder = {
-            id: Date.now(),
-            text: data.text,
+            id: : data.text,
             from: data.source || 'Admin (Paso)',
             status: 'completed'
         };
@@ -1083,7 +1082,7 @@ io.on('connection', (socket) => {
         if(store) socket.emit('wallet-update', store.wallets || {});
     });
 
-    socket.on('ready-order', (id) => { 
+    socket.on('ready-order', (id, silent = false) => { 
         const store = getMyStore(); 
         if(store){ 
             const o = store.orders.find(x => x.id == id); 
@@ -1092,16 +1091,19 @@ io.on('connection', (socket) => {
                 o.readyTime = Date.now(); 
                 updateStoreClients(socket.store); 
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready', readyTime: o.readyTime }); 
-                // Push Notification Logic
-                const tKey = `${socket.store}_${o.from}`; 
-                const tUser = activeUsers[tKey]; 
-                if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
 
-                // ✅ NEW: Ειδοποίηση ΟΛΩΝ των Διανομέων ότι υπάρχει έτοιμη παραγγελία
-                Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
-                    u.isRinging = true;
-                    if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΟΥΖΙΝΑ 🍳", location: "ΕΤΟΙΜΗ ΠΑΡΑΓΓΕΛΙΑ" });
-                });
+                if (!silent) { // ✅ Check silent flag
+                    // Push Notification Logic
+                    const tKey = `${socket.store}_${o.from}`; 
+                    const tUser = activeUsers[tKey]; 
+                    if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
+
+                    // ✅ NEW: Ειδοποίηση ΟΛΩΝ των Διανομέων ότι υπάρχει έτοιμη παραγγελία
+                    Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
+                        u.isRinging = true;
+                        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: "ΚΟΥΖΙΝΑ 🍳", location: "ΕΤΟΙΜΗ ΠΑΡΑΓΓΕΛΙΑ" });
+                    });
+                }
             } 
         } 
     });
@@ -1118,10 +1120,36 @@ io.on('connection', (socket) => {
                 // Broadcast σε όλους τους οδηγούς
                 io.to(socket.store).emit('delivery-offer', { orderId: orderId });
             } else {
-                // Ανάθεση σε συγκεκριμένο (θα μπορούσε να στείλει push notification εδώ)
-                notifyAdmin(socket.store, "ΑΝΑΘΕΣΗ ΔΙΑΝΟΜΗΣ 🛵", `Έχεις νέα παραγγελία!`, null, targetDriver); // Χρήση notifyAdmin αλλά με targetDriver logic αν υπήρχε
+                // ✅ FIX: Ανάθεση σε συγκεκριμένο (Update Order Text)
+                if (!order.text.includes(`[DRIVER: ${targetDriver}]`)) {
+                     order.text += `\n[DRIVER: ${targetDriver}]`;
+                }
+                
+                // Ειδοποίηση στον συγκεκριμένο οδηγό (Push Notification)
+                if (store.staffTokens && store.staffTokens[targetDriver]) {
+                    const tokenData = store.staffTokens[targetDriver];
+                    sendPushNotification({ fcmToken: tokenData.token, role: 'driver' }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Σου ανατέθηκε μια παραγγελία!", { type: "alarm" });
+                }
+
+                updateStoreClients(socket.store);
             } 
         } 
+    });
+
+    // ✅ NEW: Driver Takes Order (Self-Assign)
+    socket.on('driver-take-order', (data) => {
+        const store = getMyStore();
+        if(!store) return;
+        const { orderId } = data;
+        
+        const order = store.orders.find(o => o.id == orderId);
+        if(order) {
+             // Check if already assigned
+             if (order.text.includes('[DRIVER:')) return;
+
+             order.text += `\n[DRIVER: ${socket.username}]`;
+             updateStoreClients(socket.store);
+        }
     });
 
     socket.on('pay-order', async (data) => { 
@@ -1755,6 +1783,12 @@ app.post('/claim-reward', async (req, res) => {
     }
     
     saveStoreToFirebase(storeName);
+
+    res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
 
     res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
 });
