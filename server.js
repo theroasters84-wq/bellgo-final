@@ -3,6 +3,16 @@ const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
+const nodemailer = require('nodemailer'); // ✅ NEW: Email Module
+
+// ✅ EMAIL CONFIGURATION (Ρυθμίστε το εδώ)
+const transporter = nodemailer.createTransport({
+    service: 'gmail', 
+    auth: {
+        user: 'bellgo.system@gmail.com', // ⚠️ ΑΛΛΑΞΤΕ ΤΟ ΜΕ ΤΟ EMAIL ΣΑΣ
+        pass: 'xxxx xxxx xxxx xxxx'      // ⚠️ ΑΛΛΑΞΤΕ ΤΟ ΜΕ APP PASSWORD (Όχι τον κωδικό του email)
+    }
+});
 
 // ✅ STRIPE SETUP (ΠΡΟΣΟΧΗ: Σε παραγωγή χρησιμοποιούμε .env)
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
@@ -1627,6 +1637,9 @@ setInterval(() => {
                     saveStoreToFirebase(storeName);
                     console.log(`🔄 Menu reset for ${storeName}`);
                 }
+
+                // ✅ NEW: Αποστολή Email με Στατιστικά (Cron Job)
+                sendDailyReport(store);
             } 
         }); 
     } catch (e) {} 
@@ -1722,6 +1735,49 @@ setInterval(() => {
         } 
     } 
 }, 1000); // ✅ SERVER LOOP: Check every second
+
+// ✅ NEW: FUNCTION TO SEND DAILY EMAIL
+async function sendDailyReport(store) {
+    const email = store.settings.adminEmail;
+    if (!email) return;
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+    
+    // Υπολογισμός Χθεσινής Ημέρας (Γιατί το reset γίνεται συνήθως 04:00 π.μ.)
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+
+    const getStats = (d) => {
+        const [y, m, day] = d.split('-');
+        return store.stats?.[`${y}-${m}`]?.days?.[day];
+    };
+
+    const sToday = getStats(todayStr);
+    const sYesterday = getStats(yesterdayStr);
+
+    if (!sToday && !sYesterday) return;
+
+    let html = `<h1>📊 BellGo Report: ${store.settings.name}</h1>`;
+    
+    if (sYesterday) {
+        html += `<h3>📅 Χθες (${yesterdayStr})</h3><p>💰 Τζίρος: <b>${sYesterday.turnover.toFixed(2)}€</b></p><p>📦 Παραγγελίες: ${sYesterday.orders}</p><hr>`;
+    }
+    if (sToday) {
+        html += `<h3>📅 Σήμερα (${todayStr}) - Έως τώρα</h3><p>💰 Τζίρος: <b>${sToday.turnover.toFixed(2)}€</b></p><p>📦 Παραγγελίες: ${sToday.orders}</p><hr>`;
+    }
+
+    try {
+        await transporter.sendMail({
+            from: '"BellGo Bot" <noreply@bellgo.com>',
+            to: email,
+            subject: `📊 Ημερήσια Αναφορά - ${store.settings.name}`,
+            html: html
+        });
+        console.log(`📧 Report sent to ${email}`);
+    } catch (e) { console.error("Email Error:", e.message); }
+}
 
 // ✅ NEW: REWARD CLAIM ENDPOINT
 app.post('/claim-reward', async (req, res) => {
