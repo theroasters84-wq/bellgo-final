@@ -816,21 +816,26 @@ window.App = {
                 <h3>🎁 Επιβράβευση Πελατών</h3>
                 <div class="setting-row">
                     <span>Ενεργοποίηση</span>
-                    <label class="switch"><input type="checkbox" id="switchRewardEnabled"><span class="slider round"></span></label>
+                    <label class="switch"><input type="checkbox" id="switchRewardEnabled" onchange="App.autoSaveSettings()"><span class="slider round"></span></label>
                 </div>
                 <div class="setting-row">
                     <span>Δώρο (π.χ. Καφές)</span>
-                    <input type="text" id="inpRewardGift" class="setting-input" placeholder="Όνομα Δώρου">
+                    <input type="text" id="inpRewardGift" class="setting-input" placeholder="Όνομα Δώρου" onchange="App.autoSaveSettings()">
                 </div>
                 <div class="setting-row">
                     <span>Στόχος (Αρ. Παραγγελιών)</span>
-                    <input type="number" id="inpRewardTarget" class="setting-input" placeholder="5" style="width:60px;">
+                    <input type="number" id="inpRewardTarget" class="setting-input" placeholder="5" style="width:60px;" onchange="App.autoSaveSettings()">
                 </div>
             `;
             // Insert before the Save button or at the end of settingsMain
-            const main = document.getElementById('settingsLockedArea');
-            const saveBtn = main.querySelector('button[onclick="App.saveSettings()"]');
-            main.insertBefore(container, saveBtn);
+            let main = document.getElementById('settingsLockedArea');
+            if (!main) main = document.getElementById('settingsMain'); // Fallback
+            
+            if (main) {
+                const saveBtn = main.querySelector('button[onclick="App.saveSettings()"]');
+                if (saveBtn) main.insertBefore(container, saveBtn);
+                else main.appendChild(container);
+            }
         }
 
         // Populate Values
@@ -958,11 +963,16 @@ window.App = {
         const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
         
         // ✅ NEW: Reward Settings
-        const rewardData = {
-            enabled: document.getElementById('switchRewardEnabled').checked,
-            gift: document.getElementById('inpRewardGift').value,
-            target: parseInt(document.getElementById('inpRewardTarget').value) || 5
-        };
+        let rewardData = App.rewardSettings; // Default to current state (Safe Check)
+        const elReward = document.getElementById('switchRewardEnabled');
+        
+        if (elReward) {
+            rewardData = {
+                enabled: elReward.checked,
+                gift: document.getElementById('inpRewardGift').value,
+                target: parseInt(document.getElementById('inpRewardTarget').value) || 5
+            };
+        }
 
         // ✅ NEW: SoftPOS Settings
         const softPosData = {
