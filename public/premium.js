@@ -925,6 +925,9 @@ window.App = {
         document.getElementById('switchRewardEnabled').checked = App.rewardSettings.enabled || false;
         document.getElementById('inpRewardGift').value = App.rewardSettings.gift || '';
         document.getElementById('inpRewardTarget').value = App.rewardSettings.target || 5;
+
+        // ✅ NEW: Εφαρμογή ορατότητας (για να κρυφτούν/φανούν τα sections ανάλογα με το feature)
+        App.applyFeatureVisibility();
     },
 
     // ✅ NEW: Subscriptions Modal
