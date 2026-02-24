@@ -706,7 +706,9 @@ window.App = {
         if (btnTable) btnTable.style.display = App.hasFeature('table_order') ? 'block' : 'none';
 
         // 5. Printer - Settings Toggle
-        const divPrinter = document.getElementById('switchPrinterEnabled')?.closest('.setting-row');
+        // ✅ FIX: Removed optional chaining (?.) for compatibility and fixed class name
+        const elPrinter = document.getElementById('switchPrinterEnabled');
+        const divPrinter = elPrinter ? elPrinter.closest('.switch-row') : null;
         if (divPrinter) divPrinter.style.display = App.hasFeature('printer') ? 'flex' : 'none';
 
         // 6. E-Invoicing / Cash Register
@@ -791,22 +793,22 @@ window.App = {
         App.closeSettingsSub(); // Reset to main view
 
         // ✅ NEW: Inject "Subscriptions" Button if not exists
-        const main = document.getElementById('settingsMain');
-        if (main && !document.getElementById('btnOpenSubs')) {
+        const settingsMain = document.getElementById('settingsMain');
+        if (settingsMain && !document.getElementById('btnOpenSubs')) {
             const btn = document.createElement('button');
             btn.id = 'btnOpenSubs';
             btn.className = 'settings-btn';
             btn.innerHTML = '💎 ΣΥΝΔΡΟΜΕΣ & ΔΥΝΑΤΟΤΗΤΕΣ';
             btn.style.cssText = "background: linear-gradient(45deg, #FFD700, #FF9800); color: black; font-weight: bold; margin-bottom: 15px; border: none;";
             btn.onclick = App.openSubscriptionsModal;
-            main.insertBefore(btn, main.firstChild); // Put it at the top
+            settingsMain.insertBefore(btn, settingsMain.firstChild); // Put it at the top
         }
 
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
-        const main = document.getElementById('settingsLockedArea');
+        const lockedArea = document.getElementById('settingsLockedArea');
         if (!App.settingsUnlocked) {
             // Βεβαιωνόμαστε ότι το main είναι relative για να κάτσει το overlay από πάνω
-            if (window.getComputedStyle(main).position === 'static') main.style.position = 'relative';
+            if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
             
             let lock = document.getElementById('settingsLockOverlay');
             if (!lock) {
@@ -866,7 +868,7 @@ window.App = {
                         </button>
                     </div>
                 `;
-                main.appendChild(lock);
+                lockedArea.appendChild(lock);
             } else {
                 lock.style.display = 'flex';
             }
