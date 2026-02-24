@@ -189,6 +189,14 @@ window.App = {
     setLanguage: setLanguage,
 
     init: () => {
+        // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
+        ['btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = 'none';
+        });
+        const btnRes = document.getElementById('btnReservations');
+        if(btnRes && btnRes.parentElement) btnRes.parentElement.style.display = 'none';
+
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
         const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -336,10 +344,6 @@ window.App = {
         // ✅ Check SoftPOS Return
         App.checkSoftPosReturn();
 
-        // ✅ FIX: Hide Cash Register by default (until settings load)
-        const btnCash = document.getElementById('btnCashRegister');
-        if(btnCash) btnCash.style.display = 'none';
-        
         // ✅ NEW: Apply Feature Visibility Initial Check
         App.applyFeatureVisibility();
 
