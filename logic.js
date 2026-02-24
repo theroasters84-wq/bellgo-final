@@ -290,6 +290,10 @@ module.exports = {
         if (!store.staffTokens) store.staffTokens = {};
         Object.entries(store.staffTokens).forEach(([username, data]) => {
             if (data.role === 'admin' || data.role === 'kitchen') {
+                // ✅ FIX: Αν είναι Online (ανοιχτή οθόνη), μην στέλνεις Push
+                const key = `${storeName}_${username}`;
+                if (activeUsers[key] && activeUsers[key].status === 'online') return;
+
                 this.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, YOUR_DOMAIN, admin);
             }
         });

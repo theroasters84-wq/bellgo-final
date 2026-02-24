@@ -1320,7 +1320,7 @@ io.on('connection', (socket) => {
         if (activeUsers[key]) { 
             activeUsers[key].lastSeen = Date.now(); 
             // ✅ FIX: Recover 'online' status if falsely away (Ghosting fix)
-            if (activeUsers[key].status === 'away' || activeUsers[key].status === 'background') { // ✅ FIX: Επαναφορά και από background
+            if (activeUsers[key].status === 'away') { // ✅ FIX: Μην αλλάζεις το background σε online αυτόματα
                 activeUsers[key].status = 'online';
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
@@ -1331,12 +1331,9 @@ io.on('connection', (socket) => {
     socket.on('set-user-status', (status) => {
         const key = `${socket.store}_${socket.username}`;
         if (activeUsers[key]) {
-            // ✅ FIX: Ο χρήστης ζήτησε να μπαίνει background ΜΟΝΟ αν χαθεί το socket (disconnect).
-            // Αγνοούμε το 'background' όσο το socket είναι ενεργό.
-            if (status === 'online') {
-                activeUsers[key].status = status;
-                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); // ✅ FIX: Ενημέρωση του Admin αμέσως!
-            }
+            // ✅ FIX: Ενημέρωση status (Online/Background) για σωστή διαχείριση ειδοποιήσεων
+            activeUsers[key].status = status;
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 });
@@ -1438,9 +1435,11 @@ setInterval(() => {
         const user = activeUsers[key]; 
         
         if (user.isRinging && user.fcmToken) { 
-            // ✅ LOGIC: 3s for Background/Away (Urgent), 15s for Online (Backup)
-            // iPhone often goes to 'away' (disconnects) or 'background'. Both need fast alerts.
-            const interval = (user.status === 'online') ? 15000 : 3000;
+            // ✅ FIX: Αν είναι Online (ανοιχτή οθόνη), μην στέλνεις Push (ενοχλεί)
+            if (user.status === 'online') continue;
+
+            // ✅ LOGIC: 3s for Background/Away (Urgent)
+            const interval = 3000;
             
             if (!user.lastPushTime || (now - user.lastPushTime >= interval)) {
                 user.lastPushTime = now;
