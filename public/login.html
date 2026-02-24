@@ -238,14 +238,12 @@
 
         // ✅ NEW: FEATURES CONFIGURATION (Same as premium.js)
         const AVAILABLE_FEATURES = [
-            { key: 'chat', name: '💬 Chat & Κλήση Προσωπικού', price: 5, year: 1992 },
-            { key: 'kitchen', name: '👨‍🍳 Οθόνη Κουζίνας', price: 10, year: 1993 },
-            { key: 'remote_order', name: '📱 QR/PWA Delivery', price: 15, year: 1994 },
-            { key: 'table_order', name: '🍽️ Παραγγελία Τραπεζιού', price: 10, year: 1995 },
-            { key: 'printer', name: '🖨️ Εκτυπωτές', price: 5, year: 1996 },
-            { key: 'einvoicing', name: '🧾 Ηλ. Τιμολόγηση / Ταμειακή', price: 10, year: 1997 },
-            { key: 'softpos', name: '💳 SoftPOS (Κινητό POS)', price: 10, year: 1998 },
-            { key: 'rewards', name: '🎁 Επιβράβευση (Loyalty)', price: 5, year: 1999 }
+            { key: 'pack_chat', name: '💬 Chat & Κλήση Προσωπικού', price: 5, year: 1992 },
+            { key: 'pack_manager', name: '👨‍🍳 Παραγγελιοληψία, Έξοδα, Στατιστικά & Εκτυπωτές', price: 15, year: 1993 },
+            { key: 'pack_delivery', name: '🛵 Delivery QR & Κρατήσεις', price: 15, year: 1994 },
+            { key: 'pack_tables', name: '🍽️ Παραγγελία από Τραπέζι', price: 15, year: 1995 },
+            { key: 'pack_pos', name: '💳 E-Invoicing, POS & SoftPOS', price: 20, year: 1996 },
+            { key: 'pack_loyalty', name: '🎁 Επιβράβευση Πελατών', price: 5, year: 1997 }
         ];
 
         // --- I18N LOGIC ---
@@ -501,13 +499,14 @@
                         adminPlan = data.plan; 
                         adminUser.features = data.features || {}; // ✅ Save Features from Stripe
                         socket.emit('check-pin-status', { email: email });
-                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     } else {
-                        if(confirm("Δεν βρέθηκε συνδρομή. Θέλετε να αγοράσετε;")) {
-                            UI.showSubscription();
-                        }
-                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                        // ✅ FREE TIER: Allow login without subscription
+                        adminUser = { email: email, displayName: name || "Admin" };
+                        adminPlan = 'basic';
+                        adminUser.features = {}; 
+                        socket.emit('check-pin-status', { email: email });
                     }
+                    btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                 } catch (e) { 
                     alert("Σφάλμα σύνδεσης."); 
                     btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
@@ -524,13 +523,12 @@
                     });
                     const data = await response.json();
                     
-                    if(data.active) {
-                        adminUser = result.user;
-                        adminPlan = data.plan;
-                        socket.emit('check-pin-status', { email: email });
-                    } else {
-                        alert("Το Google Email δεν έχει ενεργή συνδρομή.");
-                    }
+                    // ✅ FREE TIER: Allow login regardless of subscription status
+                    adminUser = result.user;
+                    adminPlan = data.active ? data.plan : 'basic';
+                    adminUser.features = data.features || {};
+                    socket.emit('check-pin-status', { email: email });
+
                 }).catch((error) => alert(error.message));
             },
 

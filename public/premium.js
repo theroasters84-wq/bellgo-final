@@ -77,14 +77,12 @@ const DEFAULT_CATEGORIES = [
 
 // ✅ NEW: FEATURES CONFIGURATION (Year Hack & Pricing)
 const AVAILABLE_FEATURES = [
-    { key: 'chat', name: '💬 Chat Προσωπικού', price: 5, year: 1992 },
-    { key: 'kitchen', name: '👨‍🍳 Οθόνη Κουζίνας', price: 10, year: 1993 },
-    { key: 'remote_order', name: '📱 QR/PWA Delivery', price: 15, year: 1994 },
-    { key: 'table_order', name: '🍽️ Παραγγελία Τραπεζιού', price: 10, year: 1995 },
-    { key: 'printer', name: '🖨️ Εκτυπωτές', price: 5, year: 1996 },
-    { key: 'einvoicing', name: '🧾 Ηλ. Τιμολόγηση / Ταμειακή', price: 10, year: 1997 },
-    { key: 'softpos', name: '💳 SoftPOS (Κινητό POS)', price: 10, year: 1998 },
-    { key: 'rewards', name: '🎁 Επιβράβευση (Loyalty)', price: 5, year: 1999 }
+    { key: 'pack_chat', name: '💬 Chat & Κλήση Προσωπικού', price: 5, year: 1992 },
+    { key: 'pack_manager', name: '👨‍🍳 Παραγγελιοληψία, Έξοδα, Στατιστικά & Εκτυπωτές', price: 15, year: 1993 },
+    { key: 'pack_delivery', name: '🛵 Delivery QR & Κρατήσεις', price: 15, year: 1994 },
+    { key: 'pack_tables', name: '🍽️ Παραγγελία από Τραπέζι', price: 15, year: 1995 },
+    { key: 'pack_pos', name: '💳 E-Invoicing, POS & SoftPOS', price: 20, year: 1996 },
+    { key: 'pack_loyalty', name: '🎁 Επιβράβευση Πελατών', price: 5, year: 1997 }
 ];
 
 // ✅ BELLGO BOT: Οδηγός για "Override Do Not Disturb" (Android)
@@ -692,36 +690,45 @@ window.App = {
     applyFeatureVisibility: () => {
         // 1. Chat
         const btnChat = document.querySelector('button[onclick="App.toggleAdminChat()"]');
-        if (btnChat) btnChat.style.display = App.hasFeature('chat') ? 'flex' : 'none';
+        if (btnChat) btnChat.style.display = App.hasFeature('pack_chat') ? 'flex' : 'none';
 
-        // 2. Kitchen (Δεν μπορούμε να κρύψουμε το URL, αλλά μπορούμε να κρύψουμε ρυθμίσεις)
-        // (Η κουζίνα είναι ξεχωριστό app, οπότε εδώ ελέγχουμε αν ο Admin βλέπει σχετικές ρυθμίσεις)
+        // 2. Manager Pack (Kitchen, Orders, Stats, Expenses, Printer)
+        const hasManager = App.hasFeature('pack_manager');
+        
+        const btnNewOrder = document.getElementById('btnNewOrderSidebar');
+        if (btnNewOrder) btnNewOrder.style.display = hasManager ? 'flex' : 'none';
+        
+        const btnExpenses = document.getElementById('btnExpenses');
+        if (btnExpenses) btnExpenses.style.display = hasManager ? 'flex' : 'none';
 
-        // 3. Remote Order (QR/PWA) - Κουμπί "QR Link"
+        // 5. Printer - Settings Toggle
+        const elPrinter = document.getElementById('switchPrinterEnabled');
+        const divPrinter = elPrinter ? elPrinter.closest('.switch-row') : null;
+        if (divPrinter) divPrinter.style.display = hasManager ? 'flex' : 'none';
+
+        // 3. Delivery Pack (QR/PWA & Reservations)
+        const hasDelivery = App.hasFeature('pack_delivery');
         const btnQr = document.querySelector('button[onclick="App.showLink()"]');
-        if (btnQr) btnQr.style.display = App.hasFeature('remote_order') ? 'flex' : 'none';
+        if (btnQr) btnQr.style.display = hasDelivery ? 'flex' : 'none';
+        
+        const btnRes = document.getElementById('btnReservations');
+        if (btnRes) btnRes.parentElement.style.display = hasDelivery ? 'block' : 'none';
 
         // 4. Table Order - Sidebar Button
         const btnTable = document.getElementById('btnModeTable');
-        if (btnTable) btnTable.style.display = App.hasFeature('table_order') ? 'block' : 'none';
+        if (btnTable) btnTable.style.display = App.hasFeature('pack_tables') ? 'block' : 'none';
 
-        // 5. Printer - Settings Toggle
-        // ✅ FIX: Removed optional chaining (?.) for compatibility and fixed class name
-        const elPrinter = document.getElementById('switchPrinterEnabled');
-        const divPrinter = elPrinter ? elPrinter.closest('.switch-row') : null;
-        if (divPrinter) divPrinter.style.display = App.hasFeature('printer') ? 'flex' : 'none';
-
-        // 6. E-Invoicing / Cash Register
+        // 5. POS Pack (E-Invoicing / Cash Register / SoftPOS)
+        const hasPos = App.hasFeature('pack_pos');
         const btnCash = document.getElementById('btnCashRegister');
-        if (btnCash) btnCash.style.display = App.hasFeature('einvoicing') ? 'flex' : 'none';
+        if (btnCash) btnCash.style.display = hasPos ? 'flex' : 'none';
         
-        // 7. SoftPOS - Settings & Buttons
         const divSoftPos = document.getElementById('softPosSettingsContainer'); // Θα το φτιάξουμε αν δεν υπάρχει
-        if (divSoftPos) divSoftPos.style.display = App.hasFeature('softpos') ? 'block' : 'none';
+        if (divSoftPos) divSoftPos.style.display = hasPos ? 'block' : 'none';
 
-        // 8. Rewards
+        // 6. Rewards Pack
         const divRewards = document.getElementById('rewardSettingsContainer');
-        if (divRewards) divRewards.style.display = App.hasFeature('rewards') ? 'block' : 'none';
+        if (divRewards) divRewards.style.display = App.hasFeature('pack_loyalty') ? 'block' : 'none';
     },
 
     saveStoreName: () => {

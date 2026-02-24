@@ -26,14 +26,12 @@ const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 // ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
 // ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
 const FEATURE_PRICES = {
-    'price_chat_xxxxx': 'chat',
-    'price_kitchen_xxxxx': 'kitchen',
-    'price_remote_xxxxx': 'remote_order',
-    'price_table_xxxxx': 'table_order',
-    'price_printer_xxxxx': 'printer',
-    'price_einv_xxxxx': 'einvoicing',
-    'price_softpos_xxxxx': 'softpos',
-    'price_rewards_xxxxx': 'rewards'
+    'price_chat_xxxxx': 'pack_chat',
+    'price_manager_xxxxx': 'pack_manager',
+    'price_delivery_xxxxx': 'pack_delivery',
+    'price_tables_xxxxx': 'pack_tables',
+    'price_pos_xxxxx': 'pack_pos',
+    'price_loyalty_xxxxx': 'pack_loyalty'
 };
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -112,14 +110,12 @@ const defaultSettings = {
     reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }, // ✅ NEW: Reward Settings
     // ✅ NEW: Features Flags (Default όλα κλειστά, εκτός αν αγοραστούν)
     features: {
-        chat: false,
-        kitchen: false,
-        remote_order: false,
-        table_order: false,
-        printer: false,
-        einvoicing: false,
-        softpos: false,
-        rewards: false
+        pack_chat: false,
+        pack_manager: false,
+        pack_delivery: false,
+        pack_tables: false,
+        pack_pos: false,
+        pack_loyalty: false
     }
 }; 
 
