@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const path = require('path');
 const admin = require("firebase-admin");
 const nodemailer = require('nodemailer'); // ✅ NEW: Email Module
+const Logic = require('./logic'); // ✅ Import Logic Module
 
 // ✅ EMAIL CONFIGURATION (Ρυθμίστε το εδώ)
 const transporter = nodemailer.createTransport({
@@ -86,265 +87,8 @@ const io = new Server(server, {
 let storesData = {};
 let activeUsers = {}; 
 
-const defaultSettings = { 
-    name: "BellGo Delivery", 
-    pin: null, 
-    adminEmail: "", 
-    statusCustomer: true, 
-    statusStaff: true,
-    resetTime: "04:00",
-    stripeConnectId: "",
-    coverPrice: 0, // ✅ Default τιμή κουβέρ
-    googleMapsUrl: "", // ✅ Google Maps Link
-    autoPrint: false, // ✅ Ρύθμιση Αυτόματης Εκτύπωσης
-    printerEnabled: true, // ✅ NEW: Master Printer Switch
-    autoClosePrint: false, // ✅ Ρύθμιση Αυτόματου Κλεισίματος Παραθύρου
-    plan: 'basic', // ✅ Καταγραφή Συνδρομής (basic/premium)
-    visibility: 'public', // ✅ NEW: 'public' (Όλοι βλέπουν όλους) ή 'private' (Μόνο ο Admin βλέπει)
-    staffCharge: false, // ✅ NEW: Λειτουργία Χρέωσης Προσωπικού
-    reservationsEnabled: false, // ✅ NEW: Κρατήσεις
-    totalTables: 0, // ✅ NEW: Σύνολο Τραπεζιών
-    einvoicing: {}, // ✅ NEW: E-Invoicing Settings
-    pos: { provider: '', id: '', key: '' }, // ✅ NEW: POS Settings
-    cashRegButtons: [], // ✅ NEW: Custom Cash Register Buttons
-    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }, // ✅ NEW: Reward Settings
-    // ✅ NEW: Features Flags (Default όλα κλειστά, εκτός αν αγοραστούν)
-    features: {
-        pack_chat: false,
-        pack_manager: false,
-        pack_delivery: false,
-        pack_tables: false,
-        pack_pos: false,
-        pack_loyalty: false
-    }
-}; 
-
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
 const tempBlacklist = new Set();
-
-/* ---------------- FIREBASE HELPERS ---------------- */
-async function getStoreData(storeName) {
-    if (storesData[storeName]) return storesData[storeName];
-    console.log(`📥 Loading data for: ${storeName}`);
-    let data = { settings: { ...defaultSettings }, menu: [], orders: [], staffTokens: {}, wallets: {}, reservations: [] }; // ✅ NEW: reservations init
-
-    try {
-        if (db) {
-            const doc = await db.collection('stores').doc(storeName).get();
-            if (doc.exists) {
-                const firebaseData = doc.data();
-                if (firebaseData.settings) data.settings = { ...defaultSettings, ...firebaseData.settings };
-                if (firebaseData.menu) data.menu = firebaseData.menu;
-                if (firebaseData.staffTokens) data.staffTokens = firebaseData.staffTokens; // ✅ Load Tokens
-                if (firebaseData.stats) data.stats = firebaseData.stats; // ✅ Φόρτωση Στατιστικών
-                if (firebaseData.wallets) data.wallets = firebaseData.wallets; // ✅ Φόρτωση Πορτοφολιών
-                if (firebaseData.rewards) data.rewards = firebaseData.rewards; // ✅ Φόρτωση Πόντων Πελατών
-                if (firebaseData.reservations) data.reservations = firebaseData.reservations; // ✅ Φόρτωση Κρατήσεων
-                // ✅ Load Permanent Menu Backup (για επαναφορά)
-                data.permanentMenu = firebaseData.permanentMenu || JSON.parse(JSON.stringify(data.menu || []));
-                if (firebaseData.orders) {
-                    const yesterday = Date.now() - (24 * 60 * 60 * 1000);
-                    data.orders = (firebaseData.orders || []).filter(o => o.id > yesterday);
-                }
-            } else {
-                await db.collection('stores').doc(storeName).set(data);
-            }
-        }
-    } catch (e) {
-        console.error(`❌ Error loading store ${storeName}:`, e.message);
-    }
-    storesData[storeName] = data;
-    return data;
-}
-
-async function saveStoreToFirebase(storeName) {
-    if (!storesData[storeName] || !db) return;
-    try { 
-        await db.collection('stores').doc(storeName).set(storesData[storeName], { merge: true }); 
-    } catch(e){ console.error(`❌ Save Error (${storeName}):`, e.message); }
-}
-
-async function updateStoreClients(storeName) {
-    if (!storeName || !storesData[storeName]) return;
-    const store = storesData[storeName];
-    
-    // 1. Active Users (Online/Away in memory)
-    let activeList = Object.values(activeUsers)
-        .filter(u => u.store === storeName && u.role !== 'customer');
-
-    let list = [];
-    const seenUsers = new Set();
-
-    activeList.forEach(u => {
-        const lower = u.username.toLowerCase();
-        if (!seenUsers.has(lower)) {
-            seenUsers.add(lower);
-            list.push({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging });
-        }
-    });
-
-    // 2. Persistent Users (Offline but registered)
-    if (store.staffTokens) {
-        Object.keys(store.staffTokens).forEach(username => {
-            // ✅ FIX: Case-insensitive check to prevent ghosts
-            if (!seenUsers.has(username.toLowerCase())) {
-                const tokenData = store.staffTokens[username];
-                if (tokenData.role !== 'admin' && tokenData.role !== 'customer') {
-                    list.push({
-                        name: username, username: username, 
-                        role: tokenData.role || 'waiter', 
-                        status: 'offline', isRinging: false 
-                    });
-                    seenUsers.add(username.toLowerCase());
-                }
-            }
-        });
-    }
-
-    io.to(storeName).emit('staff-list-update', list);
-    io.to(storeName).emit('orders-update', store.orders);
-    io.to(storeName).emit('menu-update', store.menu || []); 
-    io.to(storeName).emit('store-settings-update', store.settings);
-    io.to(storeName).emit('wallet-update', store.wallets || {}); // ✅ Ενημέρωση Πορτοφολιών
-    saveStoreToFirebase(storeName);
-}
-
-/* ---------------- STATISTICS HELPER ---------------- */
-function updateStoreStats(store, order) {
-    if (!store.stats) store.stats = {};
-    
-    // Υπολογισμός Τζίρου & Προϊόντων από το κείμενο της παραγγελίας
-    let total = 0;
-    let items = {};
-    const lines = (order.text || "").split('\n');
-    
-    lines.forEach(line => {
-        let cleanLine = line.replace('++ ', '').replace('✅ ', '').trim();
-        if (cleanLine.startsWith('[')) return; // Αγνοούμε επικεφαλίδες (Τραπέζια κλπ)
-
-        const match = cleanLine.match(/^(\d+)\s+(.*)/);
-        if (match) {
-            let qty = parseInt(match[1]);
-            let rest = match[2];
-            let price = 0;
-            let name = rest;
-
-            if (rest.includes(':')) {
-                const parts = rest.split(':');
-                const priceStr = parts[parts.length - 1];
-                price = parseFloat(priceStr) || 0;
-                name = parts.slice(0, -1).join(':').trim();
-            }
-
-            if (name) {
-                if (!items[name]) items[name] = 0;
-                items[name] += qty;
-                total += qty * price;
-            }
-        }
-    });
-
-    // Ημερομηνία (Μήνας & Μέρα)
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
-    const [year, month, day] = dateStr.split('-');
-    const monthKey = `${year}-${month}`;
-
-    // ✅ NEW: Υπολογισμός Ώρας (για ώρες αιχμής)
-    const hourStr = now.toLocaleTimeString('en-US', { timeZone: 'Europe/Athens', hour: '2-digit', hour12: false });
-    const hour = hourStr.padStart(2, '0'); // π.χ. "14"
-
-    if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {}, products: {} };
-    const mStats = store.stats[monthKey];
-
-    // 1. Σύνολα Μήνα
-    mStats.orders++;
-    mStats.turnover += total;
-
-    // ✅ NEW: Καταγραφή Ώρας στο Μήνα
-    if (!mStats.hours) mStats.hours = {};
-    if (!mStats.hours[hour]) mStats.hours[hour] = 0;
-    mStats.hours[hour]++;
-
-    // 2. Σύνολα Ημέρας
-    if (!mStats.days) mStats.days = {};
-    if (!mStats.days[day]) mStats.days[day] = { orders: 0, turnover: 0, products: {}, staff: {} }; // ✅ Προσθήκη staff
-    mStats.days[day].orders++;
-    mStats.days[day].turnover += total;
-
-    // ✅ NEW: Καταγραφή Ώρας στην Ημέρα
-    if (!mStats.days[day].hours) mStats.days[day].hours = {};
-    if (!mStats.days[day].hours[hour]) mStats.days[day].hours[hour] = 0;
-    mStats.days[day].hours[hour]++;
-
-    // ✅ NEW: QR STATS LOGIC (Πελάτες QR)
-    const isQr = (order.from && order.from.includes('(Πελάτης)'));
-    if (isQr) {
-        let qrType = null;
-        if (order.text.includes('[ΤΡ:') || order.text.includes('[ΤΡ')) qrType = 'dineIn';
-        else if (order.text.includes('[DELIVERY')) qrType = 'delivery';
-
-        if (qrType) {
-            // Month Totals
-            if (!mStats.qrStats) mStats.qrStats = { dineIn: { turnover: 0, orders: 0 }, delivery: { turnover: 0, orders: 0 } };
-            if (!mStats.qrStats[qrType]) mStats.qrStats[qrType] = { turnover: 0, orders: 0 };
-            mStats.qrStats[qrType].turnover += total;
-            mStats.qrStats[qrType].orders++;
-
-            // Day Totals
-            if (!mStats.days[day].qrStats) mStats.days[day].qrStats = { dineIn: { turnover: 0, orders: 0 }, delivery: { turnover: 0, orders: 0 } };
-            if (!mStats.days[day].qrStats[qrType]) mStats.days[day].qrStats[qrType] = { turnover: 0, orders: 0 };
-            mStats.days[day].qrStats[qrType].turnover += total;
-            mStats.days[day].qrStats[qrType].orders++;
-        }
-    }
-
-    // ✅ 4. Στατιστικά Προσωπικού (Ανά Ημέρα)
-    const staffName = (order.from && order.from.trim()) ? order.from : "Άγνωστος";
-    if (!mStats.days[day].staff) mStats.days[day].staff = {};
-    if (!mStats.days[day].staff[staffName]) mStats.days[day].staff[staffName] = { orders: 0, turnover: 0, products: {} };
-    
-    const sStats = mStats.days[day].staff[staffName];
-    sStats.orders++;
-    sStats.turnover += total;
-
-    // 3. Τεμάχια Προϊόντων
-    if (!mStats.products) mStats.products = {};
-    for (const [prodName, qty] of Object.entries(items)) {
-        // Αποθήκευση στο Σύνολο Μήνα
-        if (!mStats.products[prodName]) mStats.products[prodName] = 0;
-        mStats.products[prodName] += qty;
-        
-        // ✅ Αποθήκευση στο Σύνολο Ημέρας
-        if (!mStats.days[day].products) mStats.days[day].products = {};
-        if (!mStats.days[day].products[prodName]) mStats.days[day].products[prodName] = 0;
-        mStats.days[day].products[prodName] += qty;
-        
-        // ✅ Αποθήκευση στο Προσωπικό
-        if (!sStats.products[prodName]) sStats.products[prodName] = 0;
-        sStats.products[prodName] += qty;
-    }
-}
-
-function logTreatStats(store, staffName, items) {
-    if (!store.stats) store.stats = {};
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
-    const [year, month, day] = dateStr.split('-');
-    const monthKey = `${year}-${month}`;
-
-    if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {}, products: {}, treats: [] };
-    if (!store.stats[monthKey].treats) store.stats[monthKey].treats = [];
-
-    items.forEach(item => {
-        store.stats[monthKey].treats.push({
-            date: now.toISOString(),
-            staff: staffName,
-            item: item.name,
-            price: item.price
-        });
-    });
-}
 
 /* ---------------- VIRTUAL ROUTES (PWA ISOLATION) ---------------- */
 // 🔥 NEW: Αυτό το route επιτρέπει URLs τύπου /shop/roasters/ που σερβίρουν το order.html
@@ -414,7 +158,7 @@ app.get('/manifest.json', async (req, res) => {
     
     let storeName = "BellGo App";
     if (safeStoreId !== "general") {
-        const data = await getStoreData(safeStoreId);
+        const data = await Logic.getStoreData(safeStoreId, db, storesData);
         storeName = data.settings.name || `Shop ${safeStoreId}`;
     }
     if (req.query.name) storeName = req.query.name;
@@ -466,7 +210,7 @@ app.post('/connection-token', async (req, res) => {
   let stripeOptions = undefined;
 
   if (storeName) {
-      const data = await getStoreData(storeName);
+      const data = await Logic.getStoreData(storeName, db, storesData);
       if (data && data.settings && data.settings.stripeConnectId) {
           stripeOptions = { stripeAccount: data.settings.stripeConnectId };
       }
@@ -488,7 +232,7 @@ app.post('/capture-payment', async (req, res) => {
   let stripeOptions = undefined;
 
   if (storeName) {
-      const data = await getStoreData(storeName);
+      const data = await Logic.getStoreData(storeName, db, storesData);
       if (data && data.settings && data.settings.stripeConnectId) {
           stripeOptions = { stripeAccount: data.settings.stripeConnectId };
       }
@@ -559,7 +303,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
 app.post('/create-order-payment', async (req, res) => {
     const { amount, storeName, items, isNative } = req.body; // ✅ Λήψη items & isNative
-    const data = await getStoreData(storeName);
+    const data = await Logic.getStoreData(storeName, db, storesData);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); }
     
@@ -596,7 +340,7 @@ app.post('/create-order-payment', async (req, res) => {
 // ✅ NEW: QR PAYMENT GENERATION (Admin/Staff initiates)
 app.post('/create-qr-payment', async (req, res) => {
     const { amount, storeName, orderId, isNative } = req.body; // ✅ isNative
-    const data = await getStoreData(storeName);
+    const data = await Logic.getStoreData(storeName, db, storesData);
     const shopStripeId = data.settings.stripeConnectId;
     if (!shopStripeId) { return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει Stripe." }); }
     
@@ -633,13 +377,13 @@ app.post('/create-qr-payment', async (req, res) => {
 app.get('/qr-payment-success', async (req, res) => {
     const { store, orderId } = req.query;
     if(store && orderId) {
-        const data = await getStoreData(store);
+        const data = await Logic.getStoreData(store, db, storesData);
         const order = data.orders.find(o => o.id == orderId);
         if(order) {
              if(!order.text.includes('💳 PAID')) {
                  order.text += '\n💳 PAID (QR) ✅';
-                 updateStoreClients(store);
-                 notifyAdmin(store, "ΠΛΗΡΩΜΗ QR 💳", `Η παραγγελία εξοφλήθηκε!`);
+                 Logic.updateStoreClients(store, io, storesData, activeUsers, db);
+                 Logic.notifyAdmin(store, "ΠΛΗΡΩΜΗ QR 💳", `Η παραγγελία εξοφλήθηκε!`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
              }
         }
         
@@ -662,69 +406,6 @@ app.get('/qr-payment-cancel', (req, res) => {
     res.send(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}</style></head><body><h1>❌ Ακύρωση</h1><p>Η πληρωμή δεν ολοκληρώθηκε.</p></body></html>`);
 });
 
-/* ---------------- NOTIFICATION LOGIC ---------------- */
-function sendPushNotification(target, title, body, dataPayload = { type: "alarm" }) {
-    if (target && target.fcmToken) { 
-        let targetUrl = "/stafpremium.html";
-        if (target.role === 'admin') targetUrl = "/premium.html";
-        // ✅ FIX: Αν είναι πελάτης, άνοιξε το order.html (ή το shop link)
-        if (target.role === 'customer') {
-            targetUrl = target.store ? `/shop/${encodeURIComponent(target.store)}/` : "/order.html";
-        }
-
-        const msg = {
-            token: target.fcmToken,
-            notification: { title: title, body: body },
-            
-            android: { 
-                priority: "high", 
-                notification: { channelId: "bellgo_alarm_channel" } 
-            },
-            webpush: { 
-                headers: { "Urgency": "high" }, 
-                fcm_options: { link: `${YOUR_DOMAIN}${targetUrl}` },
-            },
-            apns: {
-                headers: {
-                    'apns-priority': '10',
-                    'apns-push-type': 'alert', // ✅ Κρίσιμο για iOS 13+
-                },
-                payload: {
-                    aps: {
-                        'content-available': 1, // ✅ Ξυπνάει την εφαρμογή στο background
-                        badge: 1,
-                        sound: 'alert.mp3'
-                    }
-                }
-            },
-            data: { type: "alarm", ...dataPayload, title: title, body: body, url: targetUrl }
-        };
-        admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
-    }
-}
-
-function notifyAdmin(storeName, title, body, excludeSocketId = null, location = "") {
-    const store = storesData[storeName];
-    if (!store) return;
-
-    // 1. Ειδοποίηση μέσω Socket (Για όσους είναι συνδεδεμένοι)
-    Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
-        if (excludeSocketId && u.socketId === excludeSocketId) return;
-        u.isRinging = true;
-        if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: title, location: location });
-    });
-
-    // 2. Ειδοποίηση μέσω Push (Από μόνιμη μνήμη - για ΚΛΕΙΣΤΟΥΣ browsers)
-    if (!store.staffTokens) store.staffTokens = {};
-    Object.entries(store.staffTokens).forEach(([username, data]) => {
-        if (data.role === 'admin' || data.role === 'kitchen') {
-            // ✅ FIX: Στέλνουμε ΠΑΝΤΑ Push. 
-            // Αν ο χρήστης είναι Online, το OS την κρύβει αυτόματα. Αν είναι Background, εμφανίζεται.
-            sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, 86400);
-        }
-    });
-}
-
 /* ---------------- SOCKET.IO ---------------- */
 io.on('connection', (socket) => {
     const getMyStore = () => { if (!socket.store) return null; return storesData[socket.store]; };
@@ -746,7 +427,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        await getStoreData(storeName);
+        await Logic.getStoreData(storeName, db, storesData);
 
         socket.store = storeName;
         socket.username = username;
@@ -778,12 +459,12 @@ io.on('connection', (socket) => {
                     token: data.token || (existing ? existing.token : null), 
                     role: socket.role 
                 };
-                saveStoreToFirebase(storeName);
+                Logic.saveStoreToFirebase(storeName, db, storesData);
             }
         }
 
         socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket
-        updateStoreClients(storeName);
+        Logic.updateStoreClients(storeName, io, storesData, activeUsers, db);
         if(wasRinging) { socket.emit('ring-bell'); }
     });
 
@@ -809,19 +490,19 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await getStoreData(targetEmail); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
-    socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await getStoreData(email); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
-    socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await getStoreData(email); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); updateStoreClients(email); } });
+    socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await Logic.getStoreData(targetEmail, db, storesData); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
+    socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await Logic.getStoreData(email, db, storesData); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
+    socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await Logic.getStoreData(email, db, storesData); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); Logic.updateStoreClients(email, io, storesData, activeUsers, db); } });
     
     socket.on('update-token', (data) => { 
         const key = `${socket.store}_${data.username}`; 
         if (activeUsers[key]) activeUsers[key].fcmToken = data.token; 
         // ✅ Save Permanent
-        if (storesData[socket.store]) { if(!storesData[socket.store].staffTokens) storesData[socket.store].staffTokens={}; storesData[socket.store].staffTokens[data.username] = { token: data.token, role: activeUsers[key].role }; saveStoreToFirebase(socket.store); }
+        if (storesData[socket.store]) { if(!storesData[socket.store].staffTokens) storesData[socket.store].staffTokens={}; storesData[socket.store].staffTokens[data.username] = { token: data.token, role: activeUsers[key].role }; Logic.saveStoreToFirebase(socket.store, db, storesData); }
     });
 
-    socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; updateStoreClients(socket.store); } });
-    socket.on('save-store-name', (newName) => { const store = getMyStore(); if (store) { store.settings.name = newName; updateStoreClients(socket.store); } });
+    socket.on('toggle-status', (data) => { const store = getMyStore(); if (store) { if (data.type === 'customer') store.settings.statusCustomer = data.isOpen; if (data.type === 'staff') store.settings.statusStaff = data.isOpen; Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); } });
+    socket.on('save-store-name', (newName) => { const store = getMyStore(); if (store) { store.settings.name = newName; Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); } });
     socket.on('save-store-settings', (data) => { 
         const store = getMyStore(); 
         if (store) { 
@@ -845,7 +526,7 @@ io.on('connection', (socket) => {
             if(data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons; // ✅ NEW: Save Cash Reg Buttons
             if(data.reward) store.settings.reward = data.reward; // ✅ NEW: Save Reward Settings
             if(data.features) store.settings.features = data.features; // ✅ NEW: Save Features
-            updateStoreClients(socket.store); 
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
         } 
     });
     socket.on('save-menu', (data) => { 
@@ -865,7 +546,7 @@ io.on('connection', (socket) => {
                     store.permanentMenu = JSON.parse(JSON.stringify(newMenuData)); 
                 } 
                 
-                updateStoreClients(socket.store); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
             } catch (e) { console.error(e); } 
         } 
     });
@@ -887,7 +568,7 @@ io.on('connection', (socket) => {
             existingOrder.status = 'pending'; // Προαιρετικά: επαναφορά σε pending αν θέλουμε να ξαναγίνει αποδοχή
             console.log(`📝 Order Updated: ${orderId}`);
             // Ειδοποίηση Admin για Τροποποίηση
-            notifyAdmin(socket.store, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`);
+            Logic.notifyAdmin(socket.store, "ΤΡΟΠΟΠΟΙΗΣΗ 📝", `Αλλαγή στην παραγγελία: ${socket.username}`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
         } else {
             // ✅ NEW: Έλεγχος για ΛΑΘΟΣ (Table: la / λα)
             const tableMatch = orderText.match(/\[ΤΡ:\s*([^|\]]+)/);
@@ -913,7 +594,7 @@ io.on('connection', (socket) => {
                     });
                     
                     if (treatedItems.length > 0) {
-                        logTreatStats(store, `${socket.username} (LATHOS)`, treatedItems);
+                        Logic.logTreatStats(store, `${socket.username} (LATHOS)`, treatedItems);
                     }
                     orderText = newLines.join('\n');
                 }
@@ -930,10 +611,10 @@ io.on('connection', (socket) => {
             if (addrMatch) locationInfo = addrMatch[1].trim();
 
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id, locationInfo);
+            Logic.notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id, locationInfo, storesData, activeUsers, io, YOUR_DOMAIN, admin);
         }
         
-        updateStoreClients(socket.store);
+        Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
     });
 
     // ✅ ΝΕΟ: Ειδική εντολή για ΠΡΟΣΘΗΚΗ προϊόντων (από Staff Premium)
@@ -955,9 +636,9 @@ io.on('connection', (socket) => {
             console.log(`➕ Items added to order ${id} by ${socket.username}`);
             
             // Ειδοποίηση Admin (Συναγερμός)
-            notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`);
+            Logic.notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
             
-            updateStoreClients(socket.store);
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 
@@ -969,7 +650,7 @@ io.on('connection', (socket) => {
             if(o){ 
                 o.status = 'cooking'; 
                 o.startTime = Date.now(); 
-                updateStoreClients(socket.store); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime }); 
             } 
         } 
@@ -1045,8 +726,8 @@ io.on('connection', (socket) => {
         }
         
         // 4. Update Stats & Save
-        updateStoreStats(store, tempOrder);
-        saveStoreToFirebase(socket.store);
+        Logic.updateStoreStats(store, tempOrder);
+        Logic.saveStoreToFirebase(socket.store, db, storesData);
         
         // 5. Send back to client for printing
         socket.emit('print-quick-order', { text: tempOrder.text, id: tempOrder.id, signature: signature });
@@ -1070,7 +751,7 @@ io.on('connection', (socket) => {
                     o.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=1234567890&uid=EXAMPLE_UID";
                 }
 
-                updateStoreClients(socket.store);
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         }
     });
@@ -1102,11 +783,11 @@ io.on('connection', (socket) => {
         const o = store.orders.find(x => x.id == orderId);
         if (o) {
             o.text += `\n✅ PAID (${method === 'card' ? '💳' : '💵'} ${staffName})`;
-            updateStoreStats(store, o);
+            Logic.updateStoreStats(store, o);
             store.orders = store.orders.filter(x => x.id != orderId);
         }
         
-        updateStoreClients(socket.store);
+        Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
     });
 
     socket.on('reset-wallet', (targetName) => {
@@ -1117,7 +798,7 @@ io.on('connection', (socket) => {
             } else if (store.wallets[targetName] !== undefined) {
                 delete store.wallets[targetName]; // ✅ DELETE: Διαγραφή για να φύγει από το panel
             }
-            updateStoreClients(socket.store);
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 
@@ -1133,14 +814,14 @@ io.on('connection', (socket) => {
             if(o){ 
                 o.status = 'ready'; 
                 o.readyTime = Date.now(); 
-                updateStoreClients(socket.store); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready', readyTime: o.readyTime }); 
 
                 if (!silent) { // ✅ Check silent flag
                     // Push Notification Logic
                     const tKey = `${socket.store}_${o.from}`; 
                     const tUser = activeUsers[tKey]; 
-                    if(tUser) sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, 3600); // TTL 1h για Ετοιμότητα
+                    if(tUser) Logic.sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, YOUR_DOMAIN, admin, 3600); // TTL 1h για Ετοιμότητα
 
                     // ✅ NEW: Ειδοποίηση ΟΛΩΝ των Διανομέων ότι υπάρχει έτοιμη παραγγελία
                     Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
@@ -1172,10 +853,10 @@ io.on('connection', (socket) => {
                 // Ειδοποίηση στον συγκεκριμένο οδηγό (Push Notification)
                 if (store.staffTokens && store.staffTokens[targetDriver]) {
                     const tokenData = store.staffTokens[targetDriver];
-                    sendPushNotification({ fcmToken: tokenData.token, role: 'driver' }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Σου ανατέθηκε μια παραγγελία!", { type: "alarm" });
+                    Logic.sendPushNotification({ fcmToken: tokenData.token, role: 'driver' }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Σου ανατέθηκε μια παραγγελία!", { type: "alarm" }, YOUR_DOMAIN, admin);
                 }
 
-                updateStoreClients(socket.store);
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             } 
         } 
     });
@@ -1192,7 +873,7 @@ io.on('connection', (socket) => {
              if (order.text.includes('[DRIVER:')) return;
 
              order.text += `\n[DRIVER: ${socket.username}]`;
-             updateStoreClients(socket.store);
+             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 
@@ -1221,9 +902,9 @@ io.on('connection', (socket) => {
                     o.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=1234567890&uid=MOCK"; // Mock QR
                 }
 
-                updateStoreStats(store, o); // ✅ Καταγραφή στατιστικών πριν τη διαγραφή
+                Logic.updateStoreStats(store, o); // ✅ Καταγραφή στατιστικών πριν τη διαγραφή
                 store.orders = store.orders.filter(x => x.id != orderId); 
-                updateStoreClients(socket.store); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
                 
                 // Ενημέρωση για το Web App αν χρειάζεται να τυπώσει
                 socket.emit('print-order', { text: o.text, aadeQr: o.aadeQr });
@@ -1271,10 +952,10 @@ io.on('connection', (socket) => {
                 
                 // ✅ Log Stats
                 if (treatedItems.length > 0) {
-                    logTreatStats(store, socket.username, treatedItems);
+                    Logic.logTreatStats(store, socket.username, treatedItems);
                 }
 
-                updateStoreClients(socket.store);
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         }
     });
@@ -1298,7 +979,7 @@ io.on('connection', (socket) => {
             };
             
             // Presets are now saved via save-store-settings, but keeping this for backward compatibility if needed
-            updateStoreClients(socket.store);
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 
@@ -1365,10 +1046,10 @@ io.on('connection', (socket) => {
         
         if (!store.reservations) store.reservations = [];
         store.reservations.push(newRes);
-        saveStoreToFirebase(socket.store);
+        Logic.saveStoreToFirebase(socket.store, db, storesData);
         
         socket.emit('reservation-result', { success: true, reservationId: newRes.id }); // ✅ Send ID back
-        notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ (ΑΝΑΜΟΝΗ) 📅", `${name} (${pax} άτ.)\n${date} ${time}`);
+        Logic.notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ (ΑΝΑΜΟΝΗ) 📅", `${name} (${pax} άτ.)\n${date} ${time}`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
         io.to(socket.store).emit('reservations-update', store.reservations);
     });
 
@@ -1379,7 +1060,7 @@ io.on('connection', (socket) => {
             const r = store.reservations.find(x => x.id === id);
             if(r) {
                 r.status = 'confirmed';
-                saveStoreToFirebase(socket.store);
+                Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
                 io.to(socket.store).emit('reservation-confirmed', { id: id }); // ✅ Notify Customer
             }
@@ -1393,7 +1074,7 @@ io.on('connection', (socket) => {
             const r = store.reservations.find(x => x.id === id);
             if(r) {
                 r.status = 'completed'; // ✅ Mark as completed
-                saveStoreToFirebase(socket.store);
+                Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
             }
         }
@@ -1406,7 +1087,7 @@ io.on('connection', (socket) => {
             const r = store.reservations.find(x => x.id === id);
             if(r) {
                 r.status = 'completed'; // ✅ Mark as completed
-                saveStoreToFirebase(socket.store);
+                Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
             }
         }
@@ -1434,9 +1115,9 @@ io.on('connection', (socket) => {
         if(store && store.reservations) {
             const r = store.reservations.find(x => x.id === id);
             if(r) {
-                notifyAdmin(socket.store, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Ο πελάτης ${r.name} ακύρωσε την κράτηση (${r.date} ${r.time}).`);
+                Logic.notifyAdmin(socket.store, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Ο πελάτης ${r.name} ακύρωσε την κράτηση (${r.date} ${r.time}).`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
                 store.reservations = store.reservations.filter(x => x.id !== id);
-                saveStoreToFirebase(socket.store);
+                Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
                 socket.emit('reservation-cancelled-success', id);
             }
@@ -1451,11 +1132,11 @@ io.on('connection', (socket) => {
                 const r = store.reservations[rIndex];
                 // ✅ NEW: Notify Customer if Admin cancels
                 if (r.customerToken) {
-                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" });
-                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: socket.store }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" });
+                    Logic.sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" }, YOUR_DOMAIN, admin);
+                    Logic.sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: socket.store }, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Η κράτησή σας για ${r.date} ${r.time} ακυρώθηκε από το κατάστημα.`, { type: "info" }, YOUR_DOMAIN, admin);
                 }
                 store.reservations.splice(rIndex, 1);
-                saveStoreToFirebase(socket.store);
+                Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
             }
         }
@@ -1517,7 +1198,7 @@ io.on('connection', (socket) => {
                     
                     lines[data.index] = clean + newTag;
                     o.text = lines.join('\n'); 
-                    updateStoreClients(socket.store); 
+                    Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
                 } 
             } 
         } 
@@ -1533,7 +1214,7 @@ io.on('connection', (socket) => {
         const key = `${socket.store}_${tName}`; 
         const t = activeUsers[key]; // ✅ Pass source as location for staff calls
         if(t){ 
-            t.isRinging = true; updateStoreClients(socket.store); 
+            t.isRinging = true; Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
             if(t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source }); 
         } 
 
@@ -1542,7 +1223,7 @@ io.on('connection', (socket) => {
         if (store && store.staffTokens && store.staffTokens[tName]) {
             const tokenData = store.staffTokens[tName];
             // ✅ FIX: Στέλνουμε ΠΑΝΤΑ Push για να είμαστε σίγουροι ότι θα χτυπήσει
-            sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, 10);
+            Logic.sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, YOUR_DOMAIN, admin, 10);
         } 
     });
     
@@ -1554,11 +1235,11 @@ io.on('connection', (socket) => {
                  u.isRinging = false;
                  if(u.socketId) io.to(u.socketId).emit('stop-bell');
              });
-             updateStoreClients(socket.store);
+             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });
 
-    socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); updateStoreClients(user.store); } });
+    socket.on('alarm-accepted', (data) => { let userKey = null; if (data && data.store && data.username) { const directKey = `${data.store}_${data.username}`; if (activeUsers[directKey]) userKey = directKey; } if (!userKey) { for (const [key, user] of Object.entries(activeUsers)) { if (user.socketId === socket.id) { userKey = key; break; } } } if (userKey) { const user = activeUsers[userKey]; user.isRinging = false; io.to(user.store).emit('staff-accepted-alarm', { username: user.username }); Logic.updateStoreClients(user.store, io, storesData, activeUsers, db); } });
     
     socket.on('manual-logout', (data) => { 
         const tUser = data && data.targetUser ? data.targetUser : socket.username; 
@@ -1588,11 +1269,13 @@ io.on('connection', (socket) => {
         if (storesData[socket.store] && storesData[socket.store].staffTokens) { 
             const tokenData = storesData[socket.store].staffTokens[tUser];
             if (tokenData && tokenData.token) {
-                 sendPushNotification(
+                 Logic.sendPushNotification(
                      { fcmToken: tokenData.token, role: tokenData.role }, 
                      "LOGOUT", 
                      "Αποσύνδεση από διαχειριστή", 
-                     { type: "logout" }
+                     { type: "logout" },
+                     YOUR_DOMAIN,
+                     admin
                  );
             }
             delete storesData[socket.store].staffTokens[tUser]; 
@@ -1604,9 +1287,9 @@ io.on('connection', (socket) => {
                 }).catch(e => console.log("Firestore delete error (ignored):", e.message));
             }
             
-            saveStoreToFirebase(socket.store); 
+            Logic.saveStoreToFirebase(socket.store, db, storesData); 
         }
-        updateStoreClients(socket.store);
+        Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
     });
     
     // ✅ FIX: Robust Disconnect Handler (Για να πιάνει σίγουρα το κλείσιμο καρτέλας)
@@ -1628,7 +1311,7 @@ io.on('connection', (socket) => {
 
         if (user) { 
             user.status = 'background'; // ✅ FIX: Άμεση μετάβαση σε background αν κλείσει η σύνδεση
-            updateStoreClients(user.store); 
+            Logic.updateStoreClients(user.store, io, storesData, activeUsers, db); 
         } 
     });
 
@@ -1639,7 +1322,7 @@ io.on('connection', (socket) => {
             // ✅ FIX: Recover 'online' status if falsely away (Ghosting fix)
             if (activeUsers[key].status === 'away' || activeUsers[key].status === 'background') { // ✅ FIX: Επαναφορά και από background
                 activeUsers[key].status = 'online';
-                updateStoreClients(socket.store);
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         } 
     });
@@ -1652,7 +1335,7 @@ io.on('connection', (socket) => {
             // Αγνοούμε το 'background' όσο το socket είναι ενεργό.
             if (status === 'online') {
                 activeUsers[key].status = status;
-                updateStoreClients(socket.store); // ✅ FIX: Ενημέρωση του Admin αμέσως!
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); // ✅ FIX: Ενημέρωση του Admin αμέσως!
             }
         }
     });
@@ -1676,9 +1359,9 @@ setInterval(() => {
                             console.log(`🔄 Menu reset for ${storeName}`);
                         }
                         // ✅ NEW: Αποστολή Email με Στατιστικά (Cron Job)
-                        sendDailyReport(store);
+                        Logic.sendDailyReport(store, transporter);
                         
-                        saveStoreToFirebase(storeName);
+                        Logic.saveStoreToFirebase(storeName, db, storesData);
                 }
             } 
         }); 
@@ -1696,9 +1379,9 @@ setInterval(() => {
                 // (10800000 ms = 3 hours)
                 if (rTime > now && rTime - now <= 10800000 && !r.notifiedCustomer3h && r.customerToken) {
                     r.notifiedCustomer3h = true;
-                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" });
-                    sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: storeName }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" });
-                    saveStoreToFirebase(storeName);
+                    Logic.sendPushNotification({ fcmToken: r.customerToken, role: 'customer' }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" }, YOUR_DOMAIN, admin);
+                    Logic.sendPushNotification({ fcmToken: r.customerToken, role: 'customer', store: storeName }, "ΥΠΕΝΘΥΜΙΣΗ ΚΡΑΤΗΣΗΣ 📅", `Έχετε κράτηση σε 3 ώρες (${r.time})!`, { type: "info" }, YOUR_DOMAIN, admin);
+                    Logic.saveStoreToFirebase(storeName, db, storesData);
                 }
 
                 // Ειδοποίηση αν είναι σε λιγότερο από 1 ώρα (και δεν έχει ειδοποιηθεί)
@@ -1718,7 +1401,7 @@ setInterval(() => {
                     if (store.staffTokens) {
                         Object.entries(store.staffTokens).forEach(([username, data]) => {
                             if (data.role === 'admin') {
-                                sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
+                                Logic.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
                             }
                         });
                     }
@@ -1734,19 +1417,19 @@ setInterval(() => {
                         if (store.staffTokens) {
                             Object.entries(store.staffTokens).forEach(([username, data]) => {
                                 if (data.role === 'waiter') {
-                                    sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, 3600);
+                                    Logic.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
                                 }
                             });
                         }
                     }
 
-                    saveStoreToFirebase(storeName);
+                    Logic.saveStoreToFirebase(storeName, db, storesData);
                 }
             });
         }
     });
 }, 60000); 
-setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; updateStoreClients(store); } } }, 60000);
+setInterval(() => { const now = Date.now(); for (const key in activeUsers) { if (now - activeUsers[key].lastSeen > 3600000) { const store = activeUsers[key].store; delete activeUsers[key]; Logic.updateStoreClients(store, io, storesData, activeUsers, db); } } }, 60000);
 
 setInterval(() => { 
     const now = Date.now(); 
@@ -1770,54 +1453,11 @@ setInterval(() => {
                 const baseBody = user.role === 'admin' ? "Πατήστε για προβολή" : "ΑΠΑΝΤΗΣΕ ΤΩΡΑ!"; 
                 const body = `${baseBody} ${bells} [${uniqueId}]`;
 
-                sendPushNotification(user, title, body, { type: "alarm" }); 
+                Logic.sendPushNotification(user, title, body, { type: "alarm" }, YOUR_DOMAIN, admin); 
             }
         } 
     } 
 }, 1000); // ✅ SERVER LOOP: Check every second
-
-// ✅ NEW: FUNCTION TO SEND DAILY EMAIL
-async function sendDailyReport(store) {
-    const email = store.settings.adminEmail;
-    if (!email) return;
-
-    const now = new Date();
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
-    
-    // Υπολογισμός Χθεσινής Ημέρας (Γιατί το reset γίνεται συνήθως 04:00 π.μ.)
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
-
-    const getStats = (d) => {
-        const [y, m, day] = d.split('-');
-        return store.stats?.[`${y}-${m}`]?.days?.[day];
-    };
-
-    const sToday = getStats(todayStr);
-    const sYesterday = getStats(yesterdayStr);
-
-    if (!sToday && !sYesterday) return;
-
-    let html = `<h1>📊 BellGo Report: ${store.settings.name}</h1>`;
-    
-    if (sYesterday) {
-        html += `<h3>📅 Χθες (${yesterdayStr})</h3><p>💰 Τζίρος: <b>${sYesterday.turnover.toFixed(2)}€</b></p><p>📦 Παραγγελίες: ${sYesterday.orders}</p><hr>`;
-    }
-    if (sToday) {
-        html += `<h3>📅 Σήμερα (${todayStr}) - Έως τώρα</h3><p>💰 Τζίρος: <b>${sToday.turnover.toFixed(2)}€</b></p><p>📦 Παραγγελίες: ${sToday.orders}</p><hr>`;
-    }
-
-    try {
-        await transporter.sendMail({
-            from: '"BellGo Bot" <noreply@bellgo.com>',
-            to: email,
-            subject: `📊 Ημερήσια Αναφορά - ${store.settings.name}`,
-            html: html
-        });
-        console.log(`📧 Report sent to ${email}`);
-    } catch (e) { console.error("Email Error:", e.message); }
-}
 
 // ✅ NEW: REWARD CLAIM ENDPOINT
 app.post('/claim-reward', async (req, res) => {
@@ -1825,7 +1465,7 @@ app.post('/claim-reward', async (req, res) => {
     
     if (!storeName || !orderId || !phone) return res.json({ success: false, error: "Λείπουν στοιχεία." });
     
-    const store = await getStoreData(storeName);
+    const store = await Logic.getStoreData(storeName, db, storesData);
     if (!store) return res.json({ success: false, error: "Το κατάστημα δεν βρέθηκε." });
     
     // 1. Έλεγχος αν είναι ενεργή η επιβράβευση
@@ -1878,7 +1518,7 @@ app.post('/claim-reward', async (req, res) => {
         store.stats[monthKey].days[day].rewardsGiven++;
     }
     
-    saveStoreToFirebase(storeName);
+    Logic.saveStoreToFirebase(storeName, db, storesData);
 
     res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
 });
