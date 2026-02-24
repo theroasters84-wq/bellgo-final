@@ -977,13 +977,10 @@ window.App = {
         
         if (isActive) {
             if (confirm(`Ενεργοποίηση "${feature.name}" με ${feature.price}€/μήνα;`)) {
-                // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΚΛΗΣΗ ΣΤΟ STRIPE
-                // Προς το παρόν το ενεργοποιούμε τοπικά για demo
                 if (!App.features) App.features = {};
                 App.features[key] = true;
                 window.socket.emit('save-store-settings', { features: App.features });
                 App.applyFeatureVisibility();
-                alert("Ενεργοποιήθηκε! (Demo)");
             } else {
                 checkbox.checked = false;
             }
