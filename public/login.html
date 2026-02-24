@@ -137,17 +137,19 @@
 
         <!-- 4. SUBSCRIPTION SCREEN -->
         <div id="subscriptionScreen" class="form-section">
-            <h3 style="color:#FFD700; margin:0;" data-i18n="select_package">Επιλογή Πακέτου</h3>
-            <p style="color:#aaa; font-size:12px; margin-bottom:15px;" data-i18n="enter_email_warning">Εισάγετε το Email σας στο Admin Login πριν την αγορά.</p>
+            <h3 style="color:#FFD700; margin:0;" data-i18n="select_package">Διαμόρφωση Συνδρομής</h3>
+            <p style="color:#aaa; font-size:12px; margin-bottom:15px;">Επιλέξτε τις λειτουργίες που χρειάζεστε.</p>
             
-            <button class="btn-price" onclick="UI.goToBuy('basic')">
-                <span data-i18n="plan_simple">BellGo Simple</span>
-                <span class="price-tag">4€</span>
-            </button>
-            <button class="btn-price" onclick="UI.goToBuy('premium')">
-                <span data-i18n="plan_management">BellGo Management Shop</span>
-                <span class="price-tag">10€</span>
-            </button>
+            <div id="featuresList" style="max-height: 300px; overflow-y: auto; margin-bottom: 15px; text-align: left;">
+                <!-- Features will be injected here -->
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:10px; background:#333; border-radius:8px;">
+                <span style="color:white; font-weight:bold;">ΣΥΝΟΛΟ:</span>
+                <span id="totalPrice" style="color:#FFD700; font-weight:bold; font-size:20px;">0€</span>
+            </div>
+
+            <button class="btn-main" onclick="UI.proceedToCheckout()">ΑΓΟΡΑ / ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
             
             <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
         </div>
@@ -234,6 +236,18 @@
         let adminUser = null; 
         let adminPlan = 'basic';
 
+        // ✅ NEW: FEATURES CONFIGURATION (Same as premium.js)
+        const AVAILABLE_FEATURES = [
+            { key: 'chat', name: '💬 Chat & Κλήση Προσωπικού', price: 5, year: 1992 },
+            { key: 'kitchen', name: '👨‍🍳 Οθόνη Κουζίνας', price: 10, year: 1993 },
+            { key: 'remote_order', name: '📱 QR/PWA Delivery', price: 15, year: 1994 },
+            { key: 'table_order', name: '🍽️ Παραγγελία Τραπεζιού', price: 10, year: 1995 },
+            { key: 'printer', name: '🖨️ Εκτυπωτές', price: 5, year: 1996 },
+            { key: 'einvoicing', name: '🧾 Ηλ. Τιμολόγηση / Ταμειακή', price: 10, year: 1997 },
+            { key: 'softpos', name: '💳 SoftPOS (Κινητό POS)', price: 10, year: 1998 },
+            { key: 'rewards', name: '🎁 Επιβράβευση (Loyalty)', price: 5, year: 1999 }
+        ];
+
         // --- I18N LOGIC ---
         let translations = {};
         const t = (key) => translations[key] || key;
@@ -304,6 +318,7 @@
             showSubscription: () => {
                 document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
                 document.getElementById('subscriptionScreen').classList.add('active');
+                UI.renderFeatures(); // ✅ Render list
             },
             togglePinVisibility: () => {
                 const inp = document.getElementById('stPin');
@@ -317,6 +332,53 @@
                 // Εδώ απλά τον στέλνουμε εκεί, ή μπορούμε να καλέσουμε απευθείας αν έχει συμπληρώσει email.
                 const email = document.getElementById('adminEmailInp').value.trim();
                 if(email) Admin.buyPackage(plan);
+            },
+            // ✅ NEW: Render Features List
+            renderFeatures: () => {
+                const list = document.getElementById('featuresList');
+                if(!list) return;
+                list.innerHTML = '';
+                
+                AVAILABLE_FEATURES.forEach(feat => {
+                    const row = document.createElement('div');
+                    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; background:#2a2a2a; margin-bottom:8px; border-radius:6px; border:1px solid #444;";
+                    
+                    // Checkbox
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.id = 'feat_' + feat.key;
+                    chk.dataset.price = feat.price;
+                    chk.style.transform = "scale(1.5)";
+                    chk.style.cursor = "pointer";
+                    chk.onchange = () => UI.calcTotal();
+                    
+                    // Label
+                    const label = document.createElement('label');
+                    label.htmlFor = 'feat_' + feat.key;
+                    label.style.cssText = "flex:1; margin-left:15px; text-align:left; font-size:14px; color:white; cursor:pointer;";
+                    label.innerHTML = `${feat.name} <br><span style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</span>`;
+                    
+                    row.appendChild(chk);
+                    row.appendChild(label);
+                    list.appendChild(row);
+                });
+                UI.calcTotal();
+            },
+            calcTotal: () => {
+                let total = 0;
+                AVAILABLE_FEATURES.forEach(feat => {
+                    const chk = document.getElementById('feat_' + feat.key);
+                    if(chk && chk.checked) total += feat.price;
+                });
+                document.getElementById('totalPrice').innerText = total + '€';
+            },
+            proceedToCheckout: () => {
+                const total = document.getElementById('totalPrice').innerText;
+                if (total === '0€') return alert("Επιλέξτε τουλάχιστον μία λειτουργία.");
+                
+                // Προς το παρόν στέλνουμε στο Admin Login για να βάλει email
+                UI.showAdminLogin();
+                alert(`Επιλέξατε πακέτο αξίας ${total}. Παρακαλώ συνδεθείτε (ή βάλτε email) για να ολοκληρώσετε την πληρωμή.`);
             }
         };
 

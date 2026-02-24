@@ -96,7 +96,17 @@ const defaultSettings = {
     einvoicing: {}, // ✅ NEW: E-Invoicing Settings
     pos: { provider: '', id: '', key: '' }, // ✅ NEW: POS Settings
     cashRegButtons: [], // ✅ NEW: Custom Cash Register Buttons
-    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 } // ✅ NEW: Reward Settings
+    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }αστούν)
+    features: {
+        chat: false,
+        kitchen: false,
+        remote_order: false,
+        table_order: false,
+        printer: false,
+        einvoicing: false,
+        softpos: false,
+        rewards: false
+    }
 }; 
 
 // ✅ NEW: Προσωρινή Blacklist για να μην ξαναμπαίνουν αμέσως οι διαγραμμένοι χρήστες
@@ -812,6 +822,7 @@ io.on('connection', (socket) => {
             if(data.pos) store.settings.pos = data.pos; // ✅ NEW: Save POS Settings
             if(data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons; // ✅ NEW: Save Cash Reg Buttons
             if(data.reward) store.settings.reward = data.reward; // ✅ NEW: Save Reward Settings
+            if(data.features) store.settings.features = data.features; // ✅ NEW: Save Features
             updateStoreClients(socket.store); 
         } 
     });

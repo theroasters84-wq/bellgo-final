@@ -75,6 +75,18 @@ const DEFAULT_CATEGORIES = [
     { order: 8, name: "SNACKS", items: [] }
 ];
 
+// ✅ NEW: FEATURES CONFIGURATION (Year Hack & Pricing)
+const AVAILABLE_FEATURES = [
+    { key: 'chat', name: '💬 Chat Προσωπικού', price: 5, year: 1992 },
+    { key: 'kitchen', name: '👨‍🍳 Οθόνη Κουζίνας', price: 10, year: 1993 },
+    { key: 'remote_order', name: '📱 QR/PWA Delivery', price: 15, year: 1994 },
+    { key: 'table_order', name: '🍽️ Παραγγελία Τραπεζιού', price: 10, year: 1995 },
+    { key: 'printer', name: '🖨️ Εκτυπωτές', price: 5, year: 1996 },
+    { key: 'einvoicing', name: '🧾 Ηλ. Τιμολόγηση / Ταμειακή', price: 10, year: 1997 },
+    { key: 'softpos', name: '💳 SoftPOS (Κινητό POS)', price: 10, year: 1998 },
+    { key: 'rewards', name: '🎁 Επιβράβευση (Loyalty)', price: 5, year: 1999 }
+];
+
 // ✅ BELLGO BOT: Οδηγός για "Override Do Not Disturb" (Android)
 const DNDBot = {
     init: () => {
@@ -172,6 +184,7 @@ window.App = {
     posSettings: {}, // ✅ NEW: Physical POS Settings
     posMode: 'auto', // ✅ NEW: POS Mode (auto/ask)
     einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
+    features: {}, // ✅ NEW: Local Features State
     settingsUnlocked: false, // ✅ NEW: Flag για κλείδωμα ρυθμίσεων
     // ✅ NEW: Cash Register State
     cashRegValue: "0",
@@ -337,6 +350,9 @@ window.App = {
         // ✅ FIX: Hide Cash Register by default (until settings load)
         const btnCash = document.getElementById('btnCashRegister');
         if(btnCash) btnCash.style.display = 'none';
+        
+        // ✅ NEW: Apply Feature Visibility Initial Check
+        App.applyFeatureVisibility();
 
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
@@ -446,6 +462,10 @@ window.App = {
                 if(settings.name) {
                     if(inpHeader) inpHeader.value = settings.name;
                     localStorage.setItem('bellgo_store_name', settings.name); // ✅ Cache Name
+                }
+                if(settings.features) {
+                    App.features = settings.features;
+                    App.applyFeatureVisibility(); // ✅ Update UI based on features
                 }
                 document.getElementById('switchCust').checked = settings.statusCustomer;
                 document.getElementById('switchStaff').checked = settings.statusStaff;
@@ -647,6 +667,57 @@ window.App = {
         });
     },
     
+    // ✅ NEW: Feature Check Logic (Database OR Year Hack)
+    hasFeature: (key) => {
+        // 1. Check Real Subscription (Settings)
+        if (App.features && App.features[key]) return true;
+
+        // 2. Check Email Hack (Year Suffix)
+        const storeEmail = userData.store || "";
+        // Ψάχνουμε για 4 ψηφία στο τέλος του email (π.χ. theroasters84@gmail.com1992)
+        const match = storeEmail.match(/(\d{4})$/); 
+        if (match) {
+            const year = parseInt(match[1]);
+            const feature = AVAILABLE_FEATURES.find(f => f.key === key);
+            if (feature && year >= feature.year) return true;
+        }
+        return false;
+    },
+
+    // ✅ NEW: Apply Visibility based on Features
+    applyFeatureVisibility: () => {
+        // 1. Chat
+        const btnChat = document.querySelector('button[onclick="App.toggleAdminChat()"]');
+        if (btnChat) btnChat.style.display = App.hasFeature('chat') ? 'flex' : 'none';
+
+        // 2. Kitchen (Δεν μπορούμε να κρύψουμε το URL, αλλά μπορούμε να κρύψουμε ρυθμίσεις)
+        // (Η κουζίνα είναι ξεχωριστό app, οπότε εδώ ελέγχουμε αν ο Admin βλέπει σχετικές ρυθμίσεις)
+
+        // 3. Remote Order (QR/PWA) - Κουμπί "QR Link"
+        const btnQr = document.querySelector('button[onclick="App.showLink()"]');
+        if (btnQr) btnQr.style.display = App.hasFeature('remote_order') ? 'flex' : 'none';
+
+        // 4. Table Order - Sidebar Button
+        const btnTable = document.getElementById('btnModeTable');
+        if (btnTable) btnTable.style.display = App.hasFeature('table_order') ? 'block' : 'none';
+
+        // 5. Printer - Settings Toggle
+        const divPrinter = document.getElementById('switchPrinterEnabled')?.closest('.setting-row');
+        if (divPrinter) divPrinter.style.display = App.hasFeature('printer') ? 'flex' : 'none';
+
+        // 6. E-Invoicing / Cash Register
+        const btnCash = document.getElementById('btnCashRegister');
+        if (btnCash) btnCash.style.display = App.hasFeature('einvoicing') ? 'flex' : 'none';
+        
+        // 7. SoftPOS - Settings & Buttons
+        const divSoftPos = document.getElementById('softPosSettingsContainer'); // Θα το φτιάξουμε αν δεν υπάρχει
+        if (divSoftPos) divSoftPos.style.display = App.hasFeature('softpos') ? 'block' : 'none';
+
+        // 8. Rewards
+        const divRewards = document.getElementById('rewardSettingsContainer');
+        if (divRewards) divRewards.style.display = App.hasFeature('rewards') ? 'block' : 'none';
+    },
+
     saveStoreName: () => {
         const newName = document.getElementById('inpStoreNameHeader').value.trim();
         if(newName) window.socket.emit('save-store-name', newName);
@@ -714,6 +785,18 @@ window.App = {
     openSettingsModal: () => { 
         document.getElementById('settingsModal').style.display = 'flex';
         App.closeSettingsSub(); // Reset to main view
+
+        // ✅ NEW: Inject "Subscriptions" Button if not exists
+        const main = document.getElementById('settingsMain');
+        if (main && !document.getElementById('btnOpenSubs')) {
+            const btn = document.createElement('button');
+            btn.id = 'btnOpenSubs';
+            btn.className = 'settings-btn';
+            btn.innerHTML = '💎 ΣΥΝΔΡΟΜΕΣ & ΔΥΝΑΤΟΤΗΤΕΣ';
+            btn.style.cssText = "background: linear-gradient(45deg, #FFD700, #FF9800); color: black; font-weight: bold; margin-bottom: 15px; border: none;";
+            btn.onclick = App.openSubscriptionsModal;
+            main.insertBefore(btn, main.firstChild); // Put it at the top
+        }
 
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
         const main = document.getElementById('settingsLockedArea');
@@ -842,6 +925,78 @@ window.App = {
         document.getElementById('switchRewardEnabled').checked = App.rewardSettings.enabled || false;
         document.getElementById('inpRewardGift').value = App.rewardSettings.gift || '';
         document.getElementById('inpRewardTarget').value = App.rewardSettings.target || 5;
+    },
+
+    // ✅ NEW: Subscriptions Modal
+    openSubscriptionsModal: () => {
+        document.getElementById('settingsModal').style.display = 'none';
+        
+        let modal = document.getElementById('subscriptionsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'subscriptionsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-box" style="max-width:400px; max-height:80vh; overflow-y:auto;">
+                    <h2 style="color:#FFD700; text-align:center;">💎 Δυνατότητες</h2>
+                    <p style="color:#aaa; text-align:center; font-size:12px; margin-bottom:20px;">Ενεργοποιήστε ό,τι χρειάζεστε.</p>
+                    <div id="subsList"></div>
+                    <button onclick="document.getElementById('subscriptionsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" class="modal-btn" style="background:#555; margin-top:20px;">ΠΙΣΩ</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        const list = document.getElementById('subsList');
+        list.innerHTML = '';
+
+        AVAILABLE_FEATURES.forEach(feat => {
+            const isActive = App.hasFeature(feat.key);
+            const row = document.createElement('div');
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
+            
+            row.innerHTML = `
+                <div>
+                    <div style="color:white; font-weight:bold;">${feat.name}</div>
+                    <div style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="App.toggleSubscription('${feat.key}', this)">
+                    <span class="slider round"></span>
+                </label>
+            `;
+            list.appendChild(row);
+        });
+
+        modal.style.display = 'flex';
+    },
+
+    toggleSubscription: (key, checkbox) => {
+        const isActive = checkbox.checked;
+        const feature = AVAILABLE_FEATURES.find(f => f.key === key);
+        
+        if (isActive) {
+            if (confirm(`Ενεργοποίηση "${feature.name}" με ${feature.price}€/μήνα;`)) {
+                // 🔌 ΕΔΩ ΘΑ ΜΠΕΙ Η ΚΛΗΣΗ ΣΤΟ STRIPE
+                // Προς το παρόν το ενεργοποιούμε τοπικά για demo
+                if (!App.features) App.features = {};
+                App.features[key] = true;
+                window.socket.emit('save-store-settings', { features: App.features });
+                App.applyFeatureVisibility();
+                alert("Ενεργοποιήθηκε! (Demo)");
+            } else {
+                checkbox.checked = false;
+            }
+        } else {
+            if (confirm(`Απενεργοποίηση "${feature.name}";`)) {
+                if (!App.features) App.features = {};
+                App.features[key] = false;
+                window.socket.emit('save-store-settings', { features: App.features });
+                App.applyFeatureVisibility();
+            } else {
+                checkbox.checked = true;
+            }
+        }
     },
 
     // ✅ NEW: Ξεκλείδωμα Ρυθμίσεων
@@ -990,7 +1145,8 @@ window.App = {
             key: document.getElementById('inpPosKey').value
         };
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData });
+        // Note: Features are saved separately in toggleSubscription to avoid accidental overwrites
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: App.features });
     },
     saveSettings: () => {
         App.autoSaveSettings();
