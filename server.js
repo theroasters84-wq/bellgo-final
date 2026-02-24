@@ -96,7 +96,8 @@ const defaultSettings = {
     einvoicing: {}, // ✅ NEW: E-Invoicing Settings
     pos: { provider: '', id: '', key: '' }, // ✅ NEW: POS Settings
     cashRegButtons: [], // ✅ NEW: Custom Cash Register Buttons
-    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }αστούν)
+    reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }, // ✅ NEW: Reward Settings
+    // ✅ NEW: Features Flags (Default όλα κλειστά, εκτός αν αγοραστούν)
     features: {
         chat: false,
         kitchen: false,
