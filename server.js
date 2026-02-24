@@ -23,6 +23,19 @@ const YOUR_DOMAIN = 'https://bellgo-final.onrender.com';
 const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
 const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 
+// ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
+// ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
+const FEATURE_PRICES = {
+    'price_chat_xxxxx': 'chat',
+    'price_kitchen_xxxxx': 'kitchen',
+    'price_remote_xxxxx': 'remote_order',
+    'price_table_xxxxx': 'table_order',
+    'price_printer_xxxxx': 'printer',
+    'price_einv_xxxxx': 'einvoicing',
+    'price_softpos_xxxxx': 'softpos',
+    'price_rewards_xxxxx': 'rewards'
+};
+
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 let db;
 try {
@@ -500,12 +513,24 @@ app.post('/check-subscription', async (req, res) => {
     try {
         const customers = await stripe.customers.search({ query: `email:'${email}'` });
         if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
+        
         const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
+        
         if (subscriptions.data.length > 0) {
-            const planId = subscriptions.data[0].items.data[0].price.id;
             let planType = 'basic';
-            if (planId === PRICE_PREMIUM) planType = 'premium';
-            return res.json({ active: true, plan: planType });
+            let activeFeatures = {};
+
+            // Έλεγχος όλων των συνδρομών και των αντικειμένων τους
+            subscriptions.data.forEach(sub => {
+                sub.items.data.forEach(item => {
+                    const priceId = item.price.id;
+                    if (priceId === PRICE_PREMIUM) planType = 'premium';
+                    // Έλεγχος για modular features
+                    if (FEATURE_PRICES[priceId]) activeFeatures[FEATURE_PRICES[priceId]] = true;
+                });
+            });
+
+            return res.json({ active: true, plan: planType, features: activeFeatures });
         } else { return res.json({ active: false }); }
     } catch (e) { res.json({ active: false, error: e.message }); }
 });

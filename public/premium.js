@@ -669,8 +669,12 @@ window.App = {
     
     // ✅ NEW: Feature Check Logic (Database OR Year Hack)
     hasFeature: (key) => {
-        // 1. Check Real Subscription (Settings)
+        // ✅ 0. Legacy Premium Support (Αν είναι παλιός Premium, τα έχει όλα)
+        if (userData.plan === 'premium') return true;
+
+        // 1. Check Real Subscription (Settings OR Login Data)
         if (App.features && App.features[key]) return true;
+        if (userData.features && userData.features[key]) return true;
 
         // 2. Check Email Hack (Year Suffix)
         const storeEmail = userData.store || "";
