@@ -182,7 +182,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { firebaseConfig } from './config.js';
-        import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
 
         if ('serviceWorker' in navigator) {
             // ✅ FIX: Καθαρισμός παλιού Root Service Worker που προκαλεί προβλήματα
@@ -328,7 +327,7 @@
                 if(!list) return;
                 list.innerHTML = '';
                 
-                Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
+                AVAILABLE_FEATURES.forEach(feat => {
                     const row = document.createElement('div');
                     row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; background:#2a2a2a; margin-bottom:8px; border-radius:6px; border:1px solid #444;";
                     
@@ -345,7 +344,7 @@
                     const label = document.createElement('label');
                     label.htmlFor = 'feat_' + feat.key;
                     label.style.cssText = "flex:1; margin-left:15px; text-align:left; font-size:14px; color:white; cursor:pointer;";
-                    label.innerHTML = `${feat.name} <br><span style="color:#aaa; font-size:11px;">${feat.desc}</span><br><span style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</span>`;
+                    label.innerHTML = `${feat.name} <br><span style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</span>`;
                     
                     row.appendChild(chk);
                     row.appendChild(label);
@@ -355,7 +354,7 @@
             },
             calcTotal: () => {
                 let total = 0;
-                Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
+                AVAILABLE_FEATURES.forEach(feat => {
                     const chk = document.getElementById('feat_' + feat.key);
                     if(chk && chk.checked) total += feat.price;
                 });
