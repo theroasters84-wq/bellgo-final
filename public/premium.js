@@ -1101,6 +1101,45 @@ window.App = {
         window.open(url, '_blank');
     },
     
+    // ✅ NEW: Trigger SoftPOS App
+    triggerSoftPosPayment: (amount, context) => {
+        const s = App.softPosSettings;
+        if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
+
+        const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
+        
+        let scheme = "intent://pay";
+        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
+        
+        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
+        
+        window.location.href = scheme + params;
+    },
+
+    // ✅ NEW: Check Return from SoftPOS
+    checkSoftPosReturn: () => {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('softpos_status');
+        
+        if (status === 'success') {
+            const amount = params.get('amount');
+            const context = params.get('context'); // orderId
+            
+            const audio = new Audio('/alert.mp3');
+            audio.play().catch(e=>{});
+            
+            alert(`✅ Η πληρωμή ${amount}€ ολοκληρώθηκε!`);
+            
+            if (context && context !== 'paso' && context !== 'cashreg') {
+                window.socket.emit('pay-order', { id: context, method: 'card' });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (status === 'cancel') {
+            alert("❌ Ακυρώθηκε.");
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    },
+
     autoSaveSettings: () => {
         const time = document.getElementById('inpResetTime').value;
         const hours = document.getElementById('inpHours').value;
