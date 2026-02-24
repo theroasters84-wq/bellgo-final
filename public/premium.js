@@ -3,6 +3,7 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 import { PaySystem } from './pay.js'; // ✅ Import PaySystem
+import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -73,16 +74,6 @@ const DEFAULT_CATEGORIES = [
     { order: 6, name: "ΚΡΥΑ ΚΟΥΖΙΝΑ", items: [] },
     { order: 7, name: "ΣΦΟΛΙΑΤΕΣ", items: [] },
     { order: 8, name: "SNACKS", items: [] }
-];
-
-// ✅ NEW: FEATURES CONFIGURATION (Year Hack & Pricing)
-const AVAILABLE_FEATURES = [
-    { key: 'pack_chat', name: '💬 Chat & Κλήση Προσωπικού', price: 5, year: 1992 },
-    { key: 'pack_manager', name: '👨‍🍳 Παραγγελιοληψία, Έξοδα, Στατιστικά & Εκτυπωτές', price: 15, year: 1993 },
-    { key: 'pack_delivery', name: '🛵 Delivery QR & Κρατήσεις', price: 15, year: 1994 },
-    { key: 'pack_tables', name: '🍽️ Παραγγελία από Τραπέζι', price: 15, year: 1995 },
-    { key: 'pack_pos', name: '💳 E-Invoicing, POS & SoftPOS', price: 20, year: 1996 },
-    { key: 'pack_loyalty', name: '🎁 Επιβράβευση Πελατών', price: 5, year: 1997 }
 ];
 
 // ✅ BELLGO BOT: Οδηγός για "Override Do Not Disturb" (Android)
@@ -667,23 +658,11 @@ window.App = {
     
     // ✅ NEW: Feature Check Logic (Database OR Year Hack)
     hasFeature: (key) => {
-        // ✅ 0. Legacy Premium Support (Αν είναι παλιός Premium, τα έχει όλα)
-        if (userData.plan === 'premium') return true;
-
-        // 1. Check Real Subscription (Settings OR Login Data)
-        if (App.features && App.features[key]) return true;
-        if (userData.features && userData.features[key]) return true;
-
-        // 2. Check Email Hack (Year Suffix)
-        const storeEmail = userData.store || "";
-        // Ψάχνουμε για 4 ψηφία στο τέλος του email (π.χ. theroasters84@gmail.com1992)
-        const match = storeEmail.match(/(\d{4})$/); 
-        if (match) {
-            const year = parseInt(match[1]);
-            const feature = AVAILABLE_FEATURES.find(f => f.key === key);
-            if (feature && year >= feature.year) return true;
-        }
-        return false;
+        // Χρήση της κεντρικής λογικής από το sundromes.js
+        // Περνάμε το userData που περιέχει plan, features και store (email)
+        // Επίσης ελέγχουμε και τα τοπικά App.features αν έχουν ενημερωθεί
+        const userContext = { ...userData, features: { ...userData.features, ...App.features } };
+        return Sundromes.hasAccess(userContext, key);
     },
 
     // ✅ NEW: Apply Visibility based on Features
@@ -966,7 +945,7 @@ window.App = {
         const list = document.getElementById('subsList');
         list.innerHTML = '';
 
-        AVAILABLE_FEATURES.forEach(feat => {
+        Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
             const isActive = App.hasFeature(feat.key);
             const row = document.createElement('div');
             row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
@@ -974,6 +953,7 @@ window.App = {
             row.innerHTML = `
                 <div>
                     <div style="color:white; font-weight:bold;">${feat.name}</div>
+                    <div style="color:#aaa; font-size:11px;">${feat.desc}</div>
                     <div style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</div>
                 </div>
                 <label class="switch">
@@ -989,7 +969,7 @@ window.App = {
 
     toggleSubscription: (key, checkbox) => {
         const isActive = checkbox.checked;
-        const feature = AVAILABLE_FEATURES.find(f => f.key === key);
+        const feature = Sundromes.packages.find(f => f.key === key);
         
         if (isActive) {
             if (confirm(`Ενεργοποίηση "${feature.name}" με ${feature.price}€/μήνα;`)) {
