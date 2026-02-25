@@ -689,6 +689,14 @@ window.App = {
         const btnExpenses = document.getElementById('btnExpenses');
         if (btnExpenses) btnExpenses.style.display = hasManager ? 'flex' : 'none';
 
+        // Hide/Show Menu Toggle (Manager)
+        const btnMenu = document.getElementById('btnMenuToggle');
+        if (btnMenu) btnMenu.style.display = hasManager ? 'flex' : 'none';
+
+        // Hide/Show Staff Charge Switch (Manager)
+        const divStaffCharge = document.getElementById('switchStaffCharge')?.closest('.switch-row');
+        if (divStaffCharge) divStaffCharge.style.display = hasManager ? 'flex' : 'none';
+
         // 5. Printer - Settings Toggle
         const elPrinter = document.getElementById('switchPrinterEnabled');
         const divPrinter = elPrinter ? elPrinter.closest('.switch-row') : null;
@@ -716,7 +724,20 @@ window.App = {
 
         // 6. Rewards Pack
         const divRewards = document.getElementById('rewardSettingsContainer');
-        if (divRewards) divRewards.style.display = App.hasFeature('pack_loyalty') ? 'block' : 'none';
+        if (divRewards) {
+            divRewards.style.display = App.hasFeature('pack_loyalty') ? 'block' : 'none';
+            // ✅ Hint: Αν έχει Loyalty αλλά όχι POS
+            if (App.hasFeature('pack_loyalty') && !App.hasFeature('pack_pos')) {
+                let hint = document.getElementById('rewardPosHint');
+                if (!hint) {
+                    hint = document.createElement('div');
+                    hint.id = 'rewardPosHint';
+                    hint.style.cssText = "color:#FF9800; font-size:11px; margin-top:5px;";
+                    hint.innerText = "⚠️ Για πλήρη λειτουργία απαιτείται το πακέτο POS.";
+                    divRewards.appendChild(hint);
+                }
+            }
+        }
     },
 
     saveStoreName: () => {

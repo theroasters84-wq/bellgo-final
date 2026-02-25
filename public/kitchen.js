@@ -587,13 +587,13 @@ window.App = {
         // ✅ NEW: Staff Container (Call Staff) - Visible if Chat or Manager is active
         const staffContainer = document.getElementById('staffContainer');
         if(staffContainer) {
-            staffContainer.style.display = (hasChat || hasManager) ? 'flex' : 'none';
+            staffContainer.style.display = hasChat ? 'flex' : 'none';
         }
 
         // ✅ NEW: Chat Button
         const chatBtn = document.getElementById('adminChatBtn');
         if(chatBtn && chatBtn.parentElement.classList.contains('btn-icon-wrapper')) {
-             chatBtn.parentElement.style.display = (hasChat || hasManager) ? 'flex' : 'none';
+             chatBtn.parentElement.style.display = hasChat ? 'flex' : 'none';
         }
     },
     

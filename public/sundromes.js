@@ -59,8 +59,13 @@ export const Sundromes = {
         const match = storeEmail.match(/(\d{4})$/);
         if (match) {
             const year = parseInt(match[1]);
+            
+            // ✅ 1998: Όλα ενεργά (Full Package)
+            if (year === 1998) return true;
+
             const pkg = Sundromes.packages.find(p => p.key === key);
-            if (pkg && year >= pkg.year) return true;
+            // ✅ Strict Matching: Μόνο το πακέτο του έτους (Ανεξάρτητη λειτουργία)
+            if (pkg && year === pkg.year) return true;
         }
 
         return false;
