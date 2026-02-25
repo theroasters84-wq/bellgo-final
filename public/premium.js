@@ -52,19 +52,6 @@ const calculateTotal = (text) => {
     return total;
 };
 
-// --- PIN MODULE ---
-let pinValue = '';
-window.PIN = {
-    add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
-    clear: () => { pinValue = ''; PIN.updateDisplay(); },
-    updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
-    submit: () => {
-        if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-        window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
-        App.closePinModal();
-    }
-};
-
 const DEFAULT_CATEGORIES = [
     { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
     { order: 2, name: "SANDWICH", items: [] },
@@ -75,73 +62,6 @@ const DEFAULT_CATEGORIES = [
     { order: 7, name: "ΣΦΟΛΙΑΤΕΣ", items: [] },
     { order: 8, name: "SNACKS", items: [] }
 ];
-
-// ✅ BELLGO BOT: Οδηγός για "Override Do Not Disturb" (Android)
-const DNDBot = {
-    init: () => {
-        // Τρέχει μόνο σε Android και αν δεν έχει ξαναγίνει
-        if(localStorage.getItem('bellgo_dnd_setup') === 'true') return;
-        if(!/android/i.test(navigator.userAgent)) return;
-        
-        setTimeout(DNDBot.showIntro, 1500); // Μικρή καθυστέρηση
-    },
-    showIntro: () => {
-        if(document.getElementById('dndBotOverlay')) return;
-        const div = document.createElement('div');
-        div.id = 'dndBotOverlay';
-        div.className = 'bot-overlay';
-        div.innerHTML = `
-            <div class="bot-box">
-                <div class="bot-icon">🤖</div>
-                <div class="bot-title">BellGo Bot</div>
-                <div class="bot-text">
-                    Γεια! Είμαι ο βοηθός σου.<br><br>
-                    Για να μη χάνεις παραγγελίες, πρέπει να ρυθμίσουμε το κινητό να χτυπάει <b>ΔΥΝΑΤΑ</b> ακόμα και στο <b>ΑΘΟΡΥΒΟ</b>.
-                </div>
-                <button class="bot-btn" onclick="DNDBot.step1()">Ξεκίνα Ρύθμιση 🚀</button>
-                <button class="bot-skip" onclick="DNDBot.skip()">Όχι τώρα</button>
-            </div>
-        `;
-        document.body.appendChild(div);
-    },
-    step1: () => {
-        Notification.requestPermission().then(perm => {
-            if(perm === 'granted') { DNDBot.step2(); } 
-            else { alert("⚠️ Πρέπει να πατήσεις 'Allow' / 'Επιτρέπεται' για να λειτουργήσει!"); }
-        });
-    },
-    step2: () => {
-        const box = document.querySelector('#dndBotOverlay .bot-box');
-        box.innerHTML = `
-            <div class="bot-icon">📢</div>
-            <div class="bot-title">Δημιουργία Καναλιού</div>
-            <div class="bot-text">Θα στείλω τώρα μια δοκιμαστική ειδοποίηση για να εμφανιστεί η ρύθμιση στο κινητό σου.</div>
-            <button class="bot-btn" onclick="DNDBot.step3()">Στείλε Δοκιμή 🔔</button>
-        `;
-    },
-    step3: () => {
-        if(window.socket) window.socket.emit('trigger-alarm', { target: userData.name, source: 'BellGo Setup' });
-        const box = document.querySelector('#dndBotOverlay .bot-box');
-        box.innerHTML = `
-            <div class="bot-icon">⚙️</div>
-            <div class="bot-title">Τελικό Βήμα</div>
-            <div class="bot-text" style="font-size:14px; text-align:left;">
-                1. Μόλις έρθει η ειδοποίηση, πήγαινε:<br><b>Ρυθμίσεις > Εφαρμογές > Chrome > Ειδοποιήσεις</b><br>
-                2. Βρες το <b>"bellgo_alarm_channel"</b>.<br>
-                3. Ενεργοποίησε: <b>"Παράκαμψη Μην Ενοχλείτε"</b> (Override Do Not Disturb).
-            </div>
-            <button class="bot-btn" onclick="DNDBot.finish()">Το Έκανα! ✅</button>
-        `;
-    },
-    finish: () => {
-        localStorage.setItem('bellgo_dnd_setup', 'true');
-        document.getElementById('dndBotOverlay').remove();
-        if(window.AudioEngine) window.AudioEngine.stopAlarm();
-        if(window.socket) window.socket.emit('admin-stop-ringing');
-    },
-    skip: () => { localStorage.setItem('bellgo_dnd_setup', 'true'); document.getElementById('dndBotOverlay').remove(); }
-};
-window.DNDBot = DNDBot;
 
 window.App = {
     activeOrders: [],
@@ -176,9 +96,6 @@ window.App = {
     features: {}, // ✅ NEW: Local Features State
     tempFeatures: {}, // ✅ NEW: Temporary Features for Editing
     settingsUnlocked: false, // ✅ NEW: Flag για κλείδωμα ρυθμίσεων
-    // ✅ NEW: Cash Register State
-    cashRegValue: "0",
-    cashRegItems: [],
     cashRegButtons: [], // ✅ Store custom buttons
     tempPasoText: "", // ✅ Store PASO order text temporarily
 
@@ -342,13 +259,13 @@ window.App = {
         }, 500);
 
         // ✅ Start Bot
-        DNDBot.init();
+        if(window.DNDBot) window.DNDBot.init();
         
         // ✅ Init Pay System
         PaySystem.init();
 
         // ✅ Check SoftPOS Return
-        App.checkSoftPosReturn();
+        PaySystem.checkSoftPosReturn();
 
         // ✅ NEW: Apply Feature Visibility Initial Check
         App.applyFeatureVisibility();
@@ -536,7 +453,7 @@ window.App = {
                     document.getElementById('inpSoftPosMerchantId').value = settings.softPos.merchantId || '';
                     document.getElementById('inpSoftPosApiKey').value = settings.softPos.apiKey || '';
                     document.getElementById('switchSoftPosEnabled').checked = settings.softPos.enabled || false;
-                    App.updateSoftPosUI();
+                    if(window.PaySystem) window.PaySystem.updateSoftPosUI();
                 }
                 if(settings.posMode) {
                     App.posMode = settings.posMode;
@@ -851,7 +768,7 @@ window.App = {
 
                     <div style="border-top:1px solid #333; padding-top:20px; width:80%;">
                         <p style="color:#aaa; font-size:12px; margin-bottom:10px;">Εργαλεία Προσωπικού:</p>
-                        <button onclick="DNDBot.init(); DNDBot.showIntro();" style="background:#333; color:white; border:1px solid #555; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px; margin:0 auto;">
+                        <button onclick="window.DNDBot.init(); window.DNDBot.showIntro();" style="background:#333; color:white; border:1px solid #555; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px; margin:0 auto;">
                             <span>🤖</span> BellGo Bot (Setup)
                         </button>
                     </div>
@@ -934,64 +851,6 @@ window.App = {
         App.applyFeatureVisibility();
     },
 
-    // ✅ NEW: Subscriptions Modal
-    openSubscriptionsModal: () => {
-        
-        let modal = document.getElementById('subscriptionsModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'subscriptionsModal';
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-box" style="max-width:400px; max-height:80vh; overflow-y:auto;">
-                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px;">💎 Διαχείριση Συνδρομών</h2>
-                    <div id="subsList"></div>
-                    <div style="margin-top:20px; display:flex; gap:10px;">
-                        <button onclick="App.saveSubscriptions()" class="modal-btn" style="background:#00E676; color:black; font-weight:bold; flex:1;">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" class="modal-btn" style="background:#555; flex:1;">ΚΛΕΙΣΙΜΟ</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        const list = document.getElementById('subsList');
-        list.innerHTML = '';
-
-        // ✅ Init temp features
-        App.tempFeatures = { ...App.features };
-
-        Sundromes.packages.forEach((feat, index) => { // ✅ Use Sundromes
-            const isActive = App.tempFeatures[feat.key];
-            const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
-            
-            row.innerHTML = `
-                <div>
-                    <div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div>
-                    <div style="color:#aaa; font-size:12px;">${feat.desc}</div>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="App.tempFeatures['${feat.key}'] = this.checked">
-                    <span class="slider round"></span>
-                </label>
-            `;
-            list.appendChild(row);
-        });
-
-        modal.style.display = 'flex';
-    },
-
-    // ✅ NEW: Save Subscriptions
-    saveSubscriptions: () => {
-        if (confirm("Αποθήκευση αλλαγών στις συνδρομές;")) {
-            App.features = { ...App.tempFeatures };
-            window.socket.emit('save-store-settings', { features: App.features });
-            App.applyFeatureVisibility();
-            document.getElementById('subscriptionsModal').style.display = 'none';
-        }
-    },
-
     // ✅ NEW: Ξεκλείδωμα Ρυθμίσεων
     unlockSettings: () => {
         const pin = document.getElementById('inpUnlockPin').value;
@@ -1044,97 +903,6 @@ window.App = {
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
         const main = document.getElementById('settingsMain');
         if(main) main.style.display = 'block';
-    },
-
-    // ✅ NEW: SoftPOS Logic
-    updateSoftPosUI: () => {
-        const provider = document.getElementById('selSoftPosProvider').value;
-        const linkDiv = document.getElementById('softPosLinks');
-        const linkA = document.getElementById('linkSoftPosReg');
-        const setupBanner = document.getElementById('softPosSetupBanner');
-        const downloadBanner = document.getElementById('softPosDownloadBanner');
-        const merchantId = document.getElementById('inpSoftPosMerchantId').value;
-        const isEnabled = document.getElementById('switchSoftPosEnabled').checked;
-
-        // Links
-        const urls = {
-            'viva': 'https://www.vivawallet.com/gr_el',
-            'alpha': 'https://www.alpha.gr/el/epixeiriseis/myalpha-pos/softpos',
-            'eurobank': 'https://www.eurobank.gr/el/epixeiriseis/proionta-upiresies/eisprakseis-pliromes/eisprakseis/pos/smart-pos',
-            'piraeus': 'https://www.piraeusbank.gr/el/epixeiriseis/eisprakseis-pliromes/eisprakseis/epay-pos/softpos'
-        };
-
-        if (provider && urls[provider]) {
-            linkDiv.style.display = 'block';
-            linkA.href = urls[provider];
-        } else {
-            linkDiv.style.display = 'none';
-        }
-
-        // Banners
-        if (isEnabled && !merchantId) {
-            setupBanner.style.display = 'block';
-            downloadBanner.style.display = 'none';
-        } else if (isEnabled && merchantId) {
-            setupBanner.style.display = 'none';
-            downloadBanner.style.display = 'block';
-        } else {
-            setupBanner.style.display = 'none';
-            downloadBanner.style.display = 'none';
-        }
-        
-        App.autoSaveSettings();
-    },
-
-    openSoftPosDownload: () => {
-        const provider = document.getElementById('selSoftPosProvider').value;
-        // Generic Play Store Search or specific links
-        let url = "https://play.google.com/store/search?q=softpos&c=apps";
-        if (provider === 'viva') url = "https://play.google.com/store/apps/details?id=com.vivawallet.terminal";
-        else if (provider === 'alpha') url = "https://play.google.com/store/apps/details?id=gr.alpha.nexi.softpos";
-        else if (provider === 'eurobank') url = "https://play.google.com/store/apps/details?id=com.worldline.smartpos";
-        else if (provider === 'piraeus') url = "https://play.google.com/store/apps/details?id=gr.epay.softpos";
-        
-        window.open(url, '_blank');
-    },
-    
-    // ✅ NEW: Trigger SoftPOS App
-    triggerSoftPosPayment: (amount, context) => {
-        const s = App.softPosSettings;
-        if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
-
-        const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
-        
-        let scheme = "intent://pay";
-        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
-        
-        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
-        
-        window.location.href = scheme + params;
-    },
-
-    // ✅ NEW: Check Return from SoftPOS
-    checkSoftPosReturn: () => {
-        const params = new URLSearchParams(window.location.search);
-        const status = params.get('softpos_status');
-        
-        if (status === 'success') {
-            const amount = params.get('amount');
-            const context = params.get('context'); // orderId
-            
-            const audio = new Audio('/alert.mp3');
-            audio.play().catch(e=>{});
-            
-            alert(`✅ Η πληρωμή ${amount}€ ολοκληρώθηκε!`);
-            
-            if (context && context !== 'paso' && context !== 'cashreg') {
-                window.socket.emit('pay-order', { id: context, method: 'card' });
-            }
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else if (status === 'cancel') {
-            alert("❌ Ακυρώθηκε.");
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
     },
 
     autoSaveSettings: () => {
@@ -1898,7 +1666,7 @@ window.App = {
         
         // ✅ NEW: Check for SoftPOS
         if (method === 'card' && App.softPosSettings && App.softPosSettings.enabled) {
-            App.triggerSoftPosPayment(total, 'paso');
+            PaySystem.triggerSoftPosPayment(total, 'paso');
             return;
         }
 
@@ -2067,7 +1835,7 @@ window.App = {
                 
                 // ✅ NEW: SoftPOS Button (Admin & Waiter Only)
                 if (App.softPosSettings && App.softPosSettings.enabled) {
-                    actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>`;
+                    actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>` + actions;
                 }
 
                 actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
@@ -2278,7 +2046,7 @@ window.App = {
 
         const order = App.activeOrders.find(o => o.id == id);
         const total = calculateTotal(order.text);
-        App.triggerSoftPosPayment(total, id);
+        PaySystem.triggerSoftPosPayment(total, id);
     },
 
     // ✅ NEW: PARTIAL PAYMENT (Cash/Card)
@@ -2675,177 +2443,6 @@ window.App = {
         if(confirm("Διαγραφή κράτησης;")) window.socket.emit('delete-reservation', id);
     },
 
-    // ✅ NEW: CASH REGISTER LOGIC (ΤΑΜΕΙΑΚΗ)
-    openCashRegister: () => {
-        App.cashRegValue = "0";
-        App.cashRegItems = [];
-        App.updateCashRegUI();
-        App.renderCashRegButtonsUI(); // ✅ Render dynamic buttons
-        document.getElementById('cashRegisterModal').style.display = 'flex';
-    },
-
-    cashRegInput: (val) => {
-        if (App.cashRegValue === "0" && val !== ".") App.cashRegValue = val;
-        else App.cashRegValue += val;
-        App.updateCashRegUI();
-    },
-
-    cashRegClear: () => {
-        if (App.cashRegValue === "0") {
-            // Αν είναι ήδη 0, καθαρίζουμε τη λίστα
-            App.cashRegItems = [];
-        } else {
-            App.cashRegValue = "0";
-        }
-        App.updateCashRegUI();
-    },
-
-    // ✅ NEW: Render Dynamic Buttons
-    renderCashRegButtonsUI: () => {
-        const container = document.getElementById('cashRegButtonsContainer');
-        container.innerHTML = '';
-        
-        // Αν δεν υπάρχουν κουμπιά, βάλε default
-        const buttons = (App.cashRegButtons && App.cashRegButtons.length > 0) 
-            ? App.cashRegButtons 
-            : [{label:'ΦΑΓΗΤΟ', vat:13}, {label:'ΠΟΤΟ', vat:24}, {label:'ΕΙΔΗ', vat:24}];
-
-        buttons.forEach(btn => {
-            const el = document.createElement('button');
-            el.className = 'modal-btn';
-            el.style.cssText = "background:#444; font-size:14px; margin:0; font-weight:bold; height:50px;";
-            el.innerText = `${btn.label}\n${btn.vat}%${btn.price ? ` (${btn.price}€)` : ''}`;
-            el.onclick = () => App.cashRegAddItem(btn);
-            container.appendChild(el);
-        });
-    },
-
-    cashRegAddItem: (btn) => {
-        let amount = 0;
-        
-        // Αν το κουμπί έχει preset τιμή, τη χρησιμοποιούμε
-        if (btn.price && btn.price > 0) {
-            amount = btn.price;
-        } else {
-            // Αλλιώς παίρνουμε από την οθόνη
-            amount = parseFloat(App.cashRegValue);
-            if (isNaN(amount) || amount <= 0) return; // Δεν κάνει τίποτα αν είναι 0
-        }
-
-        App.cashRegItems.push({
-            name: btn.label,
-            price: amount,
-            vat: btn.vat
-        });
-        
-        App.cashRegValue = "0"; // Reset screen
-        App.updateCashRegUI();
-    },
-
-    updateCashRegUI: () => {
-        document.getElementById('cashRegScreen').innerText = App.cashRegValue;
-        
-        const listEl = document.getElementById('cashRegList');
-        listEl.innerHTML = '';
-        let total = 0;
-        
-        App.cashRegItems.forEach(item => {
-            total += item.price;
-            const div = document.createElement('div');
-            div.innerText = `${item.name}: ${item.price.toFixed(2)}€`;
-            listEl.appendChild(div);
-        });
-        
-        document.getElementById('cashRegTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
-    },
-
-    cashRegPay: (method) => {
-        let total = App.cashRegItems.reduce((sum, item) => sum + item.price, 0);
-        
-        // Αν δεν υπάρχουν είδη στη λίστα, αλλά υπάρχει ποσό στην οθόνη, το παίρνουμε ως "Γενικό"
-        // ✅ NEW LOGIC: Δεν επιτρέπεται πληρωμή αν η λίστα είναι άδεια (πρέπει να πατηθεί τμήμα)
-        if (total === 0) {
-            return alert("⚠️ Πρέπει να επιλέξετε Τμήμα/ΦΠΑ για το ποσό πριν την έκδοση!");
-        }
-
-        if (method === 'card') {
-            // ✅ NEW: Unified POS Logic (SoftPOS vs Physical)
-            const hasSoftPos = App.softPosSettings && App.softPosSettings.enabled;
-            const hasPhysicalPos = App.posSettings && App.posSettings.provider;
-
-            if (hasSoftPos || hasPhysicalPos) {
-                let usePhysical = false;
-
-                // Αν υπάρχουν και τα δύο, ρωτάμε
-                if (hasSoftPos && hasPhysicalPos) {
-                    const choice = prompt("Επιλογή Τερματικού:\n1. 📱 SoftPOS (Tap to Pay)\n2. 📡 Φυσικό Τερματικό (WiFi)", "1");
-                    if (choice === '2') usePhysical = true;
-                    else if (choice !== '1') return; // Cancel
-                } else if (hasPhysicalPos) {
-                    usePhysical = true;
-                }
-
-                if (usePhysical) {
-                    // 📡 PHYSICAL POS FLOW
-                    if (App.posMode === 'ask' && !confirm(`Αποστολή ${total}€ στο τερματικό;`)) return;
-
-                    const btn = document.getElementById('btnCashRegPos');
-                    const originalText = btn.innerText;
-                    btn.innerText = "⏳ ΑΠΟΣΤΟΛΗ...";
-                    btn.disabled = true;
-                    btn.style.background = "#555";
-
-                    const handlePosResult = (res) => {
-                        window.socket.off('pos-result', handlePosResult);
-                        btn.innerText = originalText;
-                        btn.disabled = false;
-                        btn.style.background = "#2196F3";
-
-                        if (res.success) {
-                            alert("✅ Πληρωμή POS Επιτυχής!");
-                            App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
-                        } else {
-                            alert("❌ Σφάλμα POS: " + res.error);
-                            if(confirm("Η πληρωμή απέτυχε. Θέλετε να κλείσετε την απόδειξη ως 'ΚΑΡΤΑ (Manual)';")) {
-                                App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (Manual)');
-                            }
-                        }
-                    };
-                    window.socket.on('pos-result', handlePosResult);
-                    window.socket.emit('pos-pay', { amount: total });
-                } else {
-                    // 📱 SOFTPOS FLOW
-                    App.triggerSoftPosPayment(total, 'cashreg');
-                }
-            } else {
-                // Fallback to manual logging if no SoftPOS
-                App.finalizeCashRegOrder(total, '💳 ΚΑΡΤΑ (POS)');
-            }
-        } else {
-            App.finalizeCashRegOrder(total, '💵 ΜΕΤΡΗΤΑ');
-        }
-    },
-
-    finalizeCashRegOrder: (total, methodLabel) => {
-        // Δημιουργία κειμένου παραγγελίας για εκτύπωση/αποθήκευση
-        let orderText = `[ΤΑΜΕΙΑΚΗ 📠]\n${methodLabel}\n---\n`;
-        App.cashRegItems.forEach(item => {
-            orderText += `${item.name}: ${item.price.toFixed(2)}\n`;
-        });
-        orderText += `✅ PAID`;
-
-        // ✅ NEW: Χρήση 'quick-order' για να ΜΗΝ μπαίνει στις ενεργές παραγγελίες
-        window.socket.emit('quick-order', {
-            text: orderText,
-            total: total,
-            method: methodLabel.includes('ΚΑΡΤΑ') ? 'card' : 'cash',
-            issueReceipt: true, // Πάντα true για την ταμειακή
-            source: 'Admin (Ταμείο)'
-        });
-
-        document.getElementById('cashRegisterModal').style.display = 'none';
-    },
-
     toggleAdminChat: () => { 
         const el = document.getElementById('adminChatOverlay');
         App.isChatOpen = (el.style.display === 'flex');
@@ -2874,6 +2471,19 @@ window.App = {
     },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
+};
+
+// --- PIN MODULE ---
+let pinValue = '';
+window.PIN = {
+    add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
+    clear: () => { pinValue = ''; PIN.updateDisplay(); },
+    updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
+    submit: () => {
+        if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+        window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
+        App.closePinModal();
+    }
 };
 
 window.onload = App.init;

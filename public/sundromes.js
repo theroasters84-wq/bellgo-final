@@ -75,5 +75,46 @@ export const Sundromes = {
         }
 
         return false;
+    },
+
+    // ✅ NEW: Subscriptions Modal Logic (Moved from premium.js)
+    openSubscriptionsModal: () => {
+        let modal = document.getElementById('subscriptionsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'subscriptionsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-box" style="max-width:400px; max-height:80vh; overflow-y:auto;">
+                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px;">💎 Διαχείριση Συνδρομών</h2>
+                    <div id="subsList"></div>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button onclick="Sundromes.saveSubscriptions()" class="modal-btn" style="background:#00E676; color:black; font-weight:bold; flex:1;">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" class="modal-btn" style="background:#555; flex:1;">ΚΛΕΙΣΙΜΟ</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        const list = document.getElementById('subsList');
+        list.innerHTML = '';
+        window.App.tempFeatures = { ...window.App.features };
+        Sundromes.packages.forEach((feat) => {
+            const isActive = window.App.tempFeatures[feat.key];
+            const row = document.createElement('div');
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
+            row.innerHTML = `<div><div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#aaa; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked"><span class="slider round"></span></label>`;
+            list.appendChild(row);
+        });
+        modal.style.display = 'flex';
+    },
+    saveSubscriptions: () => {
+        if (confirm("Αποθήκευση αλλαγών στις συνδρομές;")) {
+            window.App.features = { ...window.App.tempFeatures };
+            window.socket.emit('save-store-settings', { features: window.App.features });
+            window.App.applyFeatureVisibility();
+            document.getElementById('subscriptionsModal').style.display = 'none';
+        }
     }
 };
+window.Sundromes = Sundromes;

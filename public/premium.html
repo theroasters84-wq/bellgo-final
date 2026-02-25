@@ -29,13 +29,13 @@
             
             <div class="header-actions">
                 <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings" style="display:none;">⚙️</button>
-                <button id="btnSubs" class="btn-icon" onclick="App.openSubscriptionsModal()" title="Συνδρομές" style="background:linear-gradient(45deg, #FFD700, #FF9800); color:black;">💎</button>
+                <button id="btnSubs" class="btn-icon" onclick="Sundromes.openSubscriptionsModal()" title="Συνδρομές" style="background:linear-gradient(45deg, #FFD700, #FF9800); color:black;">💎</button>
                 <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white; display:none;">💸</button>
                 <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
                     <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button>
                     <div id="resBadge" class="chat-badge" style="display:none;"></div>
                 </div>
-                <button id="btnCashRegister" class="btn-icon" onclick="App.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white; display:none;">📠</button> <!-- ✅ NEW: Cash Register -->
+                <button id="btnCashRegister" class="btn-icon" onclick="Apodiksh.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white; display:none;">📠</button> <!-- ✅ NEW: Cash Register -->
                 <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white; display:none;">💼</button> <!-- ✅ NEW -->
                 <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού" style="display:none;">📜</button>
                 <div class="btn-icon-wrapper" id="chatWrapper" style="display:none;">
@@ -249,7 +249,7 @@
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div id="softPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
                     <div class="settings-label" style="color:#00E676;">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
-                    <select id="selSoftPosProvider" class="inp-settings" onchange="App.updateSoftPosUI()">
+                    <select id="selSoftPosProvider" class="inp-settings" onchange="PaySystem.updateSoftPosUI()">
                         <option value="">Επιλέξτε Πάροχο...</option>
                         <option value="viva">Viva Wallet</option>
                         <option value="alpha">Alpha Bank (Nexi)</option>
@@ -296,7 +296,7 @@
                 <div id="softPosDownloadBanner" style="display:none; background:#2196F3; color:white; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
                     <b>📲 ΚΑΤΕΒΑΣΤΕ ΤΗΝ ΕΦΑΡΜΟΓΗ</b><br>
                     <span style="font-size:12px;">Admin, Σερβιτόροι & Διανομείς πρέπει να έχουν το App του παρόχου.</span>
-                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="App.openSoftPosDownload()">Λήψη Εφαρμογής</button>
+                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="PaySystem.openSoftPosDownload()">Λήψη Εφαρμογής</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -407,16 +407,16 @@
 
             <!-- Numpad -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:10px; flex-shrink: 0;">
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('7')">7</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('8')">8</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('9')">9</button>
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('4')">4</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('5')">5</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('6')">6</button>
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('1')">1</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('2')">2</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('3')">3</button>
-                <button class="modal-btn" style="background:#D32F2F; font-size:20px; margin:0; padding:15px;" onclick="App.cashRegClear()">C</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('0')">0</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="App.cashRegInput('.')">.</button>
+                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('7')">7</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('8')">8</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('9')">9</button>
+                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('4')">4</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('5')">5</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('6')">6</button>
+                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('1')">1</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('2')">2</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('3')">3</button>
+                <button class="modal-btn" style="background:#D32F2F; font-size:20px; margin:0; padding:15px;" onclick="Apodiksh.cashRegClear()">C</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('0')">0</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('.')">.</button>
             </div>
 
             <!-- Payment Actions -->
             <div style="display:flex; gap:10px; flex-shrink: 0;">
-                <button class="modal-btn" style="background:#00E676; color:black; font-weight:bold; padding:15px; font-size:18px;" onclick="App.cashRegPay('cash')">💵 ΜΕΤΡΗΤΑ</button>
-                <button id="btnCashRegPos" class="modal-btn" style="background:#2196F3; color:white; font-weight:bold; padding:15px; font-size:18px;" onclick="App.cashRegPay('card')">💳 POS</button>
+                <button class="modal-btn" style="background:#00E676; color:black; font-weight:bold; padding:15px; font-size:18px;" onclick="Apodiksh.cashRegPay('cash')">💵 ΜΕΤΡΗΤΑ</button>
+                <button id="btnCashRegPos" class="modal-btn" style="background:#2196F3; color:white; font-weight:bold; padding:15px; font-size:18px;" onclick="Apodiksh.cashRegPay('card')">💳 POS</button>
             </div>
         </div>
     </div>

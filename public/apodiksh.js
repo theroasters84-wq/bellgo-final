@@ -7,6 +7,8 @@ export const Apodiksh = {
     },
 
     cashRegButtons: [], // ✅ Local state for buttons
+    cashRegValue: "0", // ✅ NEW: Moved from App
+    cashRegItems: [], // ✅ NEW: Moved from App
     settingsCache: null, // ✅ NEW: Cache settings to avoid race conditions
 
     init: async () => {
@@ -147,6 +149,88 @@ export const Apodiksh = {
         window.socket.emit('save-store-settings', { einvoicing: data, cashRegButtons: Apodiksh.cashRegButtons });
         Apodiksh.closeSettings();
         alert("Οι ρυθμίσεις E-Invoicing αποθηκεύτηκαν!");
+    },
+
+    // ✅ NEW: CASH REGISTER LOGIC (Moved from premium.js)
+    openCashRegister: () => {
+        Apodiksh.cashRegValue = "0";
+        Apodiksh.cashRegItems = [];
+        Apodiksh.updateCashRegUI();
+        Apodiksh.renderCashRegButtonsUI();
+        document.getElementById('cashRegisterModal').style.display = 'flex';
+    },
+
+    cashRegInput: (val) => {
+        if (Apodiksh.cashRegValue === "0" && val !== ".") Apodiksh.cashRegValue = val;
+        else Apodiksh.cashRegValue += val;
+        Apodiksh.updateCashRegUI();
+    },
+
+    cashRegClear: () => {
+        if (Apodiksh.cashRegValue === "0") Apodiksh.cashRegItems = [];
+        else Apodiksh.cashRegValue = "0";
+        Apodiksh.updateCashRegUI();
+    },
+
+    renderCashRegButtonsUI: () => {
+        const container = document.getElementById('cashRegButtonsContainer');
+        container.innerHTML = '';
+        const buttons = (Apodiksh.cashRegButtons && Apodiksh.cashRegButtons.length > 0) 
+            ? Apodiksh.cashRegButtons 
+            : [{label:'ΦΑΓΗΤΟ', vat:13}, {label:'ΠΟΤΟ', vat:24}, {label:'ΕΙΔΗ', vat:24}];
+
+        buttons.forEach(btn => {
+            const el = document.createElement('button');
+            el.className = 'modal-btn';
+            el.style.cssText = "background:#444; font-size:14px; margin:0; font-weight:bold; height:50px;";
+            el.innerText = `${btn.label}\n${btn.vat}%${btn.price ? ` (${btn.price}€)` : ''}`;
+            el.onclick = () => Apodiksh.cashRegAddItem(btn);
+            container.appendChild(el);
+        });
+    },
+
+    cashRegAddItem: (btn) => {
+        let amount = (btn.price && btn.price > 0) ? btn.price : parseFloat(Apodiksh.cashRegValue);
+        if (isNaN(amount) || amount <= 0) return;
+        Apodiksh.cashRegItems.push({ name: btn.label, price: amount, vat: btn.vat });
+        Apodiksh.cashRegValue = "0";
+        Apodiksh.updateCashRegUI();
+    },
+
+    updateCashRegUI: () => {
+        document.getElementById('cashRegScreen').innerText = Apodiksh.cashRegValue;
+        const listEl = document.getElementById('cashRegList');
+        listEl.innerHTML = '';
+        let total = 0;
+        Apodiksh.cashRegItems.forEach(item => {
+            total += item.price;
+            const div = document.createElement('div');
+            div.innerText = `${item.name}: ${item.price.toFixed(2)}€`;
+            listEl.appendChild(div);
+        });
+        document.getElementById('cashRegTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+    },
+
+    cashRegPay: (method) => {
+        let total = Apodiksh.cashRegItems.reduce((sum, item) => sum + item.price, 0);
+        if (total === 0) return alert("⚠️ Πρέπει να επιλέξετε Τμήμα/ΦΠΑ!");
+
+        if (method === 'card' && window.PaySystem) {
+             // Use PaySystem for SoftPOS
+             if (window.App && window.App.softPosSettings && window.App.softPosSettings.enabled) {
+                 window.PaySystem.triggerSoftPosPayment(total, 'cashreg');
+                 return;
+             }
+        }
+        Apodiksh.finalizeCashRegOrder(total, method === 'card' ? '💳 ΚΑΡΤΑ' : '💵 ΜΕΤΡΗΤΑ');
+    },
+
+    finalizeCashRegOrder: (total, methodLabel) => {
+        let orderText = `[ΤΑΜΕΙΑΚΗ 📠]\n${methodLabel}\n---\n`;
+        Apodiksh.cashRegItems.forEach(item => orderText += `${item.name}: ${item.price.toFixed(2)}\n`);
+        orderText += `✅ PAID`;
+        window.socket.emit('quick-order', { text: orderText, total: total, method: methodLabel.includes('ΚΑΡΤΑ') ? 'card' : 'cash', issueReceipt: true, source: 'Admin (Ταμείο)' });
+        document.getElementById('cashRegisterModal').style.display = 'none';
     }
 };
 
