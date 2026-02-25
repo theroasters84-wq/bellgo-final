@@ -103,9 +103,6 @@
                     <span class="role-icon">🛵</span> <span data-i18n="driver">ΔΙΑΝΟΜΕΑΣ</span>
                 </button>
             </div>
-            <button class="btn-main" onclick="UI.showSubscription()" style="background: linear-gradient(45deg, #FFD700, #FF9800); color: black; font-weight: bold; margin-top: 10px;">
-                💎 ΣΥΝΔΡΟΜΕΣ & ΔΥΝΑΤΟΤΗΤΕΣ
-            </button>
         </div>
 
         <!-- 2. STAFF LOGIN FORM -->
@@ -136,26 +133,6 @@
             <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> <span data-i18n="google_login">Σύνδεση Google</span></button>
             <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
         </div>
-
-        <!-- 4. SUBSCRIPTION SCREEN -->
-        <div id="subscriptionScreen" class="form-section">
-            <h3 style="color:#FFD700; margin:0;" data-i18n="select_package">Διαμόρφωση Συνδρομής</h3>
-            <p style="color:#aaa; font-size:12px; margin-bottom:15px;">Επιλέξτε τις λειτουργίες που χρειάζεστε.</p>
-            
-            <div id="featuresList" style="max-height: 40vh; overflow-y: auto; margin-bottom: 15px; text-align: left;">
-                <!-- Features will be injected here -->
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:10px; background:#333; border-radius:8px;">
-                <span style="color:white; font-weight:bold;">ΣΥΝΟΛΟ:</span>
-                <span id="totalPrice" style="color:#FFD700; font-weight:bold; font-size:20px;">0€</span>
-            </div>
-
-            <button class="btn-main" onclick="UI.proceedToCheckout()">ΑΓΟΡΑ / ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
-            
-            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
-        </div>
-    </div>
 
     <div id="pinModal">
         <div class="pin-box">
@@ -306,11 +283,6 @@
                 const sel = document.getElementById('stRole');
                 if(sel) sel.value = role;
             },
-            showSubscription: () => {
-                document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
-                document.getElementById('subscriptionScreen').classList.add('active');
-                UI.renderFeatures(); // ✅ Render list
-            },
             togglePinVisibility: () => {
                 const inp = document.getElementById('stPin');
                 inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -324,70 +296,6 @@
                 const email = document.getElementById('adminEmailInp').value.trim();
                 if(email) Admin.buyPackage(plan);
             },
-            // ✅ NEW: Render Features List
-            renderFeatures: () => {
-                const list = document.getElementById('featuresList');
-                if(!list) return;
-                list.innerHTML = '';
-                
-                Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
-                    const row = document.createElement('div');
-                    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; background:#2a2a2a; margin-bottom:8px; border-radius:6px; border:1px solid #444;";
-                    
-                    // Checkbox
-                    const chk = document.createElement('input');
-                    chk.type = 'checkbox';
-                    chk.id = 'feat_' + feat.key;
-                    chk.dataset.price = feat.price;
-                    chk.style.transform = "scale(1.5)";
-                    chk.style.cursor = "pointer";
-                    chk.onchange = () => UI.calcTotal();
-                    
-                    // Label
-                    const label = document.createElement('label');
-                    label.htmlFor = 'feat_' + feat.key;
-                    label.style.cssText = "flex:1; margin-left:15px; text-align:left; font-size:14px; color:white; cursor:pointer;";
-                    label.innerHTML = `${feat.name} <br><span style="color:#aaa; font-size:11px;">${feat.desc}</span><br><span style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</span>`;
-                    
-                    row.appendChild(chk);
-                    row.appendChild(label);
-                    list.appendChild(row);
-                });
-                UI.calcTotal();
-            },
-            calcTotal: () => {
-                let total = 0;
-                Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
-                    const chk = document.getElementById('feat_' + feat.key);
-                    if(chk && chk.checked) total += feat.price;
-                });
-                document.getElementById('totalPrice').innerText = total + '€';
-            },
-            proceedToCheckout: () => {
-                const total = document.getElementById('totalPrice').innerText;
-                if (total === '0€') return alert("Επιλέξτε τουλάχιστον μία λειτουργία.");
-                
-                let email = document.getElementById('adminEmailInp').value.trim();
-                if (!email) {
-                    email = prompt("Παρακαλώ εισάγετε το Email σας για την συνδρομή:");
-                    if (email) {
-                        document.getElementById('adminEmailInp').value = email;
-                    } else {
-                        return;
-                    }
-                }
-
-                // Αποθήκευση επιλογών (αν και το premium τα δίνει όλα, το κρατάμε για το μέλλον)
-                const selected = {};
-                Sundromes.packages.forEach(f => {
-                    const chk = document.getElementById('feat_' + f.key);
-                    if(chk && chk.checked) selected[f.key] = true;
-                });
-                localStorage.setItem('bellgo_temp_features', JSON.stringify(selected));
-
-                // Αγορά (Χρήση Premium Price για όλα τα πειράματα)
-                Admin.buyPackage('premium');
-            }
         };
 
         window.PIN = {

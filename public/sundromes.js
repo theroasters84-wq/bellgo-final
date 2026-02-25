@@ -2,42 +2,42 @@ export const Sundromes = {
     packages: [
         { 
             key: 'pack_chat', 
-            name: '💬 Chat & Κλήση Προσωπικού', 
+            name: '1. 💬 Chat & Κλήση Προσωπικού', 
             price: 5, 
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.'
         },
         { 
             key: 'pack_manager', 
-            name: '👨‍🍳 Manager & Παραγγελιοληψία', 
+            name: '2. 👨‍🍳 Manager & Παραγγελιοληψία', 
             price: 15, 
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.'
         },
         { 
             key: 'pack_delivery', 
-            name: '🛵 Delivery QR & Κρατήσεις', 
+            name: '3. 🛵 Delivery QR & Κρατήσεις', 
             price: 15, 
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.'
         },
         { 
             key: 'pack_tables', 
-            name: '🍽️ Παραγγελία Τραπεζιού', 
+            name: '4. 🍽️ Παραγγελία Τραπεζιού', 
             price: 15, 
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.'
         },
         { 
             key: 'pack_pos', 
-            name: '💳 POS & E-Invoicing', 
+            name: '5. 💳 POS & E-Invoicing', 
             price: 20, 
             year: 1996,
             desc: 'Ηλ. Τιμολόγηση, Σύνδεση POS και SoftPOS στο κινητό.'
         },
         { 
             key: 'pack_loyalty', 
-            name: '🎁 Επιβράβευση (Loyalty)', 
+            name: '6. 🎁 Επιβράβευση (Loyalty)', 
             price: 5, 
             year: 1997,
             desc: 'QR επιβράβευσης σε κάθε απόδειξη.'

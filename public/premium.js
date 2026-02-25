@@ -809,17 +809,6 @@ window.App = {
         document.getElementById('settingsModal').style.display = 'flex';
         App.closeSettingsSub(); // Reset to main view
 
-        // ✅ NEW: Inject Subscriptions Button (1-6)
-        const settingsMain = document.getElementById('settingsMain');
-        if (settingsMain && !document.getElementById('btnManageSubs')) {
-            const btn = document.createElement('button');
-            btn.id = 'btnManageSubs';
-            btn.className = 'settings-btn';
-            btn.style.cssText = "width:100%; padding:15px; background:#333; color:#FFD700; border:1px solid #FFD700; border-radius:8px; margin-bottom:15px; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;";
-            btn.innerHTML = `<span>💎 ΣΥΝΔΡΟΜΕΣ (1-6)</span> <span>▶</span>`;
-            btn.onclick = App.openSubscriptionsModal;
-            settingsMain.insertBefore(btn, settingsMain.firstChild);
-        }
 
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
         const lockedArea = document.getElementById('settingsLockedArea');
@@ -965,7 +954,6 @@ window.App = {
 
     // ✅ NEW: Subscriptions Modal
     openSubscriptionsModal: () => {
-        document.getElementById('settingsModal').style.display = 'none';
         
         let modal = document.getElementById('subscriptionsModal');
         if (!modal) {
@@ -978,7 +966,7 @@ window.App = {
                     <div id="subsList"></div>
                     <div style="margin-top:20px; display:flex; gap:10px;">
                         <button onclick="App.saveSubscriptions()" class="modal-btn" style="background:#00E676; color:black; font-weight:bold; flex:1;">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-                        <button onclick="document.getElementById('subscriptionsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" class="modal-btn" style="background:#555; flex:1;">ΠΙΣΩ</button>
+                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" class="modal-btn" style="background:#555; flex:1;">ΚΛΕΙΣΙΜΟ</button>
                     </div>
                 </div>
             `;
@@ -998,7 +986,7 @@ window.App = {
             
             row.innerHTML = `
                 <div>
-                    <div style="color:white; font-weight:bold; font-size:16px;">${index + 1}. ${feat.name}</div>
+                    <div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div>
                     <div style="color:#aaa; font-size:12px;">${feat.desc}</div>
                 </div>
                 <label class="switch">
@@ -1019,7 +1007,6 @@ window.App = {
             window.socket.emit('save-store-settings', { features: App.features });
             App.applyFeatureVisibility();
             document.getElementById('subscriptionsModal').style.display = 'none';
-            document.getElementById('settingsModal').style.display = 'flex';
         }
     },
 
