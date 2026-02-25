@@ -742,11 +742,17 @@ window.App = {
 
         // ✅ NEW: Απόκρυψη Ρυθμίσεων, Πορτοφολιού & Μαύρης Οθόνης αν δεν υπάρχει ΚΑΜΙΑ συνδρομή
         const anyActive = Sundromes.packages.some(p => App.hasFeature(p.key));
+        // ✅ FIX: Η συνδρομή 1 (Chat) δεν δίνει πρόσβαση σε Ρυθμίσεις & Πορτοφόλι
+        const anyActiveExceptChat = Sundromes.packages.some(p => p.key !== 'pack_chat' && App.hasFeature(p.key));
         
-        ['btnSettings', 'btnWallet', 'btnFakeLock'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.style.display = anyActive ? 'flex' : 'none';
-        });
+        const btnSettings = document.getElementById('btnSettings');
+        if (btnSettings) btnSettings.style.display = anyActiveExceptChat ? 'flex' : 'none';
+
+        const btnWallet = document.getElementById('btnWallet');
+        if (btnWallet) btnWallet.style.display = anyActiveExceptChat ? 'flex' : 'none';
+
+        const btnFakeLock = document.getElementById('btnFakeLock');
+        if (btnFakeLock) btnFakeLock.style.display = anyActive ? 'flex' : 'none';
     },
 
     saveStoreName: () => {
