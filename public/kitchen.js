@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
+import { Sundromes } from './sundromes.js';
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -169,12 +170,18 @@ window.App = {
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
     posSettings: {}, // ✅ NEW: Physical POS Settings
     posMode: 'auto', // ✅ NEW: POS Mode
+    features: {}, // ✅ NEW: Local Features State
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     
     // Expose setLanguage for console or future use
     setLanguage: setLanguage,
 
     init: () => {
+        // ✅ FIX: Initialize features from local storage
+        if (userData.features) {
+            App.features = { ...userData.features };
+        }
+
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
         const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -322,6 +329,9 @@ window.App = {
         const swAP = document.getElementById('swKitchenAutoPrint'); if(swAP) swAP.checked = App.kitchenSettings.autoPrint;
         const swAC = document.getElementById('swKitchenAutoClose'); if(swAC) swAC.checked = App.kitchenSettings.autoClose;
 
+        // ✅ NEW: Apply Feature Visibility Initial Check
+        App.applyFeatureVisibility();
+
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         setLanguage(savedLang);
@@ -435,6 +445,10 @@ window.App = {
             if(settings) {
                 const inpHeader = document.getElementById('inpStoreNameHeader');
                 if(settings.name && inpHeader) inpHeader.value = settings.name;
+                if(settings.features) {
+                    App.features = settings.features;
+                    App.applyFeatureVisibility(); // ✅ Update UI based on features
+                }
                 document.getElementById('switchCust').checked = settings.statusCustomer;
                 document.getElementById('switchStaff').checked = settings.statusStaff;
                 if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
@@ -477,6 +491,16 @@ window.App = {
         socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
         socket.on('chat-message', (data) => App.appendChat(data));
         
+        // ✅ NEW: Secure Unlock Listener
+        socket.on('pin-verified', (data) => {
+            if (data.success && ['admin', 'driver', 'waiter'].includes(data.role)) {
+                document.getElementById('fakeLockOverlay').style.display = 'none';
+                if(window.socket) window.socket.emit('set-user-status', 'online');
+            } else {
+                alert("Access Denied (Only Admin/Waiter/Driver)");
+            }
+        });
+
         socket.on('staff-list-update', (list) => {
             App.lastStaffList = list; 
             App.renderStaffList(list);
@@ -533,6 +557,33 @@ window.App = {
             localStorage.removeItem('bellgo_session');
             window.location.replace("login.html");
         });
+    },
+
+    // ✅ NEW: Feature Check Logic
+    hasFeature: (key) => {
+        const userContext = { ...userData, features: { ...userData.features, ...App.features } };
+        return Sundromes.hasAccess(userContext, key);
+    },
+
+    // ✅ NEW: Apply Visibility based on Features
+    applyFeatureVisibility: () => {
+        // Package 1 (Chat) is base.
+        // Package Manager (pack_manager) is needed for Orders & Settings.
+        const hasManager = App.hasFeature('pack_manager');
+        
+        // Hide/Show Orders
+        const desktop = document.getElementById('desktopArea');
+        if(desktop) desktop.style.display = hasManager ? 'grid' : 'none';
+        
+        // Hide/Show Settings
+        const btnSet = document.getElementById('btnSettings');
+        if(btnSet) btnSet.style.display = hasManager ? 'flex' : 'none';
+        
+        // Hide/Show Menu
+        const btnMenu = document.getElementById('btnMenuToggle');
+        if(btnMenu) btnMenu.style.display = hasManager ? 'flex' : 'none';
+        
+        // Chat, FakeLock, StaffContainer remain visible (Package 1 features)
     },
     
     // ✅ NEW: Toggle Local Kitchen Settings
@@ -1638,7 +1689,18 @@ window.App = {
         }
     },
     logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
-    toggleFakeLock: () => { const el=document.getElementById('fakeLockOverlay'); el.style.display=(el.style.display==='flex')?'none':'flex'; },
+    toggleFakeLock: () => { 
+        const el = document.getElementById('fakeLockOverlay');
+        if (el.style.display === 'flex') {
+            // Unlock Attempt (Secure)
+            const pin = prompt("PIN (Admin/Waiter/Driver):");
+            if (pin) window.socket.emit('verify-pin', { pin, email: userData.store });
+        } else {
+            // Lock
+            el.style.display = 'flex';
+            if(window.socket) window.socket.emit('set-user-status', 'background');
+        }
+    },
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
 };
