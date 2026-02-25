@@ -442,8 +442,18 @@
                             });
                             const subData = await subRes.json();
                             
-                            if (subData.active) {
-                                const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan, features: subData.features }; // ✅ Save Features
+                            let isActive = subData.active;
+                            let features = subData.features || {};
+
+                            // ✅ NEW: Merge Temp Features (Simulation)
+                            const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                            if (tempFeatures) {
+                                isActive = true; // Force active for simulation
+                                try { features = { ...features, ...JSON.parse(tempFeatures) }; } catch(e){}
+                            }
+
+                            if (isActive) {
+                                const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan, features: features }; // ✅ Save Features
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
                                 if (subData.plan === 'premium') {
@@ -508,12 +518,22 @@
                         adminUser = { email: email, displayName: name || "Admin" }; // ✅ Χρήση Ονόματος
                         adminPlan = data.plan; 
                         adminUser.features = data.features || {}; // ✅ Save Features from Stripe
+                        
+                        // ✅ NEW: Merge Temp Features (Simulation)
+                        const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                        if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+
                         socket.emit('check-pin-status', { email: email });
                     } else {
                         // ✅ FREE TIER: Allow login without subscription
                         adminUser = { email: email, displayName: name || "Admin" };
                         adminPlan = 'basic';
                         adminUser.features = {}; 
+                        
+                        // ✅ NEW: Merge Temp Features (Simulation)
+                        const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                        if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+
                         socket.emit('check-pin-status', { email: email });
                     }
                     btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
@@ -537,6 +557,11 @@
                     adminUser = result.user;
                     adminPlan = data.active ? data.plan : 'basic';
                     adminUser.features = data.features || {};
+
+                    // ✅ NEW: Merge Temp Features (Simulation)
+                    const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                    if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+
                     socket.emit('check-pin-status', { email: email });
 
                 }).catch((error) => alert(error.message));
