@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
+import { Sundromes } from './sundromes.js';
 
 // --- AUTH CHECK ---
 const savedSession = localStorage.getItem('bellgo_session');
@@ -19,12 +20,19 @@ window.App = {
     activeOrders: [],
     currentQrOrderId: null, // ✅ NEW: Track open QR
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
+    features: {}, // ✅ NEW: Local Features
 
     init: () => {
         // ✅ FIX: Άμεση εμφάνιση ονόματος (Cache) για να μην φαίνεται το email
         const cachedName = localStorage.getItem('bellgo_store_name');
         const displayName = cachedName || userData.store || "Store";
         document.getElementById('storeNameHeader').innerText = displayName + " 🛵";
+
+        // ✅ FIX: Initialize features
+        if (userData.features) {
+            App.features = { ...userData.features };
+        }
+        App.applyFeatureVisibility();
 
         App.connectSocket();
         App.requestNotifyPermission();
@@ -39,6 +47,26 @@ window.App = {
         App.checkSoftPosReturn();
 
         if(window.KeepAlive) window.KeepAlive.init();
+    },
+
+    // ✅ NEW: Feature Check Logic
+    hasFeature: (key) => {
+        const userContext = { ...userData, features: { ...userData.features, ...App.features } };
+        return Sundromes.hasAccess(userContext, key);
+    },
+
+    // ✅ NEW: Apply Visibility based on Features
+    applyFeatureVisibility: () => {
+        const hasChat = App.hasFeature('pack_chat');
+        const hasManager = App.hasFeature('pack_manager');
+        const hasDelivery = App.hasFeature('pack_delivery');
+
+        // Hide Orders if no Manager/Delivery (assuming 1992 is Chat Only)
+        const ordersList = document.getElementById('ordersList');
+        if (ordersList) {
+             // Show orders only if Manager or Delivery pack is active
+             ordersList.style.display = (hasManager || hasDelivery) ? 'block' : 'none';
+        }
     },
 
     requestNotifyPermission: async () => {
@@ -104,6 +132,10 @@ window.App = {
                     localStorage.setItem('bellgo_store_name', settings.name); // ✅ Cache Name
                 }
                 if(settings.softPos) App.softPosSettings = settings.softPos;
+                if(settings.features) {
+                    App.features = settings.features;
+                    App.applyFeatureVisibility();
+                }
             }
         });
 
