@@ -1,3 +1,5 @@
+import { PRESET_MENUS } from './menu-presets.js';
+
 export const Admin = {
     // --- STORE SETTINGS ---
     saveStoreName: () => {
@@ -296,7 +298,7 @@ export const Admin = {
         if (!type) return alert("Παρακαλώ επιλέξτε είδος καταστήματος!");
         if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού. Συνέχεια;")) return;
         
-        const newMenu = JSON.parse(JSON.stringify(window.PRESET_MENUS[type]));
+        const newMenu = JSON.parse(JSON.stringify(PRESET_MENUS[type]));
         window.App.menuData = newMenu;
         window.socket.emit('save-menu', { menu: newMenu, mode: 'permanent' });
         window.App.renderMenu();

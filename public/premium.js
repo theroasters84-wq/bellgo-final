@@ -6,6 +6,7 @@ import { PaySystem } from './pay.js'; // ✅ Import PaySystem
 import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
 import { Admin } from './admin.js'; // ✅ Import Admin Logic
 import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
+import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // ✅ Import Menu Logic
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -95,6 +96,8 @@ window.App = {
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     ...(Admin || {}), // ✅ Import Admin Logic (Safe Spread)
     ...(ReserveTable || {}), // ✅ Import Reservation Logic
+    ...(Menu || {}), // ✅ Import Menu Logic
+    
     
     // Expose setLanguage for console or future use
     setLanguage: setLanguage,
@@ -355,13 +358,13 @@ window.App = {
         socket.on('menu-update', (data) => {
             try {
                 if (!data || data.length === 0) {
-                    App.menuData = JSON.parse(JSON.stringify(window.DEFAULT_CATEGORIES));
+                    App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
                 } else if (typeof data === 'string' && !data.startsWith('[')) {
                     App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
                 } else {
                     App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
                 }
-            } catch(e) { App.menuData = JSON.parse(JSON.stringify(window.DEFAULT_CATEGORIES)); }
+            } catch(e) { App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
             App.renderMenu();
         });
         
@@ -844,240 +847,6 @@ window.App = {
         qrEl.innerHTML = "";
         new QRCode(qrEl, { text: fullLink, width: 200, height: 200 });
         el.style.display = 'flex';
-    },
-
-    handlePlusButton: () => {
-        if (App.currentCategoryIndex === null) {
-            let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
-            if(!order) return;
-            let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
-            if(!name) return;
-            App.pendingAction = () => {
-                App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
-            };
-            App.openSaveModal(); 
-        } else {
-            App.addItemInput('');
-        }
-    },
-
-    renderMenu: () => {
-        const container = document.getElementById('menuInputContainer');
-        container.innerHTML = '';
-        App.menuData.sort((a,b) => a.order - b.order);
-        if (App.currentCategoryIndex === null) {
-            document.getElementById('btnBackCat').style.display = 'none';
-            App.menuData.forEach((cat, index) => {
-                const div = document.createElement('div');
-                div.className = 'category-box';
-                div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
-                const delBtn = document.createElement('button');
-                delBtn.className = 'btn-delete-cat';
-                delBtn.innerText = 'X';
-                delBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    App.pendingAction = () => { App.menuData.splice(index, 1); };
-                    App.openSaveModal();
-                };
-                div.appendChild(delBtn);
-                div.onclick = () => { App.currentCategoryIndex = index; App.renderMenu(); };
-                container.appendChild(div);
-            });
-        } else {
-            const cat = App.menuData[App.currentCategoryIndex];
-            if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
-            document.getElementById('btnBackCat').style.display = 'block';
-            cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
-        }
-    },
-
-    addItemInput: (val, index = null) => {
-        const container = document.getElementById('menuInputContainer');
-        const wrapper = document.createElement('div');
-        wrapper.className = 'item-wrapper';
-        
-        // Determine display values
-        let displayText = "";
-        let itemObj = null;
-
-        if (typeof val === 'object' && val !== null) {
-            itemObj = val;
-            displayText = `${itemObj.name}:${itemObj.price}`;
-        } else {
-            displayText = val; // Assuming string "Name:Price"
-        }
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'menu-input-box';
-        input.value = displayText;
-        input.placeholder = "Προϊόν:Τιμή"; 
-
-        // ✅ NEW: VAT INPUT (Κουτάκι ΦΠΑ)
-        const vatInput = document.createElement('input');
-        vatInput.type = 'number';
-        vatInput.placeholder = 'ΦΠΑ';
-        
-        // ✅ FIX: Show only if E-Invoicing is enabled
-        const vatDisplay = App.einvoicingEnabled ? 'inline-block' : 'none';
-        vatInput.style.cssText = `width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px; display:${vatDisplay};`;
-        
-        if (itemObj && itemObj.vat !== undefined) {
-            vatInput.value = itemObj.vat;
-        } else {
-            vatInput.value = 24; // Default
-        }
-        
-        // EXTRAS BUTTON
-        const extrasBtn = document.createElement('button');
-        extrasBtn.className = 'btn-item-extras';
-        extrasBtn.innerHTML = '+';
-        if (itemObj && itemObj.extras && itemObj.extras.length > 0) {
-            extrasBtn.classList.add('has-extras');
-        }
-        extrasBtn.onclick = () => { App.openExtrasModal(App.currentCategoryIndex, index); };
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'btn-item-del';
-        delBtn.innerText = 'X';
-        delBtn.onclick = () => {
-            wrapper.remove();
-            App.pendingAction = () => {
-                const cat = App.menuData[App.currentCategoryIndex];
-                if (index !== null) cat.items.splice(index, 1);
-            };
-            App.openSaveModal();
-        };
-        
-        // ✅ NEW: Unified Update Logic (Handles both Name/Price and VAT)
-        const updateItem = (e) => {
-            if (e.relatedTarget === input || e.relatedTarget === vatInput) return; // Ignore internal focus change
-
-            const newVal = input.value.trim();
-            if (!newVal) return;
-            
-            const cat = App.menuData[App.currentCategoryIndex];
-            
-            // Parse Name:Price
-            const parts = newVal.split(':');
-            let price = 0; 
-            let name = newVal;
-            if(parts.length > 1) {
-                 name = parts.slice(0, -1).join(':').trim();
-                 price = parseFloat(parts[parts.length-1]) || 0;
-            }
-            
-            const vat = parseInt(vatInput.value) || 24;
-
-            // Preserve existing object structure if it exists
-            let newItem;
-            if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: name, price: price, vat: vat };
-            } else {
-                newItem = { name: name, price: price, vat: vat, extras: [] };
-            }
-
-            App.pendingAction = () => {
-                if(index === null) cat.items.push(newItem); 
-                else cat.items[index] = newItem;
-            };
-            App.openSaveModal();
-        };
-        
-        input.addEventListener('blur', updateItem);
-        vatInput.addEventListener('blur', updateItem);
-        
-        wrapper.appendChild(input);
-        wrapper.appendChild(vatInput); // ✅ Add VAT Input to DOM
-        wrapper.appendChild(extrasBtn);
-        if (index !== null) wrapper.appendChild(delBtn); 
-        container.appendChild(wrapper);
-        if(index === null) input.focus();
-    },
-    
-    // --- EXTRAS LOGIC ---
-    openExtrasModal: (catIdx, itemIdx) => {
-        if (itemIdx === null) return alert("Αποθηκεύστε πρώτα το προϊόν!");
-        App.currentExtrasCatIndex = catIdx;
-        App.currentExtrasItemIndex = itemIdx;
-        
-        const item = App.menuData[catIdx].items[itemIdx];
-        // Ensure item is an object
-        if (typeof item === 'string') {
-            const parts = item.split(':');
-            let p = 0, n = item;
-            if(parts.length > 1) { n = parts.slice(0,-1).join(':'); p = parseFloat(parts[parts.length-1])||0; }
-            App.tempExtras = []; // No extras yet
-        } else {
-            App.tempExtras = JSON.parse(JSON.stringify(item.extras || []));
-        }
-
-        document.getElementById('extrasModalTitle').innerText = "EXTRAS: " + (typeof item==='string'?item.split(':')[0]:item.name);
-        App.renderExtrasList();
-        document.getElementById('extrasModal').style.display = 'flex';
-    },
-
-    renderExtrasList: () => {
-        const container = document.getElementById('extrasListContainer');
-        container.innerHTML = '';
-        App.tempExtras.forEach((ex, idx) => {
-            const div = document.createElement('div');
-            div.className = 'extra-item-row';
-            div.innerHTML = `<span>${ex.name} ${ex.price>0 ? `(+${ex.price}€)`:''}</span>
-                             <button class="btn-del-extra" onclick="App.removeExtra(${idx})">X</button>`;
-            container.appendChild(div);
-        });
-    },
-
-    addExtraRow: () => {
-        const name = document.getElementById('inpExtraName').value.trim();
-        const price = parseFloat(document.getElementById('inpExtraPrice').value) || 0;
-        if(!name) return;
-        App.tempExtras.push({ name, price });
-        document.getElementById('inpExtraName').value = '';
-        document.getElementById('inpExtraPrice').value = '';
-        App.renderExtrasList();
-    },
-
-    removeExtra: (idx) => {
-        App.tempExtras.splice(idx, 1);
-        App.renderExtrasList();
-    },
-
-    saveExtras: () => {
-        const catIdx = App.currentExtrasCatIndex;
-        const itemIdx = App.currentExtrasItemIndex;
-        const item = App.menuData[catIdx].items[itemIdx];
-        
-        // Convert string item to object if needed
-        if (typeof item === 'string') {
-            const parts = item.split(':');
-            let p = 0, n = item;
-            if(parts.length > 1) { n = parts.slice(0,-1).join(':'); p = parseFloat(parts[parts.length-1])||0; }
-            App.menuData[catIdx].items[itemIdx] = { name: n, price: p, extras: App.tempExtras };
-        } else {
-            App.menuData[catIdx].items[itemIdx].extras = App.tempExtras;
-        }
-        
-        App.executeSave('permanent'); // Auto save immediately
-        document.getElementById('extrasModal').style.display = 'none';
-    },
-
-    goBackToCategories: () => { App.currentCategoryIndex = null; App.renderMenu(); },
-    openSaveModal: () => { document.getElementById('saveModeModal').style.display = 'flex'; },
-    
-    executeSave: (mode) => {
-        if (App.pendingAction) { App.pendingAction(); App.pendingAction = null; }
-        // Clean empty items
-        App.menuData.forEach(cat => { 
-            cat.items = cat.items.filter(i => {
-                if(typeof i === 'string') return i.trim() !== '';
-                return i.name && i.name.trim() !== '';
-            }); 
-        });
-        window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
-        document.getElementById('saveModeModal').style.display = 'none';
-        App.renderMenu(); 
     },
 
     // --- SIDEBAR ORDER LOGIC (CASHIER) ---
