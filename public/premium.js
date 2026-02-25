@@ -739,6 +739,14 @@ window.App = {
                 }
             }
         }
+
+        // ✅ NEW: Απόκρυψη Ρυθμίσεων, Πορτοφολιού & Μαύρης Οθόνης αν δεν υπάρχει ΚΑΜΙΑ συνδρομή
+        const anyActive = Sundromes.packages.some(p => App.hasFeature(p.key));
+        
+        ['btnSettings', 'btnWallet', 'btnFakeLock'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.style.display = anyActive ? 'flex' : 'none';
+        });
     },
 
     saveStoreName: () => {
