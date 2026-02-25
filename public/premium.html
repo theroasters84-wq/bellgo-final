@@ -173,11 +173,11 @@
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="store_and_schedule">ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</h4>
                 <div class="settings-section">
                     <div class="settings-label" data-i18n="status">ΚΑΤΑΣΤΑΣΗ</div>
-                    <div class="switch-row">
+                    <div class="switch-row" id="rowSwitchCust">
                         <span data-i18n="customers_delivery">ΠΕΛΑΤΕΣ (Delivery)</span>
                         <label class="switch"><input type="checkbox" id="switchCust" onclick="App.toggleStatus('customer')"><span class="slider"></span></label>
                     </div>
-                    <div class="switch-row">
+                    <div class="switch-row" id="rowSwitchStaff">
                         <span data-i18n="staff">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
                         <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
                     </div>
