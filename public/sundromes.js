@@ -6,7 +6,7 @@ export const Sundromes = {
             price: 5, 
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.',
-            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock']
+            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock'] // ✅ Staff Call & Chat ONLY here
         },
         { 
             key: 'pack_manager', 
@@ -14,7 +14,7 @@ export const Sundromes = {
             price: 15, 
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
-            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot']
+            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot'] // ✅ No Staff Call here
         },
         { 
             key: 'pack_delivery', 
@@ -22,7 +22,7 @@ export const Sundromes = {
             price: 15, 
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
-            ui_ids: ['resWrapper', 'btnShowLink', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsQr', 'btnSettingsGeneral']
+            ui_ids: ['resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnSettingsGeneral', 'btnMenuToggle']
         },
         { 
             key: 'pack_tables', 
