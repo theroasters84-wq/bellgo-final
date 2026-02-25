@@ -367,9 +367,26 @@
                 const total = document.getElementById('totalPrice').innerText;
                 if (total === '0€') return alert("Επιλέξτε τουλάχιστον μία λειτουργία.");
                 
-                // Προς το παρόν στέλνουμε στο Admin Login για να βάλει email
-                UI.showAdminLogin();
-                alert(`Επιλέξατε πακέτο αξίας ${total}. Παρακαλώ συνδεθείτε (ή βάλτε email) για να ολοκληρώσετε την πληρωμή.`);
+                let email = document.getElementById('adminEmailInp').value.trim();
+                if (!email) {
+                    email = prompt("Παρακαλώ εισάγετε το Email σας για την συνδρομή:");
+                    if (email) {
+                        document.getElementById('adminEmailInp').value = email;
+                    } else {
+                        return;
+                    }
+                }
+
+                // Αποθήκευση επιλογών (αν και το premium τα δίνει όλα, το κρατάμε για το μέλλον)
+                const selected = {};
+                Sundromes.packages.forEach(f => {
+                    const chk = document.getElementById('feat_' + f.key);
+                    if(chk && chk.checked) selected[f.key] = true;
+                });
+                localStorage.setItem('bellgo_temp_features', JSON.stringify(selected));
+
+                // Αγορά (Χρήση Premium Price για όλα τα πειράματα)
+                Admin.buyPackage('premium');
             }
         };
 
