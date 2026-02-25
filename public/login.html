@@ -444,19 +444,21 @@
                             
                             let isActive = subData.active;
                             let features = subData.features || {};
+                            let plan = subData.plan;
 
                             // ✅ NEW: Merge Temp Features (Simulation)
                             const tempFeatures = localStorage.getItem('bellgo_temp_features');
                             if (tempFeatures) {
                                 isActive = true; // Force active for simulation
                                 try { features = { ...features, ...JSON.parse(tempFeatures) }; } catch(e){}
+                                plan = 'custom'; // ✅ Force custom plan to respect features
                             }
 
                             if (isActive) {
-                                const sessionData = { name: name, store: res.storeId, role: role, plan: subData.plan, features: features }; // ✅ Save Features
+                                const sessionData = { name: name, store: res.storeId, role: role, plan: plan, features: features }; // ✅ Save Features
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
-                                if (subData.plan === 'premium') {
+                                if (plan === 'premium' || plan === 'custom') {
                                     if (role === 'driver') {
                                         window.location.replace("/staff/driver");
                                     } else {
@@ -521,7 +523,10 @@
                         
                         // ✅ NEW: Merge Temp Features (Simulation)
                         const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                        if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+                        if (tempFeatures) { 
+                            try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
+                            adminPlan = 'custom'; // ✅ Force custom plan
+                        }
 
                         socket.emit('check-pin-status', { email: email });
                     } else {
@@ -532,7 +537,10 @@
                         
                         // ✅ NEW: Merge Temp Features (Simulation)
                         const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                        if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+                        if (tempFeatures) { 
+                            try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
+                            adminPlan = 'custom'; // ✅ Force custom plan
+                        }
 
                         socket.emit('check-pin-status', { email: email });
                     }
@@ -560,7 +568,10 @@
 
                     // ✅ NEW: Merge Temp Features (Simulation)
                     const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                    if (tempFeatures) { try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} }
+                    if (tempFeatures) { 
+                        try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
+                        adminPlan = 'custom'; // ✅ Force custom plan
+                    }
 
                     socket.emit('check-pin-status', { email: email });
 
@@ -602,7 +613,7 @@
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan, features: adminUser.features };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
-            if(adminPlan === 'premium') {
+            if(adminPlan === 'premium' || adminPlan === 'custom') {
                 const adminMode = localStorage.getItem('bellgo_admin_mode');
                 if (adminMode === 'kitchen') {
                     window.location.replace("/manage/kitchen.html");
@@ -620,7 +631,7 @@
                     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan, features: adminUser.features };
                     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
                     
-                    if(adminPlan === 'premium') {
+                    if(adminPlan === 'premium' || adminPlan === 'custom') {
                         const adminMode = localStorage.getItem('bellgo_admin_mode');
                         if (adminMode === 'kitchen') {
                             window.location.replace("/manage/kitchen.html");
