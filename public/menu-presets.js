@@ -4,7 +4,7 @@
    ΠΡΟΣΟΧΗ: Μην σβήσεις τα άγκιστρα { } και τις αγκύλες [ ].
 */
 
-window.DEFAULT_CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
     { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
     { order: 2, name: "SANDWICH", items: [] },
     { order: 3, name: "ΑΝΑΨΥΚΤΙΚΑ", items: [] },
@@ -15,7 +15,7 @@ window.DEFAULT_CATEGORIES = [
     { order: 8, name: "SNACKS", items: [] }
 ];
 
-window.PRESET_MENUS = {
+export const PRESET_MENUS = {
     'coffee_takeaway': [
         { order: 1, name: "ΚΑΦΕΔΕΣ", items: [
             { name: "Espresso", price: 2.20, extras: [] },
@@ -317,3 +317,5 @@ window.PRESET_MENUS = {
         ]}
     ]
 };
+
+export const Menu = {}; // Placeholder to satisfy import in premium.js
