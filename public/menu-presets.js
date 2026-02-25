@@ -4,6 +4,17 @@
    ΠΡΟΣΟΧΗ: Μην σβήσεις τα άγκιστρα { } και τις αγκύλες [ ].
 */
 
+window.DEFAULT_CATEGORIES = [
+    { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
+    { order: 2, name: "SANDWICH", items: [] },
+    { order: 3, name: "ΑΝΑΨΥΚΤΙΚΑ", items: [] },
+    { order: 4, name: "ΡΟΦΗΜΑΤΑ", items: [] },
+    { order: 5, name: "ΖΕΣΤΗ ΚΟΥΖΙΝΑ", items: [] },
+    { order: 6, name: "ΚΡΥΑ ΚΟΥΖΙΝΑ", items: [] },
+    { order: 7, name: "ΣΦΟΛΙΑΤΕΣ", items: [] },
+    { order: 8, name: "SNACKS", items: [] }
+];
+
 window.PRESET_MENUS = {
     'coffee_takeaway': [
         { order: 1, name: "ΚΑΦΕΔΕΣ", items: [

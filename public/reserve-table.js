@@ -143,5 +143,91 @@ export const ReserveTable = {
             if(data.url) window.location.href = data.url;
             else alert((t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο"));
         } catch(e) { alert(t('connection_error') || "Σφάλμα σύνδεσης."); }
-    }
+    },
+
+    // --- ADMIN RESERVATION LOGIC (Moved from premium.js) ---
+    openReservationsModal: () => {
+        document.getElementById('reservationsModal').style.display = 'flex';
+        window.socket.emit('get-reservations');
+    },
+
+    updateReservationsBadge: (list) => {
+        if (!list) return;
+        const badge = document.getElementById('resBadge');
+        if (!badge) return;
+
+        const pending = list.filter(r => r.status === 'pending');
+        const confirmed = list.filter(r => r.status === 'confirmed');
+
+        let count = 0;
+        let color = '';
+
+        // Check role from App.userData if available
+        const role = window.App && window.App.userData ? window.App.userData.role : 'admin';
+
+        if (role === 'admin') {
+            if (pending.length > 0) { count = pending.length; color = '#FF5252'; } 
+            else if (confirmed.length > 0) { count = confirmed.length; color = '#00E676'; }
+        } else {
+            if (confirmed.length > 0) { count = confirmed.length; color = '#00E676'; }
+        }
+
+        if (count > 0) {
+            badge.style.display = 'flex';
+            badge.innerText = count;
+            badge.style.background = color;
+            badge.style.animation = 'pulse 2s infinite';
+        } else {
+            badge.style.display = 'none';
+            badge.style.animation = 'none';
+        }
+    },
+    
+    renderReservations: (list) => {
+        const container = document.getElementById('reservationsList');
+        if(!container) return;
+        container.innerHTML = '';
+        
+        if(!list || list.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#555;">Δεν υπάρχουν κρατήσεις.</div>';
+            return;
+        }
+        list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+        list.forEach(r => {
+            if (r.status === 'completed') return;
+            const isPending = r.status === 'pending';
+            const div = document.createElement('div');
+            div.style.cssText = `background:#222; padding:10px; border-radius:8px; border-left:4px solid ${isPending ? '#FF9800' : '#9C27B0'}; display:flex; justify-content:space-between; align-items:center;`;
+            div.innerHTML = `
+                <div onclick="ReserveTable.processReservation(${r.id}, ${r.pax})" style="cursor:pointer;">
+                    <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.) ${isPending ? '<span style="color:#FF9800; font-size:12px;">(ΑΝΑΜΟΝΗ)</span>' : ''}</div>
+                    <div style="color:#FFD700; font-size:14px;">📅 ${r.date} 🕒 ${r.time}</div>
+                    <div style="color:#aaa; font-size:12px;">📞 ${r.phone}</div>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button onclick="ReserveTable.processReservation(${r.id}, ${r.pax})" style="background:#2196F3; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;" title="Έναρξη & Ολοκλήρωση">🚀</button>
+                    ${isPending ? `<button onclick="ReserveTable.acceptReservation(${r.id})" style="background:#00E676; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅</button>` : ''}
+                    <button onclick="ReserveTable.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
+                </div>`;
+            container.appendChild(div);
+        });
+    },
+
+    processReservation: (id, pax) => {
+        const sb = document.getElementById('orderSidebar');
+        if (sb.style.left !== '0px' && sb.style.left !== '0') window.App.toggleOrderSidebar();
+        window.App.setSidebarMode('table');
+        if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = pax;
+        window.socket.emit('complete-reservation', id);
+    },
+    
+    acceptReservation: (id) => {
+        if(window.AudioEngine) window.AudioEngine.stopAlarm();
+        window.socket.emit('admin-stop-ringing');
+        window.socket.emit('accept-reservation', id);
+    },
+    
+    deleteReservation: (id) => {
+        if(confirm("Διαγραφή κράτησης;")) window.socket.emit('delete-reservation', id);
+    },
 };

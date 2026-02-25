@@ -4,6 +4,8 @@ import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 import { PaySystem } from './pay.js'; // ✅ Import PaySystem
 import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
+import { Admin } from './admin.js'; // ✅ Import Admin Logic
+import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -52,17 +54,6 @@ const calculateTotal = (text) => {
     return total;
 };
 
-const DEFAULT_CATEGORIES = [
-    { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
-    { order: 2, name: "SANDWICH", items: [] },
-    { order: 3, name: "ΑΝΑΨΥΚΤΙΚΑ", items: [] },
-    { order: 4, name: "ΡΟΦΗΜΑΤΑ", items: [] },
-    { order: 5, name: "ΖΕΣΤΗ ΚΟΥΖΙΝΑ", items: [] },
-    { order: 6, name: "ΚΡΥΑ ΚΟΥΖΙΝΑ", items: [] },
-    { order: 7, name: "ΣΦΟΛΙΑΤΕΣ", items: [] },
-    { order: 8, name: "SNACKS", items: [] }
-];
-
 window.App = {
     activeOrders: [],
     currentCategoryIndex: null,
@@ -95,13 +86,15 @@ window.App = {
     einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
     features: {}, // ✅ NEW: Local Features State
     tempFeatures: {}, // ✅ NEW: Temporary Features for Editing
-    settingsUnlocked: false, // ✅ NEW: Flag για κλείδωμα ρυθμίσεων
     cashRegButtons: [], // ✅ Store custom buttons
     tempPasoText: "", // ✅ Store PASO order text temporarily
 
     hasCheckedPendingReservations: false, // ✅ NEW: Flag για έλεγχο κρατήσεων κατά την είσοδο
     staffChargeMode: false, // ✅ NEW: Staff Charge Setting
+    userData: userData, // ✅ Expose userData for Admin module
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
+    ...(Admin || {}), // ✅ Import Admin Logic (Safe Spread)
+    ...(ReserveTable || {}), // ✅ Import Reservation Logic
     
     // Expose setLanguage for console or future use
     setLanguage: setLanguage,
@@ -362,13 +355,13 @@ window.App = {
         socket.on('menu-update', (data) => {
             try {
                 if (!data || data.length === 0) {
-                    App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+                    App.menuData = JSON.parse(JSON.stringify(window.DEFAULT_CATEGORIES));
                 } else if (typeof data === 'string' && !data.startsWith('[')) {
                     App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
                 } else {
                     App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
                 }
-            } catch(e) { App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
+            } catch(e) { App.menuData = JSON.parse(JSON.stringify(window.DEFAULT_CATEGORIES)); }
             App.renderMenu();
         });
         
@@ -652,333 +645,6 @@ window.App = {
         window.socket.emit('toggle-status', { type: type, isOpen: isOpen });
     },
 
-    // ✅ NEW: Toggle Staff Charge directly
-    toggleStaffCharge: (isChecked) => {
-        window.socket.emit('save-store-settings', { staffCharge: isChecked });
-    },
-
-    acceptAlarm: () => {
-        if(window.AudioEngine) window.AudioEngine.stopAlarm();
-        window.socket.emit('admin-stop-ringing'); 
-    },
-
-    togglePresetPanel: () => {
-        const p = document.getElementById('presetPanel');
-        if(p) p.style.display = (p.style.display === 'none' ? 'block' : 'none');
-    },
-
-    toggleMenuMode: () => {
-        const panel = document.getElementById('menuFullPanel');
-        const btn = document.getElementById('btnMenuToggle');
-        if (panel.style.display === 'flex') {
-            panel.style.display = 'none';
-            btn.classList.remove('menu-active');
-        } else {
-            panel.style.display = 'flex';
-            btn.classList.add('menu-active');
-        }
-    },
-    
-    toggleStaffPanel: () => {
-        const el = document.getElementById('staffContainer');
-        const icon = document.getElementById('staffToggleIcon');
-        if (el.classList.contains('minimized')) {
-            el.classList.remove('minimized');
-            icon.innerText = "▼";
-            icon.style.transform = "rotate(0deg)";
-        } else {
-            el.classList.add('minimized');
-            icon.innerText = "▲";
-            icon.style.transform = "rotate(180deg)";
-        }
-    },
-
-    // --- MODALS ---
-    openPinModal: () => {
-        document.getElementById('settingsModal').style.display = 'none'; 
-        pinValue = '';
-        PIN.updateDisplay();
-        document.getElementById('pinChangeModal').style.display = 'flex';
-    },
-    closePinModal: () => { 
-        document.getElementById('pinChangeModal').style.display = 'none'; 
-        document.getElementById('settingsModal').style.display = 'flex'; 
-    },
-    openSettingsModal: () => { 
-        document.getElementById('settingsModal').style.display = 'flex';
-        App.closeSettingsSub(); // Reset to main view
-
-
-        // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
-        const lockedArea = document.getElementById('settingsLockedArea');
-        if (!App.settingsUnlocked) {
-            // Βεβαιωνόμαστε ότι το main είναι relative για να κάτσει το overlay από πάνω
-            if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
-            
-            let lock = document.getElementById('settingsLockOverlay');
-            if (!lock) {
-                lock = document.createElement('div');
-                lock.id = 'settingsLockOverlay';
-                lock.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; backdrop-filter:blur(5px); border-radius:10px; overflow-y:auto; padding:20px; box-sizing:border-box;";
-                lock.innerHTML = `
-                    <div style="font-size:50px; margin-bottom:20px;">🔒</div>
-                    <h3 style="color:white; margin-bottom:10px;">Ρυθμίσεις Κλειδωμένες</h3>
-                    <p style="color:#aaa; margin-bottom:20px; font-size:14px;">Απαιτείται PIN διαχειριστή.</p>
-                    
-                    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:30px;">
-                        <input type="password" id="inpUnlockPin" placeholder="PIN" style="padding:12px; border-radius:8px; border:1px solid #444; background:#222; color:white; text-align:center; font-size:18px; width:100px; outline:none;">
-                        <button onclick="App.unlockSettings()" style="padding:12px 20px; background:#FFD700; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
-                    </div>
-
-                    <!-- ✅ EXCEPTION: STORE & HOURS -->
-                    <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; width:100%; max-width:300px; margin-bottom:20px; text-align:left;">
-                        <h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px; border-bottom:1px solid #333; padding-bottom:5px;">ΒΑΣΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (ΕΞΑΙΡΕΣΗ)</h4>
-                        
-                        <div style="margin-bottom:10px;">
-                            <label style="color:#ccc; font-size:12px; display:block;">Όνομα Καταστήματος</label>
-                            <input type="text" id="inpLockStoreName" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('name', this.value)">
-                        </div>
-
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <div style="flex:1;">
-                                <label style="color:#ccc; font-size:12px; display:block;">Ωράριο</label>
-                                <input type="text" id="inpLockHours" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('hours', this.value)">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="color:#ccc; font-size:12px; display:block;">Reset</label>
-                                <input type="time" id="inpLockReset" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('reset', this.value)">
-                            </div>
-                        </div>
-
-                        <div style="border-top:1px solid #333; padding-top:10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="color:#ccc; font-size:12px;">ΠΕΛΑΤΕΣ (Delivery)</span>
-                                <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="color:#ccc; font-size:12px;">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
-                                <label class="switch"><input type="checkbox" id="switchLockStaff" onchange="App.updateFromLock('staff', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="color:#ccc; font-size:12px;">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
-                                <label class="switch"><input type="checkbox" id="switchLockCharge" onchange="App.updateFromLock('charge', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="border-top:1px solid #333; padding-top:20px; width:80%;">
-                        <p style="color:#aaa; font-size:12px; margin-bottom:10px;">Εργαλεία Προσωπικού:</p>
-                        <button onclick="window.DNDBot.init(); window.DNDBot.showIntro();" style="background:#333; color:white; border:1px solid #555; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px; margin:0 auto;">
-                            <span>🤖</span> BellGo Bot (Setup)
-                        </button>
-                    </div>
-                `;
-                lockedArea.appendChild(lock);
-            } else {
-                lock.style.display = 'flex';
-            }
-
-            // ✅ POPULATE VALUES (Συγχρονισμός με τα πραγματικά πεδία)
-            const realName = document.getElementById('inpStoreNameHeader');
-            const realHours = document.getElementById('inpHours');
-            const realReset = document.getElementById('inpResetTime');
-            
-            if(realName) document.getElementById('inpLockStoreName').value = realName.value;
-            if(realHours) document.getElementById('inpLockHours').value = realHours.value;
-            if(realReset) document.getElementById('inpLockReset').value = realReset.value;
-
-            // ✅ POPULATE SWITCHES
-            const swCust = document.getElementById('switchCust');
-            const swStaff = document.getElementById('switchStaff');
-            const swCharge = document.getElementById('switchStaffCharge');
-
-            if(swCust) document.getElementById('switchLockCust').checked = swCust.checked;
-            if(swStaff) document.getElementById('switchLockStaff').checked = swStaff.checked;
-            if(swCharge) document.getElementById('switchLockCharge').checked = swCharge.checked;
-
-        } else {
-            const lock = document.getElementById('settingsLockOverlay');
-            if(lock) lock.style.display = 'none';
-        }
-        
-        // ✅ NEW: Inject Reward Settings UI if not exists
-        if(!document.getElementById('rewardSettingsContainer')) {
-            const container = document.createElement('div');
-            container.id = 'rewardSettingsContainer';
-            container.className = 'settings-group';
-            container.innerHTML = `
-                <h3>🎁 Επιβράβευση Πελατών</h3>
-                <div class="setting-row">
-                    <span>Ενεργοποίηση</span>
-                    <label class="switch"><input type="checkbox" id="switchRewardEnabled" onchange="App.autoSaveSettings()"><span class="slider round"></span></label>
-                </div>
-                <div class="setting-row">
-                    <span>Δώρο (π.χ. Καφές)</span>
-                    <input type="text" id="inpRewardGift" class="setting-input" placeholder="Όνομα Δώρου" onchange="App.autoSaveSettings()">
-                </div>
-                <div class="setting-row">
-                    <span>Στόχος (Αρ. Παραγγελιών)</span>
-                    <input type="number" id="inpRewardTarget" class="setting-input" placeholder="5" style="width:60px;" onchange="App.autoSaveSettings()">
-                </div>
-                <div class="setting-row">
-                    <span>Λειτουργία</span>
-                    <select id="selRewardMode" class="setting-input" onchange="App.autoSaveSettings()" style="width:120px;">
-                        <option value="all">Όλοι</option>
-                        <option value="delivery">Μόνο Delivery</option>
-                        <option value="takeaway">Μόνο Take Away</option>
-                        <option value="table">Μόνο Τραπέζια</option>
-                    </select>
-                </div>
-            `;
-            // Insert before the Save button or at the end of settingsMain
-            let main = document.getElementById('settingsLockedArea');
-            if (!main) main = document.getElementById('settingsMain'); // Fallback
-            
-            if (main) {
-                const saveBtn = main.querySelector('button[onclick="App.saveSettings()"]');
-                if (saveBtn) main.insertBefore(container, saveBtn);
-                else main.appendChild(container);
-            }
-        }
-
-        // Populate Values
-        document.getElementById('switchRewardEnabled').checked = App.rewardSettings.enabled || false;
-        document.getElementById('inpRewardGift').value = App.rewardSettings.gift || '';
-        document.getElementById('inpRewardTarget').value = App.rewardSettings.target || 5;
-        document.getElementById('selRewardMode').value = App.rewardSettings.mode || 'all';
-
-        // ✅ NEW: Εφαρμογή ορατότητας (για να κρυφτούν/φανούν τα sections ανάλογα με το feature)
-        App.applyFeatureVisibility();
-    },
-
-    // ✅ NEW: Ξεκλείδωμα Ρυθμίσεων
-    unlockSettings: () => {
-        const pin = document.getElementById('inpUnlockPin').value;
-        if(!pin) return;
-        
-        window.socket.emit('verify-pin', { pin: pin, email: userData.store });
-        window.socket.once('pin-verified', (data) => {
-            if (data.success) {
-                App.settingsUnlocked = true;
-                const lock = document.getElementById('settingsLockOverlay');
-                if(lock) lock.style.display = 'none';
-            } else {
-                alert("Λάθος PIN!");
-                document.getElementById('inpUnlockPin').value = '';
-            }
-        });
-    },
-    
-    // ✅ NEW: Helper για συγχρονισμό από την οθόνη κλειδώματος
-    updateFromLock: (type, val) => {
-        if (type === 'name') {
-            const el = document.getElementById('inpStoreNameHeader');
-            if(el) { el.value = val; App.saveStoreName(); }
-        } else if (type === 'hours') {
-            const el = document.getElementById('inpHours');
-            if(el) { el.value = val; App.autoSaveSettings(); }
-        } else if (type === 'reset') {
-            const el = document.getElementById('inpResetTime');
-            if(el) { el.value = val; App.autoSaveSettings(); }
-        } else if (type === 'cust') {
-            const el = document.getElementById('switchCust');
-            if(el) { el.checked = val; App.toggleStatus('customer'); }
-        } else if (type === 'staff') {
-            const el = document.getElementById('switchStaff');
-            if(el) { el.checked = val; App.toggleStatus('staff'); }
-        } else if (type === 'charge') {
-            const el = document.getElementById('switchStaffCharge');
-            if(el) { el.checked = val; App.toggleStaffCharge(val); }
-        }
-    },
-
-    openSettingsSub: (id) => {
-        document.getElementById('settingsMain').style.display = 'none';
-        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
-        const target = document.getElementById(id);
-        if(target) target.style.display = 'block';
-    },
-
-    closeSettingsSub: () => {
-        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
-        const main = document.getElementById('settingsMain');
-        if(main) main.style.display = 'block';
-    },
-
-    autoSaveSettings: () => {
-        const time = document.getElementById('inpResetTime').value;
-        const hours = document.getElementById('inpHours').value;
-        const cp = document.getElementById('inpCoverPrice').value;
-        const gmaps = document.getElementById('inpGoogleMaps').value.trim();
-        const ap = document.getElementById('selAutoPrint').value === 'true';
-        const acp = document.getElementById('switchAutoClosePrint').checked;
-        const pe = document.getElementById('switchPrinterEnabled').checked; // ✅ NEW
-        const sc = document.getElementById('switchStaffCharge').checked; // ✅ Save Staff Charge
-        const resEnabled = document.getElementById('switchReservations').checked; // ✅ NEW
-        const totalTables = document.getElementById('inpTotalTables').value; // ✅ NEW
-        
-        // ✅ NEW: Reward Settings
-        let rewardData = App.rewardSettings; // Default to current state (Safe Check)
-        const elReward = document.getElementById('switchRewardEnabled');
-        
-        if (elReward) {
-            rewardData = {
-                enabled: elReward.checked,
-                gift: document.getElementById('inpRewardGift').value,
-                target: parseInt(document.getElementById('inpRewardTarget').value) || 5,
-                mode: document.getElementById('selRewardMode').value
-            };
-        }
-
-        // ✅ NEW: SoftPOS Settings
-        const softPosData = {
-            provider: document.getElementById('selSoftPosProvider').value,
-            merchantId: document.getElementById('inpSoftPosMerchantId').value,
-            apiKey: document.getElementById('inpSoftPosApiKey').value,
-            enabled: document.getElementById('switchSoftPosEnabled').checked
-        };
-        const posMode = document.getElementById('selPosMode').value;
-
-        // ✅ NEW: Physical POS Settings
-        const posData = {
-            provider: document.getElementById('inpPosProvider').value,
-            id: document.getElementById('inpPosId').value,
-            key: document.getElementById('inpPosKey').value
-        };
-
-        // Note: Features are saved separately in toggleSubscription to avoid accidental overwrites
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: App.features });
-    },
-    saveSettings: () => {
-        App.autoSaveSettings();
-        document.getElementById('settingsModal').style.display = 'none';
-    },
-
-    openScheduleModal: () => {
-        document.getElementById('settingsModal').style.display = 'none';
-        const days = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-        const container = document.getElementById('weekDaysContainer');
-        container.innerHTML = '';
-        days.forEach(day => {
-            const row = document.createElement('div');
-            row.className = 'day-row';
-            const val = App.scheduleData[day] || '';
-            row.innerHTML = `<span class="day-label">${day.substring(0,3)}</span>
-                             <input type="text" class="day-input" data-day="${day}" value="${val}" placeholder="π.χ. 18:00 - 23:00">`;
-            container.appendChild(row);
-        });
-        document.getElementById('scheduleModal').style.display = 'flex';
-    },
-    saveSchedule: () => {
-        const inputs = document.querySelectorAll('.day-input');
-        let newSched = {};
-        inputs.forEach(inp => { newSched[inp.dataset.day] = inp.value; });
-        App.scheduleData = newSched;
-        window.socket.emit('save-store-settings', { schedule: newSched });
-        document.getElementById('scheduleModal').style.display = 'none';
-        document.getElementById('settingsModal').style.display = 'flex';
-    },
-
     // --- EXPENSES LOGIC ---
     openExpensesModal: () => {
         document.getElementById('expensesModal').style.display = 'flex';
@@ -1159,23 +825,6 @@ window.App = {
         window.socket.emit('save-expenses', { text: text, total: total, wages: wages });
         document.getElementById('expensesModal').style.display = 'none';
         alert("Αποθηκεύτηκε!");
-    },
-
-    // --- TEMPLATE LOGIC ---
-    applyPresetMenu: () => {
-        // ✅ FIX: Έλεγχος και από το Panel και από τα Settings
-        let type = document.getElementById('selShopTypePanel').value;
-        if (!type) type = document.getElementById('selShopType').value;
-
-        if (!type) return alert("Παρακαλώ επιλέξτε είδος καταστήματος!");
-        if (!confirm("ΠΡΟΣΟΧΗ: Αυτό θα αντικαταστήσει το υπάρχον μενού. Συνέχεια;")) return;
-        
-        const newMenu = JSON.parse(JSON.stringify(PRESET_MENUS[type]));
-        App.menuData = newMenu;
-        window.socket.emit('save-menu', { menu: newMenu, mode: 'permanent' });
-        App.renderMenu();
-        alert("Το μενού φορτώθηκε επιτυχώς!");
-        document.getElementById('settingsModal').style.display = 'none';
     },
 
     showLink: () => {
@@ -2263,214 +1912,6 @@ window.App = {
             }
         }
     },
-    removeStaff: (username) => {
-        if(confirm(`Αφαίρεση χρήστη ${username};`)) {
-            window.socket.emit('manual-logout', { targetUser: username });
-        }
-    },
-    
-    renderStaffList: (list) => {
-        const container = document.getElementById('staffList');
-        if (!container) return;
-        const now = Date.now();
-        if(!App.tempComingState) App.tempComingState = {};
-
-        list.forEach(u => {
-            const wasRinging = App.lastRingingState[u.username];
-            const isRinging = u.isRinging;
-            if (wasRinging && !isRinging) { App.tempComingState[u.username] = now; }
-            App.lastRingingState[u.username] = isRinging;
-        });
-
-        container.innerHTML = '';
-        list.forEach(u => {
-            if (u.role === 'admin' || u.role === 'customer') return;
-
-            const staffDiv = document.createElement('div');
-            // ✅ FIX: Χειρισμός Offline χρηστών (εμφάνιση ως Ghost/Away)
-            const isAway = u.status === 'away' || u.status === 'offline' || u.status === 'background';
-            
-            let roleClass = 'role-waiter';
-            let icon = '🧑‍🍳';
-            if (u.role === 'driver') {
-                roleClass = 'role-driver';
-                icon = '🛵';
-            }
-
-            staffDiv.className = `staff-folder ${roleClass} ${isAway ? 'ghost' : ''}`;
-
-            let stTxt = u.status === 'offline' ? "Offline" : (isAway ? "Away" : "Idle");
-            const isComing = App.tempComingState[u.username] && (now - App.tempComingState[u.username] < 15000);
-
-            if (u.isRinging) {
-                stTxt = "Ringing";
-                staffDiv.classList.add('ringing');
-            } else if (isComing) {
-                stTxt = "Coming";
-                staffDiv.classList.add('coming');
-            }
-
-            let closeBtn = '';
-            if (isAway) {
-                closeBtn = `<button class="btn-staff-close" onclick="event.stopPropagation(); App.removeStaff('${u.username}')">✕</button>`;
-                // ✅ FIX: Κουμπί διαγραφής (X) για προσωπικό που είναι Offline/Background
-                closeBtn = `<button onclick="event.stopPropagation(); App.removeStaff('${u.username}')" style="position:absolute; top:2px; right:2px; background:#D32F2F; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.5);">✕</button>`;
-            }
-            
-            staffDiv.style.position = 'relative'; // Ensure positioning context
-            staffDiv.innerHTML = `
-                ${closeBtn}
-                <div class="staff-icon">${icon}</div>
-                <div class="staff-label">${u.username}</div>
-                <div class="staff-status">${stTxt}</div>
-            `;
-            
-            staffDiv.onclick = () => {
-                const sourceLabel = App.adminMode === 'kitchen' ? "👨‍🍳" : "💸";
-                window.socket.emit('trigger-alarm', { target: u.username, source: sourceLabel });
-                staffDiv.querySelector('.staff-status').innerText = 'Ringing';
-                staffDiv.classList.add('ringing');
-            };
-            
-            // The old logic for a delete button on 'away' users can be added here if needed.
-            // For now, focusing on the visual replacement.
-
-            container.appendChild(staffDiv);
-        });
-    },
-    
-    // ✅ NEW: RESERVATIONS LOGIC
-    openReservationsModal: () => {
-        document.getElementById('reservationsModal').style.display = 'flex';
-        window.socket.emit('get-reservations');
-    },
-
-    updateReservationsBadge: (list) => {
-        if (!list) return;
-        const badge = document.getElementById('resBadge');
-        if (!badge) return;
-
-        const pending = list.filter(r => r.status === 'pending');
-        const confirmed = list.filter(r => r.status === 'confirmed');
-
-        let count = 0;
-        let color = '';
-
-        if (userData.role === 'admin') {
-            // Ο Admin βλέπει Κόκκινο αν υπάρχει Αναμονή, αλλιώς Πράσινο
-            if (pending.length > 0) {
-                count = pending.length;
-                color = '#FF5252'; // Red (Pending)
-            } else if (confirmed.length > 0) {
-                count = confirmed.length;
-                color = '#00E676'; // Green (Confirmed)
-            }
-        } else {
-            // Οι Σερβιτόροι βλέπουν Πράσινο αν υπάρχει Επιβεβαιωμένη
-            if (confirmed.length > 0) {
-                count = confirmed.length;
-                color = '#00E676'; // Green (Confirmed)
-            }
-        }
-
-        if (count > 0) {
-            badge.style.display = 'flex';
-            badge.innerText = count;
-            badge.style.background = color;
-            badge.style.animation = 'pulse 2s infinite';
-        } else {
-            badge.style.display = 'none';
-            badge.style.animation = 'none';
-        }
-    },
-    
-    renderReservations: (list) => {
-        const container = document.getElementById('reservationsList');
-        if(!container) return;
-        container.innerHTML = '';
-        
-        if(!list || list.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#555;">Δεν υπάρχουν κρατήσεις.</div>';
-            return;
-        }
-
-        // Sort by Date/Time
-        list.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-
-        list.forEach(r => {
-            if (r.status === 'completed') return; // ✅ Hide completed
-            const isPending = r.status === 'pending';
-            const div = document.createElement('div');
-            div.style.cssText = `background:#222; padding:10px; border-radius:8px; border-left:4px solid ${isPending ? '#FF9800' : '#9C27B0'}; display:flex; justify-content:space-between; align-items:center;`;
-            div.innerHTML = `
-                <div onclick="App.processReservation(${r.id}, ${r.pax})" style="cursor:pointer;">
-                    <div style="font-weight:bold; color:white;">${r.name} (${r.pax} άτ.) ${isPending ? '<span style="color:#FF9800; font-size:12px;">(ΑΝΑΜΟΝΗ)</span>' : ''}</div>
-                    <div style="color:#FFD700; font-size:14px;">📅 ${r.date} 🕒 ${r.time}</div>
-                    <div style="color:#aaa; font-size:12px;">📞 ${r.phone}</div>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="App.processReservation(${r.id}, ${r.pax})" style="background:#2196F3; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;" title="Έναρξη & Ολοκλήρωση">🚀</button>
-                    ${isPending ? `<button onclick="App.acceptReservation(${r.id})" style="background:#00E676; color:black; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅</button>` : ''}
-                    <button onclick="App.deleteReservation(${r.id})" style="background:#D32F2F; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">✕</button>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    },
-
-    // ✅ NEW: Process Reservation (Open Sidebar & Complete)
-    processReservation: (id, pax) => {
-        // 1. Open Sidebar
-        const sb = document.getElementById('orderSidebar');
-        if (sb.style.left !== '0px' && sb.style.left !== '0') {
-            App.toggleOrderSidebar();
-        }
-        // 2. Set Mode Table & Covers
-        App.setSidebarMode('table');
-        if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = pax;
-        
-        // 3. Mark as Completed
-        window.socket.emit('complete-reservation', id);
-    },
-    
-    acceptReservation: (id) => {
-        if(window.AudioEngine) window.AudioEngine.stopAlarm();
-        window.socket.emit('admin-stop-ringing');
-        window.socket.emit('accept-reservation', id);
-    },
-    
-    deleteReservation: (id) => {
-        if(confirm("Διαγραφή κράτησης;")) window.socket.emit('delete-reservation', id);
-    },
-
-    toggleAdminChat: () => { 
-        const el = document.getElementById('adminChatOverlay');
-        App.isChatOpen = (el.style.display === 'flex');
-        if (App.isChatOpen) { el.style.display = 'none'; App.isChatOpen = false; } 
-        else { el.style.display = 'flex'; App.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
-    },
-    sendChat: () => {
-        const inp = document.getElementById('adminChatInp');
-        if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
-    },
-    appendChat: (data) => {
-        if (data.sender !== userData.name && !App.isChatOpen) { document.getElementById('chatBadge').style.display = 'block'; }
-        const box = document.getElementById('adminChatBox');
-        if(box) {
-            box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
-    },
-    logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
-    toggleFakeLock: () => { 
-        const el=document.getElementById('fakeLockOverlay'); 
-        const isLocked = (el.style.display !== 'flex');
-        el.style.display = isLocked ? 'flex' : 'none';
-        // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
-        if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
-    },
-    forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
-    startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)
 };
 
 // --- PIN MODULE ---
