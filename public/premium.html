@@ -28,21 +28,21 @@
             </div>
             
             <div class="header-actions">
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings">⚙️</button>
+                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings" style="display:none;">⚙️</button>
                 <button id="btnSubs" class="btn-icon" onclick="App.openSubscriptionsModal()" title="Συνδρομές" style="background:linear-gradient(45deg, #FFD700, #FF9800); color:black;">💎</button>
-                <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white;">💸</button>
+                <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white; display:none;">💸</button>
                 <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
                     <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button>
                     <div id="resBadge" class="chat-badge" style="display:none;"></div>
                 </div>
                 <button id="btnCashRegister" class="btn-icon" onclick="App.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white; display:none;">📠</button> <!-- ✅ NEW: Cash Register -->
-                <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white;">💼</button> <!-- ✅ NEW -->
-                <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού">📜</button>
+                <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white; display:none;">💼</button> <!-- ✅ NEW -->
+                <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού" style="display:none;">📜</button>
                 <div class="btn-icon-wrapper">
-                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">📁</button>
+                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat" style="display:none;">📁</button>
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
-                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
+                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη" style="display:none;">🌙</button>
                 <button id="btnNewOrderSidebar" class="btn-icon" onclick="App.toggleOrderSidebar()" title="Νέα Παραγγελία" style="display:none; background:#00E676; color:black;">➕</button>
                 <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" title="Έξοδος" style="display:none; background:var(--danger); color:white;">🚪</button>
             </div>
