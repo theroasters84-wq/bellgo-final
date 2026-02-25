@@ -318,4 +318,155 @@ export const PRESET_MENUS = {
     ]
 };
 
-export const Menu = {}; // Placeholder to satisfy import in premium.js
+export const Menu = {
+    handlePlusButton: function() {
+        const App = window.App;
+        if (App.currentCategoryIndex === null) {
+            let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
+            if(!order) return;
+            let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
+            if(!name) return;
+            App.pendingAction = () => {
+                App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
+            };
+            App.openSaveModal(); 
+        } else {
+            App.addItemInput('');
+        }
+    },
+
+    renderMenu: function() {
+        const App = window.App;
+        const container = document.getElementById('menuInputContainer');
+        container.innerHTML = '';
+        App.menuData.sort((a,b) => a.order - b.order);
+        if (App.currentCategoryIndex === null) {
+            document.getElementById('btnBackCat').style.display = 'none';
+            App.menuData.forEach((cat, index) => {
+                const div = document.createElement('div');
+                div.className = 'category-box';
+                div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn-delete-cat';
+                delBtn.innerText = 'X';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    App.pendingAction = () => { App.menuData.splice(index, 1); };
+                    App.openSaveModal();
+                };
+                div.appendChild(delBtn);
+                div.onclick = () => { App.currentCategoryIndex = index; App.renderMenu(); };
+                container.appendChild(div);
+            });
+        } else {
+            const cat = App.menuData[App.currentCategoryIndex];
+            if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
+            document.getElementById('btnBackCat').style.display = 'block';
+            cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
+        }
+    },
+
+    addItemInput: function(val, index = null) {
+        const App = window.App;
+        const container = document.getElementById('menuInputContainer');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'item-wrapper';
+        
+        let displayText = "";
+        let itemObj = null;
+
+        if (typeof val === 'object' && val !== null) {
+            itemObj = val;
+            displayText = `${itemObj.name}:${itemObj.price}`;
+        } else {
+            displayText = val;
+        }
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'menu-input-box';
+        input.value = displayText;
+        input.placeholder = "Προϊόν:Τιμή"; 
+
+        const vatInput = document.createElement('input');
+        vatInput.type = 'number';
+        vatInput.placeholder = 'ΦΠΑ';
+        const vatDisplay = App.einvoicingEnabled ? 'inline-block' : 'none';
+        vatInput.style.cssText = `width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px; display:${vatDisplay};`;
+        
+        if (itemObj && itemObj.vat !== undefined) vatInput.value = itemObj.vat;
+        else vatInput.value = 24;
+        
+        const extrasBtn = document.createElement('button');
+        extrasBtn.className = 'btn-item-extras';
+        extrasBtn.innerHTML = '+';
+        if (itemObj && itemObj.extras && itemObj.extras.length > 0) extrasBtn.classList.add('has-extras');
+        extrasBtn.onclick = () => { App.openExtrasModal(App.currentCategoryIndex, index); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-item-del';
+        delBtn.innerText = 'X';
+        delBtn.onclick = () => {
+            wrapper.remove();
+            App.pendingAction = () => {
+                const cat = App.menuData[App.currentCategoryIndex];
+                if (index !== null) cat.items.splice(index, 1);
+            };
+            App.openSaveModal();
+        };
+        
+        const updateItem = (e) => {
+            if (e.relatedTarget === input || e.relatedTarget === vatInput) return;
+            const newVal = input.value.trim();
+            if (!newVal) return;
+            
+            const cat = App.menuData[App.currentCategoryIndex];
+            const parts = newVal.split(':');
+            let price = 0; 
+            let name = newVal;
+            if(parts.length > 1) {
+                 name = parts.slice(0, -1).join(':').trim();
+                 price = parseFloat(parts[parts.length-1]) || 0;
+            }
+            const vat = parseInt(vatInput.value) || 24;
+            let newItem;
+            if (index !== null && typeof cat.items[index] === 'object') {
+                newItem = { ...cat.items[index], name: name, price: price, vat: vat };
+            } else {
+                newItem = { name: name, price: price, vat: vat, extras: [] };
+            }
+            App.pendingAction = () => {
+                if(index === null) cat.items.push(newItem); 
+                else cat.items[index] = newItem;
+            };
+            App.openSaveModal();
+        };
+        
+        input.addEventListener('blur', updateItem);
+        vatInput.addEventListener('blur', updateItem);
+        
+        wrapper.appendChild(input);
+        wrapper.appendChild(vatInput);
+        wrapper.appendChild(extrasBtn);
+        if (index !== null) wrapper.appendChild(delBtn); 
+        container.appendChild(wrapper);
+        if(index === null) input.focus();
+    },
+    
+    goBackToCategories: function() { window.App.currentCategoryIndex = null; window.App.renderMenu(); },
+    openSaveModal: function() { document.getElementById('saveModeModal').style.display = 'flex'; },
+    
+    executeSave: function(mode) {
+        const App = window.App;
+        if (App.pendingAction) { App.pendingAction(); App.pendingAction = null; }
+        App.menuData.forEach(cat => { 
+            cat.items = cat.items.filter(i => {
+                if(typeof i === 'string') return i.trim() !== '';
+                return i.name && i.name.trim() !== '';
+            }); 
+        });
+        window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
+        document.getElementById('saveModeModal').style.display = 'none';
+        App.renderMenu(); 
+    }
+};
