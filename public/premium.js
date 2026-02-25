@@ -189,6 +189,11 @@ window.App = {
     setLanguage: setLanguage,
 
     init: () => {
+        // ✅ FIX: Initialize features from local storage to prevent empty state
+        if (userData.features) {
+            App.features = { ...userData.features };
+        }
+
         // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
         ['btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => {
             const el = document.getElementById(id);
@@ -905,6 +910,15 @@ window.App = {
                     <span>Στόχος (Αρ. Παραγγελιών)</span>
                     <input type="number" id="inpRewardTarget" class="setting-input" placeholder="5" style="width:60px;" onchange="App.autoSaveSettings()">
                 </div>
+                <div class="setting-row">
+                    <span>Λειτουργία</span>
+                    <select id="selRewardMode" class="setting-input" onchange="App.autoSaveSettings()" style="width:120px;">
+                        <option value="all">Όλοι</option>
+                        <option value="delivery">Μόνο Delivery</option>
+                        <option value="takeaway">Μόνο Take Away</option>
+                        <option value="table">Μόνο Τραπέζια</option>
+                    </select>
+                </div>
             `;
             // Insert before the Save button or at the end of settingsMain
             let main = document.getElementById('settingsLockedArea');
@@ -921,6 +935,7 @@ window.App = {
         document.getElementById('switchRewardEnabled').checked = App.rewardSettings.enabled || false;
         document.getElementById('inpRewardGift').value = App.rewardSettings.gift || '';
         document.getElementById('inpRewardTarget').value = App.rewardSettings.target || 5;
+        document.getElementById('selRewardMode').value = App.rewardSettings.mode || 'all';
 
         // ✅ NEW: Εφαρμογή ορατότητας (για να κρυφτούν/φανούν τα sections ανάλογα με το feature)
         App.applyFeatureVisibility();
@@ -1161,7 +1176,8 @@ window.App = {
             rewardData = {
                 enabled: elReward.checked,
                 gift: document.getElementById('inpRewardGift').value,
-                target: parseInt(document.getElementById('inpRewardTarget').value) || 5
+                target: parseInt(document.getElementById('inpRewardTarget').value) || 5,
+                mode: document.getElementById('selRewardMode').value
             };
         }
 
@@ -1815,6 +1831,27 @@ window.App = {
             const table = document.getElementById('sidebarTable').value;
             const covers = parseInt(document.getElementById('sidebarCovers').value) || 0;
             if (!table) return alert("Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
+
+            // ✅ NEW: Check for existing open table (Supplement Logic)
+            const existingOrder = App.activeOrders.find(o => {
+                const match = o.text.match(/\[ΤΡ:\s*([^|\]]+)/);
+                return match && match[1].trim() === table.trim() && o.status !== 'completed';
+            });
+
+            if (existingOrder) {
+                if (covers > 0 && App.coverPrice > 0) {
+                    finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
+                }
+                window.socket.emit('add-items', { id: existingOrder.id, items: finalBody });
+                alert(`Προστέθηκε στο Τραπέζι ${table}!`);
+                
+                document.getElementById('sidebarOrderText').value = '';
+                if(document.getElementById('sidebarTable')) document.getElementById('sidebarTable').value = '';
+                if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = '';
+                App.toggleOrderSidebar(); 
+                return;
+            }
+
             header = `[ΤΡ: ${table}]`;
             if (covers > 0) {
                 header += ` [AT: ${covers}]`;
@@ -1910,12 +1947,15 @@ window.App = {
 
         // ✅ NEW: Reward Prompt for PASO
         if (App.rewardSettings && App.rewardSettings.enabled) {
+            const mode = App.rewardSettings.mode || 'all';
+            if (mode === 'all' || mode === 'takeaway') {
             setTimeout(() => {
                 // ✅ FIX: Αν δεν τυπώνει, εμφάνισε το QR αυτόματα. Αλλιώς ρώτα.
                 if(!App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) {
                     App.openRewardQr(pasoId);
                 }
             }, 500);
+            }
         }
     },
 
@@ -2449,18 +2489,29 @@ window.App = {
     },
     // ✅ NEW: Helper to bypass check
     forceCompleteOrder: (id) => {
+        const order = App.activeOrders.find(o => o.id == id);
+        const isDelivery = order && order.text.includes('[DELIVERY');
+
         window.socket.emit('pay-order', id); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
 
         // ✅ NEW: Reward Prompt for Delivery/Table
         if (App.rewardSettings && App.rewardSettings.enabled) {
+            const mode = App.rewardSettings.mode || 'all';
+            let shouldShow = false;
+            if (mode === 'all') shouldShow = true;
+            else if (mode === 'delivery' && isDelivery) shouldShow = true;
+            else if (mode === 'table' && !isDelivery) shouldShow = true;
+
+            if (shouldShow) {
             setTimeout(() => {
                 // ✅ FIX: Αν δεν τυπώνει, εμφάνισε το QR αυτόματα. Αλλιώς ρώτα.
                 if(!App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) {
                     App.openRewardQr(id);
                 }
             }, 500);
+            }
         }
     },
     removeStaff: (username) => {

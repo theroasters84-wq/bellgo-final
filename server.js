@@ -525,7 +525,8 @@ io.on('connection', (socket) => {
             if(data.pos) store.settings.pos = data.pos; // ✅ NEW: Save POS Settings
             if(data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons; // ✅ NEW: Save Cash Reg Buttons
             if(data.reward) store.settings.reward = data.reward; // ✅ NEW: Save Reward Settings
-            if(data.features) store.settings.features = data.features; // ✅ NEW: Save Features
+            // ✅ FIX: Merge features instead of replacing (prevents data loss)
+            if(data.features) store.settings.features = { ...store.settings.features, ...data.features };
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
         } 
     });
