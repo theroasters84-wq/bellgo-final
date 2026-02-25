@@ -787,18 +787,6 @@ window.App = {
         document.getElementById('settingsModal').style.display = 'flex';
         App.closeSettingsSub(); // Reset to main view
 
-        // ✅ NEW: Inject "Subscriptions" Button if not exists
-        const settingsMain = document.getElementById('settingsMain');
-        if (settingsMain && !document.getElementById('btnOpenSubs')) {
-            const btn = document.createElement('button');
-            btn.id = 'btnOpenSubs';
-            btn.className = 'settings-btn';
-            btn.innerHTML = '💎 ΣΥΝΔΡΟΜΕΣ & ΔΥΝΑΤΟΤΗΤΕΣ';
-            btn.style.cssText = "background: linear-gradient(45deg, #FFD700, #FF9800); color: black; font-weight: bold; margin-bottom: 15px; border: none;";
-            btn.onclick = App.openSubscriptionsModal;
-            settingsMain.insertBefore(btn, settingsMain.firstChild); // Put it at the top
-        }
-
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
         const lockedArea = document.getElementById('settingsLockedArea');
         if (!App.settingsUnlocked) {
