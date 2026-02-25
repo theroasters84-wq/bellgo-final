@@ -677,51 +677,33 @@ window.App = {
 
     // ✅ NEW: Apply Visibility based on Features
     applyFeatureVisibility: () => {
-        // 1. Chat
-        const btnChat = document.querySelector('button[onclick="App.toggleAdminChat()"]');
-        if (btnChat) btnChat.style.display = App.hasFeature('pack_chat') ? 'flex' : 'none';
+        // 1. Συλλογή όλων των IDs που ελέγχονται από τα πακέτα (για να τα κρύψουμε αρχικά)
+        const allControllableIds = new Set();
+        Sundromes.packages.forEach(p => {
+            if(p.ui_ids) p.ui_ids.forEach(id => allControllableIds.add(id));
+        });
 
-        // 2. Manager Pack (Kitchen, Orders, Stats, Expenses, Printer)
-        const hasManager = App.hasFeature('pack_manager');
-        
-        const btnNewOrder = document.getElementById('btnNewOrderSidebar');
-        if (btnNewOrder) btnNewOrder.style.display = hasManager ? 'flex' : 'none';
-        
-        const btnExpenses = document.getElementById('btnExpenses');
-        if (btnExpenses) btnExpenses.style.display = hasManager ? 'flex' : 'none';
+        // 2. Συλλογή των IDs που ΠΡΕΠΕΙ να φαίνονται (βάσει ενεργών πακέτων)
+        const visibleIds = new Set();
+        Sundromes.packages.forEach(p => {
+            if (App.hasFeature(p.key) && p.ui_ids) {
+                p.ui_ids.forEach(id => visibleIds.add(id));
+            }
+        });
 
-        // Hide/Show Menu Toggle (Manager)
-        const btnMenu = document.getElementById('btnMenuToggle');
-        if (btnMenu) btnMenu.style.display = hasManager ? 'flex' : 'none';
-
-        // Hide/Show Staff Charge Switch (Manager)
-        const divStaffCharge = document.getElementById('switchStaffCharge')?.closest('.switch-row');
-        if (divStaffCharge) divStaffCharge.style.display = hasManager ? 'flex' : 'none';
-
-        // 5. Printer - Settings Toggle
-        const elPrinter = document.getElementById('switchPrinterEnabled');
-        const divPrinter = elPrinter ? elPrinter.closest('.switch-row') : null;
-        if (divPrinter) divPrinter.style.display = hasManager ? 'flex' : 'none';
-
-        // 3. Delivery Pack (QR/PWA & Reservations)
-        const hasDelivery = App.hasFeature('pack_delivery');
-        const btnQr = document.querySelector('button[onclick="App.showLink()"]');
-        if (btnQr) btnQr.style.display = hasDelivery ? 'flex' : 'none';
-        
-        const btnRes = document.getElementById('btnReservations');
-        if (btnRes) btnRes.parentElement.style.display = hasDelivery ? 'block' : 'none';
-
-        // 4. Table Order - Sidebar Button
-        const btnTable = document.getElementById('btnModeTable');
-        if (btnTable) btnTable.style.display = App.hasFeature('pack_tables') ? 'block' : 'none';
-
-        // 5. POS Pack (E-Invoicing / Cash Register / SoftPOS)
-        const hasPos = App.hasFeature('pack_pos');
-        const btnCash = document.getElementById('btnCashRegister');
-        if (btnCash) btnCash.style.display = hasPos ? 'flex' : 'none';
-        
-        const divSoftPos = document.getElementById('softPosSettingsContainer'); // Θα το φτιάξουμε αν δεν υπάρχει
-        if (divSoftPos) divSoftPos.style.display = hasPos ? 'block' : 'none';
+        // 3. Εφαρμογή (Εμφάνιση/Απόκρυψη)
+        allControllableIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (visibleIds.has(id)) {
+                    // Αν είναι εικονίδιο header, συνήθως θέλει flex, αλλιώς block
+                    const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
+                    el.style.display = isIcon ? 'flex' : 'block';
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+        });
 
         // 6. Rewards Pack
         const divRewards = document.getElementById('rewardSettingsContainer');
@@ -739,20 +721,6 @@ window.App = {
                 }
             }
         }
-
-        // ✅ NEW: Απόκρυψη Ρυθμίσεων, Πορτοφολιού & Μαύρης Οθόνης αν δεν υπάρχει ΚΑΜΙΑ συνδρομή
-        const anyActive = Sundromes.packages.some(p => App.hasFeature(p.key));
-        // ✅ FIX: Η συνδρομή 1 (Chat) δεν δίνει πρόσβαση σε Ρυθμίσεις & Πορτοφόλι
-        const anyActiveExceptChat = Sundromes.packages.some(p => p.key !== 'pack_chat' && App.hasFeature(p.key));
-        
-        const btnSettings = document.getElementById('btnSettings');
-        if (btnSettings) btnSettings.style.display = anyActiveExceptChat ? 'flex' : 'none';
-
-        const btnWallet = document.getElementById('btnWallet');
-        if (btnWallet) btnWallet.style.display = anyActiveExceptChat ? 'flex' : 'none';
-
-        const btnFakeLock = document.getElementById('btnFakeLock');
-        if (btnFakeLock) btnFakeLock.style.display = anyActive ? 'flex' : 'none';
     },
 
     saveStoreName: () => {
