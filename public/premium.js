@@ -174,6 +174,7 @@ window.App = {
     posMode: 'auto', // ✅ NEW: POS Mode (auto/ask)
     einvoicingEnabled: false, // ✅ NEW: E-Invoicing State
     features: {}, // ✅ NEW: Local Features State
+    tempFeatures: {}, // ✅ NEW: Temporary Features for Editing
     settingsUnlocked: false, // ✅ NEW: Flag για κλείδωμα ρυθμίσεων
     // ✅ NEW: Cash Register State
     cashRegValue: "0",
@@ -808,6 +809,18 @@ window.App = {
         document.getElementById('settingsModal').style.display = 'flex';
         App.closeSettingsSub(); // Reset to main view
 
+        // ✅ NEW: Inject Subscriptions Button (1-6)
+        const settingsMain = document.getElementById('settingsMain');
+        if (settingsMain && !document.getElementById('btnManageSubs')) {
+            const btn = document.createElement('button');
+            btn.id = 'btnManageSubs';
+            btn.className = 'settings-btn';
+            btn.style.cssText = "width:100%; padding:15px; background:#333; color:#FFD700; border:1px solid #FFD700; border-radius:8px; margin-bottom:15px; font-weight:bold; cursor:pointer; display:flex; justify-content:space-between; align-items:center;";
+            btn.innerHTML = `<span>💎 ΣΥΝΔΡΟΜΕΣ (1-6)</span> <span>▶</span>`;
+            btn.onclick = App.openSubscriptionsModal;
+            settingsMain.insertBefore(btn, settingsMain.firstChild);
+        }
+
         // ✅ NEW: LOCK LOGIC (Κλείδωμα Ρυθμίσεων)
         const lockedArea = document.getElementById('settingsLockedArea');
         if (!App.settingsUnlocked) {
@@ -961,10 +974,12 @@ window.App = {
             modal.className = 'modal-overlay';
             modal.innerHTML = `
                 <div class="modal-box" style="max-width:400px; max-height:80vh; overflow-y:auto;">
-                    <h2 style="color:#FFD700; text-align:center;">💎 Δυνατότητες</h2>
-                    <p style="color:#aaa; text-align:center; font-size:12px; margin-bottom:20px;">Ενεργοποιήστε ό,τι χρειάζεστε.</p>
+                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px;">💎 Διαχείριση Συνδρομών</h2>
                     <div id="subsList"></div>
-                    <button onclick="document.getElementById('subscriptionsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" class="modal-btn" style="background:#555; margin-top:20px;">ΠΙΣΩ</button>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button onclick="App.saveSubscriptions()" class="modal-btn" style="background:#00E676; color:black; font-weight:bold; flex:1;">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+                        <button onclick="document.getElementById('subscriptionsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" class="modal-btn" style="background:#555; flex:1;">ΠΙΣΩ</button>
+                    </div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -973,19 +988,21 @@ window.App = {
         const list = document.getElementById('subsList');
         list.innerHTML = '';
 
-        Sundromes.packages.forEach(feat => { // ✅ Use Sundromes
-            const isActive = App.hasFeature(feat.key);
+        // ✅ Init temp features
+        App.tempFeatures = { ...App.features };
+
+        Sundromes.packages.forEach((feat, index) => { // ✅ Use Sundromes
+            const isActive = App.tempFeatures[feat.key];
             const row = document.createElement('div');
             row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
             
             row.innerHTML = `
                 <div>
-                    <div style="color:white; font-weight:bold;">${feat.name}</div>
-                    <div style="color:#aaa; font-size:11px;">${feat.desc}</div>
-                    <div style="color:#FFD700; font-size:12px;">${feat.price}€ / μήνα</div>
+                    <div style="color:white; font-weight:bold; font-size:16px;">${index + 1}. ${feat.name}</div>
+                    <div style="color:#aaa; font-size:12px;">${feat.desc}</div>
                 </div>
                 <label class="switch">
-                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="App.toggleSubscription('${feat.key}', this)">
+                    <input type="checkbox" ${isActive ? 'checked' : ''} onchange="App.tempFeatures['${feat.key}'] = this.checked">
                     <span class="slider round"></span>
                 </label>
             `;
@@ -995,28 +1012,14 @@ window.App = {
         modal.style.display = 'flex';
     },
 
-    toggleSubscription: (key, checkbox) => {
-        const isActive = checkbox.checked;
-        const feature = Sundromes.packages.find(f => f.key === key);
-        
-        if (isActive) {
-            if (confirm(`Ενεργοποίηση "${feature.name}" με ${feature.price}€/μήνα;`)) {
-                if (!App.features) App.features = {};
-                App.features[key] = true;
-                window.socket.emit('save-store-settings', { features: App.features });
-                App.applyFeatureVisibility();
-            } else {
-                checkbox.checked = false;
-            }
-        } else {
-            if (confirm(`Απενεργοποίηση "${feature.name}";`)) {
-                if (!App.features) App.features = {};
-                App.features[key] = false;
-                window.socket.emit('save-store-settings', { features: App.features });
-                App.applyFeatureVisibility();
-            } else {
-                checkbox.checked = true;
-            }
+    // ✅ NEW: Save Subscriptions
+    saveSubscriptions: () => {
+        if (confirm("Αποθήκευση αλλαγών στις συνδρομές;")) {
+            App.features = { ...App.tempFeatures };
+            window.socket.emit('save-store-settings', { features: App.features });
+            App.applyFeatureVisibility();
+            document.getElementById('subscriptionsModal').style.display = 'none';
+            document.getElementById('settingsModal').style.display = 'flex';
         }
     },
 
