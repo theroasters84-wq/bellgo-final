@@ -186,11 +186,11 @@
                         <label class="switch"><input type="checkbox" id="switchStaffCharge" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                     <!-- ✅ NEW: RESERVATIONS SETTINGS -->
-                    <div class="switch-row">
+                    <div class="switch-row" id="rowReservations">
                         <span>ONLINE ΚΡΑΤΗΣΕΙΣ</span>
                         <label class="switch"><input type="checkbox" id="switchReservations" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                    <div id="rowTotalTables" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
                         <span style="font-size:12px; color:#aaa;">ΣΥΝΟΛΟ ΤΡΑΠΕΖΙΩΝ:</span>
                         <input type="number" id="inpTotalTables" class="inp-settings" style="width:60px; text-align:center;" placeholder="0" onblur="App.autoSaveSettings()">
                     </div>

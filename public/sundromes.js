@@ -14,7 +14,7 @@ export const Sundromes = {
             price: 15, 
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
-            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot'] // ✅ Staff & Charge HERE
+            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowReservations', 'rowTotalTables'] // ✅ Staff, Charge, Reservations & Tables HERE
         },
         { 
             key: 'pack_delivery', 
