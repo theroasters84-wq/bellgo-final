@@ -156,12 +156,12 @@
             <!-- MAIN MENU -->
             <div id="settingsMain">
                 <div id="settingsLockedArea" style="position:relative;">
-                    <button class="modal-btn" onclick="App.openSettingsSub('subStore')" data-i18n="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
-                    <button class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
-                    <button class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
-                    <button class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
-                    <button class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
-                    <button class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
+                    <button id="btnSettingsStore" class="modal-btn" onclick="App.openSettingsSub('subStore')" data-i18n="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
+                    <button id="btnSettingsPrint" class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
+                    <button id="btnSettingsQr" class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
+                    <button id="btnSettingsGeneral" class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
+                    <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
+                    <button id="btnSettingsBot" class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 </div>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
