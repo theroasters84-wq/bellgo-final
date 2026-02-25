@@ -570,6 +570,7 @@ window.App = {
         // Package 1 (Chat) is base.
         // Package Manager (pack_manager) is needed for Orders & Settings.
         const hasManager = App.hasFeature('pack_manager');
+        const hasChat = App.hasFeature('pack_chat');
         
         // Hide/Show Orders
         const desktop = document.getElementById('desktopArea');
@@ -583,7 +584,17 @@ window.App = {
         const btnMenu = document.getElementById('btnMenuToggle');
         if(btnMenu) btnMenu.style.display = hasManager ? 'flex' : 'none';
         
-        // Chat, FakeLock, StaffContainer remain visible (Package 1 features)
+        // ✅ NEW: Staff Container (Call Staff) - Visible if Chat or Manager is active
+        const staffContainer = document.getElementById('staffContainer');
+        if(staffContainer) {
+            staffContainer.style.display = (hasChat || hasManager) ? 'flex' : 'none';
+        }
+
+        // ✅ NEW: Chat Button
+        const chatBtn = document.getElementById('adminChatBtn');
+        if(chatBtn && chatBtn.parentElement.classList.contains('btn-icon-wrapper')) {
+             chatBtn.parentElement.style.display = (hasChat || hasManager) ? 'flex' : 'none';
+        }
     },
     
     // ✅ NEW: Toggle Local Kitchen Settings
