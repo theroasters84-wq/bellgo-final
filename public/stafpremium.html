@@ -593,6 +593,12 @@
                 if (waiterPanel) waiterPanel.style.display = hasOrdering ? 'block' : 'none';
                 if (myOrdersBtn) myOrdersBtn.style.display = hasOrdering ? 'flex' : 'none';
 
+                // ✅ NEW: Payment Method Toggle (Visible if Ordering is active)
+                const payToggle = document.querySelector('.pay-method-toggle');
+                if (payToggle) {
+                    payToggle.style.display = hasOrdering ? 'flex' : 'none';
+                }
+
                 // 2. Chat & Bell (Pack 1)
                 const chatWrapper = document.querySelector('button[onclick="App.toggleChat()"]')?.parentElement;
                 const bellBtn = document.getElementById('staffBellBtn');

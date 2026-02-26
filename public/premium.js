@@ -1043,6 +1043,9 @@ window.App = {
                     finalBody += `\n${covers} ΚΟΥΒΕΡ:${(covers * App.coverPrice).toFixed(2)}`;
                 }
             }
+            // ✅ NEW: Προσθήκη Τρόπου Πληρωμής στο Header (Για ενημέρωση Ταμείου)
+            const payIcon = payMethod.includes('ΚΑΡΤΑ') ? '💳' : '💵';
+            header += ` [${payIcon}]`;
         } else if (App.sidebarMode === 'delivery') {
             const name = document.getElementById('sidebarDelName').value.trim();
             const addr = document.getElementById('sidebarDelAddr').value.trim();
