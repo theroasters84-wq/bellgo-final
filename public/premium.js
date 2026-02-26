@@ -590,6 +590,7 @@ window.App = {
 
     // ✅ NEW: Apply Visibility based on Features
     applyFeatureVisibility: () => {
+        console.log("🔍 Applying Features:", App.features); // Debugging
         // 1. Συλλογή όλων των IDs που ελέγχονται από τα πακέτα (για να τα κρύψουμε αρχικά)
         const allControllableIds = new Set();
         Sundromes.packages.forEach(p => {
