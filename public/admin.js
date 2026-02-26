@@ -120,15 +120,15 @@ export const Admin = {
                         </div>
 
                         <div style="border-top:1px solid #333; padding-top:10px;">
-                            <div style="display:${styleCust}; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div id="divLockCust" style="display:${styleCust}; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="color:#ccc; font-size:12px;">ΠΕΛΑΤΕΣ (Delivery)</span>
                                 <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
                             </div>
-                            <div style="display:${styleStaff}; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div id="divLockStaff" style="display:${styleStaff}; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="color:#ccc; font-size:12px;">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
                                 <label class="switch"><input type="checkbox" id="switchLockStaff" onchange="App.updateFromLock('staff', this.checked)"><span class="slider round"></span></label>
                             </div>
-                            <div style="display:${styleCharge}; justify-content:space-between; align-items:center;">
+                            <div id="divLockCharge" style="display:${styleCharge}; justify-content:space-between; align-items:center;">
                                 <span style="color:#ccc; font-size:12px;">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
                                 <label class="switch"><input type="checkbox" id="switchLockCharge" onchange="App.updateFromLock('charge', this.checked)"><span class="slider round"></span></label>
                             </div>
@@ -146,6 +146,15 @@ export const Admin = {
             } else {
                 lock.style.display = 'flex';
             }
+
+            // ✅ FORCE UPDATE VISIBILITY (Fix for cached element)
+            const divCust = document.getElementById('divLockCust');
+            const divStaff = document.getElementById('divLockStaff');
+            const divCharge = document.getElementById('divLockCharge');
+            
+            if(divCust) divCust.style.display = styleCust;
+            if(divStaff) divStaff.style.display = styleStaff;
+            if(divCharge) divCharge.style.display = styleCharge;
 
             // POPULATE VALUES
             const realName = document.getElementById('inpStoreNameHeader');
