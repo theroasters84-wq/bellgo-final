@@ -236,7 +236,7 @@
                     <div class="settings-label">LINKS</div>
                     <input type="text" id="inpGoogleMaps" class="inp-settings" data-i18n-placeholder="google_maps_url" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
                 </div>
-                <button class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()"><span data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</span></button>
+                <button id="btnQrTables" class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()"><span data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</span></button>
                 <button id="btnShowLink" class="modal-btn" style="background:#2196F3;" onclick="App.showLink()"><span data-i18n="store_link">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</span></button>
                 <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
@@ -279,7 +279,7 @@
                 </div>
 
                 <!-- ✅ NEW: PHYSICAL POS SETTINGS -->
-                <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                <div id="physicalPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
                     <div class="settings-label" style="color:#00BCD4;">📡 ΦΥΣΙΚΟ ΤΕΡΜΑΤΙΚΟ (WiFi/Ethernet)</div>
                     <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
                     <input type="text" id="inpPosId" class="inp-settings" placeholder="Αναγνωριστικό Τερματικού / IP" onblur="App.autoSaveSettings()">

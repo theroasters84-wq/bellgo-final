@@ -30,7 +30,7 @@ export const Sundromes = {
             price: 15, 
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
-            ui_ids: ['btnModeTable', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsQr']
+            ui_ids: ['btnModeTable', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables'] // ✅ Added btnQrTables
         },
         { 
             key: 'pack_pos', 
@@ -38,7 +38,7 @@ export const Sundromes = {
             price: 20, 
             year: 1996,
             desc: 'Ηλ. Τιμολόγηση, Σύνδεση POS και SoftPOS στο κινητό.',
-            ui_ids: ['btnCashRegister', 'softPosSettingsContainer', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsGeneral', 'btnSettingsEinvoicing']
+            ui_ids: ['btnCashRegister', 'softPosSettingsContainer', 'physicalPosSettingsContainer', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsGeneral', 'btnSettingsEinvoicing'] // ✅ Added physicalPosSettingsContainer
         },
         { 
             key: 'pack_loyalty', 

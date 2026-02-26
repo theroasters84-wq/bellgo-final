@@ -76,6 +76,7 @@ export const Admin = {
         
         if (!app.settingsUnlocked) {
             if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
+            lockedArea.style.minHeight = '600px'; // ✅ FIX: Increase height for lock screen
             
             // ✅ NEW: Έλεγχος ορατότητας για το Lock Screen (ώστε να μην είναι καρφωτά)
             const hasManager = app.hasFeature('pack_manager');
@@ -191,6 +192,7 @@ export const Admin = {
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
+                document.getElementById('settingsLockedArea').style.minHeight = ''; // ✅ Reset height
             } else {
                 alert("Λάθος PIN!");
                 document.getElementById('inpUnlockPin').value = '';
