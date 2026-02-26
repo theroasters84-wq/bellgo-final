@@ -238,6 +238,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
         import { firebaseConfig, vapidKey } from './config.js';
+        import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
 
         // ✅ INIT FIREBASE & EXPOSE TO WINDOW
         const app = initializeApp(firebaseConfig);
@@ -444,6 +445,7 @@
             staffChargeMode: false, // ✅ NEW
             payMethod: 'cash',
             isChatOpen: false,
+            features: {}, // ✅ NEW: Local Features
             
             // EXTRAS LOGIC
             menuData: [],
@@ -508,6 +510,15 @@
             init: () => {
                 document.getElementById('headerName').innerText = userData.name;
                 document.getElementById('headerStore').innerText = userData.store;
+
+                // ✅ NEW: Load Features & Enforce Subscription
+                if (userData.features) {
+                    App.features = { ...userData.features };
+                }
+                // Έλεγχος αν υπάρχει έστω μία συνδρομή (αλλιώς μαύρη οθόνη)
+                if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+                
+                App.applyFeatureVisibility(); // ✅ Εφαρμογή ορατότητας
                 
                 document.addEventListener('keydown', (e) => {
                     if (['AudioVolumeUp', 'AudioVolumeDown'].includes(e.code) || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -564,6 +575,36 @@
                 const savedLang = localStorage.getItem('bellgo_lang') || 'el';
                 setLanguage(savedLang);
                 setInterval(() => App.checkUpcomingReservations(), 60000); // Check every minute
+            },
+
+            // ✅ NEW: Apply Visibility based on Features (Staff Logic)
+            applyFeatureVisibility: () => {
+                const hasChat = App.hasFeature('pack_chat');
+                // Η παραγγελιοληψία απαιτεί Manager, Delivery ή Tables
+                const hasOrdering = App.hasFeature('pack_manager') || App.hasFeature('pack_delivery') || App.hasFeature('pack_tables');
+
+                // 1. Ordering UI (Waiter Panel & My Orders)
+                const waiterPanel = document.getElementById('waiterPanel');
+                const myOrdersBtn = document.querySelector('button[onclick="App.toggleMyOrders()"]');
+                
+                if (waiterPanel) waiterPanel.style.display = hasOrdering ? 'block' : 'none';
+                if (myOrdersBtn) myOrdersBtn.style.display = hasOrdering ? 'flex' : 'none';
+
+                // 2. Chat & Bell (Pack 1)
+                const chatWrapper = document.querySelector('button[onclick="App.toggleChat()"]')?.parentElement;
+                const bellBtn = document.getElementById('staffBellBtn');
+                
+                if (chatWrapper) chatWrapper.style.display = hasChat ? 'flex' : 'none';
+                if (bellBtn) bellBtn.style.display = hasChat ? 'flex' : 'none';
+                
+                // 3. Fake Lock (Available in Chat or Ordering)
+                const fakeLockBtn = document.querySelector('button[title="Black Screen"]');
+                if (fakeLockBtn) fakeLockBtn.style.display = (hasChat || hasOrdering) ? 'flex' : 'none';
+            },
+            
+            hasFeature: (key) => {
+                const userContext = { ...userData, features: { ...userData.features, ...App.features } };
+                return Sundromes.hasAccess(userContext, key);
             },
 
             checkNotificationPermission: () => {
@@ -656,6 +697,10 @@
                 socket.on('store-settings-update', (settings) => {
                     if(settings) {
                         App.staffChargeMode = settings.staffCharge || false; // ✅ Update local state
+                        if(settings.features) {
+                            App.features = settings.features;
+                            App.applyFeatureVisibility(); // ✅ Update UI dynamically
+                        }
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
                         if(settings.statusStaff === false) {
