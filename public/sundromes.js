@@ -55,7 +55,7 @@ export const Sundromes = {
         if (!user) return false;
 
         // 0. Legacy Premium (Παλιοί χρήστες τα έχουν όλα)
-        if (user.plan === 'premium') return true;
+        // if (user.plan === 'premium') return true; // ❌ DISABLED FOR TESTING
 
         // 1. Πραγματική Συνδρομή (Stripe)
         if (user.features && user.features[key]) return true;
