@@ -250,17 +250,43 @@ app.post('/capture-payment', async (req, res) => {
 app.post('/check-subscription', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.json({ active: false });
+
+    // ✅ NEW: Check Manual Features (Diamond Menu) from Memory/DB
+    const storeName = email.toLowerCase().trim();
+    const storeData = await Logic.getStoreData(storeName, db, storesData);
+    
+    let manualFeatures = {};
+    let hasManualActive = false;
+    if (storeData && storeData.settings && storeData.settings.features) {
+        manualFeatures = storeData.settings.features;
+        hasManualActive = Object.values(manualFeatures).some(v => v === true);
+    }
+
+    // ✅ NEW: Check Hack (1992+) for Demo Accounts
+    const match = email.match(/(\d{4})$/);
+    if (match) {
+        const year = parseInt(match[1]);
+        if (year >= 1992) {
+             return res.json({ active: true, plan: 'premium', features: manualFeatures, storeId: email });
+        }
+    }
+
     try {
         const customers = await stripe.customers.search({ query: `email:'${email}'` });
-        if (customers.data.length === 0) return res.json({ active: false, msg: "User not found" });
+        if (customers.data.length === 0) {
+            // User not in Stripe. If they have manual features enabled, let them in.
+            if (hasManualActive) {
+                return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email });
+            }
+            return res.json({ active: false, msg: "User not found" });
+        }
         
         const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
         
-        if (subscriptions.data.length > 0) {
-            let planType = 'basic';
-            let activeFeatures = {};
+        let planType = 'basic';
+        let activeFeatures = { ...manualFeatures }; // Start with manual features
 
-            // Έλεγχος όλων των συνδρομών και των αντικειμένων τους
+        if (subscriptions.data.length > 0) {
             subscriptions.data.forEach(sub => {
                 sub.items.data.forEach(item => {
                     const priceId = item.price.id;
@@ -270,9 +296,21 @@ app.post('/check-subscription', async (req, res) => {
                 });
             });
 
-            return res.json({ active: true, plan: planType, features: activeFeatures });
-        } else { return res.json({ active: false }); }
-    } catch (e) { res.json({ active: false, error: e.message }); }
+            return res.json({ active: true, plan: planType, features: activeFeatures, storeId: email });
+        } else { 
+            // No Stripe subscription.
+            if (hasManualActive) {
+                return res.json({ active: true, plan: 'custom', features: activeFeatures, storeId: email });
+            }
+            return res.json({ active: false }); 
+        }
+    } catch (e) { 
+        // Error checking Stripe. Fallback to manual.
+        if (hasManualActive) {
+            return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email });
+        }
+        res.json({ active: false, error: e.message }); 
+    }
 });
 
 app.post('/create-checkout-session', async (req, res) => {
