@@ -364,6 +364,7 @@
 
                             if (isActive) {
                                 const sessionData = { name: name, store: 
+                                const sessionData = { name: name, store: subData.storeId || adminEmail, role: role, plan: plan, features: features };
                                 // ✅ FIX: Clear any temp features from simulation to ensure clean state
                                 localStorage.removeItem('bellgo_temp_features');
                                 
