@@ -81,6 +81,7 @@
                 </div>
 
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ">🔔</button>
+                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="display:none;">🔔</button>
                 
                 <button class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings">⚙️</button>
                 <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
@@ -598,6 +599,9 @@
                 
                 if (chatWrapper) chatWrapper.style.display = hasChat ? 'flex' : 'none';
                 if (bellBtn) bellBtn.style.display = hasChat ? 'flex' : 'none';
+                if (bellBtn && !hasChat) {
+                    bellBtn.style.display = 'none';
+                }
                 
                 // 3. Fake Lock (Available in Chat or Ordering)
                 const fakeLockBtn = document.querySelector('button[title="Black Screen"]');
