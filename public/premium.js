@@ -611,7 +611,10 @@ window.App = {
                 if (visibleIds.has(id)) {
                     // Αν είναι εικονίδιο header, συνήθως θέλει flex, αλλιώς block
                     const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
-                    el.style.display = isIcon ? 'flex' : 'block';
+                    const isSwitch = el.classList.contains('switch-row'); // ✅ FIX: Keep flex for switches
+                    
+                    if (isIcon || isSwitch) el.style.display = 'flex';
+                    else el.style.display = 'block';
                 } else {
                     el.style.display = 'none';
                 }
