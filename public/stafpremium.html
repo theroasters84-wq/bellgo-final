@@ -699,6 +699,8 @@
                         App.staffChargeMode = settings.staffCharge || false; // ✅ Update local state
                         if(settings.features) {
                             App.features = settings.features;
+                            // ✅ Re-check subscription (Real-time unlock)
+                            Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
                             App.applyFeatureVisibility(); // ✅ Update UI dynamically
                         }
                         const closedOverlay = document.getElementById('closedOverlay');

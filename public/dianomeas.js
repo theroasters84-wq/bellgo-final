@@ -33,6 +33,9 @@ window.App = {
         if (userData.features) {
             App.features = { ...userData.features };
         }
+        // ✅ NEW: Enforce Subscription for Driver too
+        if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+
         App.applyFeatureVisibility();
 
         App.connectSocket();
@@ -151,6 +154,8 @@ window.App = {
                 if(settings.softPos) App.softPosSettings = settings.softPos;
                 if(settings.features) {
                     App.features = settings.features;
+                    // ✅ Re-check subscription (Real-time unlock)
+                    Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
                     App.applyFeatureVisibility();
                 }
             }
