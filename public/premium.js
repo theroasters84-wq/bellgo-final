@@ -614,7 +614,8 @@ window.App = {
                     const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
                     const isSwitch = el.classList.contains('switch-row'); // ✅ FIX: Keep flex for switches
                     
-                    if (isIcon || isSwitch) el.style.display = 'flex';
+                    if (id === 'desktopArea') el.style.display = 'grid'; // ✅ FIX: Keep grid for desktopArea
+                    else if (isIcon || isSwitch) el.style.display = 'flex';
                     else el.style.display = 'block';
                 } else {
                     el.style.display = 'none';
