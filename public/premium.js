@@ -109,7 +109,7 @@ window.App = {
         }
 
         // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
-        ['btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => {
+        ['desktopArea', 'btnMenuToggle', 'btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => { // ✅ Added desktopArea & btnMenuToggle
             const el = document.getElementById(id);
             if(el) el.style.display = 'none';
         });

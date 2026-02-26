@@ -364,6 +364,10 @@
 
                             if (isActive) {
                                 const sessionData = { name: name, store: res.storeId, role: role, plan: plan, features: features }; // ✅ Save Features
+                                
+                                // ✅ FIX: Clear any temp features from simulation to ensure clean state
+                                localStorage.removeItem('bellgo_temp_features');
+                                
                                 localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
                                 if (plan === 'premium' || plan === 'custom') {
