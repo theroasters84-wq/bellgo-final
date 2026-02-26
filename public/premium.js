@@ -995,6 +995,9 @@ window.App = {
         
         let header = "";
         let finalBody = txt;
+        
+        // ✅ NEW: Get Payment Method Declaration
+        const payMethod = document.getElementById('sidebarPaymentMethod').value;
 
         if (App.sidebarMode === 'paso') {
             header = "[PASO]";
@@ -1037,7 +1040,7 @@ window.App = {
             const phone = document.getElementById('sidebarDelPhone').value.trim();
             const zip = document.getElementById('sidebarDelZip').value.trim();
             if(!name || !addr || !phone) return alert("Συμπληρώστε τα στοιχεία Delivery!");
-            header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📮 T.K.: ${zip || '-'}\n🏢 ${floor || '-'}\n📞 ${phone}\n💵 ΜΕΤΡΗΤΑ`;
+            header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📮 T.K.: ${zip || '-'}\n🏢 ${floor || '-'}\n📞 ${phone}\n${payMethod}`;
         }
         
         const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
@@ -1256,11 +1259,14 @@ window.App = {
                 }
                 
                 // ✅ NEW: SoftPOS Button (Admin & Waiter Only)
-                if (App.softPosSettings && App.softPosSettings.enabled) {
+                // Only if POS Package is active (Sub 5)
+                if (App.hasFeature('pack_pos') && App.softPosSettings && App.softPosSettings.enabled) {
                     actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>` + actions;
                 }
 
-                actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>`;
+                // Only show QR Card if POS Package is active
+                if (App.hasFeature('pack_pos')) actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>` + actions;
+                
                 actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
             }
         }

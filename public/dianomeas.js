@@ -19,6 +19,7 @@ const messaging = getMessaging(app);
 window.App = {
     activeOrders: [],
     currentQrOrderId: null, // ✅ NEW: Track open QR
+    isChatOpen: false, // ✅ NEW: Chat State
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
     features: {}, // ✅ NEW: Local Features
 
@@ -61,11 +62,26 @@ window.App = {
         const hasManager = App.hasFeature('pack_manager');
         const hasDelivery = App.hasFeature('pack_delivery');
 
-        // Hide Orders if no Manager/Delivery (assuming 1992 is Chat Only)
+        // 1. Orders List (Manager or Delivery required)
         const ordersList = document.getElementById('ordersList');
         if (ordersList) {
-             // Show orders only if Manager or Delivery pack is active
              ordersList.style.display = (hasManager || hasDelivery) ? 'block' : 'none';
+        }
+
+        // 2. Chat & Fake Lock (Chat Pack required)
+        const chatWrapper = document.getElementById('chatWrapper');
+        if (chatWrapper) {
+            chatWrapper.style.display = hasChat ? 'flex' : 'none';
+        }
+        
+        const btnFakeLock = document.getElementById('btnFakeLock');
+        if (btnFakeLock) {
+            btnFakeLock.style.display = hasChat ? 'flex' : 'none';
+        }
+        
+        // Αν έχουμε ΜΟΝΟ Chat (Συνδρομή 1), κρύβουμε τυχόν άλλα στοιχεία αν υπάρχουν
+        if (hasChat && !hasManager && !hasDelivery) {
+            // Εδώ θα μπορούσαμε να κρύψουμε κι άλλα αν υπήρχαν
         }
     },
 
@@ -123,6 +139,7 @@ window.App = {
         });
 
         socket.on('force-logout', () => App.logout());
+        socket.on('chat-message', (data) => App.appendChat(data)); // ✅ NEW: Chat Listener
 
         // ✅ NEW: Listen for Settings (Name & SoftPOS)
         socket.on('store-settings-update', (settings) => {
@@ -313,6 +330,38 @@ window.App = {
     },
     
     logout: () => { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
+
+    // --- CHAT LOGIC ---
+    toggleAdminChat: () => { 
+        const el = document.getElementById('adminChatOverlay');
+        if(!el) return;
+        App.isChatOpen = (el.style.display === 'flex');
+        if (App.isChatOpen) { el.style.display = 'none'; App.isChatOpen = false; } 
+        else { el.style.display = 'flex'; App.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
+    },
+    sendChat: () => {
+        const inp = document.getElementById('adminChatInp');
+        if (inp && inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
+    },
+    appendChat: (data) => {
+        if (data.sender !== userData.name && !App.isChatOpen) { 
+            const badge = document.getElementById('chatBadge');
+            if(badge) badge.style.display = 'block'; 
+        }
+        const box = document.getElementById('adminChatBox');
+        if(box) {
+            box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+    },
+
+    // --- FAKE LOCK LOGIC ---
+    toggleFakeLock: () => { 
+        const el = document.getElementById('fakeLockOverlay');
+        if(!el) return;
+        if (el.style.display === 'flex') { el.style.display = 'none'; } 
+        else { el.style.display = 'flex'; }
+    },
 
     openQrPayment: async (id) => {
         App.currentQrOrderId = id; // ✅ Save ID

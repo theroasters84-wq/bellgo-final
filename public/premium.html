@@ -129,6 +129,12 @@
                     <input type="text" id="sidebarDelZip" class="inp-settings" placeholder="Τ.Κ." style="margin:0; padding:8px;">
                 </div>
 
+                <!-- ✅ NEW: Payment Method Selector (For Declaration) -->
+                <select id="sidebarPaymentMethod" class="inp-settings" style="margin-bottom:10px; padding:8px; background:#333; color:white; border:1px solid #555;">
+                    <option value="💵 ΜΕΤΡΗΤΑ">💵 ΜΕΤΡΗΤΑ</option>
+                    <option value="💳 ΚΑΡΤΑ">💳 ΚΑΡΤΑ</option>
+                </select>
+
                 <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:8px; padding:5px;"></div>
                 <textarea id="sidebarOrderText" class="order-text" data-i18n-placeholder="products" placeholder="Προϊόντα..." style="height:100px;"></textarea>
                 <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
