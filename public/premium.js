@@ -108,6 +108,9 @@ window.App = {
             App.features = { ...userData.features };
         }
 
+        // ✅ NEW: Enforce Subscription (Black Screen Check)
+        if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+
         // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
         ['desktopArea', 'btnMenuToggle', 'btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => { // ✅ Added desktopArea & btnMenuToggle
             const el = document.getElementById(id);

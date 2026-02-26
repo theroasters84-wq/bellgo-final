@@ -6,7 +6,7 @@ export const Sundromes = {
             price: 5, 
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.',
-            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock'] // ✅ Staff Call & Chat ONLY here
+            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock', 'btnSettings'] // ✅ Added btnSettings for Exit
         },
         { 
             key: 'pack_manager', 
@@ -75,6 +75,23 @@ export const Sundromes = {
         }
 
         return false;
+    },
+
+    // ✅ NEW: Enforce Subscription Rules (Black Screen if none)
+    checkSubscriptionAndEnforce: (user) => {
+        const hasAny = Sundromes.packages.some(p => Sundromes.hasAccess(user, p.key));
+        
+        if (!hasAny) {
+            document.body.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:black; color:white; font-family:sans-serif; text-align:center;">
+                    <h1 style="color:red;">⛔ Καμία Ενεργή Συνδρομή</h1>
+                    <p style="color:#ccc;">Ο λογαριασμός δεν έχει ενεργά πακέτα.</p>
+                    <button onclick="localStorage.removeItem('bellgo_session'); window.location.href='login.html'" style="padding:15px 30px; background:#333; color:white; border:1px solid #555; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer;">🚪 ΕΞΟΔΟΣ</button>
+                </div>
+            `;
+            return false;
+        }
+        return true;
     },
 
     // ✅ NEW: Subscriptions Modal Logic (Moved from premium.js)
