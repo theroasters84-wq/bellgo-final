@@ -162,7 +162,8 @@ window.App = {
             if(sb) sb.style.display = 'none';
         } else {
             // 🏪 CASHIER MODE
-            const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'flex';
+            // ❌ REMOVED: Μην το εμφανίζεις με το ζόρι. Άσε το applyFeatureVisibility να αποφασίσει.
+            // const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'flex';
             // ✅ ΤΑΜΕΙΟ: Η μπάρα υπάρχει αλλά ξεκινάει ΚΛΕΙΣΤΗ
             const sb = document.getElementById('orderSidebar');
             if(sb) { sb.style.display = 'flex'; sb.style.left = '-100%'; }
@@ -265,6 +266,9 @@ window.App = {
 
         // ✅ NEW: Apply Feature Visibility Initial Check
         App.applyFeatureVisibility();
+        
+        // ✅ NEW: Re-apply visibility after a moment to ensure no overrides (Double Check)
+        setTimeout(App.applyFeatureVisibility, 500);
 
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
