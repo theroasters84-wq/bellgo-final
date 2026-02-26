@@ -74,7 +74,8 @@ export const Admin = {
         const app = window.App;
         const lockedArea = document.getElementById('settingsLockedArea');
         
-        if (!app.settingsUnlocked) {
+        // ✅ NEW: Κλείδωμα ΜΟΝΟ αν είναι ενεργό το πακέτο POS (5)
+        if (!app.settingsUnlocked && app.hasFeature('pack_pos')) {
             if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
             lockedArea.style.minHeight = '600px'; // ✅ FIX: Increase height for lock screen
             
