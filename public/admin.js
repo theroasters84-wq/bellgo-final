@@ -80,7 +80,7 @@ export const Admin = {
             // ✅ NEW: Έλεγχος ορατότητας για το Lock Screen (ώστε να μην είναι καρφωτά)
             const hasManager = app.hasFeature('pack_manager');
             const hasDelivery = app.hasFeature('pack_delivery');
-            const styleCust = (hasManager || hasDelivery) ? 'flex' : 'none';
+            const styleCust = hasDelivery ? 'flex' : 'none';
             const styleStaff = hasManager ? 'flex' : 'none';
             const styleCharge = hasManager ? 'flex' : 'none';
 
