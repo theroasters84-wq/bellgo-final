@@ -108,8 +108,11 @@ window.App = {
             App.features = { ...userData.features };
         }
 
-        // ✅ NEW: Enforce Subscription (Black Screen Check)
-        if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+        // ✅ FIX: Connect Socket FIRST to allow real-time unlock
+        App.connectSocket();
+
+        // ✅ NEW: Enforce Subscription (Overlay if none)
+        Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
 
         // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
         ['desktopArea', 'btnMenuToggle', 'btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => { // ✅ Added desktopArea & btnMenuToggle
@@ -176,7 +179,6 @@ window.App = {
         const startScreen = document.getElementById('startScreen');
         if(startScreen) startScreen.style.display = 'none';
 
-        App.connectSocket();
         App.startHeartbeat();
         // App.requestNotifyPermission(); 
         App.checkNotificationPermission(); // ✅ UI Check

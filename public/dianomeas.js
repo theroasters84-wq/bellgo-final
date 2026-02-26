@@ -33,12 +33,13 @@ window.App = {
         if (userData.features) {
             App.features = { ...userData.features };
         }
+
+        App.connectSocket(); // ✅ Connect first
+
         // ✅ NEW: Enforce Subscription for Driver too
-        if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+        Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
 
         App.applyFeatureVisibility();
-
-        App.connectSocket();
         App.requestNotifyPermission();
         
         // ✅ Ενεργοποίηση Audio Engine (Silent Tone) με το πρώτο κλικ

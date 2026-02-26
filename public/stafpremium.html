@@ -515,8 +515,11 @@
                 if (userData.features) {
                     App.features = { ...userData.features };
                 }
-                // Έλεγχος αν υπάρχει έστω μία συνδρομή (αλλιώς μαύρη οθόνη)
-                if (!Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features })) return;
+
+                App.connectSocket(); // ✅ Connect first
+
+                // Έλεγχος αν υπάρχει έστω μία συνδρομή (αλλιώς Overlay)
+                Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
                 
                 App.applyFeatureVisibility(); // ✅ Εφαρμογή ορατότητας
                 
@@ -560,7 +563,6 @@
                       }, 150);
                 });
 
-                App.connectSocket();
                 App.startHeartbeat();
                 App.checkNotificationPermission();
 
