@@ -14,7 +14,7 @@ export const Sundromes = {
             price: 15, 
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
-            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowReservations', 'rowTotalTables'] // ✅ Staff & Charge controlled here
+            ui_ids: ['btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowSwitchCust', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowReservations', 'rowTotalTables'] // ✅ Staff & Charge controlled here
         },
         { 
             key: 'pack_delivery', 
@@ -22,7 +22,7 @@ export const Sundromes = {
             price: 15, 
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
-            ui_ids: ['resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnSettingsGeneral', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule'] // ✅ Only Customers switch here
+            ui_ids: ['resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnSettingsGeneral', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'rowStaffCharge', 'secSchedule'] // ✅ Customers & Staff Charge here
         },
         { 
             key: 'pack_tables', 
