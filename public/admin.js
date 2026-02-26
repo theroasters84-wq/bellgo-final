@@ -77,6 +77,13 @@ export const Admin = {
         if (!app.settingsUnlocked) {
             if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
             
+            // ✅ NEW: Έλεγχος ορατότητας για το Lock Screen (ώστε να μην είναι καρφωτά)
+            const hasManager = app.hasFeature('pack_manager');
+            const hasDelivery = app.hasFeature('pack_delivery');
+            const styleCust = (hasManager || hasDelivery) ? 'flex' : 'none';
+            const styleStaff = hasManager ? 'flex' : 'none';
+            const styleCharge = hasManager ? 'flex' : 'none';
+
             let lock = document.getElementById('settingsLockOverlay');
             if (!lock) {
                 lock = document.createElement('div');
@@ -113,15 +120,15 @@ export const Admin = {
                         </div>
 
                         <div style="border-top:1px solid #333; padding-top:10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div style="display:${styleCust}; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="color:#ccc; font-size:12px;">ΠΕΛΑΤΕΣ (Delivery)</span>
                                 <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div style="display:${styleStaff}; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="color:#ccc; font-size:12px;">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
                                 <label class="switch"><input type="checkbox" id="switchLockStaff" onchange="App.updateFromLock('staff', this.checked)"><span class="slider round"></span></label>
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:${styleCharge}; justify-content:space-between; align-items:center;">
                                 <span style="color:#ccc; font-size:12px;">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
                                 <label class="switch"><input type="checkbox" id="switchLockCharge" onchange="App.updateFromLock('charge', this.checked)"><span class="slider round"></span></label>
                             </div>
