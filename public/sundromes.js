@@ -101,13 +101,16 @@ export const Sundromes = {
             modal = document.createElement('div');
             modal.id = 'subscriptionsModal';
             modal.className = 'modal-overlay';
+            // ✅ FIX: Inline styles to ensure it works in login.html without external CSS
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; align-items:center; justify-content:center;";
+            
             modal.innerHTML = `
-                <div class="modal-box" style="max-width:400px; max-height:80vh; overflow-y:auto;">
-                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px;">💎 Διαχείριση Συνδρομών</h2>
-                    <div id="subsList"></div>
-                    <div style="margin-top:20px; display:flex; gap:10px;">
-                        <button onclick="Sundromes.saveSubscriptions()" class="modal-btn" style="background:#00E676; color:black; font-weight:bold; flex:1;">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
-                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" class="modal-btn" style="background:#555; flex:1;">ΚΛΕΙΣΙΜΟ</button>
+                <div class="modal-box" style="width:90%; max-width:400px; max-height:80vh; overflow-y:auto; background:#1e1e1e; padding:20px; border-radius:12px; border:1px solid #333; text-align:center;">
+                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px; margin-top:0;">💎 Διαχείριση Συνδρομών</h2>
+                    <div id="subsList" style="text-align:left;"></div>
+                    <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+                        <button onclick="Sundromes.proceedToLogin()" style="background:#2196F3; color:white; font-weight:bold; padding:12px; border:none; border-radius:8px; cursor:pointer; font-size:14px; width:100%;">📧 ΕΙΣΟΔΟΣ EMAIL & ΑΓΟΡΑ</button>
+                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" style="background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:8px; cursor:pointer; width:100%;">ΚΛΕΙΣΙΜΟ</button>
                     </div>
                 </div>
             `;
@@ -119,26 +122,28 @@ export const Sundromes = {
         Sundromes.packages.forEach((feat) => {
             const isActive = window.App.tempFeatures[feat.key];
             const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#222; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#2a2a2a; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
             row.innerHTML = `<div><div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#aaa; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked"><span class="slider round"></span></label>`;
             list.appendChild(row);
         });
         modal.style.display = 'flex';
     },
-    saveSubscriptions: () => {
-        if (confirm("Αποθήκευση αλλαγών στις συνδρομές;")) {
-            window.App.features = { ...window.App.tempFeatures };
+    proceedToLogin: () => {
+        window.App.features = { ...window.App.tempFeatures };
+        
+        if (window.App.isLoginScreen) {
+            // ✅ Simulation Mode (Login Screen): Save to LocalStorage
+            localStorage.setItem('bellgo_temp_features', JSON.stringify(window.App.features));
+            document.getElementById('subscriptionsModal').style.display = 'none';
             
-            if (window.App.isLoginScreen) {
-                // ✅ Simulation Mode (Login Screen): Save to LocalStorage
-                localStorage.setItem('bellgo_temp_features', JSON.stringify(window.App.features));
-                alert("✅ Οι συνδρομές ενεργοποιήθηκαν! Παρακαλώ συνδεθείτε.");
-            } else {
-                // ✅ Normal Mode: Save to Server
-                window.socket.emit('save-store-settings', { features: window.App.features });
-                if(window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
+            // ✅ Redirect to Admin Login
+            if (window.UI && window.UI.showAdminLogin) {
+                window.UI.showAdminLogin();
             }
-            
+        } else {
+            // ✅ Normal Mode: Save to Server
+            window.socket.emit('save-store-settings', { features: window.App.features });
+            if(window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
             document.getElementById('subscriptionsModal').style.display = 'none';
         }
     }
