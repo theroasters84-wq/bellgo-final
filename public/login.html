@@ -84,6 +84,10 @@
             <button onclick="setLanguage('en')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇺🇸 EN</button>
         </div>
 
+        <div style="margin-bottom: 15px;">
+            <button onclick="Sundromes.openSubscriptionsModal()" style="background:linear-gradient(45deg, #FFD700, #FF9800); color:black; border:none; padding:10px 20px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px;">💎 ΔΙΑΧΕΙΡΙΣΗ ΣΥΝΔΡΟΜΩΝ (TEST)</button>
+        </div>
+
         <button id="btnInstall" onclick="handleInstall()" data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
         
         <!-- 1. ROLE SELECTION SCREEN -->
@@ -209,6 +213,19 @@
         const provider = new GoogleAuthProvider();
 
         const socket = io({ transports: ['polling', 'websocket'] });
+        window.socket = socket; // ✅ Expose for Sundromes
+
+        // ✅ NEW: Mock App object for Sundromes compatibility in Login
+        window.App = {
+            features: {},
+            tempFeatures: {},
+            isLoginScreen: true, // Flag for Sundromes
+            applyFeatureVisibility: () => {} 
+        };
+        try {
+            const savedFeats = localStorage.getItem('bellgo_temp_features');
+            if(savedFeats) window.App.features = JSON.parse(savedFeats);
+        } catch(e){}
 
         let currentPinMode = 'enter'; 
         let tempPin = '';

@@ -3,15 +3,15 @@ export const Sundromes = {
         { 
             key: 'pack_chat', 
             name: '1. 💬 Chat & Κλήση Προσωπικού', 
-            price: 5, 
+            price: 4, 
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.',
-            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock', 'btnSettings'] // ✅ Added btnSettings for Exit
+            ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock', 'btnSettings']
         },
         { 
             key: 'pack_manager', 
             name: '2. 👨‍🍳 Manager & Παραγγελιοληψία', 
-            price: 15, 
+            price: 10, 
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
             ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowTotalTables'] // ✅ Staff & Charge controlled here
@@ -128,8 +128,17 @@ export const Sundromes = {
     saveSubscriptions: () => {
         if (confirm("Αποθήκευση αλλαγών στις συνδρομές;")) {
             window.App.features = { ...window.App.tempFeatures };
-            window.socket.emit('save-store-settings', { features: window.App.features });
-            window.App.applyFeatureVisibility();
+            
+            if (window.App.isLoginScreen) {
+                // ✅ Simulation Mode (Login Screen): Save to LocalStorage
+                localStorage.setItem('bellgo_temp_features', JSON.stringify(window.App.features));
+                alert("✅ Οι συνδρομές ενεργοποιήθηκαν για την επόμενη είσοδο (Test Mode)!");
+            } else {
+                // ✅ Normal Mode: Save to Server
+                window.socket.emit('save-store-settings', { features: window.App.features });
+                if(window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
+            }
+            
             document.getElementById('subscriptionsModal').style.display = 'none';
         }
     }

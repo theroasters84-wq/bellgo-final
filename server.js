@@ -27,12 +27,12 @@ const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
 // ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
 // ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
 const FEATURE_PRICES = {
-    'price_chat_xxxxx': 'pack_chat',
-    'price_manager_xxxxx': 'pack_manager',
-    'price_delivery_xxxxx': 'pack_delivery',
-    'price_tables_xxxxx': 'pack_tables',
-    'price_pos_xxxxx': 'pack_pos',
-    'price_loyalty_xxxxx': 'pack_loyalty'
+    'price_1Sx9PFJcEtNSGviLteieJCwj': 'pack_chat', // ✅ BellGo Basic (4€) -> Pack 1
+    'price_1SzHTPJcEtNSGviLk7N84Irn': 'pack_manager', // ✅ Premium (10€) -> Pack 2
+    'price_1T5RpbJcEtNSGviLy5zj4t2F': 'pack_delivery',
+    'price_1T5RtQJcEtNSGviLGHRhyDx9': 'pack_tables',
+    'price_1T5RvLJcEtNSGviLrYYs72aH': 'pack_pos',
+    'price_1T5RwBJcEtNSGviLq7VJ1KLi': 'pack_loyalty'
 };
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
