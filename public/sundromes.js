@@ -1,3 +1,7 @@
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { firebaseConfig } from './config.js';
+
 export const Sundromes = {
     packages: [
         { 
@@ -117,6 +121,13 @@ export const Sundromes = {
                     <div style="text-align:right; font-size:18px; font-weight:bold; color:#00E676; margin-top:10px; border-top:1px solid #333; padding-top:10px;">
                         ΣΥΝΟΛΟ: <span id="subsTotal">0.00€</span> / μήνα
                     </div>
+                    <div style="margin-top:15px; text-align:left;">
+                        <label style="color:#aaa; font-size:12px;">Email Λογαριασμού (Stripe)</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="email" id="subsEmailInp" placeholder="example@email.com" style="flex:1; padding:10px; margin-top:5px; background:#333; border:1px solid #555; color:white; border-radius:6px; box-sizing:border-box; text-align:center;">
+                            <button onclick="Sundromes.verifyGoogle()" title="Επαλήθευση με Google" style="margin-top:5px; background:#DB4437; color:white; border:none; border-radius:6px; padding:0 15px; cursor:pointer; font-weight:bold; font-size:14px;">G</button>
+                        </div>
+                    </div>
                     <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
                         <button onclick="Sundromes.proceedToLogin()" style="background:#2196F3; color:white; font-weight:bold; padding:12px; border:none; border-radius:8px; cursor:pointer; font-size:14px; width:100%;">📧 ΕΙΣΟΔΟΣ EMAIL & ΑΓΟΡΑ</button>
                         <button onclick="document.getElementById('subscriptionsModal').style.display='none';" style="background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:8px; cursor:pointer; width:100%;">ΚΛΕΙΣΙΜΟ</button>
@@ -127,6 +138,13 @@ export const Sundromes = {
         }
         const list = document.getElementById('subsList');
         list.innerHTML = '';
+        
+        // ✅ Pre-fill Email if available
+        let preFill = document.getElementById('adminEmailInp')?.value.trim();
+        if (!preFill && window.App && window.App.userData && window.App.userData.email) preFill = window.App.userData.email;
+        const subsEmail = document.getElementById('subsEmailInp');
+        if (subsEmail && preFill) subsEmail.value = preFill;
+
         window.App.tempFeatures = { ...window.App.features };
         Sundromes.packages.forEach((feat) => {
             const isActive = window.App.tempFeatures[feat.key];
@@ -146,6 +164,25 @@ export const Sundromes = {
         const el = document.getElementById('subsTotal');
         if(el) el.innerText = total.toFixed(2) + '€';
     },
+    verifyGoogle: async () => {
+        try {
+            let app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            if (user && user.email) {
+                const inp = document.getElementById('subsEmailInp');
+                if (inp) {
+                    inp.value = user.email;
+                    inp.style.border = "1px solid #00E676"; // Green border
+                    alert(`✅ Επιτυχής επαλήθευση: ${user.email}`);
+                }
+            }
+        } catch (error) {
+            alert("Σφάλμα επαλήθευσης Google: " + error.message);
+        }
+    },
     proceedToLogin: async () => {
         // 1. Collect Selected Features
         const selectedPriceIds = [];
@@ -163,11 +200,14 @@ export const Sundromes = {
         }
 
         // 2. Get Email (From Input or Prompt)
-        let email = document.getElementById('adminEmailInp')?.value.trim();
+        const emailInp = document.getElementById('subsEmailInp');
+        let email = emailInp?.value.trim();
+
         if (!email) {
-            email = prompt("Παρακαλώ εισάγετε το Email σας για την αγορά:");
+            alert("Παρακαλώ συμπληρώστε το Email σας για την αγορά.");
+            if(emailInp) { emailInp.style.border = "1px solid red"; emailInp.focus(); }
+            return;
         }
-        if (!email) return;
         
         // 3. Redirect to Stripe
         try {
