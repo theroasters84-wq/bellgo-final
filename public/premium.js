@@ -1540,7 +1540,7 @@ window.App = {
         
         // Reuse the QR Payment Modal for simplicity, just change title
         const modal = document.getElementById('qrPaymentModal');
-        modal.querySelector('h2').innerText = "🎁 QR Επιβράβευσης";
+        modal.querySelector('h3').innerText = "🎁 QR Επιβράβευσης"; // ✅ FIX: Target h3 instead of h2
         modal.style.display = 'flex';
     },
 
