@@ -35,12 +35,6 @@ const FEATURE_PRICES = {
     'price_1T5RwBJcEtNSGviLq7VJ1KLi': 'pack_loyalty'
 };
 
-// ✅ NEW: Reverse Map for Checkout (Feature -> PriceID)
-const PRICE_BY_FEATURE = {};
-for (const [pid, fid] of Object.entries(FEATURE_PRICES)) {
-    PRICE_BY_FEATURE[fid] = pid;
-}
-
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 let db;
 try {
@@ -273,7 +267,17 @@ app.post('/check-subscription', async (req, res) => {
     if (match) {
         const year = parseInt(match[1]);
         if (year >= 1992) {
-             return res.json({ active: true, plan: 'premium', features: manualFeatures, storeId: email });
+             // ✅ HACK: Ενεργοποίηση πακέτων βάσει έτους (Demo Mode)
+             let hackFeatures = { ...manualFeatures }; // Αντιγραφή για να μην πειράξουμε τη βάση
+
+             if (year === 1992) hackFeatures['pack_chat'] = true;      // Συνδρομή 1
+             if (year === 1993) hackFeatures['pack_manager'] = true;   // Συνδρομή 2
+             if (year === 1994) hackFeatures['pack_delivery'] = true;  // Συνδρομή 3
+             if (year === 1995) hackFeatures['pack_tables'] = true;    // Συνδρομή 4
+             if (year === 1996) hackFeatures['pack_pos'] = true;       // Συνδρομή 5
+             if (year === 1997) hackFeatures['pack_loyalty'] = true;   // Συνδρομή 6
+
+             return res.json({ active: true, plan: 'premium', features: hackFeatures, storeId: email });
         }
     }
 
@@ -320,15 +324,12 @@ app.post('/check-subscription', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-    const { email, plan, features, isNative } = req.body; // ✅ Added features
+    const { email, plan, priceIds, isNative } = req.body; // ✅ Changed features to priceIds
     
     let line_items = [];
 
-    if (features && Array.isArray(features) && features.length > 0) {
-        features.forEach(fKey => {
-            const pid = PRICE_BY_FEATURE[fKey];
-            if (pid) line_items.push({ price: pid, quantity: 1 });
-        });
+    if (priceIds && Array.isArray(priceIds) && priceIds.length > 0) {
+        priceIds.forEach(pid => line_items.push({ price: pid, quantity: 1 }));
     } else if (plan) {
         line_items.push({ price: (plan === 'premium' ? PRICE_PREMIUM : PRICE_BASIC), quantity: 1 });
     }

@@ -4,6 +4,7 @@ export const Sundromes = {
             key: 'pack_chat', 
             name: '1. 💬 Chat & Κλήση Προσωπικού', 
             price: 4, 
+            stripeId: 'price_1Sx9PFJcEtNSGviLteieJCwj', // ✅ Hosted Here
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.',
             ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock', 'btnSettings']
@@ -12,6 +13,7 @@ export const Sundromes = {
             key: 'pack_manager', 
             name: '2. 👨‍🍳 Manager & Παραγγελιοληψία', 
             price: 10, 
+            stripeId: 'price_1SzHTPJcEtNSGviLk7N84Irn', // ✅ Hosted Here
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
             ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowTotalTables'] // ✅ Staff & Charge controlled here
@@ -20,6 +22,7 @@ export const Sundromes = {
             key: 'pack_delivery', 
             name: '3. 🛵 Delivery QR & Κρατήσεις', 
             price: 15, 
+            stripeId: 'price_1T5RpbJcEtNSGviLy5zj4t2F', // ✅ Hosted Here
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
             ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations'] // ✅ Added Printer Settings & Reservations
@@ -28,6 +31,7 @@ export const Sundromes = {
             key: 'pack_tables', 
             name: '4. 🍽️ Παραγγελία Τραπεζιού', 
             price: 15, 
+            stripeId: 'price_1T5RtQJcEtNSGviLGHRhyDx9', // ✅ Hosted Here
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
             ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables']
@@ -36,6 +40,7 @@ export const Sundromes = {
             key: 'pack_pos', 
             name: '5. 💳 POS & E-Invoicing', 
             price: 20, 
+            stripeId: 'price_1T5RvLJcEtNSGviLrYYs72aH', // ✅ Hosted Here
             year: 1996,
             desc: 'Ηλ. Τιμολόγηση, Σύνδεση POS και SoftPOS στο κινητό.',
             ui_ids: ['desktopArea', 'btnCashRegister', 'softPosSettingsContainer', 'physicalPosSettingsContainer', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsGeneral', 'btnSettingsEinvoicing'] // ✅ Added physicalPosSettingsContainer
@@ -44,6 +49,7 @@ export const Sundromes = {
             key: 'pack_loyalty', 
             name: '6. 🎁 Επιβράβευση (Loyalty)', 
             price: 5, 
+            stripeId: 'price_1T5RwBJcEtNSGviLq7VJ1KLi', // ✅ Hosted Here
             year: 1997,
             desc: 'QR επιβράβευσης σε κάθε απόδειξη.',
             ui_ids: ['btnManualReward', 'btnSettingsLoyalty', 'btnSettings', 'btnFakeLock', 'btnSettingsPrint', 'rowPrinterEnabled']
@@ -142,15 +148,18 @@ export const Sundromes = {
     },
     proceedToLogin: async () => {
         // 1. Collect Selected Features
-        const selectedFeatures = [];
+        const selectedPriceIds = [];
         if (window.App.tempFeatures) {
             for (const [key, active] of Object.entries(window.App.tempFeatures)) {
-                if (active) selectedFeatures.push(key);
+                if (active) {
+                    const pkg = Sundromes.packages.find(p => p.key === key);
+                    if (pkg && pkg.stripeId) selectedPriceIds.push(pkg.stripeId);
+                }
             }
         }
 
-        if (selectedFeatures.length === 0) {
-            return alert("Παρακαλώ επιλέξτε τουλάχιστον ένα πακέτο.");
+        if (selectedPriceIds.length === 0) {
+            return alert("Παρακαλώ επιλέξτε τουλάχιστον ένα πακέτο για αγορά.");
         }
 
         // 2. Get Email (From Input or Prompt)
@@ -165,7 +174,7 @@ export const Sundromes = {
             const res = await fetch('/create-checkout-session', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: email, features: selectedFeatures, isNative: !!window.Capacitor })
+                body: JSON.stringify({ email: email, priceIds: selectedPriceIds, isNative: !!window.Capacitor })
             });
             const data = await res.json();
             if(data.url) window.location.href = data.url;
