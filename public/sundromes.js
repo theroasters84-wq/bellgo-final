@@ -132,7 +132,7 @@ export const Sundromes = {
             if (window.App.isLoginScreen) {
                 // ✅ Simulation Mode (Login Screen): Save to LocalStorage
                 localStorage.setItem('bellgo_temp_features', JSON.stringify(window.App.features));
-                alert("✅ Οι συνδρομές ενεργοποιήθηκαν για την επόμενη είσοδο (Test Mode)!");
+                alert("✅ Οι συνδρομές ενεργοποιήθηκαν! Παρακαλώ συνδεθείτε.");
             } else {
                 // ✅ Normal Mode: Save to Server
                 window.socket.emit('save-store-settings', { features: window.App.features });
