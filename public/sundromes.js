@@ -30,7 +30,7 @@ export const Sundromes = {
             price: 15, 
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
-            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnWallet', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables'] // ✅ Added btnQrTables
+            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables']
         },
         { 
             key: 'pack_pos', 
