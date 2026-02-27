@@ -35,6 +35,12 @@ const FEATURE_PRICES = {
     'price_1T5RwBJcEtNSGviLq7VJ1KLi': 'pack_loyalty'
 };
 
+// ✅ NEW: Reverse Map for Checkout (Feature -> PriceID)
+const PRICE_BY_FEATURE = {};
+for (const [pid, fid] of Object.entries(FEATURE_PRICES)) {
+    PRICE_BY_FEATURE[fid] = pid;
+}
+
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
 let db;
 try {
@@ -314,9 +320,20 @@ app.post('/check-subscription', async (req, res) => {
 });
 
 app.post('/create-checkout-session', async (req, res) => {
-    const { email, plan, isNative } = req.body; // ✅ Προσθήκη isNative
-    let priceId = PRICE_BASIC; 
-    if (plan === 'premium') priceId = PRICE_PREMIUM; 
+    const { email, plan, features, isNative } = req.body; // ✅ Added features
+    
+    let line_items = [];
+
+    if (features && Array.isArray(features) && features.length > 0) {
+        features.forEach(fKey => {
+            const pid = PRICE_BY_FEATURE[fKey];
+            if (pid) line_items.push({ price: pid, quantity: 1 });
+        });
+    } else if (plan) {
+        line_items.push({ price: (plan === 'premium' ? PRICE_PREMIUM : PRICE_BASIC), quantity: 1 });
+    }
+
+    if (line_items.length === 0) return res.status(400).json({ error: "No packages selected." });
 
     // ✅ FIX: Δυναμικό Domain για επιστροφή στο App
     const protocol = req.headers['x-forwarded-proto'] || 'https';
@@ -329,7 +346,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
     try {
         const session = await stripe.checkout.sessions.create({
-            line_items: [{ price: priceId, quantity: 1 }],
+            line_items: line_items, // ✅ Use dynamic line items
             mode: 'subscription',
             customer_email: email,
             success_url: `${returnDomain}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,

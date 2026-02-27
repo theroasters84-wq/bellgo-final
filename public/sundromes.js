@@ -108,6 +108,9 @@ export const Sundromes = {
                 <div class="modal-box" style="width:90%; max-width:400px; max-height:80vh; overflow-y:auto; background:#1e1e1e; padding:20px; border-radius:12px; border:1px solid #333; text-align:center;">
                     <h2 style="color:#FFD700; text-align:center; margin-bottom:20px; margin-top:0;">💎 Διαχείριση Συνδρομών</h2>
                     <div id="subsList" style="text-align:left;"></div>
+                    <div style="text-align:right; font-size:18px; font-weight:bold; color:#00E676; margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+                        ΣΥΝΟΛΟ: <span id="subsTotal">0.00€</span> / μήνα
+                    </div>
                     <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
                         <button onclick="Sundromes.proceedToLogin()" style="background:#2196F3; color:white; font-weight:bold; padding:12px; border:none; border-radius:8px; cursor:pointer; font-size:14px; width:100%;">📧 ΕΙΣΟΔΟΣ EMAIL & ΑΓΟΡΑ</button>
                         <button onclick="document.getElementById('subscriptionsModal').style.display='none';" style="background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:8px; cursor:pointer; width:100%;">ΚΛΕΙΣΙΜΟ</button>
@@ -123,28 +126,52 @@ export const Sundromes = {
             const isActive = window.App.tempFeatures[feat.key];
             const row = document.createElement('div');
             row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#2a2a2a; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
-            row.innerHTML = `<div><div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#aaa; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked"><span class="slider round"></span></label>`;
+            row.innerHTML = `<div><div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#aaa; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked; Sundromes.calcTotal();"><span class="slider round"></span></label>`;
             list.appendChild(row);
         });
+        Sundromes.calcTotal(); // ✅ Calculate initial total
         modal.style.display = 'flex';
     },
-    proceedToLogin: () => {
-        window.App.features = { ...window.App.tempFeatures };
-        
-        if (window.App.isLoginScreen) {
-            // ✅ Simulation Mode (Login Screen): Save to LocalStorage
-            localStorage.setItem('bellgo_temp_features', JSON.stringify(window.App.features));
-            document.getElementById('subscriptionsModal').style.display = 'none';
-            
-            // ✅ Redirect to Admin Login
-            if (window.UI && window.UI.showAdminLogin) {
-                window.UI.showAdminLogin();
+    calcTotal: () => {
+        let total = 0;
+        Sundromes.packages.forEach(p => {
+            if (window.App.tempFeatures[p.key]) total += p.price;
+        });
+        const el = document.getElementById('subsTotal');
+        if(el) el.innerText = total.toFixed(2) + '€';
+    },
+    proceedToLogin: async () => {
+        // 1. Collect Selected Features
+        const selectedFeatures = [];
+        if (window.App.tempFeatures) {
+            for (const [key, active] of Object.entries(window.App.tempFeatures)) {
+                if (active) selectedFeatures.push(key);
             }
-        } else {
-            // ✅ Normal Mode: Save to Server
-            window.socket.emit('save-store-settings', { features: window.App.features });
-            if(window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
-            document.getElementById('subscriptionsModal').style.display = 'none';
+        }
+
+        if (selectedFeatures.length === 0) {
+            return alert("Παρακαλώ επιλέξτε τουλάχιστον ένα πακέτο.");
+        }
+
+        // 2. Get Email (From Input or Prompt)
+        let email = document.getElementById('adminEmailInp')?.value.trim();
+        if (!email) {
+            email = prompt("Παρακαλώ εισάγετε το Email σας για την αγορά:");
+        }
+        if (!email) return;
+        
+        // 3. Redirect to Stripe
+        try {
+            const res = await fetch('/create-checkout-session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: email, features: selectedFeatures, isNative: !!window.Capacitor })
+            });
+            const data = await res.json();
+            if(data.url) window.location.href = data.url;
+            else alert("Σφάλμα: " + (data.error || "Άγνωστο"));
+        } catch(e) {
+            alert("Σφάλμα σύνδεσης.");
         }
     }
 };
