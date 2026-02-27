@@ -3,7 +3,7 @@ import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.
 import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 import { PaySystem } from './pay.js'; // ✅ Import PaySystem
-import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
+import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes (Case Sensitive Fix)
 import { Admin } from './admin.js'; // ✅ Import Admin Logic
 import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
 import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // ✅ Import Menu Logic

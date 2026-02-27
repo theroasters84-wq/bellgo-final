@@ -239,7 +239,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
         import { firebaseConfig, vapidKey } from './config.js';
-        import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
+        import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes (Case Sensitive Fix)
 
         // ✅ INIT FIREBASE & EXPOSE TO WINDOW
         const app = initializeApp(firebaseConfig);
