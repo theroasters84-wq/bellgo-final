@@ -420,7 +420,14 @@ window.App = {
                 // ✅ NEW: Load E-Invoicing State
                 if(settings.reward) {
                     App.rewardSettings = settings.reward;
-                    // Update UI if modal is open (optional, usually handled on open)
+                    // Update UI inputs
+                    const elReward = document.getElementById('switchRewardEnabled');
+                    if(elReward) {
+                        elReward.checked = settings.reward.enabled;
+                        document.getElementById('inpRewardGift').value = settings.reward.gift || '';
+                        document.getElementById('inpRewardTarget').value = settings.reward.target || 5;
+                        document.getElementById('selRewardMode').value = settings.reward.mode || 'manual';
+                    }
                 }
 
                 // ✅ FIX: Check for keys before enabling Cash Register
@@ -631,23 +638,6 @@ window.App = {
                 }
             }
         });
-
-        // 6. Rewards Pack
-        const divRewards = document.getElementById('rewardSettingsContainer');
-        if (divRewards) {
-            divRewards.style.display = App.hasFeature('pack_loyalty') ? 'block' : 'none';
-            // ✅ Hint: Αν έχει Loyalty αλλά όχι POS
-            if (App.hasFeature('pack_loyalty') && !App.hasFeature('pack_pos')) {
-                let hint = document.getElementById('rewardPosHint');
-                if (!hint) {
-                    hint = document.createElement('div');
-                    hint.id = 'rewardPosHint';
-                    hint.style.cssText = "color:#FF9800; font-size:11px; margin-top:5px;";
-                    hint.innerText = "⚠️ Για πλήρη λειτουργία απαιτείται το πακέτο POS.";
-                    divRewards.appendChild(hint);
-                }
-            }
-        }
     },
 
     saveStoreName: () => {
@@ -1134,8 +1124,8 @@ window.App = {
 
         // ✅ NEW: Reward Prompt for PASO
         if (App.rewardSettings && App.rewardSettings.enabled) {
-            const mode = App.rewardSettings.mode || 'all';
-            if (mode === 'all' || mode === 'takeaway') {
+            const mode = App.rewardSettings.mode || 'manual';
+            if (mode === 'all' || mode === 'paso') {
             setTimeout(() => {
                 // ✅ FIX: Αν δεν τυπώνει, εμφάνισε το QR αυτόματα. Αλλιώς ρώτα.
                 if(!App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) {
@@ -1554,6 +1544,12 @@ window.App = {
         modal.style.display = 'flex';
     },
 
+    // ✅ NEW: MANUAL REWARD QR (No Order)
+    openManualRewardQr: () => {
+        const id = Date.now(); // Generate timestamp ID
+        App.openRewardQr(id);
+    },
+
     // ✅ NEW: TABLE QR GENERATOR
     openTableQrModal: () => {
         document.getElementById('settingsModal').style.display = 'none';
@@ -1688,7 +1684,7 @@ window.App = {
 
         // ✅ NEW: Reward Prompt for Delivery/Table
         if (App.rewardSettings && App.rewardSettings.enabled) {
-            const mode = App.rewardSettings.mode || 'all';
+            const mode = App.rewardSettings.mode || 'manual';
             let shouldShow = false;
             if (mode === 'all') shouldShow = true;
             else if (mode === 'delivery' && isDelivery) shouldShow = true;

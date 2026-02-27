@@ -46,7 +46,7 @@ export const Sundromes = {
             price: 5, 
             year: 1997,
             desc: 'QR επιβράβευσης σε κάθε απόδειξη.',
-            ui_ids: ['rewardSettingsContainer', 'btnSettings', 'btnWallet', 'btnFakeLock']
+            ui_ids: ['btnManualReward', 'btnSettingsLoyalty', 'btnSettings', 'btnFakeLock', 'btnSettingsPrint', 'rowPrinterEnabled']
         }
     ],
 
