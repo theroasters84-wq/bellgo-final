@@ -115,7 +115,7 @@ window.App = {
         Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
 
         // ✅ FIX: Hide sensitive elements immediately to prevent FOUC (Flash of Unauthorized Content)
-        ['desktopArea', 'btnMenuToggle', 'btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable'].forEach(id => { // ✅ Added desktopArea & btnMenuToggle
+        ['desktopArea', 'btnMenuToggle', 'btnCashRegister', 'btnExpenses', 'btnNewOrderSidebar', 'btnModeTable', 'btnSettings', 'btnWallet', 'btnFakeLock'].forEach(id => { // ✅ Added more IDs
             const el = document.getElementById(id);
             if(el) el.style.display = 'none';
         });

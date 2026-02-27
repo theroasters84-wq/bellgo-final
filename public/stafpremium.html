@@ -65,11 +65,11 @@
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn-icon" onclick="App.toggleMyOrders()" title="Παραγγελίες">
+                <button id="btnMyOrders" class="btn-icon" onclick="App.toggleMyOrders()" title="Παραγγελίες" style="display:none;">
                     📋 <span id="ordersBadge" class="btn-badge">0</span>
                 </button>
 
-                <div class="btn-icon-wrapper">
+                <div id="chatWrapper" class="btn-icon-wrapper" style="display:none;">
                     <button id="chatBtn" class="btn-icon" onclick="App.toggleChat()" title="Chat">📁</button>
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
@@ -80,11 +80,10 @@
                     <div id="resBadge" class="chat-badge"></div>
                 </div>
 
-                <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ">🔔</button>
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="display:none;">🔔</button>
                 
-                <button class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings">⚙️</button>
-                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen">🌙</button>
+                <button id="btnSettings" class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings" style="display:none;">⚙️</button>
+                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen" style="display:none;">🌙</button>
                 <button class="btn-logout" onclick="App.logout()" data-i18n="exit">EXIT</button>
             </div>
         </div>
@@ -588,7 +587,7 @@
 
                 // 1. Ordering UI (Waiter Panel & My Orders)
                 const waiterPanel = document.getElementById('waiterPanel');
-                const myOrdersBtn = document.querySelector('button[onclick="App.toggleMyOrders()"]');
+                const myOrdersBtn = document.getElementById('btnMyOrders');
                 
                 if (waiterPanel) waiterPanel.style.display = hasOrdering ? 'block' : 'none';
                 if (myOrdersBtn) myOrdersBtn.style.display = hasOrdering ? 'flex' : 'none';
@@ -600,18 +599,22 @@
                 }
 
                 // 2. Chat & Bell (Pack 1)
-                const chatWrapper = document.querySelector('button[onclick="App.toggleChat()"]')?.parentElement;
+                const chatWrapper = document.getElementById('chatWrapper');
                 const bellBtn = document.getElementById('staffBellBtn');
                 
                 if (chatWrapper) chatWrapper.style.display = hasChat ? 'flex' : 'none';
-                if (bellBtn) bellBtn.style.display = hasChat ? 'flex' : 'none';
+                // Το κουμπί κουδουνιού είναι κρυφό by default και εμφανίζεται όταν χτυπάει,
+                // αλλά εδώ βεβαιωνόμαστε ότι αν ΔΕΝ έχεις Chat πακέτο, δεν θα εμφανιστεί ποτέ.
                 if (bellBtn && !hasChat) {
                     bellBtn.style.display = 'none';
                 }
                 
-                // 3. Fake Lock (Available in Chat or Ordering)
-                const fakeLockBtn = document.querySelector('button[title="Black Screen"]');
+                // 3. Fake Lock & Settings (Available in Chat or Ordering)
+                const fakeLockBtn = document.getElementById('btnFakeLock');
                 if (fakeLockBtn) fakeLockBtn.style.display = (hasChat || hasOrdering) ? 'flex' : 'none';
+
+                const settingsBtn = document.getElementById('btnSettings');
+                if (settingsBtn) settingsBtn.style.display = (hasChat || hasOrdering) ? 'flex' : 'none';
             },
             
             hasFeature: (key) => {
