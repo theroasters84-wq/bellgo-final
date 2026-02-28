@@ -153,6 +153,10 @@ export const Apodiksh = {
 
     // ✅ NEW: CASH REGISTER LOGIC (Moved from premium.js)
     openCashRegister: () => {
+        // ✅ Check if E-Invoicing is configured
+        if (window.App && !window.App.einvoicingEnabled) {
+            return alert("⚠️ Η Ταμειακή δεν είναι ενεργή!\n\nΠηγαίνετε: Ρυθμίσεις ⚙️ > E-Invoicing\nκαι συμπληρώστε Πάροχο & Στοιχεία.");
+        }
         Apodiksh.cashRegValue = "0";
         Apodiksh.cashRegItems = [];
         Apodiksh.updateCashRegUI();

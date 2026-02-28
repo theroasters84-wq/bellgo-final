@@ -87,6 +87,9 @@ export const Admin = {
             const styleCharge = hasManager ? 'flex' : 'none';
 
             let lock = document.getElementById('settingsLockOverlay');
+            // ✅ NEW: Dynamic Message
+            const lockMsg = app.adminLockPassword ? "Απαιτείται Κωδικός Διαχειριστή" : "Απαιτείται PIN διαχειριστή";
+
             if (!lock) {
                 lock = document.createElement('div');
                 lock.id = 'settingsLockOverlay';
@@ -94,10 +97,10 @@ export const Admin = {
                 lock.innerHTML = `
                     <div style="font-size:50px; margin-bottom:20px;">🔒</div>
                     <h3 style="color:white; margin-bottom:10px;">Ρυθμίσεις Κλειδωμένες</h3>
-                    <p style="color:#aaa; margin-bottom:20px; font-size:14px;">Απαιτείται PIN διαχειριστή.</p>
+                    <p id="lockMsgText" style="color:#aaa; margin-bottom:20px; font-size:14px;">${lockMsg}</p>
                     
                     <div style="display:flex; gap:10px; justify-content:center; margin-bottom:30px;">
-                        <input type="password" id="inpUnlockPin" placeholder="PIN" style="padding:12px; border-radius:8px; border:1px solid #444; background:#222; color:white; text-align:center; font-size:18px; width:100px; outline:none;">
+                        <input type="password" id="inpUnlockPin" placeholder="Password" style="padding:12px; border-radius:8px; border:1px solid #444; background:#222; color:white; text-align:center; font-size:18px; width:100px; outline:none;">
                         <button onclick="App.unlockSettings()" style="padding:12px 20px; background:#FFD700; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
                     </div>
 
@@ -147,6 +150,9 @@ export const Admin = {
                 lockedArea.appendChild(lock);
             } else {
                 lock.style.display = 'flex';
+                // ✅ NEW: Update message
+                const msgEl = document.getElementById('lockMsgText');
+                if(msgEl) msgEl.innerText = lockMsg;
             }
 
             // ✅ FORCE UPDATE VISIBILITY (Fix for cached element)
@@ -184,6 +190,20 @@ export const Admin = {
     unlockSettings: () => {
         const pin = document.getElementById('inpUnlockPin').value;
         if(!pin) return;
+        
+        // ✅ NEW: Check Admin Lock Password first
+        if (window.App.adminLockPassword) {
+            if (pin === window.App.adminLockPassword) {
+                window.App.settingsUnlocked = true;
+                const lock = document.getElementById('settingsLockOverlay');
+                if(lock) lock.style.display = 'none';
+                document.getElementById('settingsLockedArea').style.minHeight = ''; 
+            } else {
+                alert("Λάθος Κωδικός Διαχειριστή!");
+                document.getElementById('inpUnlockPin').value = '';
+            }
+            return;
+        }
         
         const storeEmail = window.App.userData ? window.App.userData.store : null;
         window.socket.emit('verify-pin', { pin: pin, email: storeEmail });

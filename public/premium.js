@@ -438,10 +438,6 @@ window.App = {
                 if(einv.enabled && hasKeys) App.einvoicingEnabled = true;
                 else App.einvoicingEnabled = false;
 
-                // ✅ NEW: Visibility of Cash Register Button
-                const btnCash = document.getElementById('btnCashRegister');
-                if(btnCash) btnCash.style.display = App.einvoicingEnabled ? 'flex' : 'none';
-                
                 // ✅ NEW: Load Cash Register Buttons
                 if(settings.cashRegButtons) App.cashRegButtons = settings.cashRegButtons;
 
@@ -477,6 +473,22 @@ window.App = {
                     document.getElementById('inpPosProvider').value = settings.pos.provider || '';
                     document.getElementById('inpPosId').value = settings.pos.id || '';
                     document.getElementById('inpPosKey').value = settings.pos.key || '';
+                }
+
+                // ✅ NEW: Admin Lock Password Logic (Subscription 5)
+                if (settings.adminLockPassword) {
+                    App.adminLockPassword = settings.adminLockPassword;
+                }
+                
+                if (App.hasFeature('pack_pos') && !settings.adminLockPassword && !App.hasPromptedLockPass) {
+                    App.hasPromptedLockPass = true;
+                    setTimeout(() => {
+                        const newPass = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (POS & E-Invoicing)\n\nΠαρακαλώ ορίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
+                        if (newPass) {
+                            window.socket.emit('save-store-settings', { adminLockPassword: newPass });
+                            alert("Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
+                        }
+                    }, 1000);
                 }
 
             }
