@@ -243,12 +243,19 @@ window.App = {
     checkDetails: () => {
         document.getElementById('loginScreen').style.display = 'none';
         
+        // ✅ NEW: Get Choice Early to validate cache
+        const choice = sessionStorage.getItem('bellgo_choice_made');
+
         // ✅ AUTO-SWITCH FIX: Αν το Mode δεν ταιριάζει με τα αποθηκευμένα, καθαρισμός!
         if (customerDetails) {
             if (isDineIn && customerDetails.type !== 'dinein') {
                 customerDetails = null; // Ήταν Delivery/Pickup, τώρα είναι Τραπέζι -> Reset
             } else if (!isDineIn && customerDetails.type === 'dinein') {
                 customerDetails = null; // Ήταν Τραπέζι, τώρα είναι Delivery/Pickup -> Reset
+            } else if (!isDineIn && choice) {
+                // ✅ FIX: Reset αν άλλαξε από Delivery σε Pickup ή αντίστροφα
+                if (choice === 'pickup' && customerDetails.type !== 'pickup') customerDetails = null;
+                if (choice === 'order' && customerDetails.type !== 'delivery') customerDetails = null;
             }
         }
 
@@ -260,7 +267,6 @@ window.App = {
             document.getElementById('tableDisplay').innerText = `${t('table')}: ${tableNumber}`;
         } else {
             // ✅ NEW: Ερώτηση για Παραγγελία ή Κράτηση (Μόνο στο Delivery)
-            const choice = sessionStorage.getItem('bellgo_choice_made');
             if (!choice) {
                 document.getElementById('choiceModal').style.display = 'flex';
                 return; // Σταματάμε εδώ μέχρι να επιλέξει
@@ -384,6 +390,15 @@ window.App = {
     
     // ✅ NEW: Διαχείριση Αρχικής Επιλογής
     chooseAction: (action) => {
+        // ✅ NEW: Play Silent Audio for KeepAlive (Pickup) - Keeps browser awake for alerts
+        if (action === 'pickup') {
+            const audio = new Audio('/tone19hz.wav');
+            audio.loop = true;
+            audio.volume = 0.01;
+            audio.play().catch(e => console.log("KeepAlive Audio Error:", e));
+            window.bellgoKeepAlive = audio;
+        }
+
         sessionStorage.setItem('bellgo_choice_made', action);
         document.getElementById('choiceModal').style.display = 'none';
         
