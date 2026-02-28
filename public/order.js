@@ -810,6 +810,13 @@ window.App = {
         socket.on('order-changed', (data) => {
             const order = activeOrders.find(o => o.id === data.id);
             if (order) {
+                // ✅ NEW: Play Alert on Ready (Όταν ο Admin πατήσει ΕΤΟΙΜΟ)
+                if (order.status !== 'ready' && data.status === 'ready') {
+                    const audio = new Audio('/alert.mp3');
+                    audio.play().catch(e => console.log("Audio play error:", e));
+                    if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+                }
+
                 order.status = data.status;
                 if (data.readyTime) order.readyTime = data.readyTime;
                 
@@ -1264,7 +1271,7 @@ window.App = {
                 
                 let icon = '⏳';
                 let statusText = t('status_sent') || 'Στάλθηκε';
-                let subText = t('status_pending_desc') || 'Αναμονή για αποδοχή...';
+                let subText = t('status_pending_desc') || 'ΑΝΑΜΟΝΗ ΓΙΑ ΑΠΟΔΟΧΗ'; // ✅ Changed Text
                 let color = '#FF9800'; // Orange
                 
                 if (order.status === 'cooking') {
