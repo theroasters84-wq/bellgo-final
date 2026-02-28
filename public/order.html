@@ -70,6 +70,7 @@
         <div class="details-box" style="text-align:center;">
             <h3 style="color:#FFD700; margin-bottom:20px;" data-i18n="what_would_you_like">Τι θέλετε να κάνετε;</h3>
             <button class="btn-save-details" onclick="App.chooseAction('order')" style="margin-bottom:15px; background:#2196F3;">🛵 <span data-i18n="order_delivery">ΠΑΡΑΓΓΕΛΙΑ DELIVERY</span></button>
+            <button class="btn-save-details" onclick="App.chooseAction('pickup')" style="margin-bottom:15px; background:#FF9800;">🛍️ <span data-i18n="order_pickup">ΠΑΡΑΛΑΒΗ ΑΠΟ ΚΑΤΑΣΤΗΜΑ</span></button>
             <button class="btn-save-details" onclick="App.chooseAction('book')" style="background:#9C27B0;">📅 <span data-i18n="book_table">ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</span></button>
             <button class="btn-save-details" onclick="App.openMyReservations()" style="background:#333; margin-top:15px; font-size:14px;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</button>
         </div>
@@ -82,7 +83,7 @@
             <!-- Delivery Fields -->
             <div id="deliveryFields">
                 <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας" data-i18n-placeholder="your_name">
-                <div style="display:flex; gap:5px; align-items:center; width:100%; margin-bottom:15px;">
+                <div id="divAddressGroup" style="display:flex; gap:5px; align-items:center; width:100%; margin-bottom:15px;">
                     <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)" data-i18n-placeholder="address_placeholder" style="flex:1; margin-bottom:0;">
                     <button onclick="App.getGpsLocation(this)" style="background:#333; border:1px solid #555; color:#FFD700; border-radius:6px; width:50px; height:50px; cursor:pointer; font-size:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Εντοπισμός (GPS)">📍</button>
                 </div>

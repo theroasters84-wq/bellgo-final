@@ -240,9 +240,9 @@ window.App = {
         // ✅ AUTO-SWITCH FIX: Αν το Mode δεν ταιριάζει με τα αποθηκευμένα, καθαρισμός!
         if (customerDetails) {
             if (isDineIn && customerDetails.type !== 'dinein') {
-                customerDetails = null; // Ήταν Delivery, τώρα είναι Τραπέζι -> Reset
+                customerDetails = null; // Ήταν Delivery/Pickup, τώρα είναι Τραπέζι -> Reset
             } else if (!isDineIn && customerDetails.type === 'dinein') {
-                customerDetails = null; // Ήταν Τραπέζι, τώρα είναι Delivery -> Reset
+                customerDetails = null; // Ήταν Τραπέζι, τώρα είναι Delivery/Pickup -> Reset
             }
         }
 
@@ -253,15 +253,25 @@ window.App = {
             document.getElementById('dineInFields').style.display = 'block';
             document.getElementById('tableDisplay').innerText = `${t('table')}: ${tableNumber}`;
         } else {
-            document.getElementById('detailsTitle').innerText = t('delivery_title') || 'Παράδοση στο χώρο σας';
-            document.getElementById('deliveryFields').style.display = 'block';
-            document.getElementById('dineInFields').style.display = 'none';
-            
             // ✅ NEW: Ερώτηση για Παραγγελία ή Κράτηση (Μόνο στο Delivery)
-            if (!sessionStorage.getItem('bellgo_choice_made')) {
+            const choice = sessionStorage.getItem('bellgo_choice_made');
+            if (!choice) {
                 document.getElementById('choiceModal').style.display = 'flex';
                 return; // Σταματάμε εδώ μέχρι να επιλέξει
             }
+
+            // ✅ PICKUP LOGIC
+            const isPickup = (choice === 'pickup');
+            document.getElementById('detailsTitle').innerText = isPickup ? (t('pickup_title') || 'Παραλαβή από το κατάστημα') : (t('delivery_title') || 'Παράδοση στο χώρο σας');
+            
+            document.getElementById('deliveryFields').style.display = 'block';
+            document.getElementById('dineInFields').style.display = 'none';
+
+            // Hide/Show Address Fields
+            const addrGroup = document.getElementById('divAddressGroup');
+            if(addrGroup) addrGroup.style.display = isPickup ? 'none' : 'flex';
+            document.getElementById('inpFloor').style.display = isPickup ? 'none' : 'block';
+            document.getElementById('inpZip').style.display = isPickup ? 'none' : 'block';
         }
 
         // ✅ 2. ΕΛΕΓΧΟΣ ΔΕΔΟΜΕΝΩΝ: Αν αλλάξαμε Mode, ανοίγουμε τη φόρμα
@@ -309,13 +319,22 @@ window.App = {
             if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
             customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
         } else {
+            const choice = sessionStorage.getItem('bellgo_choice_made');
+            const isPickup = (choice === 'pickup');
+
             const name = document.getElementById('inpName').value.trim();
-            const address = document.getElementById('inpAddress').value.trim();
-            const floor = document.getElementById('inpFloor').value.trim();
             const phone = document.getElementById('inpPhone').value.trim();
-            const zip = document.getElementById('inpZip').value.trim();
-            if (!name || !address || !phone) return alert(t('enter_details_error') || "Συμπληρώστε τα βασικά στοιχεία!");
-            customerDetails = { name, address, floor, phone, zip, type: 'delivery' };
+            
+            if (isPickup) {
+                if (!name || !phone) return alert(t('enter_details_error') || "Συμπληρώστε τα βασικά στοιχεία!");
+                customerDetails = { name, phone, type: 'pickup' };
+            } else {
+                const address = document.getElementById('inpAddress').value.trim();
+                const floor = document.getElementById('inpFloor').value.trim();
+                const zip = document.getElementById('inpZip').value.trim();
+                if (!name || !address || !phone) return alert(t('enter_details_error') || "Συμπληρώστε τα βασικά στοιχεία!");
+                customerDetails = { name, address, floor, phone, zip, type: 'delivery' };
+            }
         }
 
         localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
@@ -351,7 +370,7 @@ window.App = {
         sessionStorage.setItem('bellgo_choice_made', action);
         document.getElementById('choiceModal').style.display = 'none';
         
-        if (action === 'order') {
+        if (action === 'order' || action === 'pickup') {
             App.checkDetails(); // Συνεχίζει κανονικά για παραγγελία
         } else if (action === 'book') {
             // Αν δεν υπάρχουν στοιχεία, φτιάχνουμε προσωρινά για να συνδεθεί το socket
@@ -403,7 +422,11 @@ window.App = {
         if (isDineIn) {
              document.getElementById('displayAddress').innerText = `🍽️ ${t('table')} ${tableNumber} (${customerDetails.covers} ${t('pax')})`;
         } else {
-             document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
+             if (customerDetails.type === 'pickup') {
+                 document.getElementById('displayAddress').innerText = `🛍️ ${t('pickup_from_store') || 'Παραλαβή από Κατάστημα'}`;
+             } else {
+                 document.getElementById('displayAddress').innerText = `📍 ${customerDetails.address}, ${customerDetails.floor}`;
+             }
         }
 
         App.checkActiveOrderStorage();
@@ -1106,7 +1129,11 @@ window.App = {
             const payIcon = method.includes('ΚΑΡΤΑ') ? '💳' : '💵';
             const header = `[ΤΡ: ${tableNumber} | AT: ${customerDetails.covers} | ${payIcon}]`;
             fullText = `${header}\n👤 ${customerDetails.name}\n${method}\n---\n${items}`;
-        } else {
+        } else if (customerDetails.type === 'pickup') {
+            // ✅ Μορφή για Pickup
+            fullText = `[PICKUP 🛍️]\n👤 ${customerDetails.name}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
+        } 
+        else {
             // ✅ Μορφή για Delivery
             fullText = `[DELIVERY 🛵]\n👤 ${customerDetails.name}\n📍 ${customerDetails.address}\n📮 T.K.: ${customerDetails.zip || '-'}\n🏢 ${customerDetails.floor}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
         }
@@ -1175,7 +1202,12 @@ window.App = {
                 if (order.status === 'cooking') {
                     icon = '👨‍🍳'; statusText = t('status_cooking') || 'Ετοιμάζεται'; subText = t('status_cooking_desc') || 'Η κουζίνα το ανέλαβε!'; color = '#2196F3'; // Blue
                 } else if (order.status === 'ready') {
-                    icon = '🛵'; statusText = t('status_ready') || 'Έρχεται!'; subText = t('status_ready_desc') || 'Πατήστε για απόκρυψη'; color = '#00E676'; // Green
+                    if (order.text.includes('[PICKUP')) {
+                        icon = '🛍️'; statusText = t('status_ready_pickup') || 'Έτοιμο για Παραλαβή!'; subText = t('status_ready_pickup_desc') || 'Περάστε από το κατάστημα.';
+                    } else {
+                        icon = '🛵'; statusText = t('status_ready') || 'Έρχεται!'; subText = t('status_ready_desc') || 'Πατήστε για απόκρυψη';
+                    }
+                    color = '#00E676'; // Green
                 } else if (order.status === 'completed') {
                     icon = '✅'; statusText = t('status_completed') || 'Ολοκληρώθηκε'; subText = t('status_completed_desc') || 'Η παραγγελία έκλεισε.'; color = '#888'; // Grey
                 }
