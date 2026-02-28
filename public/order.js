@@ -823,7 +823,7 @@ window.App = {
 
                     // ✅ NEW: Ειδοποίηση Alert για Pickup
                     if (order.text && order.text.includes('[PICKUP')) {
-                         setTimeout(() => alert("🛍️ Η παραγγελία σας είναι έτοιμη για παραλαβή!"), 500);
+                         document.getElementById('readyPickupModal').style.display = 'flex';
                     }
                 }
 
