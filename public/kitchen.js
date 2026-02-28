@@ -1305,6 +1305,8 @@ window.App = {
             const tableMatch = order.text.match(/\[ΤΡ:\s*([^|\]]+)/);
             if (tableMatch) {
                 displayLabel = `Τραπέζι ${tableMatch[1]}`;
+            } else if (order.text.includes('[PICKUP')) {
+                displayLabel = `🛍️ PICKUP`;
             }
 
             const icon = document.createElement('div');

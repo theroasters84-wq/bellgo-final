@@ -304,6 +304,10 @@ window.App = {
             if (currentUser && currentUser.displayName && !document.getElementById('inpName').value) {
                 document.getElementById('inpName').value = currentUser.displayName;
             }
+            
+            // ✅ NEW: Εμφάνιση κουμπιού ΠΙΣΩ μόνο αν δεν είναι Τραπέζι (DineIn)
+            const btnBack = document.getElementById('btnBackToChoice');
+            if(btnBack) btnBack.style.display = isDineIn ? 'none' : 'block';
         } else {
              App.startApp();
         }
@@ -340,6 +344,13 @@ window.App = {
         localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
         document.getElementById('detailsOverlay').style.display = 'none';
         App.startApp();
+    },
+
+    // ✅ NEW: Επιστροφή στην αρχική επιλογή
+    goBackToChoice: () => {
+        document.getElementById('detailsOverlay').style.display = 'none';
+        sessionStorage.removeItem('bellgo_choice_made');
+        document.getElementById('choiceModal').style.display = 'flex';
     },
 
     // ✅ NEW: GPS Location for Delivery

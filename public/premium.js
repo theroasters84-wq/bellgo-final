@@ -483,6 +483,9 @@ window.App = {
                 if (App.hasFeature('pack_pos') && !settings.adminLockPassword && !App.hasPromptedLockPass) {
                     App.hasPromptedLockPass = true;
                     setTimeout(() => {
+                        const p1 = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (1/2)\n\nΟρίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
+                        if (p1) {
+                            const p2 = prompt("🔐 ΕΠΙΒΕΒΑΙΩΣΗ (2/2)\n\nΠληκτρολογήστε ξανά τον κωδικό:");
                             if (p1.trim() === p2?.trim()) {
                                 window.socket.emit('save-store-settings', { adminLockPassword: p1.trim() });
                                 alert("✅ Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
@@ -1170,6 +1173,10 @@ window.App = {
             const tableMatch = order.text.match(/\[ΤΡ:\s*([^|\]]+)/);
             if (tableMatch) {
                 displayLabel = `Τραπέζι ${tableMatch[1]}`;
+            } else if (order.text.includes('[PICKUP')) {
+                displayLabel = `🛍️ PICKUP: ${order.from}`;
+            } else if (order.text.includes('[DELIVERY')) {
+                displayLabel = `🛵 ${order.from}`;
             }
 
             const icon = document.createElement('div');
@@ -1264,7 +1271,11 @@ window.App = {
         if (order.status === 'pending') {
             actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;
         } else if (order.status === 'cooking') {
-            actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
+            if (order.text.includes('[PICKUP')) {
+                actions = `<button class="btn-win-action" style="background:#FF9800; color:black;" onclick="App.markReady(${order.id})">🛍️ ΕΤΟΙΜΟ ΓΙΑ ΠΑΡΑΛΑΒΗ</button>`;
+            } else {
+                actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
+            }
         } else {
             if (App.adminMode === 'kitchen') {
                 actions = `<button class="btn-win-action" style="background:#555; color:white;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
@@ -1617,7 +1628,10 @@ window.App = {
         if(win) win.style.display = 'none';
     },
     markReady: (id) => {
-        if (App.staffChargeMode) {
+        const order = App.activeOrders.find(o => o.id == id);
+        const isPickup = order && order.text.includes('[PICKUP');
+
+        if (App.staffChargeMode && !isPickup) { // ✅ Bypass driver assignment for Pickup
             // ✅ NEW: Αν είναι ενεργή η χρέωση προσωπικού, ανοίγουμε Modal Ανάθεσης
             App.openDeliveryAssignModal(id);
         } else {
@@ -1739,7 +1753,8 @@ window.PIN = {
         
         // ✅ FIX: Double Confirmation Logic
         if (pinStep === 'create') {
-            tempPin = pinValue;firm';
+            tempPin = pinValue;
+            pinStep = 'confirm';
             PIN.updateDisplay();
             alert("Επιβεβαίωση: Πληκτρολογήστε το ξανά.");
         } else if (pinStep === 'confirm') {
