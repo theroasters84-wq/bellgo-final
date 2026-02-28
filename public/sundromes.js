@@ -29,7 +29,7 @@ export const Sundromes = {
             stripeId: 'price_1T5RpbJcEtNSGviLy5zj4t2F', // ✅ Hosted Here
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
-            ui_ids: ['desktopArea', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations'] // ✅ Added Printer Settings & Reservations
+            ui_ids: ['desktopArea', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations', 'btnSettingsGeneral'] // ✅ Added btnSettingsGeneral for Stripe
         },
         { 
             key: 'pack_tables', 
@@ -38,7 +38,7 @@ export const Sundromes = {
             stripeId: 'price_1T5RtQJcEtNSGviLGHRhyDx9', // ✅ Hosted Here
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
-            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore']
+            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore', 'btnSettingsGeneral'] // ✅ Added btnSettingsGeneral for Stripe
         },
         { 
             key: 'pack_pos', 
