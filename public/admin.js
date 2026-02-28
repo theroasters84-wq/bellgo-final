@@ -428,15 +428,16 @@ export const Admin = {
     // --- SECURITY SETTINGS ---
     renderSecuritySettings: () => {
         const modal = document.getElementById('settingsModal');
-        const box = modal.querySelector('.modal-box') || modal.firstElementChild;
-        if (!box) return;
+        // ✅ FIX: Append to Locked Area so it gets hidden by the lock overlay
+        const lockedArea = document.getElementById('settingsLockedArea');
+        if (!lockedArea) return;
 
         let secDiv = document.getElementById('securitySettingsDiv');
         if (!secDiv) {
             secDiv = document.createElement('div');
             secDiv.id = 'securitySettingsDiv';
             secDiv.style.cssText = "margin-top:20px; border-top:1px solid #333; padding-top:15px;";
-            box.appendChild(secDiv);
+            lockedArea.appendChild(secDiv);
         }
 
         secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
@@ -445,7 +446,11 @@ export const Admin = {
         const btnPin = document.createElement('button');
         btnPin.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
         btnPin.innerHTML = "🔑 Αλλαγή PIN Εισόδου";
-        btnPin.onclick = () => Admin.openPinModal();
+        btnPin.onclick = () => {
+            // Reset PIN state for double confirmation
+            if(window.PIN) { window.PIN.reset(); }
+            Admin.openPinModal();
+        };
         secDiv.appendChild(btnPin);
 
         // 2. Change Admin Password (Subscription 5)
@@ -459,11 +464,20 @@ export const Admin = {
     },
 
     changeAdminPassword: () => {
-        const newPass = prompt("Ορίστε νέο Κωδικό Διαχειριστή:");
-        if (newPass && newPass.trim()) {
-            window.socket.emit('save-store-settings', { adminLockPassword: newPass.trim() });
-            window.App.adminLockPassword = newPass.trim();
-            alert("Ο κωδικός ενημερώθηκε!");
+        // ✅ FIX: Double Confirmation for Admin Password
+        const p1 = prompt("1/2. Ορίστε νέο Κωδικό Διαχειριστή:");
+        if (!p1) return;
+        
+        const p2 = prompt("2/2. Επιβεβαίωση Κωδικού:");
+        if (!p2) return;
+
+        if (p1.trim() === p2.trim()) {
+            const finalPass = p1.trim();
+            window.socket.emit('save-store-settings', { adminLockPassword: finalPass });
+            window.App.adminLockPassword = finalPass;
+            alert("✅ Ο κωδικός ενημερώθηκε επιτυχώς!");
+        } else {
+            alert("❌ Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");
         }
     },
 

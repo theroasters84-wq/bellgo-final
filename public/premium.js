@@ -483,10 +483,13 @@ window.App = {
                 if (App.hasFeature('pack_pos') && !settings.adminLockPassword && !App.hasPromptedLockPass) {
                     App.hasPromptedLockPass = true;
                     setTimeout(() => {
-                        const newPass = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (POS & E-Invoicing)\n\nΠαρακαλώ ορίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
-                        if (newPass && newPass.trim()) {
-                            window.socket.emit('save-store-settings', { adminLockPassword: newPass.trim() });
-                            alert("Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
+                            if (p1.trim() === p2?.trim()) {
+                                window.socket.emit('save-store-settings', { adminLockPassword: p1.trim() });
+                                alert("✅ Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
+                            } else {
+                                alert("❌ Οι κωδικοί δεν ταιριάζουν. Θα σας ζητηθεί ξανά στην επόμενη είσοδο.");
+                                App.hasPromptedLockPass = false; // Retry next time
+                            }
                         }
                     }, 1000);
                 }
@@ -1716,14 +1719,38 @@ window.App = {
 
 // --- PIN MODULE ---
 let pinValue = '';
+let tempPin = ''; // ✅ For confirmation
+let pinStep = 'create'; // 'create' | 'confirm'
+
 window.PIN = {
     add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
     clear: () => { pinValue = ''; PIN.updateDisplay(); },
+    reset: () => { 
+        pinValue = ''; 
+        tempPin = ''; 
+        pinStep = 'create'; 
+        PIN.updateDisplay(); 
+        const title = document.getElementById('pinModalTitle'); // Assuming ID exists or generic
+        if(title) title.innerText = "ΝΕΟ PIN";
+    },
     updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
     submit: () => {
         if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-        window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
-        App.closePinModal();
+        
+        // ✅ FIX: Double Confirmation Logic
+        if (pinStep === 'create') {
+            tempPin = pinValue;firm';
+            PIN.updateDisplay();
+            alert("Επιβεβαίωση: Πληκτρολογήστε το ξανά.");
+        } else if (pinStep === 'confirm') {
+            if (pinValue !== tempPin) {
+                alert("❌ Τα PIN δεν ταιριάζουν! Προσπαθήστε ξανά.");
+                PIN.reset();
+                return;
+            }
+            window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
+            App.closePinModal();
+        }
     }
 };
 
