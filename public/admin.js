@@ -77,8 +77,8 @@ export const Admin = {
         const app = window.App;
         const lockedArea = document.getElementById('settingsLockedArea');
         
-        // ✅ NEW: Κλείδωμα/Head για πακέτα 2, 3, 4, 5 (Ώστε να φαίνονται τα On/Off)
-        if (!app.settingsUnlocked && (app.hasFeature('pack_pos') || app.hasFeature('pack_manager') || app.hasFeature('pack_delivery') || app.hasFeature('pack_tables'))) {
+        // ✅ NEW: Κλείδωμα ΜΟΝΟ για πακέτο 5 (POS)
+        if (!app.settingsUnlocked && app.hasFeature('pack_pos')) {
             if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
             lockedArea.style.minHeight = '600px'; // ✅ FIX: Increase height for lock screen
             
