@@ -147,7 +147,17 @@ try {
     console.error("Error parsing customer details", e);
     localStorage.removeItem('bellgo_customer_info');
 }
-let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
+
+// ✅ FIX: Safe parsing for activeOrders (Prevent Crash on Re-entry)
+let activeOrders = [];
+try {
+    activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
+    if (!Array.isArray(activeOrders)) activeOrders = [];
+} catch (e) {
+    console.error("Error parsing active orders", e);
+    localStorage.removeItem('bellgo_active_orders');
+    activeOrders = [];
+}
 
 // (ΑΦΑΙΡΕΘΗΚΕ Η ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΤΡΑΠΕΖΙΟΥ ΓΙΑ ΝΑ ΛΕΙΤΟΥΡΓΕΙ ΤΟ DELIVERY QR)
 
@@ -576,6 +586,7 @@ window.App = {
         
         // Filter out 'ready' orders older than 1 hour AND any order older than 12 hours
         activeOrders = activeOrders.filter(o => {
+            if (!o || typeof o !== 'object') return false; // ✅ Safety Check for corrupted data
             if ((now - o.timestamp) > TWELVE_HOURS) return false; // Safety cleanup
             if (o.status === 'ready' || o.status === 'completed') { // ✅ Handle completed/closed orders
                 const timeRef = o.readyTime || o.timestamp;
@@ -586,7 +597,11 @@ window.App = {
         localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
         
         if (activeOrders.length > 0) {
-            App.updateStatusUI(false);
+            try {
+                App.updateStatusUI(false);
+            } catch (e) {
+                console.error("UI Update Error:", e);
+            }
         }
     },
 
