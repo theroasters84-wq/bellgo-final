@@ -140,7 +140,13 @@ const parseItem = (str) => {
 };
 
 let currentUser = null;
-let customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+let customerDetails = null;
+try {
+    customerDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
+} catch (e) {
+    console.error("Error parsing customer details", e);
+    localStorage.removeItem('bellgo_customer_info');
+}
 let activeOrders = JSON.parse(localStorage.getItem('bellgo_active_orders') || '[]');
 
 // (ΑΦΑΙΡΕΘΗΚΕ Η ΑΥΤΟΜΑΤΗ ΕΠΑΝΑΦΟΡΑ ΤΡΑΠΕΖΙΟΥ ΓΙΑ ΝΑ ΛΕΙΤΟΥΡΓΕΙ ΤΟ DELIVERY QR)
@@ -849,6 +855,7 @@ window.App = {
     },
 
     renderMenu: (data) => {
+      try {
         const container = document.getElementById('menuContainer');
         container.innerHTML = '';
         
@@ -918,6 +925,10 @@ window.App = {
                 container.appendChild(wrapper);
             });
         }
+      } catch (e) {
+          console.error("Menu Render Error:", e);
+          document.getElementById('menuContainer').innerHTML = `<div style="text-align:center; padding:20px; color:red;">Σφάλμα εμφάνισης μενού.<br><button onclick="location.reload()">Ανανέωση</button></div>`;
+      }
     },
 
     addToOrder: (item) => {
@@ -1143,13 +1154,20 @@ window.App = {
     },
 
     sendOrder: (items, method) => {
+        // ✅ FIX: Safety Check for Customer Details
+        if (!customerDetails) {
+            alert("⚠️ Σφάλμα: Λείπουν τα στοιχεία πελάτη. Η σελίδα θα ανανεωθεί.");
+            window.location.reload();
+            return;
+        }
+
         let fullText = "";
         if (isDineIn) {
             // ✅ Μορφή για Τραπέζι
             const payIcon = method.includes('ΚΑΡΤΑ') ? '💳' : '💵';
             const header = `[ΤΡ: ${tableNumber} | AT: ${customerDetails.covers} | ${payIcon}]`;
             fullText = `${header}\n👤 ${customerDetails.name}\n${method}\n---\n${items}`;
-        } else if (customerDetails.type === 'pickup') {
+        } else if (customerDetails && customerDetails.type === 'pickup') {
             // ✅ Μορφή για Pickup
             fullText = `[PICKUP 🛍️]\n👤 ${customerDetails.name}\n📞 ${customerDetails.phone}\n${method}\n---\n${items}`;
         } 

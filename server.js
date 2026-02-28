@@ -467,6 +467,7 @@ io.on('connection', (socket) => {
     const getMyStore = () => { if (!socket.store) return null; return storesData[socket.store]; };
 
     socket.on('join-store', async (data) => {
+      try {
         let rawStore = data.storeName || '';
         if ((!rawStore || rawStore === 'null') && data.role === 'customer') { console.log("⚠️ Customer tried to join without storeName"); return; }
         if (!rawStore) { return; } // Admin without store yet
@@ -522,6 +523,9 @@ io.on('connection', (socket) => {
         socket.emit('menu-update', storesData[storeName].menu || []); // ✅ FIX: Άμεση αποστολή εδώ που υπάρχει το socket
         Logic.updateStoreClients(storeName, io, storesData, activeUsers, db);
         if(wasRinging) { socket.emit('ring-bell'); }
+      } catch (e) {
+          console.error("❌ Join Store Error:", e);
+      }
     });
 
     // ✅ NEW: Έλεγχος αν το τραπέζι έχει ενεργή παραγγελία
@@ -610,6 +614,7 @@ io.on('connection', (socket) => {
     socket.on('chat-message', (data) => { if(socket.store) { io.to(socket.store).emit('chat-message', { sender: socket.username, text: data.text }); } });
 
     socket.on('new-order', (data) => {
+      try {
         const store = getMyStore();
         if (!store) return;
         if (!data) return; // ✅ Safety check
@@ -676,6 +681,9 @@ io.on('connection', (socket) => {
         }
         
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+      } catch (e) {
+          console.error("❌ New Order Error:", e);
+      }
     });
 
     // ✅ ΝΕΟ: Ειδική εντολή για ΠΡΟΣΘΗΚΗ προϊόντων (από Staff Premium)
