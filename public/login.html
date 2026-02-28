@@ -280,7 +280,7 @@
 
             if (emailParam) {
                 document.getElementById('adminEmailInp').value = emailParam;
-                Admin.manualLogin();
+                // Admin.manualLogin(); // ❌ Removed to allow manual login flow
             } else {
                 const savedEmail = localStorage.getItem('bellgo_last_email');
                 if(savedEmail) document.getElementById('adminEmailInp').value = savedEmail;
@@ -606,4 +606,5 @@
         };
     </script>
 </body>
+</html>
 </html>
