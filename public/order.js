@@ -775,6 +775,11 @@ window.App = {
                         if (serverOrder.readyTime) localOrder.readyTime = serverOrder.readyTime;
                         changed = true;
                     }
+                    // ✅ FIX: Sync Text (ώστε να υπάρχει για τον έλεγχο Pickup)
+                    if (serverOrder.text && localOrder.text !== serverOrder.text) {
+                        localOrder.text = serverOrder.text;
+                        changed = true;
+                    }
                 } else {
                     // ✅ NEW: Αν η παραγγελία κλείσει (διαγραφεί) από το κατάστημα (π.χ. Τραπέζι)
                     if (localOrder.status !== 'completed' && localOrder.status !== 'ready') {
@@ -817,7 +822,7 @@ window.App = {
                     if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
 
                     // ✅ NEW: Ειδοποίηση Alert για Pickup
-                    if (order.text.includes('[PICKUP')) {
+                    if (order.text && order.text.includes('[PICKUP')) {
                          setTimeout(() => alert("🛍️ Η παραγγελία σας είναι έτοιμη για παραλαβή!"), 500);
                     }
                 }
@@ -1229,7 +1234,8 @@ window.App = {
             return;
         }
 
-        const newOrder = { id: Date.now(), status: 'pending', timestamp: Date.now() };
+        // ✅ FIX: Save text locally immediately (Critical for Pickup check)
+        const newOrder = { id: Date.now(), status: 'pending', timestamp: Date.now(), text: fullText };
         activeOrders.push(newOrder);
         localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
         window.socket.emit('new-order', { text: fullText, id: newOrder.id });
