@@ -842,6 +842,13 @@ window.App = {
             if (order) {
                 // ✅ NEW: Play Alert on Ready (Όταν ο Admin πατήσει ΕΤΟΙΜΟ)
                 if (order.status !== 'ready' && data.status === 'ready') {
+                    // ✅ FIX: Stop Silent KeepAlive Audio
+                    if (window.bellgoKeepAlive) {
+                        window.bellgoKeepAlive.pause();
+                        window.bellgoKeepAlive = null;
+                        console.log("🛑 KeepAlive Stopped (Order Ready)");
+                    }
+
                     const audio = new Audio('/alert.mp3');
                     audio.play().catch(e => console.log("Audio play error:", e));
                     if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);

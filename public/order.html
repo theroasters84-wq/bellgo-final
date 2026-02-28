@@ -77,7 +77,10 @@
     </div>
 
     <div id="detailsOverlay" class="overlay-screen">
-        <div class="details-box">
+        <div class="details-box" style="position:relative;">
+            <!-- ✅ NEW: Back Button in Head (Top Left) -->
+            <button id="btnBackToChoice" onclick="App.goBackToChoice()" style="position:absolute; top:15px; left:15px; background:transparent; border:none; color:#aaa; font-size:24px; cursor:pointer; display:none; padding:0;" title="Πίσω">🔙</button>
+            
             <h3 style="color:#FFD700; margin:0;" id="detailsTitle" data-i18n="welcome"> Καλώς ήρθατε!</h3>
             
             <!-- Delivery Fields -->
@@ -99,7 +102,6 @@
             </div>
 
             <button class="btn-save-details" onclick="App.saveDetails()" data-i18n="continue">ΣΥΝΕΧΕΙΑ</button>
-            <button id="btnBackToChoice" onclick="App.goBackToChoice()" style="background:transparent; border:1px solid #555; color:#aaa; margin-top:10px; width:100%; padding:12px; border-radius:8px; cursor:pointer; display:none;" data-i18n="back">🔙 ΠΙΣΩ</button>
         </div>
     </div>
 
