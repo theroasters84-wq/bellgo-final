@@ -70,12 +70,15 @@ export const Admin = {
         document.getElementById('settingsModal').style.display = 'flex';
         if(window.App) window.App.closeSettingsSub(); 
 
+        // ✅ NEW: Render Security Settings (Dynamic)
+        Admin.renderSecuritySettings();
+
         // LOCK LOGIC
         const app = window.App;
         const lockedArea = document.getElementById('settingsLockedArea');
         
-        // ✅ NEW: Κλείδωμα ΜΟΝΟ αν είναι ενεργό το πακέτο POS (5)
-        if (!app.settingsUnlocked && app.hasFeature('pack_pos')) {
+        // ✅ NEW: Κλείδωμα/Head για πακέτα 2, 3, 4, 5 (Ώστε να φαίνονται τα On/Off)
+        if (!app.settingsUnlocked && (app.hasFeature('pack_pos') || app.hasFeature('pack_manager') || app.hasFeature('pack_delivery') || app.hasFeature('pack_tables'))) {
             if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
             lockedArea.style.minHeight = '600px'; // ✅ FIX: Increase height for lock screen
             
@@ -193,18 +196,20 @@ export const Admin = {
     },
 
     unlockSettings: () => {
-        const pin = document.getElementById('inpUnlockPin').value
+        const pin = document.getElementById('inpUnlockPin').value.trim();
         
         // ✅ NEW: Check Admin Lock Password first
         if (window.App.adminLockPassword) {
             // ✅ FIX: Compare trimmed versions to avoid whitespace issues
+            if (pin === String(window.App.adminLockPassword).trim()) {
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
                 document.getElementById('settingsLockedArea').style.minHeight = ''; 
             } else {
                 alert("Λάθος Κωδικός Διαχειριστή! (Αυτόν που ορίσατε στο popup)");
-                docu
+                document.getElementById('inpUnlockPin').value = '';
+            }
             return;
         }
         
@@ -418,6 +423,48 @@ export const Admin = {
             };
             container.appendChild(staffDiv);
         });
+    },
+
+    // --- SECURITY SETTINGS ---
+    renderSecuritySettings: () => {
+        const modal = document.getElementById('settingsModal');
+        const box = modal.querySelector('.modal-box') || modal.firstElementChild;
+        if (!box) return;
+
+        let secDiv = document.getElementById('securitySettingsDiv');
+        if (!secDiv) {
+            secDiv = document.createElement('div');
+            secDiv.id = 'securitySettingsDiv';
+            secDiv.style.cssText = "margin-top:20px; border-top:1px solid #333; padding-top:15px;";
+            box.appendChild(secDiv);
+        }
+
+        secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
+
+        // 1. Change Login PIN (All Subscriptions)
+        const btnPin = document.createElement('button');
+        btnPin.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+        btnPin.innerHTML = "🔑 Αλλαγή PIN Εισόδου";
+        btnPin.onclick = () => Admin.openPinModal();
+        secDiv.appendChild(btnPin);
+
+        // 2. Change Admin Password (Subscription 5)
+        if (window.App.hasFeature('pack_pos')) {
+            const btnAdmin = document.createElement('button');
+            btnAdmin.style.cssText = "width:100%; background:#333; color:#FFD700; border:1px solid #FFD700; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+            btnAdmin.innerHTML = "🛡️ Αλλαγή Κωδικού Διαχειριστή (Lock)";
+            btnAdmin.onclick = () => Admin.changeAdminPassword();
+            secDiv.appendChild(btnAdmin);
+        }
+    },
+
+    changeAdminPassword: () => {
+        const newPass = prompt("Ορίστε νέο Κωδικό Διαχειριστή:");
+        if (newPass && newPass.trim()) {
+            window.socket.emit('save-store-settings', { adminLockPassword: newPass.trim() });
+            window.App.adminLockPassword = newPass.trim();
+            alert("Ο κωδικός ενημερώθηκε!");
+        }
     },
 
     // --- CHAT ---
