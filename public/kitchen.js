@@ -908,7 +908,7 @@ window.App = {
         
         // 🔥 FIX: Χρήση του userData.store (email/room ID) για να συνδέονται στο ίδιο δωμάτιο
         let fullLink = `${baseUrl}/shop/${encodeURIComponent(userData.store)}/`;
-        if(customName) fullLink += `&name=${encodeURIComponent(customName)}`;
+        if(customName) fullLink += `?name=${encodeURIComponent(customName)}`;
         
         linkEl.href = fullLink;
         linkEl.innerText = fullLink;
