@@ -20,7 +20,7 @@ export const Sundromes = {
             stripeId: 'price_1SzHTPJcEtNSGviLk7N84Irn', // ✅ Hosted Here
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
-            ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowTotalTables'] // ✅ Staff & Charge controlled here
+            ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowSwitchCust', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowTotalTables'] // ✅ Staff & Charge controlled here
         },
         { 
             key: 'pack_delivery', 
@@ -29,7 +29,7 @@ export const Sundromes = {
             stripeId: 'price_1T5RpbJcEtNSGviLy5zj4t2F', // ✅ Hosted Here
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
-            ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations'] // ✅ Added Printer Settings & Reservations
+            ui_ids: ['desktopArea', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations'] // ✅ Added Printer Settings & Reservations
         },
         { 
             key: 'pack_tables', 
@@ -38,7 +38,7 @@ export const Sundromes = {
             stripeId: 'price_1T5RtQJcEtNSGviLGHRhyDx9', // ✅ Hosted Here
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
-            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables']
+            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust']
         },
         { 
             key: 'pack_pos', 
