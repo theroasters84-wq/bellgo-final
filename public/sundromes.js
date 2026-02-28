@@ -38,7 +38,7 @@ export const Sundromes = {
             stripeId: 'price_1T5RtQJcEtNSGviLGHRhyDx9', // ✅ Hosted Here
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
-            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust']
+            ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore']
         },
         { 
             key: 'pack_pos', 

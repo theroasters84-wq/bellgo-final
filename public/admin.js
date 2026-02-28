@@ -87,6 +87,10 @@ export const Admin = {
             const styleStaff = hasManager ? 'flex' : 'none';
             const styleCharge = hasManager ? 'flex' : 'none';
 
+            // ✅ NEW: Δυναμική Ονομασία για τον διακόπτη Πελατών
+            let custLabel = "ΠΕΛΑΤΕΣ (Delivery)";
+            if (hasTables && !hasDelivery) custLabel = "ΚΑΤΑΣΤΗΜΑ (On/Off)";
+
             let lock = document.getElementById('settingsLockOverlay');
             // ✅ NEW: Dynamic Message
             const lockMsg = app.adminLockPassword ? "Απαιτείται Κωδικός Διαχειριστή" : "Απαιτείται PIN διαχειριστή";
@@ -127,7 +131,7 @@ export const Admin = {
 
                         <div style="border-top:1px solid #333; padding-top:10px;">
                             <div id="divLockCust" style="display:${styleCust}; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="color:#ccc; font-size:12px;">ΠΕΛΑΤΕΣ (Delivery)</span>
+                                <span style="color:#ccc; font-size:12px;">${custLabel}</span>
                                 <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
                             </div>
                             <div id="divLockStaff" style="display:${styleStaff}; justify-content:space-between; align-items:center; margin-bottom:8px;">
