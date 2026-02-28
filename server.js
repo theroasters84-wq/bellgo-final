@@ -719,8 +719,9 @@ io.on('connection', (socket) => {
             if(o){ 
                 o.status = 'cooking'; 
                 o.startTime = Date.now(); 
-                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
+                // ✅ FIX: Emit change FIRST to avoid race condition (Sound Fix)
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'cooking', startTime: o.startTime }); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
             } 
         } 
     });
@@ -883,8 +884,9 @@ io.on('connection', (socket) => {
             if(o){ 
                 o.status = 'ready'; 
                 o.readyTime = Date.now(); 
-                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
+                // ✅ FIX: Emit change FIRST to avoid race condition (Sound Fix)
                 io.to(socket.store).emit('order-changed', { id: o.id, status: 'ready', readyTime: o.readyTime }); 
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
 
                 if (!silent) { // ✅ Check silent flag
                     // Push Notification Logic
