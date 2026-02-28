@@ -327,9 +327,9 @@ window.App = {
                 document.getElementById('inpName').value = currentUser.displayName;
             }
             
-            // ✅ NEW: Εμφάνιση κουμπιού ΠΙΣΩ μόνο αν δεν είναι Τραπέζι (DineIn)
+            // ✅ NEW: Εμφάνιση κουμπιού ΠΙΣΩ (Πάντα ορατό για αλλαγή επιλογής)
             const btnBack = document.getElementById('btnBackToChoice');
-            if(btnBack) btnBack.style.display = isDineIn ? 'none' : 'block';
+            if(btnBack) btnBack.style.display = 'block';
         } else {
              App.startApp();
         }
@@ -372,6 +372,24 @@ window.App = {
     goBackToChoice: () => {
         document.getElementById('detailsOverlay').style.display = 'none';
         sessionStorage.removeItem('bellgo_choice_made');
+        
+        // ✅ NEW: Αν υπάρχει τραπέζι (URL), πρόσθεσε επιλογή για επιστροφή στο τραπέζι
+        if (TABLE_ID) {
+             let btnTable = document.getElementById('btnChoiceTable');
+             if (!btnTable) {
+                 const container = document.querySelector('#choiceModal .details-box');
+                 const h3 = container.querySelector('h3');
+                 btnTable = document.createElement('button');
+                 btnTable.id = 'btnChoiceTable';
+                 btnTable.className = 'btn-save-details';
+                 btnTable.style.cssText = "margin-bottom:15px; background:#00E676; color:black;";
+                 btnTable.innerHTML = `🍽️ ΠΑΡΑΓΓΕΛΙΑ ΣΤΟ ΤΡΑΠΕΖΙ ${TABLE_ID}`;
+                 btnTable.onclick = () => App.chooseAction('dinein');
+                 h3.after(btnTable);
+             }
+             btnTable.style.display = 'block';
+        }
+
         document.getElementById('choiceModal').style.display = 'flex';
     },
 
@@ -412,8 +430,15 @@ window.App = {
         sessionStorage.setItem('bellgo_choice_made', action);
         document.getElementById('choiceModal').style.display = 'none';
         
-        if (action === 'order' || action === 'pickup') {
-            App.checkDetails(); // Συνεχίζει κανονικά για παραγγελία
+        if (action === 'order' || action === 'pickup' || action === 'dinein') {
+            // ✅ FIX: Διαχείριση αλλαγής Mode (Τραπέζι <-> Delivery)
+            if (action === 'dinein') {
+                isDineIn = true;
+            } else {
+                isDineIn = false;
+            }
+
+            App.checkDetails(); 
         } else if (action === 'book') {
             // Αν δεν υπάρχουν στοιχεία, φτιάχνουμε προσωρινά για να συνδεθεί το socket
             if (!customerDetails) {
