@@ -815,6 +815,11 @@ window.App = {
                     const audio = new Audio('/alert.mp3');
                     audio.play().catch(e => console.log("Audio play error:", e));
                     if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+
+                    // ✅ NEW: Ειδοποίηση Alert για Pickup
+                    if (order.text.includes('[PICKUP')) {
+                         setTimeout(() => alert("🛍️ Η παραγγελία σας είναι έτοιμη για παραλαβή!"), 500);
+                    }
                 }
 
                 order.status = data.status;
@@ -1159,8 +1164,9 @@ window.App = {
         if(method === '💳 ΚΑΡΤΑ') {
             App.payWithCard(items);
         } else {
-            App.sendOrder(items, method);
+            // ✅ FIX: Κλείσιμο παραθύρου ΠΡΙΝ την αποστολή για να μην κολλάει
             document.getElementById('paymentOverlay').style.display = 'none';
+            App.sendOrder(items, method);
         }
     },
 
