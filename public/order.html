@@ -185,7 +185,11 @@
         </div>
 
         <div id="menuContainer">
-            <div style="text-align:center; color:#555; margin-top:50px;" data-i18n="loading_menu">Φόρτωση καταλόγου...</div>
+            <div style="text-align:center; color:#555; margin-top:50px;">
+                <span data-i18n="loading_menu">Φόρτωση καταλόγου...</span>
+                <br><br>
+                <button onclick="window.location.reload()" style="background:transparent; border:1px solid #555; color:#aaa; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:12px;">🔄 Ανανέωση</button>
+            </div>
         </div>
 
         <div id="orderPanel" class="order-panel minimized">

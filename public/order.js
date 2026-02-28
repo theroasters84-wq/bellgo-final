@@ -405,6 +405,12 @@ window.App = {
     },
 
     startApp: () => {
+        // ✅ FIX: Check Store ID to prevent hanging
+        if (!TARGET_STORE) {
+            alert("⚠️ Σφάλμα: Δεν βρέθηκε κατάστημα. Παρακαλώ σκανάρετε ξανά το QR.");
+            return;
+        }
+
         document.getElementById('appContent').style.display = 'flex';
         
         // ✅ WEB vs PWA DETECTION
@@ -611,8 +617,11 @@ window.App = {
 
         socket.removeAllListeners(); // Καθαρισμός παλιών listeners
 
+        // ✅ FIX: Safe Name Access (Prevent Crash if null)
+        const getSafeName = () => (customerDetails && customerDetails.name) ? customerDetails.name : "Πελάτης";
+
         socket.on('connect', () => {
-            const mySocketUsername = customerDetails.name + " (Πελάτης)";
+            const mySocketUsername = getSafeName() + " (Πελάτης)";
             // ✅ SEND TOKEN ON JOIN
             socket.emit('join-store', { 
                 storeName: TARGET_STORE, 
@@ -828,7 +837,7 @@ window.App = {
             socket.connect();
         } else {
             // Αν είναι ήδη συνδεδεμένο, ξαναστέλνουμε join για σιγουριά
-            const mySocketUsername = customerDetails.name + " (Πελάτης)";
+            const mySocketUsername = getSafeName() + " (Πελάτης)";
             socket.emit('join-store', { 
                 storeName: TARGET_STORE, 
                 username: mySocketUsername, 

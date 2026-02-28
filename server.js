@@ -667,8 +667,12 @@ io.on('connection', (socket) => {
             const addrMatch = orderText.match(/📍\s*(.+)/);
             if (addrMatch) locationInfo = addrMatch[1].trim();
 
+            // ✅ NEW: Προσαρμογή Τίτλου για Pickup
+            let notifTitle = "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕";
+            if (orderText.includes('[PICKUP')) notifTitle = "NEO PICKUP 🛍️";
+
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            Logic.notifyAdmin(socket.store, "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕", `Από: ${socket.username}`, socket.id, locationInfo, storesData, activeUsers, io, YOUR_DOMAIN, admin);
+            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, storesData, activeUsers, io, YOUR_DOMAIN, admin);
         }
         
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -878,7 +882,17 @@ io.on('connection', (socket) => {
                     // Push Notification Logic
                     const tKey = `${socket.store}_${o.from}`; 
                     const tUser = activeUsers[tKey]; 
-                    if(tUser) Logic.sendPushNotification(tUser, "ΕΤΟΙΜΟ! 🛵", "Η παραγγελία έρχεται!", { type: "alarm" }, YOUR_DOMAIN, admin, 3600); // TTL 1h για Ετοιμότητα
+                    
+                    // ✅ NEW: Προσαρμογή Μηνύματος για Pickup
+                    let notifTitle = "ΕΤΟΙΜΟ! 🛵";
+                    let notifBody = "Η παραγγελία έρχεται!";
+                    
+                    if (o.text.includes('[PICKUP')) {
+                        notifTitle = "ΕΤΟΙΜΟ ΓΙΑ ΠΑΡΑΛΑΒΗ! 🛍️";
+                        notifBody = "Μπορείτε να περάσετε από το κατάστημα.";
+                    }
+
+                    if(tUser) Logic.sendPushNotification(tUser, notifTitle, notifBody, { type: "alarm" }, YOUR_DOMAIN, admin, 3600); // TTL 1h για Ετοιμότητα
 
                     // ✅ NEW: Ειδοποίηση ΟΛΩΝ των Διανομέων ότι υπάρχει έτοιμη παραγγελία
                     Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
