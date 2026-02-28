@@ -188,20 +188,18 @@ export const Admin = {
     },
 
     unlockSettings: () => {
-        const pin = document.getElementById('inpUnlockPin').value;
-        if(!pin) return;
+        const pin = document.getElementById('inpUnlockPin').value
         
         // ✅ NEW: Check Admin Lock Password first
         if (window.App.adminLockPassword) {
-            if (pin === window.App.adminLockPassword) {
+            // ✅ FIX: Compare trimmed versions to avoid whitespace issues
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
                 document.getElementById('settingsLockedArea').style.minHeight = ''; 
             } else {
-                alert("Λάθος Κωδικός Διαχειριστή!");
-                document.getElementById('inpUnlockPin').value = '';
-            }
+                alert("Λάθος Κωδικός Διαχειριστή! (Αυτόν που ορίσατε στο popup)");
+                docu
             return;
         }
         

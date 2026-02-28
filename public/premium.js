@@ -476,7 +476,7 @@ window.App = {
                 }
 
                 // ✅ NEW: Admin Lock Password Logic (Subscription 5)
-                if (settings.adminLockPassword) {
+                if (settings.adminLockPassword !== undefined) {
                     App.adminLockPassword = settings.adminLockPassword;
                 }
                 
@@ -484,8 +484,8 @@ window.App = {
                     App.hasPromptedLockPass = true;
                     setTimeout(() => {
                         const newPass = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (POS & E-Invoicing)\n\nΠαρακαλώ ορίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
-                        if (newPass) {
-                            window.socket.emit('save-store-settings', { adminLockPassword: newPass });
+                        if (newPass && newPass.trim()) {
+                            window.socket.emit('save-store-settings', { adminLockPassword: newPass.trim() });
                             alert("Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
                         }
                     }, 1000);
