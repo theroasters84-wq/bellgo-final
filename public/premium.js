@@ -314,8 +314,8 @@ window.App = {
             document.body.appendChild(div);
             
             document.getElementById('btnAllowNotif').onclick = async () => {
-                await App.requestNotifyPermission();
                 document.getElementById('notifPermRequest').remove();
+                await App.requestNotifyPermission();
             };
         } else if (Notification.permission === 'granted') {
             App.requestNotifyPermission();
@@ -473,6 +473,12 @@ window.App = {
                     document.getElementById('inpPosProvider').value = settings.pos.provider || '';
                     document.getElementById('inpPosId').value = settings.pos.id || '';
                     document.getElementById('inpPosKey').value = settings.pos.key || '';
+                }
+                
+                const statusEl = document.getElementById('stripeStatus');
+                if (statusEl) {
+                    if (settings.stripeConnectId) { statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId; statusEl.style.color = "#00E676"; }
+                    else { statusEl.innerText = "Μη συνδεδεμένο"; statusEl.style.color = "#aaa"; }
                 }
 
                 // ✅ NEW: Admin Lock Password Logic (Subscription 5)
@@ -638,6 +644,51 @@ window.App = {
                 p.ui_ids.forEach(id => visibleIds.add(id));
             }
         });
+        
+        // ✅ NEW: Custom Logic for Settings Restructuring
+        const hasPos = App.hasFeature('pack_pos');
+        const hasManager = App.hasFeature('pack_manager');
+        const hasDelivery = App.hasFeature('pack_delivery');
+        const hasTables = App.hasFeature('pack_tables');
+        
+        const isMidTier = hasManager || hasDelivery || hasTables; // 2, 3, 4
+
+        const btnAdmin = document.getElementById('btnSettingsAdmin');
+        const btnPinMain = document.getElementById('btnPinMain');
+        const btnEinvMain = document.getElementById('btnSettingsEinvoicing');
+
+        // Containers inside Admin Settings
+        const softPos = document.getElementById('softPosSettingsContainer');
+        const physPos = document.getElementById('physicalPosSettingsContainer');
+        const stripe = document.getElementById('stripeSettingsContainer');
+        const einvInner = document.getElementById('einvSettingsContainer');
+
+        if (hasPos || isMidTier) {
+            // Categories 2, 3, 4, 5: Show Admin Settings Category
+            if(btnAdmin) btnAdmin.style.display = 'flex';
+            if(btnPinMain) btnPinMain.style.display = 'none';
+            
+            if (hasPos) {
+                // Category 5: Show All inside Admin
+                if(softPos) softPos.style.display = 'block';
+                if(physPos) physPos.style.display = 'block';
+                if(stripe) stripe.style.display = 'block';
+                if(einvInner) einvInner.style.display = 'block';
+                if(btnEinvMain) btnEinvMain.style.display = 'none'; // Hide from main
+            } else {
+                // Categories 2, 3, 4: Show ONLY Stripe inside Admin
+                if(softPos) softPos.style.display = 'none';
+                if(physPos) physPos.style.display = 'none';
+                if(stripe) stripe.style.display = 'block';
+                if(einvInner) einvInner.style.display = 'none';
+                if(btnEinvMain) btnEinvMain.style.display = 'none'; // Hide from main (not in these packs)
+            }
+        } else {
+            // Categories 1, 6: Hide Admin Settings Category, Show PIN loose
+            if(btnAdmin) btnAdmin.style.display = 'none';
+            if(btnPinMain) btnPinMain.style.display = 'flex';
+            if(btnEinvMain) btnEinvMain.style.display = 'none';
+        }
 
         // 3. Εφαρμογή (Εμφάνιση/Απόκρυψη)
         allControllableIds.forEach(id => {

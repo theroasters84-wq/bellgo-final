@@ -453,8 +453,13 @@ export const Admin = {
         };
         secDiv.appendChild(btnPin);
 
-        // 2. Change Admin Password (Subscription 5)
-        if (window.App.hasFeature('pack_pos')) {
+        // 2. Change Admin Password (Subscription 2, 3, 4, 5)
+        const hasManager = window.App.hasFeature('pack_manager');
+        const hasDelivery = window.App.hasFeature('pack_delivery');
+        const hasTables = window.App.hasFeature('pack_tables');
+        const hasPos = window.App.hasFeature('pack_pos');
+
+        if (hasPos || hasManager || hasDelivery || hasTables) {
             const btnAdmin = document.createElement('button');
             btnAdmin.style.cssText = "width:100%; background:#333; color:#FFD700; border:1px solid #FFD700; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
             btnAdmin.innerHTML = "🛡️ Αλλαγή Κωδικού Διαχειριστή (Lock)";
@@ -478,6 +483,13 @@ export const Admin = {
             alert("✅ Ο κωδικός ενημερώθηκε επιτυχώς!");
         } else {
             alert("❌ Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");
+        }
+    },
+
+    forgotPin: () => {
+        if(confirm("Να σταλεί email επαναφοράς PIN στο email του καταστήματος;")) {
+            window.socket.emit('forgot-pin', { email: window.App.userData.store });
+            alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
         }
     },
 

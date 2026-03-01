@@ -165,7 +165,8 @@
                     <button id="btnSettingsStore" class="modal-btn" onclick="App.openSettingsSub('subStore')" data-i18n="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
                     <button id="btnSettingsPrint" class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
                     <button id="btnSettingsQr" class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
-                    <button id="btnSettingsGeneral" class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="pin_connect_stripe">⚙️ PIN / CONNECT STRIPE</button>
+                    <button id="btnSettingsAdmin" class="modal-btn" onclick="App.openSettingsSub('subGeneral')">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
+                    <button id="btnPinMain" class="modal-btn" style="background:#FF9800; color:black; display:none;" onclick="App.openPinModal()">🔑 PIN</button>
                     <button id="btnSettingsLoyalty" class="modal-btn" style="background:#E91E63; color:white;" onclick="App.openSettingsSub('subLoyalty')" data-i18n="loyalty_settings">🎁 ΡΥΘΜΙΣΕΙΣ LOYALTY</button>
                     <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
                     <button id="btnSettingsBot" class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
@@ -274,7 +275,7 @@
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">PIN / ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (TAP TO PAY)</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</h4>
                 
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div id="softPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
@@ -317,6 +318,18 @@
                     <input type="text" id="inpPosKey" class="inp-settings" placeholder="Κλειδί API / Θύρα" onblur="App.autoSaveSettings()">
                 </div>
 
+                <!-- ✅ NEW: STRIPE CONNECT -->
+                <div id="stripeSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                    <div class="settings-label" style="color:#635BFF;">💳 STRIPE (Πληρωμές με Κάρτα)</div>
+                    <div id="stripeStatus" style="color:#aaa; font-size:12px; margin-bottom:5px;">Κατάσταση: ...</div>
+                    <button class="modal-btn" style="background:#635BFF; color:white;" onclick="window.location.href='/connect-stripe'">🔗 ΣΥΝΔΕΣΗ STRIPE</button>
+                </div>
+
+                <!-- ✅ NEW: E-INVOICING INSIDE ADMIN -->
+                <div id="einvSettingsContainer" style="display:none;">
+                    <button class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
+                </div>
+
                 <!-- BANNERS -->
                 <div id="softPosSetupBanner" style="display:none; background:#FF9800; color:black; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
                     <b>⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
@@ -330,7 +343,6 @@
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <button class="modal-btn" style="background:#FF9800; color:black;" onclick="App.openPinModal()"><span data-i18n="pin">🔑 PIN</span></button>
                     <button class="modal-btn" style="background:#00E676; color:black;" onclick="App.openStatsModal()"><span data-i18n="statistics">📊 ΣΤΑΤΙΣΤΙΚΑ</span></button>
                 </div>
 
@@ -402,6 +414,7 @@
                 <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
             </div>
             <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="cancel">ΑΚΥΡΟ</button>
+            <button onclick="App.forgotPin()" style="background:none; border:none; color:#2196F3; margin-top:5px; font-size:12px;">🆘 Ξέχασα το PIN</button>
         </div>
     </div>
 
@@ -602,7 +615,10 @@
         </div>
     </div>
 
-    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Πατήστε για Ξεκλείδωμα</div></div>
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
+        <div>Πατήστε για Ξεκλείδωμα</div>
+        <button onclick="event.stopPropagation(); App.forgotPin()" style="margin-top:20px; background:none; border:none; color:#2196F3; font-size:14px; cursor:pointer;">🆘 Ξέχασα το PIN</button>
+    </div>
 
     <script type="module" src="premium.js"></script>
     <script src="player.js"></script>

@@ -126,6 +126,36 @@ app.get('/trapaizei.html', (req, res) => { res.sendFile(path.join(__dirname, 'pu
 app.get('/staff/login', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'login.html')); });
 app.get('/admin', (req, res) => { res.redirect('/manage/login.html'); }); // ✅ Redirect στο νέο isolated path
 
+/* ---------------- PIN RESET ROUTES ---------------- */
+app.get('/reset-pin', (req, res) => {
+    const { email } = req.query;
+    res.send(`
+        <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;padding:20px;text-align:center;} input{padding:10px;border-radius:5px;border:none;margin-bottom:10px;width:100%;max-width:200px;text-align:center;} button{padding:10px 20px;background:#00E676;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}</style></head>
+        <body>
+            <h2>Επαναφορά PIN</h2>
+            <p>Ορίστε το νέο PIN για το κατάστημα: <b>${email}</b></p>
+            <form action="/set-new-pin" method="POST">
+                <input type="hidden" name="email" value="${email}">
+                <input type="number" name="pin" placeholder="Νέο PIN (4 ψηφία)" required pattern="[0-9]{4}">
+                <br>
+                <button type="submit">ΑΠΟΘΗΚΕΥΣΗ</button>
+            </form>
+        </body></html>
+    `);
+});
+
+app.post('/set-new-pin', async (req, res) => {
+    const { email, pin } = req.body;
+    if (email && pin) {
+        const store = await Logic.getStoreData(email, db, storesData);
+        store.settings.pin = pin;
+        Logic.saveStoreToFirebase(email, db, storesData);
+        res.send(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:#00E676;font-family:sans-serif;text-align:center;padding:50px;}</style></head><body><h1>✅ Επιτυχία!</h1><p>Το PIN άλλαξε.</p></body></html>`);
+    } else {
+        res.send("Σφάλμα.");
+    }
+});
+
 /* ---------------- STRIPE CONNECT OAUTH ---------------- */
 app.get('/connect-stripe', (req, res) => {
     const state = "BellGo_Store"; 
@@ -553,6 +583,18 @@ io.on('connection', (socket) => {
     socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await Logic.getStoreData(targetEmail, db, storesData); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
     socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await Logic.getStoreData(email, db, storesData); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
     socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await Logic.getStoreData(email, db, storesData); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); Logic.updateStoreClients(email, io, storesData, activeUsers, db); } });
+    
+    // ✅ NEW: Forgot PIN
+    socket.on('forgot-pin', async (data) => {
+        const email = data.email || socket.store;
+        if (email) {
+            const link = `${YOUR_DOMAIN}/reset-pin?email=${encodeURIComponent(email)}`;
+            const mailOptions = { from: 'BellGo System', to: email, subject: '🔑 Επαναφορά PIN', text: `Πατήστε εδώ για να ορίσετε νέο PIN: ${link}` };
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) console.log(err); else console.log('Email sent: ' + info.response);
+            });
+        }
+    });
     
     socket.on('update-token', (data) => { 
         const key = `${socket.store}_${data.username}`; 

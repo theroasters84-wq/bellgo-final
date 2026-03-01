@@ -596,8 +596,8 @@ window.App = {
             document.body.appendChild(div);
             
             document.getElementById('btnAllowNotif').onclick = async () => {
-                await App.requestNotifyPermission();
                 document.getElementById('notifPermRequest').remove();
+                await App.requestNotifyPermission();
             };
         } else if (Notification.permission === 'granted') {
             App.requestNotifyPermission(); // Αν έχει ήδη άδεια, απλά ανανεώνουμε το token
@@ -849,13 +849,29 @@ window.App = {
                         console.log("🛑 KeepAlive Stopped (Order Ready)");
                     }
 
-                    const audio = new Audio('/alert.mp3');
-                    audio.play().catch(e => console.log("Audio play error:", e));
-                    if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-
-                    // ✅ NEW: Ειδοποίηση Alert για Pickup
+                    // ✅ FIX: Alarm ONLY for Pickup (Not for Dine-In/Table)
                     if (order.text && order.text.includes('[PICKUP')) {
-                         document.getElementById('readyPickupModal').style.display = 'flex';
+                        const audio = new Audio('/alert.mp3');
+                        const playAlert = () => {
+                            audio.currentTime = 0;
+                            audio.play().catch(e => console.log("Audio play error:", e));
+                            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+                        };
+                        playAlert();
+                        if (window.pickupInterval) clearInterval(window.pickupInterval);
+                        window.pickupInterval = setInterval(playAlert, 5000);
+                        const modal = document.getElementById('readyPickupModal');
+                        modal.style.display = 'flex';
+                        const btn = modal.querySelector('button');
+                        if (btn) {
+                            const oldClick = btn.onclick;
+                            btn.onclick = (e) => {
+                                clearInterval(window.pickupInterval);
+                                window.pickupInterval = null;
+                                modal.style.display = 'none';
+                                if (oldClick) oldClick.call(btn, e);
+                            };
+                        }
                     }
                 }
 
