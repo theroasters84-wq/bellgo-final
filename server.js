@@ -636,6 +636,11 @@ io.on('connection', (socket) => {
             if(data.reward) store.settings.reward = data.reward; // ✅ NEW: Save Reward Settings
             // ✅ FIX: Merge features instead of replacing (prevents data loss)
             if(data.features) store.settings.features = { ...store.settings.features, ...data.features };
+            
+            // ✅ NEW: Admin PIN & PIN (Native App Support)
+            if(data.adminPin) store.settings.adminPin = data.adminPin;
+            if(data.pin) store.settings.pin = data.pin;
+
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
         } 
     });

@@ -482,18 +482,18 @@ window.App = {
                 }
 
                 // ✅ NEW: Admin Lock Password Logic (Subscription 5)
-                if (settings.adminLockPassword !== undefined) {
-                    App.adminLockPassword = settings.adminLockPassword;
+                if (settings.adminPin !== undefined) {
+                    App.adminPin = settings.adminPin;
                 }
                 
-                if (App.hasFeature('pack_pos') && !settings.adminLockPassword && !App.hasPromptedLockPass) {
+                if (App.hasFeature('pack_pos') && !settings.adminPin && !App.hasPromptedLockPass) {
                     App.hasPromptedLockPass = true;
                     setTimeout(() => {
                         const p1 = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (1/2)\n\nΟρίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
                         if (p1) {
                             const p2 = prompt("🔐 ΕΠΙΒΕΒΑΙΩΣΗ (2/2)\n\nΠληκτρολογήστε ξανά τον κωδικό:");
                             if (p1.trim() === p2?.trim()) {
-                                window.socket.emit('save-store-settings', { adminLockPassword: p1.trim() });
+                                window.socket.emit('save-store-settings', { adminPin: p1.trim() });
                                 alert("✅ Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
                             } else {
                                 alert("❌ Οι κωδικοί δεν ταιριάζουν. Θα σας ζητηθεί ξανά στην επόμενη είσοδο.");

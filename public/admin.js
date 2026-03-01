@@ -96,7 +96,7 @@ export const Admin = {
 
             let lock = document.getElementById('settingsLockOverlay');
             // ✅ NEW: Dynamic Message
-            const lockMsg = app.adminLockPassword ? "Απαιτείται Κωδικός Διαχειριστή" : "Απαιτείται PIN διαχειριστή";
+            const lockMsg = app.adminPin ? "Απαιτείται Κωδικός Διαχειριστή" : "Απαιτείται PIN διαχειριστή";
 
             if (!lock) {
                 lock = document.createElement('div');
@@ -199,9 +199,9 @@ export const Admin = {
         const pin = document.getElementById('inpUnlockPin').value.trim();
         
         // ✅ NEW: Check Admin Lock Password first
-        if (window.App.adminLockPassword) {
+        if (window.App.adminPin) {
             // ✅ FIX: Compare trimmed versions to avoid whitespace issues
-            if (pin === String(window.App.adminLockPassword).trim()) {
+            if (pin === String(window.App.adminPin).trim()) {
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
@@ -478,8 +478,8 @@ export const Admin = {
 
         if (p1.trim() === p2.trim()) {
             const finalPass = p1.trim();
-            window.socket.emit('save-store-settings', { adminLockPassword: finalPass });
-            window.App.adminLockPassword = finalPass;
+            window.socket.emit('save-store-settings', { adminPin: finalPass });
+            window.App.adminPin = finalPass;
             alert("✅ Ο κωδικός ενημερώθηκε επιτυχώς!");
         } else {
             alert("❌ Οι κωδικοί δεν ταιριάζουν. Προσπαθήστε ξανά.");

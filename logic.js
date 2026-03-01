@@ -4,6 +4,7 @@ const defaultSettings = {
     name: "BellGo Delivery", 
     pin: null, 
     adminEmail: "", 
+    adminPin: null, // ✅ NEW: Admin Lock PIN
     statusCustomer: true, 
     statusStaff: true,
     resetTime: "04:00",
