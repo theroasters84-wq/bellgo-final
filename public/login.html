@@ -165,7 +165,7 @@
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
                 <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
             </div>
-            <button id="btnForgot" class="forgot-link" onclick="PIN.resetFlow()" data-i18n="forgot_pin">Ξέχασα το PIN</button>
+            <button id="btnForgot" class="forgot-link" onclick="PIN.forgotPin()" data-i18n="forgot_pin">Ξέχασα το PIN</button>
         </div>
     </div>
 
@@ -327,12 +327,13 @@
             add: (n) => { if (pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
             clear: () => { pinValue = ''; PIN.updateDisplay(); },
             updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
-            resetFlow: () => {
-                if(!confirm("Θέλετε να ορίσετε νέο κωδικό;")) return;
-                currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay();
-                document.getElementById('pinTitle').innerText = t('create_pin') || "ΝΕΟ PIN";
-                document.getElementById('pinSub').innerText = t('set_new_pin') || "Ορίστε νέο 4-ψήφιο κωδικό";
-                document.getElementById('btnForgot').style.display = 'none';
+            forgotPin: () => {
+                if (adminUser && adminUser.email) {
+                    if(confirm(`Να σταλεί email επαναφοράς PIN στο ${adminUser.email};`)) {
+                        socket.emit('forgot-pin', { email: adminUser.email });
+                        alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
+                    }
+                }
             },
             submit: () => {
                 if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");

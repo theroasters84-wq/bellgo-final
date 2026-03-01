@@ -336,6 +336,13 @@ app.post('/check-subscription', async (req, res) => {
                 });
             });
 
+            // ✅ FIX: Συγχρονισμός Features από Stripe στη Βάση (για να μην χάνονται στο Socket Update)
+            if (storeData) {
+                storeData.settings.features = activeFeatures;
+                storeData.settings.plan = planType;
+                Logic.saveStoreToFirebase(storeName, db, storesData);
+            }
+
             return res.json({ active: true, plan: planType, features: activeFeatures, storeId: email });
         } else { 
             // No Stripe subscription.
