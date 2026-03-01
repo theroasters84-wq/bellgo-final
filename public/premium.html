@@ -330,6 +330,13 @@
                     <button class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
                 </div>
 
+                <!-- ✅ NEW: SECURITY SECTION -->
+                <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                    <div class="settings-label" style="color:#FF5252;">🔐 ΑΣΦΑΛΕΙΑ</div>
+                    <button class="modal-btn" style="background:#333; margin-bottom:5px;" onclick="App.openPinModal()">🔑 Αλλαγή PIN Εισόδου</button>
+                    <button class="modal-btn" style="background:#333;" onclick="App.changeAdminLockPass()">🛡️ Αλλαγή Κωδικού Διαχειριστή (Lock)</button>
+                </div>
+
                 <!-- BANNERS -->
                 <div id="softPosSetupBanner" style="display:none; background:#FF9800; color:black; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
                     <b>⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
@@ -621,6 +628,8 @@
     </div>
 
     <script type="module" src="premium.js"></script>
+    <script type="module" src="premium2.js"></script>
+    <script type="module" src="premium3.js"></script>
     <script src="player.js"></script>
     <script src="keepalive.js"></script>
     <script>

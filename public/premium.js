@@ -1780,6 +1780,25 @@ window.App = {
             }
         }
     },
+
+    openPinModal: () => {
+        document.getElementById('pinChangeModal').style.display = 'flex';
+        if(window.PIN) window.PIN.reset();
+    },
+    closePinModal: () => {
+        document.getElementById('pinChangeModal').style.display = 'none';
+    },
+    changeAdminLockPass: () => {
+        const p1 = prompt("🔐 ΝΕΟΣ ΚΩΔΙΚΟΣ ΔΙΑΧΕΙΡΙΣΤΗ\n\nΟρίστε κωδικό για το κλείδωμα των ρυθμίσεων:");
+        if (!p1) return;
+        const p2 = prompt("🔐 ΕΠΙΒΕΒΑΙΩΣΗ\n\nΠληκτρολογήστε ξανά τον κωδικό:");
+        if (p1 === p2) {
+            window.socket.emit('save-store-settings', { adminPin: p1.trim() });
+            alert("✅ Ο κωδικός αποθηκεύτηκε!");
+        } else {
+            alert("❌ Οι κωδικοί δεν ταιριάζουν.");
+        }
+    },
 };
 
 // --- PIN MODULE ---
