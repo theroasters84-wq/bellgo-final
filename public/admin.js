@@ -73,125 +73,12 @@ export const Admin = {
         // ✅ NEW: Render Security Settings (Dynamic)
         Admin.renderSecuritySettings();
 
-        // LOCK LOGIC
+        // ❌ REMOVED: Lock overlay over the whole area.
+        // Settings now open freely, and code is requested only for Admin Settings.
+        const lock = document.getElementById('settingsLockOverlay');
+        if(lock) lock.style.display = 'none';
+        
         const app = window.App;
-        const lockedArea = document.getElementById('settingsLockedArea');
-        
-        // ✅ NEW: Κλείδωμα ΜΟΝΟ για πακέτο 5 (POS)
-        if (!app.settingsUnlocked && app.hasFeature('pack_pos')) {
-            if (window.getComputedStyle(lockedArea).position === 'static') lockedArea.style.position = 'relative';
-            lockedArea.style.minHeight = '600px'; // ✅ FIX: Increase height for lock screen
-            
-            // ✅ NEW: Έλεγχος ορατότητας για το Lock Screen (ώστε να μην είναι καρφωτά)
-            const hasManager = app.hasFeature('pack_manager');
-            const hasDelivery = app.hasFeature('pack_delivery');
-            const hasTables = app.hasFeature('pack_tables');
-            const styleCust = (hasDelivery || hasManager || hasTables) ? 'flex' : 'none';
-            const styleStaff = hasManager ? 'flex' : 'none';
-            const styleCharge = hasManager ? 'flex' : 'none';
-
-            // ✅ NEW: Δυναμική Ονομασία για τον διακόπτη Πελατών
-            let custLabel = "ΠΕΛΑΤΕΣ (Delivery)";
-            if (hasTables && !hasDelivery) custLabel = "ΚΑΤΑΣΤΗΜΑ (On/Off)";
-
-            let lock = document.getElementById('settingsLockOverlay');
-            // ✅ NEW: Dynamic Message
-            const lockMsg = app.adminPin ? "Απαιτείται Κωδικός Διαχειριστή" : "Απαιτείται PIN διαχειριστή";
-
-            if (!lock) {
-                lock = document.createElement('div');
-                lock.id = 'settingsLockOverlay';
-                lock.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; backdrop-filter:blur(5px); border-radius:10px; overflow-y:auto; padding:20px; box-sizing:border-box;";
-                lock.innerHTML = `
-                    <div style="font-size:50px; margin-bottom:20px;">🔒</div>
-                    <h3 style="color:white; margin-bottom:10px;">Ρυθμίσεις Κλειδωμένες</h3>
-                    <p id="lockMsgText" style="color:#aaa; margin-bottom:20px; font-size:14px;">${lockMsg}</p>
-                    
-                    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:30px;">
-                        <input type="password" id="inpUnlockPin" placeholder="Password" style="padding:12px; border-radius:8px; border:1px solid #444; background:#222; color:white; text-align:center; font-size:18px; width:100px; outline:none;">
-                        <button onclick="App.unlockSettings()" style="padding:12px 20px; background:#FFD700; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OK</button>
-                    </div>
-
-                    <!-- EXCEPTION: STORE & HOURS -->
-                    <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #444; width:100%; max-width:300px; margin-bottom:20px; text-align:left;">
-                        <h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px; border-bottom:1px solid #333; padding-bottom:5px;">ΒΑΣΙΚΕΣ ΡΥΘΜΙΣΕΙΣ (ΕΞΑΙΡΕΣΗ)</h4>
-                        
-                        <div style="margin-bottom:10px;">
-                            <label style="color:#ccc; font-size:12px; display:block;">Όνομα Καταστήματος</label>
-                            <input type="text" id="inpLockStoreName" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('name', this.value)">
-                        </div>
-
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <div style="flex:1;">
-                                <label style="color:#ccc; font-size:12px; display:block;">Ωράριο</label>
-                                <input type="text" id="inpLockHours" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('hours', this.value)">
-                            </div>
-                            <div style="flex:1;">
-                                <label style="color:#ccc; font-size:12px; display:block;">Reset</label>
-                                <input type="time" id="inpLockReset" style="width:100%; padding:8px; background:#111; border:1px solid #333; color:white; border-radius:5px; box-sizing:border-box;" onchange="App.updateFromLock('reset', this.value)">
-                            </div>
-                        </div>
-
-                        <div style="border-top:1px solid #333; padding-top:10px;">
-                            <div id="divLockCust" style="display:${styleCust}; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="color:#ccc; font-size:12px;">${custLabel}</span>
-                                <label class="switch"><input type="checkbox" id="switchLockCust" onchange="App.updateFromLock('cust', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                            <div id="divLockStaff" style="display:${styleStaff}; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="color:#ccc; font-size:12px;">ΠΡΟΣΩΠΙΚΟ (Staff)</span>
-                                <label class="switch"><input type="checkbox" id="switchLockStaff" onchange="App.updateFromLock('staff', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                            <div id="divLockCharge" style="display:${styleCharge}; justify-content:space-between; align-items:center;">
-                                <span style="color:#ccc; font-size:12px;">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
-                                <label class="switch"><input type="checkbox" id="switchLockCharge" onchange="App.updateFromLock('charge', this.checked)"><span class="slider round"></span></label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="border-top:1px solid #333; padding-top:20px; width:80%;">
-                        <p style="color:#aaa; font-size:12px; margin-bottom:10px;">Εργαλεία Προσωπικού:</p>
-                        <button onclick="window.DNDBot.init(); window.DNDBot.showIntro();" style="background:#333; color:white; border:1px solid #555; padding:10px 20px; border-radius:20px; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:10px; margin:0 auto;">
-                            <span>🤖</span> BellGo Bot (Setup)
-                        </button>
-                    </div>
-                `;
-                lockedArea.appendChild(lock);
-            } else {
-                lock.style.display = 'flex';
-                // ✅ NEW: Update message
-                const msgEl = document.getElementById('lockMsgText');
-                if(msgEl) msgEl.innerText = lockMsg;
-            }
-
-            // ✅ FORCE UPDATE VISIBILITY (Fix for cached element)
-            const divCust = document.getElementById('divLockCust');
-            const divStaff = document.getElementById('divLockStaff');
-            const divCharge = document.getElementById('divLockCharge');
-            
-            if(divCust) divCust.style.display = styleCust;
-            if(divStaff) divStaff.style.display = styleStaff;
-            if(divCharge) divCharge.style.display = styleCharge;
-
-            // POPULATE VALUES
-            const realName = document.getElementById('inpStoreNameHeader');
-            const realHours = document.getElementById('inpHours');
-            const realReset = document.getElementById('inpResetTime');
-            if(realName) document.getElementById('inpLockStoreName').value = realName.value;
-            if(realHours) document.getElementById('inpLockHours').value = realHours.value;
-            if(realReset) document.getElementById('inpLockReset').value = realReset.value;
-
-            const swCust = document.getElementById('switchCust');
-            const swStaff = document.getElementById('switchStaff');
-            const swCharge = document.getElementById('switchStaffCharge');
-            if(swCust) document.getElementById('switchLockCust').checked = swCust.checked;
-            if(swStaff) document.getElementById('switchLockStaff').checked = swStaff.checked;
-            if(swCharge) document.getElementById('switchLockCharge').checked = swCharge.checked;
-
-        } else {
-            const lock = document.getElementById('settingsLockOverlay');
-            if(lock) lock.style.display = 'none';
-        }
-        
         app.applyFeatureVisibility();
     },
 
@@ -200,14 +87,13 @@ export const Admin = {
         
         // ✅ NEW: Check Admin Lock Password first
         if (window.App.adminPin) {
-            // ✅ FIX: Compare trimmed versions to avoid whitespace issues
             if (pin === String(window.App.adminPin).trim()) {
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
                 document.getElementById('settingsLockedArea').style.minHeight = ''; 
             } else {
-                alert("Λάθος Κωδικός Διαχειριστή! (Αυτόν που ορίσατε στο popup)");
+                alert("Λάθος Κωδικός Διαχειριστή!");
                 document.getElementById('inpUnlockPin').value = '';
             }
             return;
@@ -221,7 +107,7 @@ export const Admin = {
                 window.App.settingsUnlocked = true;
                 const lock = document.getElementById('settingsLockOverlay');
                 if(lock) lock.style.display = 'none';
-                document.getElementById('settingsLockedArea').style.minHeight = ''; // ✅ Reset height
+                document.getElementById('settingsLockedArea').style.minHeight = ''; 
             } else {
                 alert("Λάθος PIN!");
                 document.getElementById('inpUnlockPin').value = '';
@@ -253,6 +139,34 @@ export const Admin = {
     },
 
     openSettingsSub: (id) => {
+        // ✅ NEW: REQUIRE PIN ONLY FOR ADMIN SETTINGS (subGeneral)
+        if (id === 'subGeneral' && !window.App.settingsUnlocked && window.App.hasFeature('pack_pos')) {
+            const pin = prompt(window.App.adminPin ? "🔐 ΕΙΣΑΓΕΤΕ ΚΩΔΙΚΟ ΔΙΑΧΕΙΡΙΣΤΗ:" : "🔐 ΕΙΣΑΓΕΤΕ PIN:");
+            if (!pin) return;
+
+            if (window.App.adminPin) {
+                if (pin === String(window.App.adminPin).trim()) {
+                    window.App.settingsUnlocked = true;
+                    // Continue to open
+                } else {
+                    alert("❌ Λάθος Κωδικός!");
+                    return;
+                }
+            } else {
+                const storeEmail = window.App.userData ? window.App.userData.store : null;
+                window.socket.emit('verify-pin', { pin: pin, email: storeEmail });
+                window.socket.once('pin-verified', (data) => {
+                    if (data.success) {
+                        window.App.settingsUnlocked = true;
+                        Admin.openSettingsSub('subGeneral');
+                    } else {
+                        alert("❌ Λάθος PIN!");
+                    }
+                });
+                return;
+            }
+        }
+
         document.getElementById('settingsMain').style.display = 'none';
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
         const target = document.getElementById(id);

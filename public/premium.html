@@ -167,7 +167,12 @@
                     <button id="btnSettingsQr" class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
                     <button id="btnSettingsAdmin" class="modal-btn" onclick="App.openSettingsSub('subGeneral')">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
                     <button id="btnSettingsLoyalty" class="modal-btn" style="background:#E91E63; color:white;" onclick="App.openSettingsSub('subLoyalty')" data-i18n="loyalty_settings">🎁 ΡΥΘΜΙΣΕΙΣ LOYALTY</button>
+<<<<<<< HEAD
                     <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
+=======
+                    <!-- ❌ E-Invoicing button removed from central menu -->
+                    <button id="btnSettingsBot" class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
+>>>>>>> c07e27c23aee2e4741190c6ccd5fcfdcd7557fd0
                 </div>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
@@ -327,11 +332,6 @@
                     <div class="settings-label" style="color:#635BFF;">💳 STRIPE (Πληρωμές με Κάρτα)</div>
                     <div id="stripeStatus" style="color:#aaa; font-size:12px; margin-bottom:5px;">Κατάσταση: ...</div>
                     <button class="modal-btn" style="background:#635BFF; color:white;" onclick="window.location.href='/connect-stripe'">🔗 ΣΥΝΔΕΣΗ STRIPE</button>
-                </div>
-
-                <!-- ✅ NEW: E-INVOICING INSIDE ADMIN -->
-                <div id="einvSettingsContainer" style="display:none;">
-                    <button class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
                 </div>
 
                 <!-- BANNERS -->
@@ -625,6 +625,8 @@
     </div>
 
     <script type="module" src="premium.js"></script>
+    <script type="module" src="premium2.js"></script>
+    <script type="module" src="premium3.js"></script>
     <script src="player.js"></script>
     <script src="keepalive.js"></script>
     <script>
