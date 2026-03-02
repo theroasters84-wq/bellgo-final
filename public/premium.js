@@ -261,7 +261,7 @@ window.App = {
         }, 500);
 
         // ✅ Start Bot
-        if(window.DNDBot) window.DNDBot.init();
+        // if(window.DNDBot) window.DNDBot.init();
         
         // ✅ Init Pay System
         PaySystem.init();

@@ -321,6 +321,7 @@ window.App = {
 
         // ✅ Start Bot
         DNDBot.init();
+        // DNDBot.init();
         
         // ✅ Check SoftPOS Return
         App.checkSoftPosReturn();
