@@ -1,0 +1,19 @@
+<!-- 📊 PREMIUM STATS PANEL TEMPLATE -->
+<div class="modal-box" style="width:95%; height:95%; max-width:none; max-height:none; display:flex; flex-direction:column; padding:0;">
+    
+    <!-- HEADER -->
+    <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; background:#1a1a1a;">
+        <button id="btnStatsBack" onclick="App.renderStatsDashboard()" style="display:none; background:none; border:none; color:white; font-size:24px; cursor:pointer; margin-right:10px;">🔙</button>
+        <h3 id="statsTitle" class="modal-title" style="margin:0; font-size:20px; flex:1; color:#FFD700;" data-i18n="dashboard">📊 DASHBOARD</h3>
+        <button onclick="document.getElementById('statsModal').style.display='none'; document.getElementById('settingsModal').style.display='flex';" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✕</button>
+    </div>
+
+    <!-- CONTENT AREA -->
+    <div id="statsContent" style="flex:1; overflow-y:auto; padding:20px; text-align:left; background:#121212;">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
+            <div style="font-size:40px; margin-bottom:10px;">⏳</div>
+            <p style="text-align:center; color:#aaa;" data-i18n="loading">Φόρτωση Δεδομένων...</p>
+        </div>
+    </div>
+
+</div>

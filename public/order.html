@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover">
+    
+    <title>Delivery</title>
+    <link rel="icon" type="image/png" href="/shop.png">
+    <link rel="apple-touch-icon" href="/shop.png">
+    
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Delivery">
+
+    <link rel="manifest" id="dynamicManifest">
+    <link rel="stylesheet" href="/style.css">
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+        (function() {
+            // Δυναμική εύρεση του Store από το URL Path ή το Query String
+            let store = "";
+            const pathParts = window.location.pathname.split('/');
+            // Έλεγχος αν είμαστε σε URL μορφής /shop/storeName/
+            if (pathParts.includes('shop') && pathParts.length > 2) { 
+                store = decodeURIComponent(pathParts[pathParts.indexOf('shop') + 1]); // ✅ FIX: Αποκωδικοποίηση
+            } else if (pathParts.includes('dinein') && pathParts.length > 2) {
+                // ✅ Support Dine-In Route
+                store = decodeURIComponent(pathParts[pathParts.indexOf('dinein') + 1]);
+            } else {
+                // Fallback σε query string ?store=xyz
+                const params = new URLSearchParams(window.location.search);
+                store = params.get('store');
+                
+                // ✅ FIX: Force redirect to /shop/ structure if accessed via /order.html
+                // This ensures PWA scope is correct and independent
+                if (store && !window.location.pathname.includes('/shop/') && !window.location.pathname.includes('/dinein/')) {
+                     window.location.replace(`/shop/${encodeURIComponent(store)}/${window.location.search}`);
+                     return;
+                }
+            }
+
+            const manifestLink = document.getElementById('dynamicManifest');
+            if (store) {
+                // Ζητάμε δυναμικό manifest για αυτό το store
+                // Το /manifest.json route του server θα επιστρέψει το σωστό start_url & scope
+                manifestLink.href = `/manifest.json?icon=shop&store=${encodeURIComponent(store)}`;
+            } else {
+                manifestLink.href = `/manifest.json?icon=shop`;
+            }
+        })();
+    </script>
+</head>
+<body>
+
+    <div id="loginScreen" style="display:none;">
+        <h1>BellGo Delivery 🛵</h1>
+        <p data-i18n="login_to_order">Συνδεθείτε για να παραγγείλετε</p>
+        <button class="btn-google" onclick="App.loginGoogle()">
+            <span style="font-weight:900; font-size:24px; margin-right:8px;">G</span> <span data-i18n="login_with_google">Σύνδεση με Google</span>
+        </button>
+        <button id="btnInstallLogin" class="btn-install-app" onclick="App.installPWA()"><span data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</span></button>
+    </div>
+
+    <!-- ✅ NEW: CHOICE MODAL (Delivery Only) -->
+    <div id="choiceModal" class="overlay-screen" style="display:none; z-index: 12000;">
+        <div class="details-box" style="text-align:center;">
+            <h3 style="color:#FFD700; margin-bottom:20px;" data-i18n="what_would_you_like">Τι θέλετε να κάνετε;</h3>
+            <button class="btn-save-details" onclick="App.chooseAction('order')" style="margin-bottom:15px; background:#2196F3;">🛵 <span data-i18n="order_delivery">ΠΑΡΑΓΓΕΛΙΑ DELIVERY</span></button>
+            <button class="btn-save-details" onclick="App.chooseAction('pickup')" style="margin-bottom:15px; background:#FF9800;">🛍️ <span data-i18n="order_pickup">ΠΑΡΑΛΑΒΗ ΑΠΟ ΚΑΤΑΣΤΗΜΑ</span></button>
+            <button class="btn-save-details" onclick="App.chooseAction('book')" style="background:#9C27B0;">📅 <span data-i18n="book_table">ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</span></button>
+            <button class="btn-save-details" onclick="App.openMyReservations()" style="background:#333; margin-top:15px; font-size:14px;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</button>
+        </div>
+    </div>
+
+    <div id="detailsOverlay" class="overlay-screen">
+        <div class="details-box" style="position:relative;">
+            <!-- ✅ NEW: Back Button in Head (Top Left) -->
+            <button id="btnBackToChoice" onclick="App.goBackToChoice()" style="position:absolute; top:15px; left:15px; background:transparent; border:none; color:#aaa; font-size:24px; cursor:pointer; display:none; padding:0;" title="Πίσω">🔙</button>
+            
+            <h3 style="color:#FFD700; margin:0;" id="detailsTitle" data-i18n="welcome"> Καλώς ήρθατε!</h3>
+            
+            <!-- Delivery Fields -->
+            <div id="deliveryFields">
+                <input type="text" id="inpName" class="inp-detail" placeholder="Το Όνομά σας" data-i18n-placeholder="your_name">
+                <div id="divAddressGroup" style="display:flex; gap:5px; align-items:center; width:100%; margin-bottom:15px;">
+                    <input type="text" id="inpAddress" class="inp-detail" placeholder="Διεύθυνση (π.χ. Ερμού 15)" data-i18n-placeholder="address_placeholder" style="flex:1; margin-bottom:0;">
+                    <button onclick="App.getGpsLocation(this)" style="background:#333; border:1px solid #555; color:#FFD700; border-radius:6px; width:50px; height:50px; cursor:pointer; font-size:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Εντοπισμός (GPS)">📍</button>
+                </div>
+                <input type="text" id="inpFloor" class="inp-detail" placeholder="Όροφος / Κουδούνι" data-i18n-placeholder="floor_bell">
+                <input type="tel" id="inpPhone" class="inp-detail" placeholder="Τηλέφωνο Επικοινωνίας" data-i18n-placeholder="contact_phone">
+                <input type="text" id="inpZip" class="inp-detail" placeholder="Τ.Κ. (Προαιρετικό)" data-i18n-placeholder="zip_optional">
+            </div>
+            <!-- Dine-In Fields -->
+            <div id="dineInFields" style="display:none;">
+                <div id="tableDisplay" style="color:#00E676; font-weight:bold; margin-bottom:15px; font-size:22px;"></div>
+                <div style="color:#aaa; font-size:14px; margin-bottom:5px;" data-i18n="number_of_people">ΑΡΙΘΜΟΣ ΑΤΟΜΩΝ</div>
+                <input type="number" id="inpCovers" class="inp-detail" placeholder="π.χ. 4" value="1" inputmode="numeric" style="text-align:center; font-size:20px; width:80px; margin:0 auto;">
+            </div>
+
+            <button class="btn-save-details" onclick="App.saveDetails()" data-i18n="continue">ΣΥΝΕΧΕΙΑ</button>
+        </div>
+    </div>
+
+    <div id="paymentOverlay" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#FFD700;" data-i18n="payment_method">Τρόπος Πληρωμής</h3>
+            <button class="btn-pay" id="payCash" onclick="App.confirmPayment('💵 ΜΕΤΡΗΤΑ')">💵 <span data-i18n="cash">ΜΕΤΡΗΤΑ</span></button>
+            <button class="btn-pay" id="payCard" onclick="App.confirmPayment('💳 ΚΑΡΤΑ')">💳 <span data-i18n="card">ΚΑΡΤΑ</span></button>
+            <button onclick="document.getElementById('paymentOverlay').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; font-size:14px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
+        </div>
+    </div>
+    
+    <div id="closedOverlay" class="store-closed-overlay">
+        <div class="closed-text" data-i18n="closed">🔴 ΚΛΕΙΣΤΟ</div>
+        <p style="color:#aaa;" data-i18n="store_not_accepting_orders">Το κατάστημα δεν δέχεται παραγγελίες αυτή τη στιγμή.</p>
+    </div>
+    
+    <div id="scheduleViewModal" class="overlay-screen" onclick="document.getElementById('scheduleViewModal').style.display='none'">
+        <div class="details-box" onclick="event.stopPropagation()">
+            <h3 style="color:#FFD700; margin:0; margin-bottom:15px;" data-i18n="delivery_schedule">📅 Ωράριο Διανομής</h3>
+            <div id="scheduleList" style="width:100%;"></div>
+            <button onclick="document.getElementById('scheduleViewModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:15px; cursor:pointer;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <div id="userExtrasModal" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#FFD700; margin:0;" id="userExtrasTitle" data-i18n="options">Επιλογές</h3>
+            <div id="userExtrasList" class="extras-grid"></div>
+            <button class="btn-save-details" onclick="App.confirmExtras()" data-i18n="add">ΠΡΟΣΘΗΚΗ</button>
+            <button onclick="document.getElementById('userExtrasModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: BOOKING MODAL -->
+    <div id="bookingModal" class="overlay-screen">
+        <div class="details-box">
+            <h3 style="color:#9C27B0; margin:0;" data-i18n="book_table">📅 ΚΡΑΤΗΣΗ ΤΡΑΠΕΖΙΟΥ</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+                <input type="date" id="inpBookDate" class="inp-detail" style="text-align:center;">
+                <input type="time" id="inpBookTime" class="inp-detail" style="text-align:center;">
+                <input type="number" id="inpBookPax" class="inp-detail" placeholder="Άτομα" style="text-align:center;">
+                <input type="tel" id="inpBookPhone" class="inp-detail" placeholder="Τηλέφωνο" style="text-align:center;">
+                <input type="text" id="inpBookName" class="inp-detail" placeholder="Όνομα" style="text-align:center;">
+            </div>
+            <button class="btn-save-details" onclick="App.submitReservation()" style="background:#9C27B0; margin-top:15px;" data-i18n="confirm_booking">ΚΡΑΤΗΣΗ</button>
+            <button onclick="document.getElementById('bookingModal').style.display='none'" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΩΣΗ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: MY RESERVATIONS MODAL -->
+    <div id="myReservationsModal" class="overlay-screen" style="z-index: 13000;">
+        <div class="details-box">
+            <h3 style="color:#9C27B0; margin:0;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</h3>
+            <div id="myReservationsList" style="margin-top:15px; max-height:300px; overflow-y:auto; width:100%;"></div>
+            <button onclick="App.closeMyReservations()" style="background:transparent; border:none; color:#aaa; margin-top:10px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: READY PICKUP MODAL -->
+    <div id="readyPickupModal" class="overlay-screen" style="z-index: 15000; background: rgba(0,0,0,0.9);">
+        <div class="details-box" style="text-align:center; border: 2px solid #00E676;">
+            <div style="font-size:60px; margin-bottom:20px;">🛍️</div>
+            <h2 style="color:#00E676; margin:0;">Η ΠΑΡΑΓΓΕΛΙΑ ΕΙΝΑΙ ΕΤΟΙΜΗ!</h2>
+            <p style="color:white; font-size:18px; margin:20px 0;">Μπορείτε να περάσετε από το κατάστημα για παραλαβή.</p>
+            <button onclick="document.getElementById('readyPickupModal').style.display='none'" style="background:#00E676; color:black; padding:15px 30px; border:none; border-radius:30px; font-weight:bold; font-size:18px; cursor:pointer; width:100%;">ΕΓΙΝΕ ✅</button>
+        </div>
+    </div>
+
+    <div id="appContent" style="display:none;">
+        <div class="header">
+            <div class="header-left">
+                <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
+                    ⏳ <span id="miniStatusText">...</span>
+                </button>
+            </div>
+
+            <div class="store-info">
+                <span id="storeNameHeader">...</span>
+            </div>
+            <div class="header-actions">
+                 <div class="lang-switcher">
+                    <span id="lang-el" class="lang-option active" onclick="App.setLanguage('el')">EL</span>
+                    <span id="lang-en" class="lang-option" onclick="App.setLanguage('en')">EN</span>
+                </div>
+                <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ <span data-i18n="review">ΑΞΙΟΛΟΓΗΣΗ</span></button>
+                <button id="btnHeaderMyRes" class="btn-header-install" style="display:none; background:#333; color:white; margin-right:5px; align-items:center; gap:5px;" onclick="App.openMyReservations()">
+                    🍽️ <span style="font-size:10px;">ΚΡΑΤΗΣΕΙΣ</span>
+                    <span id="resBadgeHeader" style="display:none; background:red; color:white; border-radius:50%; padding:1px 5px; font-size:10px; font-weight:bold;">0</span>
+                </button>
+                <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 <span data-i18n="app">APP</span></button>
+            </div>
+        </div>
+
+        <div id="menuContainer">
+            <div style="text-align:center; color:#555; margin-top:50px;">
+                <span data-i18n="loading_menu">Φόρτωση καταλόγου...</span>
+                <br><br>
+                <button onclick="window.location.reload()" style="background:transparent; border:1px solid #555; color:#aaa; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:12px;">🔄 Ανανέωση</button>
+            </div>
+        </div>
+
+        <div id="orderPanel" class="order-panel minimized">
+            <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
+                <div style="font-size:12px; color:#aaa; margin-right:10px;" data-i18n="cart_submit">ΚΑΛΑΘΙ / ΑΠΟΣΤΟΛΗ <span id="cartBadge" class="cart-badge" style="display:none">0</span></div>
+                <div id="panelIcon" class="toggle-icon">▲</div>
+            </div>
+            <div class="panel-content">
+                <div class="address-bar">
+                    <span id="displayAddress">...</span>
+                    <!-- ✅ NEW: BOOKING BUTTON -->
+                    <button id="btnMyRes" onclick="App.openMyReservations()" style="display:none; background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold; position:relative;">
+                        🍽️ <span id="resBadge" style="display:none; position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; padding:2px 5px; font-size:10px;">0</span>
+                    </button>
+                    <button id="btnBookTable" onclick="App.openBookingModal()" style="display:none; background:#9C27B0; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold;">📅 ΚΡΑΤΗΣΗ</button>
+                    <button class="btn-edit" onclick="App.editDetails()">✏️ <span data-i18n="change">Αλλαγή</span></button>
+                </div>
+                
+                <textarea id="orderText" class="order-text" 
+                    placeholder="Γράψτε εδώ...&#10;(⚠️ Για πληρωμή με ΚΑΡΤΑ, επιλέξτε προϊόντα από τον κατάλογο!)" 
+                    data-i18n-placeholder="write_here_card_warning"
+                    oninput="App.handleInput()">
+                </textarea>
+                
+                <div id="liveTotal" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
+
+                <button id="btnSendOrder" class="btn-send" onclick="App.requestPayment()"><span data-i18n="send_order">ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ</span> 🚀</button>
+            </div>
+        </div>
+
+        <div id="statusOverlay">
+            <div class="status-content">
+                <h2 style="color:#FFD700; margin-top:0;" data-i18n="order_status">Κατάσταση Παραγγελιών</h2>
+                <div id="orderStatusList" style="width:100%; overflow-y:auto; max-height:60vh; padding:5px;"></div>
+                <button class="btn-minimize" onclick="App.minimizeStatus()" style="margin-top:20px; width:100%; padding:15px; background:#333; color:white; border:none; border-radius:10px; font-weight:bold;" data-i18n="back_to_menu">▼ ΠΙΣΩ ΣΤΟ ΜΕΝΟΥ</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/order.js"></script>
+</body>
+</html>
