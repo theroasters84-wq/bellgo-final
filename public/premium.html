@@ -417,6 +417,18 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: ADMIN UNLOCK MODAL -->
+    <div id="adminUnlockModal" class="modal-overlay">
+        <div class="modal-box" style="max-width:320px; text-align:center;">
+            <h3 class="modal-title" style="color:#FFD700;">🔐 ΞΕΚΛΕΙΔΩΜΑ</h3>
+            <p style="color:#aaa; font-size:13px; margin-bottom:15px;">Εισάγετε τον Κωδικό Διαχειριστή</p>
+            <input type="password" id="inpAdminUnlockPin" class="inp-settings" style="text-align:center; font-size:20px; letter-spacing:3px;" placeholder="****">
+            <button class="modal-btn" style="background:#FFD700; color:black; margin-top:10px;" onclick="Admin.submitAdminUnlock()">ΞΕΚΛΕΙΔΩΜΑ</button>
+            <button onclick="document.getElementById('adminUnlockModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΑΚΥΡΟ</button>
+            <button onclick="Admin.forgotAdminUnlockPin()" style="background:none; border:none; color:#2196F3; margin-top:15px; font-size:12px; display:block; width:100%;">🆘 Ξέχασα τον κωδικό</button>
+        </div>
+    </div>
+
     <div id="saveModeModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title" data-i18n="save">ΑΠΟΘΗΚΕΥΣΗ</h3>

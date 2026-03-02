@@ -141,36 +141,59 @@ export const Admin = {
     openSettingsSub: (id) => {
         // ✅ NEW: REQUIRE PIN ONLY FOR ADMIN SETTINGS (subGeneral)
         if (id === 'subGeneral' && !window.App.settingsUnlocked && window.App.hasFeature('pack_pos')) {
-            const pin = prompt(window.App.adminPin ? "🔐 ΕΙΣΑΓΕΤΕ ΚΩΔΙΚΟ ΔΙΑΧΕΙΡΙΣΤΗ:" : "🔐 ΕΙΣΑΓΕΤΕ PIN:");
-            if (!pin) return;
-
-            if (window.App.adminPin) {
-                if (pin === String(window.App.adminPin).trim()) {
-                    window.App.settingsUnlocked = true;
-                    // Continue to open
-                } else {
-                    alert("❌ Λάθος Κωδικός!");
-                    return;
-                }
-            } else {
-                const storeEmail = window.App.userData ? window.App.userData.store : null;
-                window.socket.emit('verify-pin', { pin: pin, email: storeEmail });
-                window.socket.once('pin-verified', (data) => {
-                    if (data.success) {
-                        window.App.settingsUnlocked = true;
-                        Admin.openSettingsSub('subGeneral');
-                    } else {
-                        alert("❌ Λάθος PIN!");
-                    }
-                });
-                return;
-            }
+            // Open Custom Modal instead of Prompt
+            document.getElementById('adminUnlockModal').style.display = 'flex';
+            document.getElementById('inpAdminUnlockPin').value = '';
+            document.getElementById('inpAdminUnlockPin').focus();
+            return;
         }
 
         document.getElementById('settingsMain').style.display = 'none';
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
         const target = document.getElementById(id);
         if(target) target.style.display = 'block';
+    },
+
+    // ✅ NEW: Handle Admin Unlock from Modal
+    submitAdminUnlock: () => {
+        const pin = document.getElementById('inpAdminUnlockPin').value.trim();
+        if (!pin) return;
+
+        if (window.App.adminPin) {
+            if (pin === String(window.App.adminPin).trim()) {
+                window.App.settingsUnlocked = true;
+                document.getElementById('adminUnlockModal').style.display = 'none';
+                Admin.openSettingsSub('subGeneral');
+            } else {
+                alert("❌ Λάθος Κωδικός!");
+            }
+        } else {
+            // Fallback to Store PIN if no Admin PIN set
+            const storeEmail = window.App.userData ? window.App.userData.store : null;
+            window.socket.emit('verify-pin', { pin: pin, email: storeEmail });
+            window.socket.once('pin-verified', (data) => {
+                if (data.success) {
+                    window.App.settingsUnlocked = true;
+                    document.getElementById('adminUnlockModal').style.display = 'none';
+                    Admin.openSettingsSub('subGeneral');
+                } else {
+                    alert("❌ Λάθος PIN!");
+                }
+            });
+        }
+    },
+
+    forgotAdminUnlockPin: () => {
+        if (window.App.adminPin) {
+            if(confirm("Να σταλεί email επαναφοράς Κωδικού Διαχειριστή;")) {
+                window.socket.emit('forgot-admin-pin', { email: window.App.userData.store });
+                alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
+                document.getElementById('adminUnlockModal').style.display = 'none';
+            }
+        } else {
+            // Fallback to Store PIN reset
+            Admin.forgotPin();
+        }
     },
 
     closeSettingsSub: () => {

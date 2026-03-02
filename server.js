@@ -19,7 +19,6 @@ const transporter = nodemailer.createTransport({
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
-const YOUR_DOMAIN = 'https://bellgo.onrender.com'; 
 
 // ✅ PRICE LIST
 const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
@@ -196,6 +195,79 @@ app.post('/set-new-pin', async (req, res) => {
                     <span class="icon">✅</span>
                     <h1>Επιτυχία!</h1>
                     <p>Το PIN ενημερώθηκε.<br>Μπορείτε να κλείσετε αυτή τη σελίδα.</p>
+                    <a href="/manage/login.html" class="btn">Επιστροφή</a>
+                </div>
+            </body>
+            </html>
+        `);
+    } else {
+        res.send("Σφάλμα.");
+    }
+});
+
+/* ---------------- ADMIN PIN RESET ROUTES ---------------- */
+app.get('/reset-admin-pin', (req, res) => {
+    const { email } = req.query;
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="el">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Επαναφορά Admin PIN</title>
+            <style>
+                body { background-color: #121212; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                .card { background: #1e1e1e; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #FFD700; max-width: 90%; width: 320px; }
+                h2 { color: #FFD700; margin: 0 0 20px 0; font-size: 24px; }
+                p { color: #aaa; font-size: 14px; margin-bottom: 30px; line-height: 1.5; }
+                input { padding: 12px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: white; width: 100%; max-width: 200px; text-align: center; font-size: 24px; letter-spacing: 2px; margin-bottom: 20px; outline: none; transition: border 0.3s; font-weight: bold; }
+                input:focus { border-color: #FFD700; }
+                button { padding: 12px 30px; background: #FFD700; color: black; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 16px; transition: transform 0.1s; width: 100%; max-width: 220px; }
+                button:active { transform: scale(0.95); }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>🛡️ Reset Admin PIN</h2>
+                <p>Ορίστε νέο Κωδικό Διαχειριστή για:<br><span style="color:white;">${email}</span></p>
+                <form action="/set-new-admin-pin" method="POST">
+                    <input type="hidden" name="email" value="${email}">
+                    <input type="text" name="pin" placeholder="Νέος Κωδικός" required>
+                    <br>
+                    <button type="submit">ΑΠΟΘΗΚΕΥΣΗ</button>
+                </form>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+app.post('/set-new-admin-pin', async (req, res) => {
+    const { email, pin } = req.body;
+    if (email && pin) {
+        const store = await Logic.getStoreData(email, db, storesData);
+        store.settings.adminPin = pin;
+        Logic.saveStoreToFirebase(email, db, storesData);
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="el">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Επιτυχία</title>
+                <style>
+                    body { background-color: #121212; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                    .card { background: #1e1e1e; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #FFD700; max-width: 90%; width: 320px; }
+                    .icon { font-size: 60px; margin-bottom: 20px; display: block; }
+                    h1 { color: #FFD700; margin: 0 0 10px 0; font-size: 24px; }
+                    .btn { background: #FFD700; color: black; text-decoration: none; padding: 12px 30px; border-radius: 30px; font-weight: bold; display: inline-block; margin-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <span class="icon">✅</span>
+                    <h1>Επιτυχία!</h1>
+                    <p>Ο Κωδικός Διαχειριστή άλλαξε.</p>
                     <a href="/manage/login.html" class="btn">Επιστροφή</a>
                 </div>
             </body>
@@ -671,6 +743,23 @@ io.on('connection', (socket) => {
         }
     });
     
+    // ✅ NEW: Forgot Admin PIN
+    socket.on('forgot-admin-pin', async (data) => {
+        const email = data.email || socket.store;
+        if (!transporter.options.auth.pass || transporter.options.auth.pass.includes('xxxx')) {
+            socket.emit('forgot-pin-response', { success: false, message: "Σφάλμα συστήματος (Email Config)." });
+            return;
+        }
+        if (email) {
+            const link = `${YOUR_DOMAIN}/reset-admin-pin?email=${encodeURIComponent(email)}`;
+            const mailOptions = { from: 'BellGo System', to: email, subject: '🛡️ Επαναφορά Admin PIN', text: `Πατήστε εδώ για να ορίσετε νέο Κωδικό Διαχειριστή: ${link}` };
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) { console.log(err); socket.emit('forgot-pin-response', { success: false, message: "Απέτυχε η αποστολή email." }); }
+                else { socket.emit('forgot-pin-response', { success: true, message: "Το email εστάλη! Ελέγξτε τα εισερχόμενά σας." }); }
+            });
+        }
+    });
+
     socket.on('update-token', (data) => { 
         const key = `${socket.store}_${data.username}`; 
         if (activeUsers[key]) activeUsers[key].fcmToken = data.token; 
