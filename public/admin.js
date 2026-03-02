@@ -428,16 +428,19 @@ export const Admin = {
     // --- SECURITY SETTINGS ---
     renderSecuritySettings: () => {
         const modal = document.getElementById('settingsModal');
-        // ✅ FIX: Append to Locked Area so it gets hidden by the lock overlay
-        const lockedArea = document.getElementById('settingsLockedArea');
-        if (!lockedArea) return;
+        // ✅ FIX: Move Security Settings inside 'subGeneral' (Admin Settings)
+        const targetArea = document.getElementById('subGeneral');
+        if (!targetArea) return;
 
         let secDiv = document.getElementById('securitySettingsDiv');
         if (!secDiv) {
             secDiv = document.createElement('div');
             secDiv.id = 'securitySettingsDiv';
             secDiv.style.cssText = "margin-top:20px; border-top:1px solid #333; padding-top:15px;";
-            lockedArea.appendChild(secDiv);
+            
+            // Insert before the last element (Back button)
+            if (targetArea.lastElementChild) targetArea.insertBefore(secDiv, targetArea.lastElementChild);
+            else targetArea.appendChild(secDiv);
         }
 
         secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;

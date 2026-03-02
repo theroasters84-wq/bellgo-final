@@ -328,11 +328,18 @@
             clear: () => { pinValue = ''; PIN.updateDisplay(); },
             updateDisplay: () => { document.getElementById('pinDisplay').innerText = '*'.repeat(pinValue.length); },
             forgotPin: () => {
-                if (adminUser && adminUser.email) {
-                    if(confirm(`Να σταλεί email επαναφοράς PIN στο ${adminUser.email};`)) {
-                        socket.emit('forgot-pin', { email: adminUser.email });
-                        alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
-                    }
+                let defaultEmail = "";
+                if (adminUser && adminUser.email) defaultEmail = adminUser.email;
+                else {
+                    const stStore = document.getElementById('stStore');
+                    const adminInp = document.getElementById('adminEmailInp');
+                    if (stStore && stStore.value) defaultEmail = stStore.value;
+                    else if (adminInp && adminInp.value) defaultEmail = adminInp.value;
+                }
+                const email = prompt("Εισάγετε το Email για επαναφορά PIN:", defaultEmail);
+                if (email) {
+                    socket.emit('forgot-pin', { email: email.trim() });
+                    // ✅ FIX: Περιμένουμε απάντηση από τον server (forgot-pin-response)
                 }
             },
             submit: () => {
@@ -531,6 +538,11 @@
         };
 
         // --- SOCKET LISTENERS ---
+        // ✅ NEW: Απάντηση για το Forgot PIN
+        socket.on('forgot-pin-response', (res) => {
+            alert(res.message);
+        });
+
         socket.on('pin-status', (data) => {
             document.getElementById('pinModal').style.display = 'flex';
             if (data.hasPin) {

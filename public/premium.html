@@ -166,10 +166,8 @@
                     <button id="btnSettingsPrint" class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
                     <button id="btnSettingsQr" class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
                     <button id="btnSettingsAdmin" class="modal-btn" onclick="App.openSettingsSub('subGeneral')">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
-                    <button id="btnPinMain" class="modal-btn" style="background:#FF9800; color:black; display:none;" onclick="App.openPinModal()">🔑 PIN</button>
                     <button id="btnSettingsLoyalty" class="modal-btn" style="background:#E91E63; color:white;" onclick="App.openSettingsSub('subLoyalty')" data-i18n="loyalty_settings">🎁 ΡΥΘΜΙΣΕΙΣ LOYALTY</button>
                     <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
-                    <button id="btnSettingsBot" class="modal-btn" style="background:#FFD700; color:black;" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 </div>
                 
                 <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
@@ -277,6 +275,12 @@
             <div id="subGeneral" class="settings-sub" style="display:none;">
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</h4>
                 
+                <div style="margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 15px;">
+                    <h5 style="color:var(--primary); margin:0 0 5px 0;">🔐 ΑΣΦΑΛΕΙΑ</h5>
+                    <button class="modal-btn" style="background:#333; border:1px solid #555; margin-bottom:5px;" onclick="App.changeStorePin()">🔑 Αλλαγή PIN Εισόδου</button>
+                    <button class="modal-btn" style="background:#333; border:1px solid #555;" onclick="App.changeAdminLockPin()">🛡️ Αλλαγή Κωδικού Διαχειριστή</button>
+                </div>
+
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div id="softPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
                     <div class="settings-label" style="color:#00E676;">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
@@ -629,6 +633,34 @@
                 .then(() => console.log('✅ Admin Service Worker Registered'))
                 .catch(err => console.log('❌ Admin SW Error:', err));
         }
+
+        // ✅ Inject Security Functions to App
+        window.addEventListener('load', () => {
+            if (window.App) {
+                window.App.changeStorePin = function() {
+                    const newPin = prompt("Εισάγετε νέο PIN Εισόδου (4 ψηφία):");
+                    if (newPin !== null) {
+                        if (newPin.length === 4 && !isNaN(newPin)) {
+                            window.socket.emit('save-store-settings', { pin: newPin });
+                            alert("✅ Το PIN Εισόδου ενημερώθηκε!");
+                        } else {
+                            alert("❌ Το PIN πρέπει να αποτελείται από 4 αριθμούς.");
+                        }
+                    }
+                };
+                window.App.changeAdminLockPin = function() {
+                    const newPin = prompt("Εισάγετε νέο Κωδικό Διαχειριστή (Lock):");
+                    if (newPin !== null) {
+                        if (newPin.length >= 4) {
+                            window.socket.emit('save-store-settings', { adminPin: newPin });
+                            alert("✅ Ο Κωδικός Διαχειριστή ενημερώθηκε!");
+                        } else {
+                            alert("❌ Ο κωδικός πρέπει να έχει τουλάχιστον 4 χαρακτήρες.");
+                        }
+                    }
+                };
+            }
+        });
     </script>
 </body>
 </html>

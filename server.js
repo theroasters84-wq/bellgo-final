@@ -10,8 +10,8 @@ const Logic = require('./logic'); // ✅ Import Logic Module
 const transporter = nodemailer.createTransport({
     service: 'gmail', 
     auth: {
-        user: 'bellgo.system@gmail.com', // ⚠️ ΑΛΛΑΞΤΕ ΤΟ ΜΕ ΤΟ EMAIL ΣΑΣ
-        pass: 'xxxx xxxx xxxx xxxx'      // ⚠️ ΑΛΛΑΞΤΕ ΤΟ ΜΕ APP PASSWORD (Όχι τον κωδικό του email)
+        user: 'theroasters84@gmail.com',
+        pass: 'goit nsbk wsae awwc'
     }
 });
 
@@ -594,11 +594,29 @@ io.on('connection', (socket) => {
     // ✅ NEW: Forgot PIN
     socket.on('forgot-pin', async (data) => {
         const email = data.email || socket.store;
+        
+        // Έλεγχος αν έχει ρυθμιστεί το email (Αν λείπει ο κωδικός)
+        if (!transporter.options.auth.pass || transporter.options.auth.pass.includes('xxxx')) {
+            console.log("⚠️ EMAIL ERROR: Ο κωδικός email δεν έχει ρυθμιστεί σωστά στο server.js!");
+            socket.emit('forgot-pin-response', { success: false, message: "Σφάλμα συστήματος (Email Config)." });
+            return;
+        }
+
         if (email) {
+            // ✅ NEW: Έλεγχος Συνδρομής πριν την αποστολή
+            const store = await Logic.getStoreData(email, db, storesData);
+            const hasSub = store.settings.plan === 'premium' || store.settings.plan === 'custom';
+
+            if (!hasSub) {
+                socket.emit('forgot-pin-response', { success: false, message: "Δεν βρέθηκε ενεργή συνδρομή για αυτό το email." });
+                return;
+            }
+
             const link = `${YOUR_DOMAIN}/reset-pin?email=${encodeURIComponent(email)}`;
             const mailOptions = { from: 'BellGo System', to: email, subject: '🔑 Επαναφορά PIN', text: `Πατήστε εδώ για να ορίσετε νέο PIN: ${link}` };
             transporter.sendMail(mailOptions, (err, info) => {
-                if (err) console.log(err); else console.log('Email sent: ' + info.response);
+                if (err) { console.log(err); socket.emit('forgot-pin-response', { success: false, message: "Απέτυχε η αποστολή email." }); }
+                else { console.log('Email sent: ' + info.response); socket.emit('forgot-pin-response', { success: true, message: "Το email εστάλη! Ελέγξτε τα εισερχόμενά σας." }); }
             });
         }
     });
