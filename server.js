@@ -709,8 +709,40 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('check-pin-status', async (data) => { const targetEmail = data.email; if (!targetEmail) return; const store = await Logic.getStoreData(targetEmail, db, storesData); socket.emit('pin-status', { hasPin: !!store.settings.pin }); });
-    socket.on('verify-pin', async (data) => { const pin = data.pin || data; let email = data.email || socket.store; if (email) { email = email.toLowerCase().trim(); const store = await Logic.getStoreData(email, db, storesData); if (store.settings.pin === pin) { socket.emit('pin-verified', { success: true, storeId: email }); } else { socket.emit('pin-verified', { success: false }); } } });
+    // 1. ΠΡΟΣΘΗΚΗ: Απάντηση στο αίτημα για ρυθμίσεις
+    socket.on('get-store-settings', async () => {
+        if (!socket.store) return;
+        const store = await Logic.getStoreData(socket.store, db, storesData);
+        if (store) {
+            socket.emit('store-settings-update', store.settings);
+        }
+    });
+
+    // 2. ΕΝΗΜΕΡΩΣΗ: Έλεγχος PIN (Ελέγχει και τα δύο πεδία)
+    socket.on('verify-pin', async (data) => { 
+        const pin = data.pin || data; 
+        let email = data.email || socket.store; 
+        if (email) { 
+            email = email.toLowerCase().trim(); 
+            const store = await Logic.getStoreData(email, db, storesData); 
+            // Έλεγχος αν ταιριάζει με το Staff PIN ή το Admin PIN
+            if (store.settings.pin === pin || store.settings.adminPin === pin) { 
+                socket.emit('pin-verified', { success: true, storeId: email }); 
+            } else { 
+                socket.emit('pin-verified', { success: false }); 
+            } 
+        } 
+    });
+
+    // 3. ΕΝΗΜΕΡΩΣΗ: Έλεγχος αν υπάρχει οποιοδήποτε PIN
+    socket.on('check-pin-status', async (data) => { 
+        const targetEmail = data.email; 
+        if (!targetEmail) return; 
+        const store = await Logic.getStoreData(targetEmail, db, storesData); 
+        const hasPin = !!(store.settings.pin || store.settings.adminPin);
+        socket.emit('pin-status', { hasPin: hasPin }); 
+    });
+
     socket.on('set-new-pin', async (data) => { const email = data.email; if(email) { const store = await Logic.getStoreData(email, db, storesData); store.settings.pin = data.pin; store.settings.adminEmail = email; socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" }); Logic.updateStoreClients(email, io, storesData, activeUsers, db); } });
     
     // ✅ NEW: Forgot PIN
