@@ -19,6 +19,7 @@ const transporter = nodemailer.createTransport({
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
+const YOUR_DOMAIN = 'https://bellgo.onrender.com'; 
 
 // ✅ PRICE LIST
 const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
@@ -51,6 +52,7 @@ try {
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // ✅ FIX: Υποστήριξη δεδομένων φόρμας (για το Reset PIN)
 
 // ✅ NEW: Redirect Root to Login (Admin PWA)
 app.get('/', (req, res) => {
@@ -130,17 +132,38 @@ app.get('/admin', (req, res) => { res.redirect('/manage/login.html'); }); // ✅
 app.get('/reset-pin', (req, res) => {
     const { email } = req.query;
     res.send(`
-        <html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:white;font-family:sans-serif;padding:20px;text-align:center;} input{padding:10px;border-radius:5px;border:none;margin-bottom:10px;width:100%;max-width:200px;text-align:center;} button{padding:10px 20px;background:#00E676;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}</style></head>
+        <!DOCTYPE html>
+        <html lang="el">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Επαναφορά PIN</title>
+            <style>
+                body { background-color: #121212; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                .card { background: #1e1e1e; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; max-width: 90%; width: 320px; }
+                h2 { color: #FFD700; margin: 0 0 20px 0; font-size: 24px; }
+                p { color: #aaa; font-size: 14px; margin-bottom: 30px; line-height: 1.5; }
+                input { padding: 12px; border-radius: 10px; border: 1px solid #444; background: #2a2a2a; color: white; width: 100%; max-width: 200px; text-align: center; font-size: 24px; letter-spacing: 5px; margin-bottom: 20px; outline: none; transition: border 0.3s; font-weight: bold; }
+                input:focus { border-color: #00E676; }
+                button { padding: 12px 30px; background: #00E676; color: black; border: none; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 16px; transition: transform 0.1s, background 0.3s; width: 100%; max-width: 220px; }
+                button:active { transform: scale(0.95); }
+                button:hover { background: #00c853; }
+                .email-tag { background: #333; padding: 5px 10px; border-radius: 5px; color: #fff; font-weight: bold; font-size: 12px; display: inline-block; margin-top: 5px; }
+            </style>
+        </head>
         <body>
-            <h2>Επαναφορά PIN</h2>
-            <p>Ορίστε το νέο PIN για το κατάστημα: <b>${email}</b></p>
-            <form action="/set-new-pin" method="POST">
-                <input type="hidden" name="email" value="${email}">
-                <input type="number" name="pin" placeholder="Νέο PIN (4 ψηφία)" required pattern="[0-9]{4}">
-                <br>
-                <button type="submit">ΑΠΟΘΗΚΕΥΣΗ</button>
-            </form>
-        </body></html>
+            <div class="card">
+                <h2>🔑 Επαναφορά PIN</h2>
+                <p>Ορίστε το νέο 4-ψήφιο PIN για:<br><span class="email-tag">${email}</span></p>
+                <form action="/set-new-pin" method="POST">
+                    <input type="hidden" name="email" value="${email}">
+                    <input type="number" name="pin" placeholder="____" required pattern="[0-9]{4}" maxlength="4" oninput="if(this.value.length>4) this.value=this.value.slice(0,4)">
+                    <br>
+                    <button type="submit">ΑΠΟΘΗΚΕΥΣΗ</button>
+                </form>
+            </div>
+        </body>
+        </html>
     `);
 });
 
@@ -150,7 +173,34 @@ app.post('/set-new-pin', async (req, res) => {
         const store = await Logic.getStoreData(email, db, storesData);
         store.settings.pin = pin;
         Logic.saveStoreToFirebase(email, db, storesData);
-        res.send(`<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{background:#121212;color:#00E676;font-family:sans-serif;text-align:center;padding:50px;}</style></head><body><h1>✅ Επιτυχία!</h1><p>Το PIN άλλαξε.</p></body></html>`);
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="el">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Επιτυχία</title>
+                <style>
+                    body { background-color: #121212; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                    .card { background: #1e1e1e; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; max-width: 90%; width: 320px; }
+                    .icon { font-size: 60px; margin-bottom: 20px; display: block; animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+                    h1 { color: #00E676; margin: 0 0 10px 0; font-size: 24px; }
+                    p { color: #aaa; font-size: 16px; margin-bottom: 30px; line-height: 1.5; }
+                    .btn { background: #00E676; color: black; text-decoration: none; padding: 12px 30px; border-radius: 30px; font-weight: bold; display: inline-block; transition: transform 0.1s; }
+                    .btn:active { transform: scale(0.95); }
+                    @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <span class="icon">✅</span>
+                    <h1>Επιτυχία!</h1>
+                    <p>Το PIN ενημερώθηκε.<br>Μπορείτε να κλείσετε αυτή τη σελίδα.</p>
+                    <a href="/manage/login.html" class="btn">Επιστροφή</a>
+                </div>
+            </body>
+            </html>
+        `);
     } else {
         res.send("Σφάλμα.");
     }
@@ -1646,6 +1696,37 @@ app.post('/claim-reward', async (req, res) => {
     store.claimedRewards[orderId] = { phone, date: Date.now() };
     
     if (!store.rewards) store.rewards = {};
+    if (!store.rewards[phone]) store.rewards[phone] = 0;
+    store.rewards[phone]++;
+
+    // ✅ NEW: Καταγραφή Στατιστικών αν κέρδισε δώρο
+    const target = parseInt(store.settings.reward.target) || 5;
+    if (store.rewards[phone] % target === 0) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
+        const [year, month, day] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+
+        if (!store.stats) store.stats = {};
+        if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {} };
+        
+        // Καταγραφή στο Μήνα
+        if (!store.stats[monthKey].rewardsGiven) store.stats[monthKey].rewardsGiven = 0;
+        store.stats[monthKey].rewardsGiven++;
+
+        // Καταγραφή στην Ημέρα
+        if (!store.stats[monthKey].days[day]) store.stats[monthKey].days[day] = { orders: 0, turnover: 0 };
+        if (!store.stats[monthKey].days[day].rewardsGiven) store.stats[monthKey].days[day].rewardsGiven = 0;
+        store.stats[monthKey].days[day].rewardsGiven++;
+    }
+    
+    Logic.saveStoreToFirebase(storeName, db, storesData);
+
+    res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
     if (!store.rewards[phone]) store.rewards[phone] = 0;
     store.rewards[phone]++;
 
