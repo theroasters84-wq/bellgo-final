@@ -1848,34 +1848,3 @@ app.post('/claim-reward', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
-    if (!store.rewards[phone]) store.rewards[phone] = 0;
-    store.rewards[phone]++;
-
-    // ✅ NEW: Καταγραφή Στατιστικών αν κέρδισε δώρο
-    const target = parseInt(store.settings.reward.target) || 5;
-    if (store.rewards[phone] % target === 0) {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); // YYYY-MM-DD
-        const [year, month, day] = dateStr.split('-');
-        const monthKey = `${year}-${month}`;
-
-        if (!store.stats) store.stats = {};
-        if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {} };
-        
-        // Καταγραφή στο Μήνα
-        if (!store.stats[monthKey].rewardsGiven) store.stats[monthKey].rewardsGiven = 0;
-        store.stats[monthKey].rewardsGiven++;
-
-        // Καταγραφή στην Ημέρα
-        if (!store.stats[monthKey].days[day]) store.stats[monthKey].days[day] = { orders: 0, turnover: 0 };
-        if (!store.stats[monthKey].days[day].rewardsGiven) store.stats[monthKey].days[day].rewardsGiven = 0;
-        store.stats[monthKey].days[day].rewardsGiven++;
-    }
-    
-    Logic.saveStoreToFirebase(storeName, db, storesData);
-
-    res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
