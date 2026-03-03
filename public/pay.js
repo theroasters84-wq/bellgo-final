@@ -1,6 +1,20 @@
 /* -----------------------------------------------------------
    PAY.JS - LOGIC FOR STAFF WALLETS & CHARGES
 ----------------------------------------------------------- */
+const calculateTotal = (text) => {
+    let total = 0;
+    if (!text) return 0;
+    const lines = text.split('\n');
+    lines.forEach(line => {
+        const match = line.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/);
+        if (match) {
+            let qty = parseInt(match[1] || '1');
+            let price = parseFloat(match[3]);
+            total += qty * price;
+        }
+    });
+    return total;
+};
 
 export const PaySystem = {
     wallets: {},
@@ -141,7 +155,119 @@ export const PaySystem = {
             alert("❌ Ακυρώθηκε.");
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-    }
+    },
+
+    // --- PASO & CHECKOUT ---
+    openPasoCheckout: (text) => {
+        window.App.tempPasoText = text;
+        const total = calculateTotal(text);
+        document.getElementById('pasoTotal').innerText = total.toFixed(2) + '€';
+        const divEinv = document.getElementById('pasoEinvoicingOptions');
+        const divSimple = document.getElementById('pasoSimpleOptions');
+        const btnClose = document.getElementById('btnPasoClosePrint');
+        if(btnClose) { btnClose.innerText = window.App.printerEnabled ? "💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ" : "💵 ΚΛΕΙΣΙΜΟ"; }
+        if (window.App.einvoicingEnabled) { divEinv.style.display = 'grid'; divSimple.style.display = 'none'; } 
+        else { divEinv.style.display = 'none'; divSimple.style.display = 'flex'; }
+        document.getElementById('pasoCheckoutModal').style.display = 'flex';
+    },
+
+    processPasoOrder: (method, type) => { 
+        const text = window.App.tempPasoText;
+        const total = calculateTotal(text);
+        if (method === 'card' && window.App.softPosSettings && window.App.softPosSettings.enabled) {
+            PaySystem.triggerSoftPosPayment(total, 'paso');
+            return;
+        }
+        if (type === 'qr') {
+             const tempId = Date.now();
+             window.App.openQrPayment(tempId, true);
+             return;
+        }
+        const pasoId = Date.now();
+        window.socket.emit('quick-order', { id: pasoId, text: text, total: total, method: method, issueReceipt: (type === 'receipt') });
+        document.getElementById('pasoCheckoutModal').style.display = 'none';
+        window.App.toggleOrderSidebar();
+        document.getElementById('sidebarOrderText').value = '';
+        if (window.App.rewardSettings && window.App.rewardSettings.enabled) {
+            const mode = window.App.rewardSettings.mode || 'manual';
+            if (mode === 'all' || mode === 'paso') {
+                setTimeout(() => { if(!window.App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) { window.App.openRewardQr(pasoId); } }, 500);
+            }
+        }
+    },
+
+    payWithSoftPos: (id) => {
+        if (window.App.posMode === 'ask') {
+            if (!confirm("Αποστολή ποσού στο τερματικό;")) {
+                if(confirm("Να καταγραφεί ως πληρωμένο με ΚΑΡΤΑ (Χωρίς τερματικό);")) { window.socket.emit('pay-order', { id: id, method: 'card' }); }
+                return;
+            }
+        }
+        const order = window.App.activeOrders.find(o => o.id == id);
+        const total = calculateTotal(order.text);
+        PaySystem.triggerSoftPosPayment(total, id);
+    },
+
+    payItemPartial: (id, index, method) => { window.socket.emit('pay-partial', { id: id, index: index, method: method }); },
+
+    openQrPayment: async (id, isPaso = false) => {
+        window.App.currentQrOrderId = id;
+        window.App.currentQrIsPaso = isPaso;
+        let total = 0;
+        if (isPaso) { total = calculateTotal(window.App.tempPasoText); } 
+        else { const order = window.App.activeOrders.find(o => o.id == id); if(!order) return; total = calculateTotal(order.text); }
+        if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
+        try {
+            const res = await fetch('/create-qr-payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: total, storeName: window.App.userData.store, orderId: id }) });
+            const data = await res.json();
+            if(data.url) {
+                document.getElementById('qrPaymentCode').innerHTML = "";
+                new QRCode(document.getElementById('qrPaymentCode'), { text: data.url, width: 200, height: 200 });
+                const linkContainer = document.getElementById('qrLinkContainer');
+                if(linkContainer) {
+                    linkContainer.innerHTML = `<button onclick="window.open('${data.url}', '_blank')" style="background:#2196F3; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold;">🔗 ΠΛΗΡΩΜΗ ΕΔΩ (MANUAL)</button>`;
+                }
+                if (isPaso) {
+                    linkContainer.innerHTML += `<button onclick="App.processPasoOrder('card', 'receipt')" style="background:#00E676; color:black; border:none; padding:10px; border-radius:6px; cursor:pointer; width:100%; font-weight:bold; margin-top:10px;">✅ ΟΛΟΚΛΗΡΩΣΗ (ΕΚΤΥΠΩΣΗ)</button>`;
+                    document.getElementById('pasoCheckoutModal').style.display = 'none';
+                }
+                document.getElementById('qrPaymentModal').style.display = 'flex';
+            } else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
+        } catch(e) { alert("Σφάλμα σύνδεσης."); }
+    },
+
+    openRewardQr: (orderId) => {
+        const baseUrl = window.location.origin;
+        const storeParam = encodeURIComponent(window.App.userData.store);
+        const url = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${orderId}`;
+        document.getElementById('qrPaymentCode').innerHTML = "";
+        new QRCode(document.getElementById('qrPaymentCode'), { text: url, width: 200, height: 200 });
+        const modal = document.getElementById('qrPaymentModal');
+        modal.querySelector('h3').innerText = "🎁 QR Επιβράβευσης";
+        modal.style.display = 'flex';
+    },
+    openManualRewardQr: () => { PaySystem.openRewardQr(Date.now()); },
+
+    completeOrder: (id) => {
+        const order = window.App.activeOrders.find(o => o.id == id);
+        if (window.App.einvoicingEnabled && order && !order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) { window.App.showReceiptDialog(id); return; }
+        PaySystem.forceCompleteOrder(id);
+    },
+    forceCompleteOrder: (id) => {
+        const order = window.App.activeOrders.find(o => o.id == id);
+        const isDelivery = order && order.text.includes('[DELIVERY');
+        window.socket.emit('pay-order', id); 
+        const win = document.getElementById(`win-${id}`);
+        if(win) win.remove();
+        if (window.App.rewardSettings && window.App.rewardSettings.enabled) {
+            const mode = window.App.rewardSettings.mode || 'manual';
+            let shouldShow = false;
+            if (mode === 'all') shouldShow = true;
+            else if (mode === 'delivery' && isDelivery) shouldShow = true;
+            else if (mode === 'table' && !isDelivery) shouldShow = true;
+            if (shouldShow) { setTimeout(() => { if(!window.App.printerEnabled || confirm("🎁 Εμφάνιση QR Επιβράβευσης;")) { window.App.openRewardQr(id); } }, 500); }
+        }
+    },
 };
 
 // Make it global for HTML access

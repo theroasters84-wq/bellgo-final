@@ -1,4 +1,5 @@
 import { PRESET_MENUS } from './menu-presets.js';
+const calculateTotal = (text) => { let t=0; if(!text)return 0; text.split('\n').forEach(l=>{ const m=l.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/); if(m) t+=(parseInt(m[1]||'1')*parseFloat(m[3])); }); return t; };
 
 export const Admin = {
     // --- STORE SETTINGS ---
@@ -438,6 +439,237 @@ export const Admin = {
             alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
         }
     },
+
+    // --- EXPENSES LOGIC ---
+    openExpensesModal: () => {
+        document.getElementById('expensesModal').style.display = 'flex';
+        window.App.renderExpensePresets();
+        window.App.renderFixedExpenses();
+        
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
+        const [year, month, day] = dateStr.split('-');
+        const monthKey = `${year}-${month}`;
+        
+        let currentText = "";
+        if (window.App.cachedStats && window.App.cachedStats[monthKey] && window.App.cachedStats[monthKey].days[day] && window.App.cachedStats[monthKey].days[day].expenses) {
+            currentText = window.App.cachedStats[monthKey].days[day].expenses.text || "";
+        }
+        document.getElementById('txtExpenses').value = currentText;
+        
+        let currentWages = 0;
+        if (window.App.cachedStats && window.App.cachedStats[monthKey] && window.App.cachedStats[monthKey].days[day] && window.App.cachedStats[monthKey].days[day].expenses) {
+            currentWages = window.App.cachedStats[monthKey].days[day].expenses.wages || 0;
+        }
+        document.getElementById('inpWages').value = currentWages > 0 ? currentWages : '';
+
+        window.App.calcExpensesTotal();
+
+        const txt = document.getElementById('txtExpenses');
+        const modal = document.getElementById('expensesModal');
+        if (!txt.dataset.hasListeners) {
+            txt.dataset.hasListeners = "true";
+            txt.addEventListener('focus', () => { modal.classList.add('writing-mode'); });
+            txt.addEventListener('blur', () => { setTimeout(() => modal.classList.remove('writing-mode'), 150); });
+        }
+    },
+    
+    renderFixedExpenses: () => {
+        const container = document.getElementById('fixedExpensesContainer');
+        container.innerHTML = '';
+        (window.App.fixedExpenses || []).forEach((fixed, idx) => {
+            const btn = document.createElement('div');
+            btn.style.cssText = "background:#444; color:#FFD700; padding:5px 10px; border-radius:15px; font-size:12px; display:flex; align-items:center; gap:5px; border:1px solid #FFD700;";
+            btn.innerHTML = `<span>${fixed.name}: <b>${fixed.price.toFixed(2)}€</b></span> <span style="color:#FF5252; font-weight:bold; font-size:10px; cursor:pointer;">✕</span>`;
+            btn.children[1].onclick = (e) => {
+                if(confirm("Διαγραφή πάγιου εξόδου;")) {
+                    window.App.fixedExpenses.splice(idx, 1);
+                    window.socket.emit('save-store-settings', { fixedExpenses: window.App.fixedExpenses });
+                    window.App.renderFixedExpenses();
+                    window.App.calcExpensesTotal();
+                }
+            };
+            container.appendChild(btn);
+        });
+    },
+
+    addFixedExpense: () => {
+        const name = document.getElementById('inpFixedName').value.trim();
+        const price = parseFloat(document.getElementById('inpFixedPrice').value);
+        if(!name || isNaN(price)) return alert("Συμπληρώστε όνομα και τιμή!");
+        
+        if(!window.App.fixedExpenses) window.App.fixedExpenses = [];
+        window.App.fixedExpenses.push({ name, price });
+        
+        window.socket.emit('save-store-settings', { fixedExpenses: window.App.fixedExpenses });
+        document.getElementById('inpFixedName').value = '';
+        document.getElementById('inpFixedPrice').value = '';
+        window.App.renderFixedExpenses();
+        window.App.calcExpensesTotal();
+    },
+
+    renderExpensePresets: () => {
+        const container = document.getElementById('expensePresetsContainer');
+        container.innerHTML = '';
+        (window.App.expensePresets || []).forEach((preset, idx) => {
+            const btn = document.createElement('div');
+            btn.style.cssText = "background:#333; color:white; padding:5px 10px; border-radius:15px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; border:1px solid #555;";
+            let name = preset;
+            let price = null;
+            if(typeof preset === 'object') { name = preset.name; price = preset.price; }
+            btn.innerHTML = `<span>${name}${price ? ` (${price}€)` : ''}</span> <span style="color:#FF5252; font-weight:bold; font-size:10px;">✕</span>`;
+            btn.onclick = (e) => {
+                const txt = document.getElementById('txtExpenses');
+                const lineToAdd = price ? `${name} . ${price}` : `${name} . `;
+                txt.value += (txt.value ? '\n' : '') + lineToAdd;
+                window.App.calcExpensesTotal();
+            };
+            btn.children[1].onclick = (e) => {
+                e.stopPropagation();
+                if(confirm("Διαγραφή παγίου;")) {
+                    window.App.expensePresets.splice(idx, 1);
+                    window.socket.emit('save-store-settings', { expensePresets: window.App.expensePresets });
+                    window.App.renderExpensePresets();
+                }
+            };
+            container.appendChild(btn);
+        });
+    },
+    
+    addExpensePreset: () => {
+        const val = document.getElementById('inpNewPreset').value.trim();
+        const price = parseFloat(document.getElementById('inpNewPresetPrice').value);
+        if(!val) return;
+        if(!window.App.expensePresets) window.App.expensePresets = [];
+        if(!isNaN(price) && price > 0) { window.App.expensePresets.push({ name: val, price: price }); } 
+        else { window.App.expensePresets.push(val); }
+        window.socket.emit('save-store-settings', { expensePresets: window.App.expensePresets });
+        document.getElementById('inpNewPreset').value = '';
+        document.getElementById('inpNewPresetPrice').value = '';
+        window.App.renderExpensePresets();
+    },
+    
+    calcExpensesTotal: () => {
+        let total = 0;
+        if(window.App.fixedExpenses) { window.App.fixedExpenses.forEach(f => total += (f.price || 0)); }
+        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
+        total += wages;
+        const txt = document.getElementById('txtExpenses').value;
+        txt.split('\n').forEach(line => {
+            const match = line.match(/[\d,.]+$/);
+            if(match) {
+                let numStr = match[0];
+                if (numStr.startsWith('.') || numStr.startsWith(',')) {
+                    if (numStr.slice(1).match(/[.,]/)) { numStr = numStr.substring(1); }
+                    else if (match.index > 0 && line[match.index - 1].trim() !== '') { numStr = numStr.substring(1); }
+                }
+                numStr = numStr.replace(/,/g, '.');
+                const val = parseFloat(numStr);
+                if(!isNaN(val)) total += val;
+            }
+        });
+        document.getElementById('expensesTotal').innerText = total.toFixed(2) + '€';
+        return total;
+    },
+    
+    saveExpenses: () => {
+        const total = window.App.calcExpensesTotal();
+        const text = document.getElementById('txtExpenses').value;
+        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
+        window.socket.emit('save-expenses', { text: text, total: total, wages: wages });
+        document.getElementById('expensesModal').style.display = 'none';
+        alert("Αποθηκεύτηκε!");
+    },
+
+    // --- TABLE QR ---
+    openTableQrModal: () => {
+        document.getElementById('settingsModal').style.display = 'none';
+        document.getElementById('tableQrModal').style.display = 'flex';
+    },
+    generateTableQrs: () => {
+        const input = document.getElementById('inpTableNumbers').value.trim();
+        const container = document.getElementById('qrGrid');
+        container.innerHTML = '';
+        if(!input) return alert("Δώστε αριθμούς τραπεζιών (π.χ. 1-10)");
+        let tables = [];
+        if(input.includes('-') && !isNaN(parseInt(input.split('-')[0]))) {
+            const parts = input.split('-');
+            const start = parseInt(parts[0]);
+            const end = parseInt(parts[1]);
+            for(let i=start; i<=end; i++) tables.push(i);
+        } else { tables = input.split(',').map(x => x.trim()).filter(x => x !== ""); }
+        const baseUrl = window.location.origin;
+        const storeParam = encodeURIComponent(window.App.userData.store);
+        tables.forEach(t => {
+            const url = `${baseUrl}/trapaizei.html?store=${storeParam}&table=${encodeURIComponent(t)}`;
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
+            wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
+            container.appendChild(wrapper);
+            new QRCode(document.getElementById(`qr-tbl-${t}`), { text: url, width: 100, height: 100 });
+        });
+    },
+    printQrs: () => {
+        const content = document.getElementById('qrGrid').innerHTML;
+        const win = window.open('', '', 'width=800,height=600');
+        win.document.write(`<html><head><title>Print QR</title><style>body{font-family:sans-serif;} .grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:20px;} @media print { .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; } div { page-break-inside: avoid; } }</style></head><body><div class="grid">${content}</div><script>window.print();window.close();<\/script></body></html>`);
+    },
+
+    // --- DELIVERY ASSIGN ---
+    openDeliveryAssignModal: (orderId) => {
+        const modal = document.getElementById('deliveryAssignModal');
+        const list = document.getElementById('driverAssignList');
+        list.innerHTML = '';
+        const btnAll = document.createElement('button');
+        btnAll.className = 'modal-btn';
+        btnAll.style.background = '#FFD700';
+        btnAll.style.color = 'black';
+        btnAll.innerHTML = '🔊 ΟΛΟΙ (Broadcast)';
+        btnAll.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: 'ALL' }); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
+        list.appendChild(btnAll);
+        window.App.lastStaffList.forEach(u => {
+            if (u.role === 'driver') {
+                const btn = document.createElement('button');
+                btn.className = 'modal-btn';
+                btn.style.background = '#333';
+                btn.innerHTML = `🛵 ${u.username}`;
+                btn.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username }); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
+                list.appendChild(btn);
+            }
+        });
+        const btnSilent = document.createElement('button');
+        btnSilent.className = 'modal-btn';
+        btnSilent.style.background = '#607D8B';
+        btnSilent.style.color = 'white';
+        btnSilent.innerHTML = '🔕 ΕΤΟΙΜΟ (ΧΩΡΙΣ ΚΛΗΣΗ)';
+        btnSilent.onclick = () => { window.socket.emit('ready-order', orderId, true); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
+        list.appendChild(btnSilent);
+        modal.style.display = 'flex';
+    },
+
+    // --- TREATS ---
+    showTreatOptions: (id) => {
+        const order = window.App.activeOrders.find(o => o.id == id);
+        if (!order) return;
+        const win = document.getElementById(`win-${id}`);
+        const body = win.querySelector('.win-body');
+        const footer = win.querySelector('.win-footer');
+        let itemsHtml = '<div style="margin-bottom:10px; color:#aaa;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
+        const lines = order.text.split('\n');
+        lines.forEach((line, idx) => {
+            if (!line.trim() || line.startsWith('[')) return;
+            if (line.includes(':') && !line.includes(':0')) {
+                itemsHtml += `<button onclick="App.treatItem('${id}', ${idx})" style="width:100%; padding:10px; margin-bottom:5px; background:#333; color:white; border:1px solid #555; border-radius:6px; text-align:left; cursor:pointer;">${line}</button>`;
+            } else { itemsHtml += `<div style="padding:5px; color:#777;">${line}</div>`; }
+        });
+        body.innerHTML = itemsHtml;
+        footer.innerHTML = `
+            <button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.treatFull('${id}')">🎁 ΚΕΡΑΣΜΑ ΟΛΑ</button>
+            <button class="btn-win-action" style="background:#555; color:white;" onclick="App.openOrderWindow(App.activeOrders.find(o=>o.id==${id}))">🔙 ΑΚΥΡΟ</button>
+        `;
+    },
+    treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
+    treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
 
     // --- CHAT ---
     toggleAdminChat: () => { 

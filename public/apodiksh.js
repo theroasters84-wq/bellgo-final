@@ -235,7 +235,28 @@ export const Apodiksh = {
         orderText += `✅ PAID`;
         window.socket.emit('quick-order', { text: orderText, total: total, method: methodLabel.includes('ΚΑΡΤΑ') ? 'card' : 'cash', issueReceipt: true, source: 'Admin (Ταμείο)' });
         document.getElementById('cashRegisterModal').style.display = 'none';
-    }
+    },
+
+    // --- RECEIPT LOGIC ---
+    issueReceipt: (id) => {
+        const order = window.App.activeOrders.find(o => o.id == id);
+        if(order && order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) return alert("Η απόδειξη έχει ήδη εκδοθεί!");
+        if(confirm("Έκδοση απόδειξης (myDATA);")) { window.socket.emit('issue-receipt', id); }
+    },
+
+    showReceiptDialog: (id) => {
+        const div = document.createElement('div');
+        div.className = 'modal-overlay';
+        div.style.display = 'flex'; div.style.zIndex = '10000';
+        div.innerHTML = `<div class="modal-box" style="text-align:center; max-width:350px;"><h3 style="color:#FFD700;">Κλείσιμο Παραγγελίας</h3><p style="color:#ccc;">Δεν έχει εκδοθεί απόδειξη. Τι θέλετε να κάνετε;</p><button class="modal-btn" style="background:#00E676; color:black;" onclick="Apodiksh.issueAndClose(${id}, this)">🧾 ΕΚΔΟΣΗ & ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.forceCompleteOrder(${id}); this.closest('.modal-overlay').remove();">🚪 ΜΟΝΟ ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#555;" onclick="this.closest('.modal-overlay').remove()">ΑΚΥΡΟ</button></div>`;
+        document.body.appendChild(div);
+    },
+
+    issueAndClose: (id, btn) => {
+        window.socket.emit('issue-receipt', id);
+        btn.innerText = "⏳ ΕΚΔΟΣΗ...";
+        setTimeout(() => { window.App.forceCompleteOrder(id); btn.closest('.modal-overlay').remove(); }, 1000);
+    },
 };
 
 // Auto-init & Expose Global
