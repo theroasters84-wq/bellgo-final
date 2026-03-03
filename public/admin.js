@@ -409,6 +409,12 @@ export const Admin = {
     },
 
     changeAdminPassword: () => {
+        if (window.App.adminPin) {
+            const current = prompt("🔒 Εισάγετε τον ΤΡΕΧΟΝΤΑ Κωδικό Διαχειριστή:");
+            if (current === null) return;
+            if (current !== String(window.App.adminPin)) return alert("❌ Λάθος Κωδικός!");
+        }
+
         // ✅ FIX: Double Confirmation for Admin Password
         const p1 = prompt("1/2. Ορίστε νέο Κωδικό Διαχειριστή:");
         if (!p1) return;

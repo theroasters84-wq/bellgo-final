@@ -485,6 +485,9 @@ window.App = {
                 if (settings.adminPin !== undefined) {
                     App.adminPin = settings.adminPin;
                 }
+                if (settings.pin !== undefined) {
+                    App.storePin = settings.pin;
+                }
                 
                 if (App.hasFeature('pack_pos') && !settings.adminPin && !App.hasPromptedLockPass) {
                     App.hasPromptedLockPass = true;
@@ -1825,6 +1828,7 @@ window.PIN = {
         if (pinStep === 'create') {
             tempPin = pinValue;
             pinStep = 'confirm';
+            pinValue = ''; // ✅ Clear for confirmation
             PIN.updateDisplay();
             alert("Επιβεβαίωση: Πληκτρολογήστε το ξανά.");
         } else if (pinStep === 'confirm') {

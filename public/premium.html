@@ -647,7 +647,12 @@
         window.addEventListener('load', () => {
             if (window.App) {
                 window.App.changeStorePin = function() {
-                    const newPin = prompt("Εισάγετε νέο PIN Εισόδου (4 ψηφία):");
+                    if (window.App.storePin) {
+                        const current = prompt("🔒 Εισάγετε το ΤΡΕΧΟΝ PIN:");
+                        if (current === null) return;
+                        if (current !== String(window.App.storePin)) return alert("❌ Λάθος PIN!");
+                    }
+                    const newPin = prompt("🆕 Εισάγετε ΝΕΟ PIN Εισόδου (4 ψηφία):");
                     if (newPin !== null) {
                         if (newPin.length === 4 && !isNaN(newPin)) {
                             window.socket.emit('save-store-settings', { pin: newPin });
@@ -658,7 +663,12 @@
                     }
                 };
                 window.App.changeAdminLockPin = function() {
-                    const newPin = prompt("Εισάγετε νέο Κωδικό Διαχειριστή (Lock):");
+                    if (window.App.adminPin) {
+                        const current = prompt("🔒 Εισάγετε τον ΤΡΕΧΟΝΤΑ Κωδικό Διαχειριστή:");
+                        if (current === null) return;
+                        if (current !== String(window.App.adminPin)) return alert("❌ Λάθος Κωδικός!");
+                    }
+                    const newPin = prompt("🆕 Εισάγετε ΝΕΟ Κωδικό Διαχειριστή (Lock):");
                     if (newPin !== null) {
                         if (newPin.length >= 4) {
                             window.socket.emit('save-store-settings', { adminPin: newPin });

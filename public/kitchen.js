@@ -53,14 +53,31 @@ const calculateTotal = (text) => {
 
 // --- PIN MODULE ---
 let pinValue = '';
+let tempPin = ''; // ✅ For confirmation
+let pinStep = 'create'; // 'create' | 'confirm'
+
 window.PIN = {
     add: (n) => { if(pinValue.length < 4) { pinValue += n; PIN.updateDisplay(); } },
     clear: () => { pinValue = ''; PIN.updateDisplay(); },
+    reset: () => { 
+        pinValue = ''; tempPin = ''; pinStep = 'create'; 
+        PIN.updateDisplay(); 
+        const title = document.querySelector('#pinChangeModal .modal-title');
+        if(title) title.innerText = "PIN";
+    },
     updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
     submit: () => {
         if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
-        window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
-        App.closePinModal();
+        
+        if (pinStep === 'create') {
+            tempPin = pinValue; pinStep = 'confirm'; pinValue = ''; PIN.updateDisplay();
+            const title = document.querySelector('#pinChangeModal .modal-title');
+            if(title) title.innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
+        } else if (pinStep === 'confirm') {
+            if (pinValue !== tempPin) { alert("❌ Τα PIN δεν ταιριάζουν!"); PIN.reset(); return; }
+            window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
+            App.closePinModal();
+        }
     }
 };
 
@@ -457,6 +474,8 @@ window.App = {
                 if(settings.schedule) App.scheduleData = settings.schedule;
                 // ✅ FIX: Να δέχεται και το 0 ως τιμή
                 if(settings.coverPrice !== undefined) { 
+                    if (settings.adminPin !== undefined) App.adminPin = settings.adminPin;
+                    if (settings.pin !== undefined) App.storePin = settings.pin;
                     App.coverPrice = parseFloat(settings.coverPrice); 
                     document.getElementById('inpCoverPrice').value = App.coverPrice; 
                 }
@@ -650,8 +669,7 @@ window.App = {
     // --- MODALS ---
     openPinModal: () => {
         document.getElementById('settingsModal').style.display = 'none'; 
-        pinValue = '';
-        PIN.updateDisplay();
+        if(window.PIN) window.PIN.reset();
         document.getElementById('pinChangeModal').style.display = 'flex';
     },
     closePinModal: () => { 

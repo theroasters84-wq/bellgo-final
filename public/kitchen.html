@@ -148,25 +148,49 @@
         window.addEventListener('load', () => {
             if (window.App) {
                 window.App.changeStorePin = function() {
-                    const newPin = prompt("Εισάγετε νέο PIN Εισόδου (4 ψηφία):");
-                    if (newPin !== null) {
-                        if (newPin.length === 4 && !isNaN(newPin)) {
-                            window.socket.emit('save-store-settings', { pin: newPin });
+                    if (window.App.storePin) {
+                        const current = prompt("🔒 Εισάγετε το ΤΡΕΧΟΝ PIN:");
+                        if (current === null) return;
+                        if (current !== String(window.App.storePin)) return alert("❌ Λάθος PIN!");
+                    }
+
+                    const p1 = prompt("1/2. Εισάγετε νέο PIN Εισόδου (4 ψηφία):");
+                    if (!p1) return;
+                    const p2 = prompt("2/2. Επιβεβαίωση PIN:");
+                    if (!p2) return;
+
+                    if (p1 === p2) {
+                        if (p1.length === 4 && !isNaN(p1)) {
+                            window.socket.emit('save-store-settings', { pin: p1 });
                             alert("✅ Το PIN Εισόδου ενημερώθηκε!");
                         } else {
                             alert("❌ Το PIN πρέπει να αποτελείται από 4 αριθμούς.");
                         }
+                    } else {
+                        alert("❌ Τα PIN δεν ταιριάζουν.");
                     }
                 };
                 window.App.changeAdminLockPin = function() {
-                    const newPin = prompt("Εισάγετε νέο Κωδικό Διαχειριστή (Lock):");
-                    if (newPin !== null) {
-                        if (newPin.length >= 4) {
-                            window.socket.emit('save-store-settings', { adminPin: newPin });
+                    if (window.App.adminPin) {
+                        const current = prompt("🔒 Εισάγετε τον ΤΡΕΧΟΝΤΑ Κωδικό Διαχειριστή:");
+                        if (current === null) return;
+                        if (current !== String(window.App.adminPin)) return alert("❌ Λάθος Κωδικός!");
+                    }
+
+                    const p1 = prompt("1/2. Εισάγετε νέο Κωδικό Διαχειριστή (Lock):");
+                    if (!p1) return;
+                    const p2 = prompt("2/2. Επιβεβαίωση Κωδικού:");
+                    if (!p2) return;
+
+                    if (p1 === p2) {
+                        if (p1.length >= 4) {
+                            window.socket.emit('save-store-settings', { adminPin: p1 });
                             alert("✅ Ο Κωδικός Διαχειριστή ενημερώθηκε!");
                         } else {
                             alert("❌ Ο κωδικός πρέπει να έχει τουλάχιστον 4 χαρακτήρες.");
                         }
+                    } else {
+                        alert("❌ Οι κωδικοί δεν ταιριάζουν.");
                     }
                 };
             }
