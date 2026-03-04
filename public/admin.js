@@ -370,25 +370,6 @@ export const Admin = {
         const targetArea = document.getElementById('subGeneral');
         if (!targetArea) return;
 
-        // 🧹 CLEANUP: Απόκρυψη παλιών κουμπιών Ασφαλείας (Hardcoded)
-        const allButtons = targetArea.querySelectorAll('button');
-        allButtons.forEach(btn => {
-            if (btn.parentElement.id === 'securitySettingsDiv') return; // Skip new buttons
-            
-            if (btn.innerText.includes('Αλλαγή PIN') || btn.innerText.includes('Κωδικός Διαχειριστή')) {
-                btn.style.display = 'none';
-                btn.setAttribute('data-hidden', 'true'); // Mark as hidden for traversal
-                // Hide associated header if found just before
-                let prev = btn.previousElementSibling;
-                while(prev && (prev.tagName === 'BR' || prev.style.display === 'none' || prev.getAttribute('data-hidden') === 'true' || prev.tagName === 'BUTTON')) {
-                    prev = prev.previousElementSibling;
-                }
-                if (prev && prev.tagName === 'H4' && prev.innerText.includes('ΑΣΦΑΛΕΙΑ')) {
-                    prev.style.display = 'none';
-                }
-            }
-        });
-
         let secDiv = document.getElementById('securitySettingsDiv');
         if (!secDiv) {
             secDiv = document.createElement('div');
