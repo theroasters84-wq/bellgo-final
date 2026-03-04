@@ -96,6 +96,7 @@ export const Sundromes = {
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:black; color:white; font-family:sans-serif; text-align:center;">
                     <h1 style="color:red;">⛔ Καμία Ενεργή Συνδρομή</h1>
                     <p style="color:#ccc;">Ο λογαριασμός δεν έχει ενεργά πακέτα.</p>
+                    <button onclick="Sundromes.openSubscriptionsModal('${user.store || user.email || ''}')" style="padding:15px 30px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer; font-weight:bold;">💎 ΑΓΟΡΑ ΣΥΝΔΡΟΜΗΣ</button>
                     <button onclick="localStorage.removeItem('bellgo_session'); window.location.href='login.html'" style="padding:15px 30px; background:#333; color:white; border:1px solid #555; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer;">🚪 ΕΞΟΔΟΣ</button>
                 </div>
             `;
@@ -238,12 +239,9 @@ export const Sundromes = {
             if (data.active) {
                 return data; // Success: Επιστρέφει τα δεδομένα για login
             } else {
-                if (data.exists === false) {
-                    alert("❌ Το Email δεν βρέθηκε στο σύστημα.");
-                } else {
-                    // Exists but no subscription -> Show Modal
-                    Sundromes.openSubscriptionsModal(email);
-                }
+                // ✅ FIX: Είτε υπάρχει το email είτε όχι, αν δεν είναι active, ανοίγουμε τις συνδρομές
+                alert("Δεν βρέθηκε ενεργή συνδρομή.");
+                Sundromes.openSubscriptionsModal(email);
                 return null;
             }
         } catch (e) { console.error(e); alert("Σφάλμα σύνδεσης."); return null; }
