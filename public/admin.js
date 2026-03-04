@@ -71,6 +71,9 @@ export const Admin = {
         document.getElementById('settingsModal').style.display = 'flex';
         if(window.App) window.App.closeSettingsSub(); 
 
+        const app = window.App;
+        app.applyFeatureVisibility(); // ✅ FIX: Εκτέλεση ελέγχου ορατότητας ΠΡΩΤΑ
+
         // ✅ NEW: Render Security Settings (Dynamic)
         Admin.renderSecuritySettings();
 
@@ -78,9 +81,6 @@ export const Admin = {
         // Settings now open freely, and code is requested only for Admin Settings.
         const lock = document.getElementById('settingsLockOverlay');
         if(lock) lock.style.display = 'none';
-        
-        const app = window.App;
-        app.applyFeatureVisibility();
     },
 
     unlockSettings: () => {
@@ -377,9 +377,10 @@ export const Admin = {
             
             if (btn.innerText.includes('Αλλαγή PIN') || btn.innerText.includes('Κωδικός Διαχειριστή')) {
                 btn.style.display = 'none';
+                btn.setAttribute('data-hidden', 'true'); // Mark as hidden for traversal
                 // Hide associated header if found just before
                 let prev = btn.previousElementSibling;
-                while(prev && (prev.tagName === 'BR' || prev.style.display === 'none' || prev.tagName === 'BUTTON')) {
+                while(prev && (prev.tagName === 'BR' || prev.style.display === 'none' || prev.getAttribute('data-hidden') === 'true' || prev.tagName === 'BUTTON')) {
                     prev = prev.previousElementSibling;
                 }
                 if (prev && prev.tagName === 'H4' && prev.innerText.includes('ΑΣΦΑΛΕΙΑ')) {
