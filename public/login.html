@@ -452,72 +452,49 @@
                     }
                 }
 
-                try {
-                    const response = await fetch('/check-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
-                    });
-                    const data = await response.json();
-
-                    if (data.active) {
-                        adminUser = { email: email, displayName: name || "Admin" }; // ✅ Χρήση Ονόματος
-                        adminPlan = data.plan; 
-                        adminUser.features = data.features || {}; // ✅ Save Features from Stripe
-                        
-                        // ✅ NEW: Merge Temp Features (Simulation)
-                        const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                        if (tempFeatures) { 
-                            try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
-                            adminPlan = 'custom'; // ✅ Force custom plan
-                        }
-
-                        socket.emit('check-pin-status', { email: email });
-                    } else {
-                        // ✅ FREE TIER: Allow login without subscription
-                        adminUser = { email: email, displayName: name || "Admin" };
-                        adminPlan = 'basic';
-                        adminUser.features = {}; 
-                        
-                        // ✅ NEW: Merge Temp Features (Simulation)
-                        const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                        if (tempFeatures) { 
-                            try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
-                            adminPlan = 'custom'; // ✅ Force custom plan
-                        }
-
-                        socket.emit('check-pin-status', { email: email });
+                // ✅ FIX: Αυστηρός έλεγχος συνδρομής μέσω Sundromes.checkLogin
+                // Αν δεν έχει συνδρομή, το checkLogin εμφανίζει Alert & Modal και επιστρέφει null.
+                const data = await Sundromes.checkLogin(email);
+                
+                if (data) {
+                    adminUser = { email: email, displayName: name || "Admin" };
+                    adminPlan = data.plan; 
+                    adminUser.features = data.features || {}; 
+                    
+                    // ✅ NEW: Merge Temp Features (Simulation)
+                    const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                    if (tempFeatures) { 
+                        try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
+                        adminPlan = 'custom'; 
                     }
-                    btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
-                } catch (e) { 
-                    alert("Σφάλμα σύνδεσης."); 
-                    btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+
+                    socket.emit('check-pin-status', { email: email });
                 }
+                
+                btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
             },
 
             googleLogin: () => {
                 signInWithPopup(auth, provider).then(async (result) => {
                     const email = result.user.email;
-                    const response = await fetch('/check-subscription', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email })
-                    });
-                    const data = await response.json();
                     
-                    // ✅ FREE TIER: Allow login regardless of subscription status
-                    adminUser = result.user;
-                    adminPlan = data.active ? data.plan : 'basic';
-                    adminUser.features = data.features || {};
+                    // ✅ FIX: Αυστηρός έλεγχος και για Google Login
+                    const data = await Sundromes.checkLogin(email);
 
-                    // ✅ NEW: Merge Temp Features (Simulation)
-                    const tempFeatures = localStorage.getItem('bellgo_temp_features');
-                    if (tempFeatures) { 
-                        try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
-                        adminPlan = 'custom'; // ✅ Force custom plan
+                    if (data) {
+                        adminUser = result.user;
+                        adminPlan = data.plan;
+                        adminUser.features = data.features || {};
+
+                        // ✅ NEW: Merge Temp Features (Simulation)
+                        const tempFeatures = localStorage.getItem('bellgo_temp_features');
+                        if (tempFeatures) { 
+                            try { adminUser.features = { ...adminUser.features, ...JSON.parse(tempFeatures) }; } catch(e){} 
+                            adminPlan = 'custom'; 
+                        }
+
+                        socket.emit('check-pin-status', { email: email });
                     }
-
-                    socket.emit('check-pin-status', { email: email });
 
                 }).catch((error) => alert(error.message));
             },
