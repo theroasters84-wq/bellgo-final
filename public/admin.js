@@ -370,17 +370,20 @@ export const Admin = {
         const targetArea = document.getElementById('subGeneral');
         if (!targetArea) return;
 
-        // 🧹 CLEANUP: Απόκρυψη της παλιάς hardcoded ενότητας Ασφαλείας (για αποφυγή διπλότυπων)
-        const headers = targetArea.querySelectorAll('h4');
-        headers.forEach(h => {
-            // Αν βρούμε τίτλο "ΑΣΦΑΛΕΙΑ" που ΔΕΝ είναι ο δικός μας (securitySettingsDiv)
-            if (h.innerText.includes('ΑΣΦΑΛΕΙΑ') && h.parentElement.id !== 'securitySettingsDiv') {
-                h.style.display = 'none'; // Κρύβουμε τον τίτλο
-                let next = h.nextElementSibling;
-                // Κρύβουμε και τα κουμπιά που ακολουθούν (μέχρι να βρούμε άλλο div ή τίτλο)
-                while(next && (next.tagName === 'BUTTON' || next.tagName === 'BR')) {
-                    next.style.display = 'none';
-                    next = next.nextElementSibling;
+        // 🧹 CLEANUP: Απόκρυψη παλιών κουμπιών Ασφαλείας (Hardcoded)
+        const allButtons = targetArea.querySelectorAll('button');
+        allButtons.forEach(btn => {
+            if (btn.parentElement.id === 'securitySettingsDiv') return; // Skip new buttons
+            
+            if (btn.innerText.includes('Αλλαγή PIN') || btn.innerText.includes('Κωδικός Διαχειριστή')) {
+                btn.style.display = 'none';
+                // Hide associated header if found just before
+                let prev = btn.previousElementSibling;
+                while(prev && (prev.tagName === 'BR' || prev.style.display === 'none' || prev.tagName === 'BUTTON')) {
+                    prev = prev.previousElementSibling;
+                }
+                if (prev && prev.tagName === 'H4' && prev.innerText.includes('ΑΣΦΑΛΕΙΑ')) {
+                    prev.style.display = 'none';
                 }
             }
         });
