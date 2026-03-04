@@ -18,6 +18,7 @@ const transporter = nodemailer.createTransport({
 // ✅ STRIPE SETUP (ΠΡΟΣΟΧΗ: Σε παραγωγή χρησιμοποιούμε .env)
 const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
 const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''; // ✅ Add your Webhook Secret here
 const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
 
 // ✅ PRICE LIST
@@ -50,6 +51,49 @@ try {
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
+
+// ✅ NEW: Stripe Webhook Endpoint (Must be before express.json)
+app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        // If secret is set, verify signature. Otherwise, trust (Dev mode)
+        if (STRIPE_WEBHOOK_SECRET) {
+            event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+        } else {
+            event = JSON.parse(req.body);
+        }
+    } catch (err) {
+        console.error(`⚠️ Webhook Error: ${err.message}`);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle Subscription Changes
+    if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+        const subscription = event.data.object;
+        const status = subscription.status; // active, past_due, unpaid, canceled
+        const customerId = subscription.customer;
+
+        // Find store by Stripe Customer ID
+        try {
+            const customer = await stripe.customers.retrieve(customerId);
+            if (customer && customer.email) {
+                const storeName = customer.email.toLowerCase().trim();
+                console.log(`🔔 Subscription Update for ${storeName}: ${status}`);
+
+                // If status is bad, lock access immediately
+                if (status === 'past_due' || status === 'unpaid' || status === 'canceled') {
+                    io.to(storeName).emit('force-logout'); // Kick user out
+                    io.to(storeName).emit('subscription-status-change', { status: status, msg: "Η συνδρομή έληξε ή απέτυχε η χρέωση." });
+                }
+            }
+        } catch (e) { console.error("Webhook Logic Error:", e); }
+    }
+
+    res.json({received: true});
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // ✅ FIX: Υποστήριξη δεδομένων φόρμας (για το Reset PIN)
 
@@ -443,19 +487,20 @@ app.post('/check-subscription', async (req, res) => {
             return res.json({ active: false, msg: "User not found", exists: false });
         }
         
-        const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
+        // ✅ FIX: Fetch ALL subscriptions to detect 'past_due'
+        const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id });
         
         let planType = 'basic';
         let activeFeatures = { ...manualFeatures }; // Start with manual features
+        
+        const activeSub = subscriptions.data.find(s => s.status === 'active' || s.status === 'trialing');
 
-        if (subscriptions.data.length > 0) {
-            subscriptions.data.forEach(sub => {
-                sub.items.data.forEach(item => {
+        if (activeSub) {
+            activeSub.items.data.forEach(item => {
                     const priceId = item.price.id;
                     if (priceId === PRICE_PREMIUM) planType = 'premium';
                     // Έλεγχος για modular features
                     if (FEATURE_PRICES[priceId]) activeFeatures[FEATURE_PRICES[priceId]] = true;
-                });
             });
 
             // ✅ FIX: Συγχρονισμός Features από Stripe στη Βάση (για να μην χάνονται στο Socket Update)
@@ -471,7 +516,14 @@ app.post('/check-subscription', async (req, res) => {
             if (hasManualActive) {
                 return res.json({ active: true, plan: 'custom', features: activeFeatures, storeId: email, exists: true });
             }
-            return res.json({ active: false, exists: true }); 
+            
+            // ✅ NEW: Check for Past Due
+            const pastDueSub = subscriptions.data.find(s => s.status === 'past_due' || s.status === 'unpaid');
+            if (pastDueSub) {
+                return res.json({ active: false, exists: true, status: 'past_due' });
+            }
+
+            return res.json({ active: false, exists: true, status: 'none' }); 
         }
     } catch (e) { 
         // Error checking Stripe. Fallback to manual.

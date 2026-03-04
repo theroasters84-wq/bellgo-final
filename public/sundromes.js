@@ -240,7 +240,11 @@ export const Sundromes = {
                 return data; // Success: Επιστρέφει τα δεδομένα για login
             } else {
                 // ✅ FIX: Είτε υπάρχει το email είτε όχι, αν δεν είναι active, ανοίγουμε τις συνδρομές
-                alert("Δεν βρέθηκε ενεργή συνδρομή.");
+                if (data.status === 'past_due' || data.status === 'unpaid') {
+                    alert("⚠️ Η συνδρομή σας είναι ληξιπρόθεσμη (Αποτυχία Πληρωμής).\nΠαρακαλώ τακτοποιήστε την οφειλή για να συνεχίσετε.");
+                } else {
+                    alert("Δεν βρέθηκε ενεργή συνδρομή.");
+                }
                 Sundromes.openSubscriptionsModal(email);
                 return null;
             }
