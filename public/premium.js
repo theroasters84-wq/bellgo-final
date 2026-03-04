@@ -655,6 +655,25 @@ window.App = {
         });
         
         // ✅ NEW: Custom Logic for Settings Restructuring
+        // 3. Εφαρμογή (Εμφάνιση/Απόκρυψη) - GENERIC LOOP FIRST
+        allControllableIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (visibleIds.has(id)) {
+                    // Αν είναι εικονίδιο header, συνήθως θέλει flex, αλλιώς block
+                    const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
+                    const isSwitch = el.classList.contains('switch-row'); // ✅ FIX: Keep flex for switches
+                    
+                    if (id === 'desktopArea') el.style.display = 'grid'; // ✅ FIX: Keep grid for desktopArea
+                    else if (isIcon || isSwitch) el.style.display = 'flex';
+                    else el.style.display = 'block';
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+        });
+
+        // ✅ NEW: Custom Logic for Settings Restructuring - RUNS AFTER GENERIC LOOP TO OVERRIDE
         const hasPos = App.hasFeature('pack_pos');
         const hasManager = App.hasFeature('pack_manager');
         const hasDelivery = App.hasFeature('pack_delivery');
