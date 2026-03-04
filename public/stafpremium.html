@@ -727,6 +727,12 @@
                     }
                 });
 
+                // ✅ NEW: Force Logout Listener (Αν λήξει η συνδρομή)
+                socket.on('force-logout', () => {
+                    localStorage.removeItem('bellgo_session');
+                    window.location.replace("/staff/login");
+                });
+
                 socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
                 
                 socket.on('menu-update', (data) => {
