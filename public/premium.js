@@ -11,7 +11,10 @@ import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // â
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
-const userData = JSON.parse(savedSession || '{}');
+let userData = {};
+try { userData = JSON.parse(savedSession || '{}'); } catch(e) { 
+    console.error("Session Error", e); window.location.replace("login.html"); 
+}
 if (userData.role !== 'admin' && userData.role !== 'kitchen' && userData.role !== 'waiter') { alert("Access Denied"); window.location.replace("login.html"); }
 
 const app = initializeApp(firebaseConfig);

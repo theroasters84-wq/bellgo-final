@@ -6,7 +6,10 @@ import { Sundromes } from './sundromes.js';
 // --- AUTH CHECK ---
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
-const userData = JSON.parse(savedSession || '{}');
+let userData = {};
+try { userData = JSON.parse(savedSession || '{}'); } catch(e) { 
+    console.error("Session Error", e); window.location.replace("login.html"); 
+}
 
 if (userData.role !== 'driver' && userData.role !== 'admin') { 
     alert("Πρόσβαση μόνο για Διανομείς."); 

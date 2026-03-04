@@ -9,7 +9,7 @@ let notificationInterval;
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V22)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v51'; // ✅ Bump Version to force new player.js (Single Player)
+const CACHE_NAME = 'bellgo-v52'; // ✅ Bump Version to force new player.js (Single Player)
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -197,22 +197,31 @@ self.addEventListener('fetch', (event) => {
         // OFFLINE LOGIC: 
         // Αν ο χρήστης ζητάει ένα URL καταστήματος (/shop/name/), του σερβίρουμε το cached order.html
         if (url.pathname.startsWith('/shop/')) { // ✅ Αφαιρέθηκε το dinein από το offline logic
-          return caches.match('/order.html');
+          return caches.match('/order.html', { ignoreSearch: true });
         }
         // ✅ NEW: Fallback για το Admin App στο /manage/ (χρησιμοποιεί τα αρχεία του root)
         if (url.pathname.startsWith('/manage/')) {
              const relative = url.pathname.replace('/manage', '');
-             return caches.match(relative).then(m => m || caches.match(event.request));
+             return caches.match(relative, { ignoreSearch: true }).then(m => m || caches.match(event.request, { ignoreSearch: true }));
         }
         // ✅ NEW: Fallback για το Staff App στο /staff/
         if (url.pathname.startsWith('/staff/')) {
              // Αν ζητάει την εφαρμογή, δίνουμε το cached HTML
-             if (url.pathname.includes('app')) return caches.match('/stafpremium.html');
+             if (url.pathname.includes('app')) return caches.match('/stafpremium.html', { ignoreSearch: true });
              // ✅ NEW: Fallback για assets του Staff (π.χ. /staff/player.js -> /player.js)
              const relative = url.pathname.replace('/staff', '');
-             return caches.match(relative).then(m => m || caches.match(event.request));
+             return caches.match(relative, { ignoreSearch: true }).then(m => m || caches.match(event.request, { ignoreSearch: true }));
         }
-        return caches.match(event.request);
+
+        // ✅ FIX: Ensure premium pages are served correctly even with query params
+        if (url.pathname.includes('stafpremium.html')) {
+             return caches.match('/stafpremium.html', { ignoreSearch: true });
+        }
+        if (url.pathname.includes('premium.html')) {
+             return caches.match('/premium.html', { ignoreSearch: true });
+        }
+
+        return caches.match(event.request, { ignoreSearch: true });
       })
   );
 });
