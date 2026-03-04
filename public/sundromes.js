@@ -105,7 +105,8 @@ export const Sundromes = {
     },
 
     // ✅ NEW: Subscriptions Modal Logic (Moved from premium.js)
-    openSubscriptionsModal: (getElementById('subscriptionsModal');
+    openSubscriptionsModal: (emailArg = null) => {
+        let modal = document.getElementById('subscriptionsModal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'subscriptionsModal';
@@ -139,7 +140,8 @@ export const Sundromes = {
         list.innerHTML = '';
         
         // ✅ Pre-fill Email if available
-        let preFill = emailArg || docuiAata.email) preFill = window.App.userData.email;
+        let preFill = emailArg || document.getElementById('adminEmailInp')?.value.trim();
+        if (!preFill && window.App && window.App.userData && window.App.userData.email) preFill = window.App.userData.email;
         const subsEmail = document.getElementById('subsEmailInp');
         if (subsEmail && preFill) subsEmail.value = preFill;
 
