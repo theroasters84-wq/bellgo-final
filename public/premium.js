@@ -742,10 +742,32 @@ window.App = {
         let fullLink = `${baseUrl}/shop/${encodeURIComponent(userData.store)}/`;
         if(customName) fullLink += `?name=${encodeURIComponent(customName)}`;
         
+        const titleEl = el.querySelector('div[data-i18n="store_link"]');
+        if(titleEl) titleEl.innerText = "📲 Link Καταστήματος";
+
         linkEl.href = fullLink;
         linkEl.innerText = fullLink;
         qrEl.innerHTML = "";
         new QRCode(qrEl, { text: fullLink, width: 200, height: 200 });
+        el.style.display = 'flex';
+    },
+
+    showReviewQr: () => {
+        const url = document.getElementById('inpGoogleMaps').value.trim();
+        if (!url) return alert("Παρακαλώ εισάγετε πρώτα το Link Αξιολόγησης!");
+
+        document.getElementById('settingsModal').style.display = 'none'; 
+        const el = document.getElementById('qrOverlay');
+        const linkEl = document.getElementById('storeLink');
+        const qrEl = document.getElementById('qrcode');
+        
+        const titleEl = el.querySelector('div[data-i18n="store_link"]');
+        if(titleEl) titleEl.innerText = "⭐ QR Αξιολόγησης";
+
+        linkEl.href = url;
+        linkEl.innerText = url;
+        qrEl.innerHTML = "";
+        new QRCode(qrEl, { text: url, width: 200, height: 200 });
         el.style.display = 'flex';
     },
 
