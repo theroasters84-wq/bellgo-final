@@ -383,16 +383,14 @@ export const Admin = {
 
         secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
 
-        // 1. Change Login PIN (All Subscriptions)
-        const btnPin = document.createElement('button');
-        btnPin.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
-        btnPin.innerHTML = "🔑 Αλλαγή PIN Εισόδου";
-        btnPin.onclick = () => {
-            // Reset PIN state for double confirmation
-            if(window.PIN) { window.PIN.reset(); }
-            Admin.openPinModal();
+        // ✅ NEW: E-Invoicing Button (Moved here)
+        const btnEinv = document.createElement('button');
+        btnEinv.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+        btnEinv.innerHTML = "🔌 E-INVOICING (myDATA)";
+        btnEinv.onclick = () => {
+            if (window.Apodiksh) window.Apodiksh.openSettings();
         };
-        secDiv.appendChild(btnPin);
+        secDiv.appendChild(btnEinv);
 
         // 2. Change Admin Password (Subscription 2, 3, 4, 5)
         const hasManager = window.App.hasFeature('pack_manager');
