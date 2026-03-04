@@ -370,6 +370,21 @@ export const Admin = {
         const targetArea = document.getElementById('subGeneral');
         if (!targetArea) return;
 
+        // 🧹 CLEANUP: Απόκρυψη της παλιάς hardcoded ενότητας Ασφαλείας (για αποφυγή διπλότυπων)
+        const headers = targetArea.querySelectorAll('h4');
+        headers.forEach(h => {
+            // Αν βρούμε τίτλο "ΑΣΦΑΛΕΙΑ" που ΔΕΝ είναι ο δικός μας (securitySettingsDiv)
+            if (h.innerText.includes('ΑΣΦΑΛΕΙΑ') && h.parentElement.id !== 'securitySettingsDiv') {
+                h.style.display = 'none'; // Κρύβουμε τον τίτλο
+                let next = h.nextElementSibling;
+                // Κρύβουμε και τα κουμπιά που ακολουθούν (μέχρι να βρούμε άλλο div ή τίτλο)
+                while(next && (next.tagName === 'BUTTON' || next.tagName === 'BR')) {
+                    next.style.display = 'none';
+                    next = next.nextElementSibling;
+                }
+            }
+        });
+
         let secDiv = document.getElementById('securitySettingsDiv');
         if (!secDiv) {
             secDiv = document.createElement('div');
