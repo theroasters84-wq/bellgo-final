@@ -105,8 +105,7 @@ export const Sundromes = {
     },
 
     // ✅ NEW: Subscriptions Modal Logic (Moved from premium.js)
-    openSubscriptionsModal: () => {
-        let modal = document.getElementById('subscriptionsModal');
+    openSubscriptionsModal: (getElementById('subscriptionsModal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'subscriptionsModal';
@@ -140,8 +139,7 @@ export const Sundromes = {
         list.innerHTML = '';
         
         // ✅ Pre-fill Email if available
-        let preFill = document.getElementById('adminEmailInp')?.value.trim();
-        if (!preFill && window.App && window.App.userData && window.App.userData.email) preFill = window.App.userData.email;
+        let preFill = emailArg || docuiAata.email) preFill = window.App.userData.email;
         const subsEmail = document.getElementById('subsEmailInp');
         if (subsEmail && preFill) subsEmail.value = preFill;
 
@@ -222,6 +220,31 @@ export const Sundromes = {
         } catch(e) {
             alert("Σφάλμα σύνδεσης.");
         }
+    },
+
+    // ✅ NEW: Login Check (Existence & Subscription)
+    checkLogin: async (email) => {
+        if (!email) { alert("Παρακαλώ εισάγετε Email."); return null; }
+        try {
+            const res = await fetch('/check-subscription', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: email })
+            });
+            const data = await res.json();
+            
+            if (data.active) {
+                return data; // Success: Επιστρέφει τα δεδομένα για login
+            } else {
+                if (data.exists === false) {
+                    alert("❌ Το Email δεν βρέθηκε στο σύστημα.");
+                } else {
+                    // Exists but no subscription -> Show Modal
+                    Sundromes.openSubscriptionsModal(email);
+                }
+                return null;
+            }
+        } catch (e) { console.error(e); alert("Σφάλμα σύνδεσης."); return null; }
     }
 };
 window.Sundromes = Sundromes;

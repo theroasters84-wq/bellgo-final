@@ -429,7 +429,7 @@ app.post('/check-subscription', async (req, res) => {
              if (year === 1996) hackFeatures['pack_pos'] = true;       // Συνδρομή 5
              if (year === 1997) hackFeatures['pack_loyalty'] = true;   // Συνδρομή 6
 
-             return res.json({ active: true, plan: 'premium', features: hackFeatures, storeId: email });
+             return res.json({ active: true, plan: 'premium', features: hackFeatures, storeId: email, exists: true });
         }
     }
 
@@ -438,9 +438,9 @@ app.post('/check-subscription', async (req, res) => {
         if (customers.data.length === 0) {
             // User not in Stripe. If they have manual features enabled, let them in.
             if (hasManualActive) {
-                return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email });
+                return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email, exists: true });
             }
-            return res.json({ active: false, msg: "User not found" });
+            return res.json({ active: false, msg: "User not found", exists: false });
         }
         
         const subscriptions = await stripe.subscriptions.list({ customer: customers.data[0].id, status: 'active' });
@@ -465,13 +465,13 @@ app.post('/check-subscription', async (req, res) => {
                 Logic.saveStoreToFirebase(storeName, db, storesData);
             }
 
-            return res.json({ active: true, plan: planType, features: activeFeatures, storeId: email });
+            return res.json({ active: true, plan: planType, features: activeFeatures, storeId: email, exists: true });
         } else { 
             // No Stripe subscription.
             if (hasManualActive) {
-                return res.json({ active: true, plan: 'custom', features: activeFeatures, storeId: email });
+                return res.json({ active: true, plan: 'custom', features: activeFeatures, storeId: email, exists: true });
             }
-            return res.json({ active: false }); 
+            return res.json({ active: false, exists: true }); 
         }
     } catch (e) { 
         // Error checking Stripe. Fallback to manual.
