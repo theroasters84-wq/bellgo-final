@@ -564,6 +564,12 @@ window.App = {
                 if (data.startTime) existing.startTime = data.startTime;
                 App.renderDesktopIcons(App.activeOrders);
                 
+                // ✅ NEW: Update Open Window if exists (Live Sync)
+                const openWin = document.getElementById(`win-${data.id}`);
+                if (openWin && openWin.style.display !== 'none') {
+                    App.openOrderWindow(existing);
+                }
+
                 // ✅ AUTO PRINT: Τυπώνει αυτόματα μόλις γίνει ΑΠΟΔΟΧΗ (Cooking)
                 if (App.kitchenSettings.autoPrint && data.status === 'cooking') { // ✅ Use Local Setting
                     App.printOrder(data.id);
