@@ -186,6 +186,10 @@
 
         // FCM
         async function setupNotifications() {
+            // ✅ NEW: Disable on Laptop/Desktop
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (!isMobile) return;
+
             if ('serviceWorker' in navigator) {
                 try {
                     // ✅ FIX: Καθαρισμός παλιού Root SW
@@ -338,7 +342,13 @@
                 isAlarmActive = true;
                 localStorage.setItem('isRinging', 'true');
 
-                if (window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+                // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
+                // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
+                if (window.AudioEngine) {
+                    window.AudioEngine.triggerAlarm(data ? data.source : null);
+                } else {
+                    new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+                }
                 
                 // ✅ UPDATE UI WITH LOCATION / MAP
                 if (data && data.location) {

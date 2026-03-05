@@ -95,6 +95,8 @@
             <div id="orderPanel" class="order-panel minimized">
                 <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
                     <div style="font-size:12px; color:#aaa; margin-right:10px;" data-i18n="order_header">ΠΑΡΑΓΓΕΛΙΑ</div>
+                    <span id="cartCountBadge" style="display:none; background:#00E676; color:black; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:5px;">0</span>
+                    <span id="cartCountBadge" style="display:none; background:#00E676; color:black; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:5px;">0</span>
                     <div id="panelIcon" class="toggle-icon">▲</div>
                 </div>
                 <div class="panel-content">
@@ -445,6 +447,7 @@
             staffChargeMode: false, // ✅ NEW
             payMethod: 'cash',
             isChatOpen: false,
+            justPaid: false, // ✅ NEW: Flag to ignore self-ringing after payment
             features: {}, // ✅ NEW: Local Features
             
             // EXTRAS LOGIC
@@ -623,6 +626,10 @@
             },
 
             checkNotificationPermission: () => {
+                // ✅ NEW: Disable on Laptop/Desktop (Only Mobile)
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                if (!isMobile) return;
+
                 if (Notification.permission === 'default') {
                     const div = document.createElement('div');
                     div.id = 'notifPermRequest';
@@ -644,6 +651,10 @@
 
             requestNotifyPermission: async () => {
                 try {
+                    // ✅ NEW: Disable on Laptop/Desktop
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    if (!isMobile) return;
+
                     // ✅ FIX: Δημιουργία Καναλιού για Android (Capacitor/APK)
                     if (window.Capacitor?.Plugins?.PushNotifications) {
                         const PushNotifications = window.Capacitor.Plugins.PushNotifications;
@@ -698,7 +709,18 @@
                 });
 
                 socket.on('ring-bell', (data) => {
-                    if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+                    // ✅ FIX: Ignore ring if just paid (Server Bug Workaround)
+                    if (App.justPaid) {
+                        console.log("Ignoring ring after payment");
+                        App.justPaid = false;
+                        return;
+                    }
+                    // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
+                    if(window.AudioEngine) {
+                        window.AudioEngine.triggerAlarm(data ? data.source : null);
+                    } else {
+                        new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+                    }
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
                     // ✅ Εμφάνιση ποιος καλεί (Ταμείο ή Κουζίνα)
@@ -894,21 +916,39 @@
             handleInput: () => {
                 const text = document.getElementById('inpOrderText').value.trim();
                 const lines = text.split('\n');
-                let total = 0;
+                let totalItems = 0;let total = 0;
+                
+                let totalItems = 0;
                 
                 for (const line of lines) {
                     if (!line.trim()) continue;
                     let qty = 1; let rest = line;
-                    const qtyMatch = line.match(/^(\d+)\s+(.*)/);
+                                        const qtyMatch = line.match(/^(\d+)\s+(.*)/);
+                    totalItems += qty;
+
                     if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
+                    
+                    totalItems += qty;
 
                     if(rest.includes(':')) {
                         const parts = rest.split(':');
                         const priceVal = parseFloat(parts[parts.length-1]);
+                
+                const badge = document.getElementById('cartCountBadge');
+                if (badge) {
+                    badge.style.display = totalItems > 0 ? 'inline-block' : 'none';
+                    badge.innerText = totalItems;
+                }
                         if(!isNaN(priceVal)) { total += qty * priceVal; } 
                     }
                 }
                 document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: ${total.toFixed(2)}€`;
+                
+                const badge = document.getElementById('cartCountBadge');
+                if (badge) {
+                    badge.style.display = totalItems > 0 ? 'inline-block' : 'none';
+                    badge.innerText = totalItems;
+                }
             },
 
             // ✅ Bridge for player.js compatibility
@@ -932,22 +972,26 @@
                      // ✅ FIX: Χρήση add-items για ++ και Alarm στον Admin
                      window.socket.emit('add-items', { id: App.updatingOrderId, items: txt });
                      alert("Προστέθηκαν! ➕");
-                     App.cancelUpdate();
+                     App.cancelUpdate();;
+                if(document.getElementById('cartCountBadge')) document.getElementById('cartCountBadge').style.display = 'none'
                      return;
                 }
+                if(!tbl || tbl.trim() === '') return alert("Παρακαλώ συμπληρώστε αριθμό τραπεζιού!");
                 if(!txt) return alert("Κενή παραγγελία");
                 const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
-                window.socket.emit('new-order', `${header}\n${txt}`);
+                window.socket.emit('new-order', `${header}\n${txt}`);; App.handleInput()
                 document.getElementById('inpTable').value = '';
                 document.getElementById('inpCovers').value = '';
                 document.getElementById('inpOrderText').value = '';
                 document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: 0.00€`;
+                if(document.getElementById('cartCountBadge')) document.getElementById('cartCountBadge').style.display = 'none';
                 App.setPayment('cash');
                 alert("Εστάλη!");
             },
             
             setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
             cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText=t('send_order')||"ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
+            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText=t('send_order')||"ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; App.handleInput(); },
             prepareUpdateOrder: () => { 
                 document.getElementById('actionModal').style.display='none'; document.getElementById('myOrdersOverlay').style.display='none';
                 const o = App.allActiveOrders.find(x=>x.id===App.selectedOrderId); if(!o)return;
@@ -1064,16 +1108,21 @@
                     
                     if(confirm(`💰 Χρέωση ${total.toFixed(2)}€ σε εσένα (Μετρητά); \n\n(Πατήστε Cancel για Κάρτα/Απλό Κλείσιμο)`)) {
                         // Χρέωση στον σερβιτόρο
+                        App.justPaid = true; setTimeout(() => App.justPaid = false, 3000);
                         window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'cash' });
                     } else {
                         // Κάρτα ή Απλό κλείσιμο (δεν χρεώνεται ο σερβιτόρος)
                         if(confirm("Κλείσιμο ως Κάρτα/Τράπεζα;")) {
+                            App.justPaid = true; setTimeout(() => App.justPaid = false, 3000);
                             window.socket.emit('charge-order-to-staff', { orderId: App.selectedOrderId, staffName: userData.name, amount: total, method: 'card' });
                         }
                     }
                 } else {
                     // Old Logic
-                    if(confirm("Εξόφληση;")) window.socket.emit('pay-order', App.selectedOrderId); 
+                    if(confirm("Εξόφληση;")) {
+                        App.justPaid = true; setTimeout(() => App.justPaid = false, 3000);
+                        window.socket.emit('pay-order', App.selectedOrderId); 
+                    }
                 }
             },
             toggleMyOrders: () => { const el=document.getElementById('myOrdersOverlay'); if(el.style.display==='flex')el.style.display='none'; else { el.style.display='flex'; UI.filterOrders(); } },

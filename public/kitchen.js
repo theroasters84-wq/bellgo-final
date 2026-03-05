@@ -356,6 +356,10 @@ window.App = {
     },
     
     requestNotifyPermission: async () => {
+        // ✅ NEW: Disable on Laptop/Desktop
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (!isMobile) return;
+
         try {
             // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
             if (Notification.permission === 'default') {
@@ -377,6 +381,10 @@ window.App = {
     },
 
     checkNotificationPermission: () => {
+        // ✅ NEW: Disable on Laptop/Desktop
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (!isMobile) return;
+
         if (Notification.permission === 'default') {
             const div = document.createElement('div');
             div.id = 'notifPermRequest';
@@ -564,7 +572,12 @@ window.App = {
         });
 
         socket.on('ring-bell', (data) => {
-            if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+            // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
+            if(window.AudioEngine) {
+                window.AudioEngine.triggerAlarm(data ? data.source : null);
+            } else {
+                new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+            }
         });
 
         // ✅ NEW: Stop Alarm when someone else accepts
