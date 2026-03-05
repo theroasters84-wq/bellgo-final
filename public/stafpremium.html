@@ -96,7 +96,6 @@
                 <div class="panel-header-bar" onclick="App.toggleOrderPanel()">
                     <div style="font-size:12px; color:#aaa; margin-right:10px;" data-i18n="order_header">ΠΑΡΑΓΓΕΛΙΑ</div>
                     <span id="cartCountBadge" style="display:none; background:#00E676; color:black; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:5px;">0</span>
-                    <span id="cartCountBadge" style="display:none; background:#00E676; color:black; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold; margin-right:5px;">0</span>
                     <div id="panelIcon" class="toggle-icon">▲</div>
                 </div>
                 <div class="panel-content">
@@ -916,16 +915,14 @@
             handleInput: () => {
                 const text = document.getElementById('inpOrderText').value.trim();
                 const lines = text.split('\n');
-                let totalItems = 0;let total = 0;
-                
+                let total = 0;
                 let totalItems = 0;
                 
                 for (const line of lines) {
                     if (!line.trim()) continue;
                     let qty = 1; let rest = line;
-                                        const qtyMatch = line.match(/^(\d+)\s+(.*)/);
-                    totalItems += qty;
-
+                    const qtyMatch = line.match(/^(\d+)\s+(.*)/);
+                    
                     if(qtyMatch) { qty = parseInt(qtyMatch[1]); rest = qtyMatch[2]; }
                     
                     totalItems += qty;
@@ -933,12 +930,6 @@
                     if(rest.includes(':')) {
                         const parts = rest.split(':');
                         const priceVal = parseFloat(parts[parts.length-1]);
-                
-                const badge = document.getElementById('cartCountBadge');
-                if (badge) {
-                    badge.style.display = totalItems > 0 ? 'inline-block' : 'none';
-                    badge.innerText = totalItems;
-                }
                         if(!isNaN(priceVal)) { total += qty * priceVal; } 
                     }
                 }
@@ -972,14 +963,15 @@
                      // ✅ FIX: Χρήση add-items για ++ και Alarm στον Admin
                      window.socket.emit('add-items', { id: App.updatingOrderId, items: txt });
                      alert("Προστέθηκαν! ➕");
-                     App.cancelUpdate();;
-                if(document.getElementById('cartCountBadge')) document.getElementById('cartCountBadge').style.display = 'none'
+                     App.cancelUpdate();
+                     if(document.getElementById('cartCountBadge')) document.getElementById('cartCountBadge').style.display = 'none';
                      return;
                 }
                 if(!tbl || tbl.trim() === '') return alert("Παρακαλώ συμπληρώστε αριθμό τραπεζιού!");
                 if(!txt) return alert("Κενή παραγγελία");
                 const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
-                window.socket.emit('new-order', `${header}\n${txt}`);; App.handleInput()
+                window.socket.emit('new-order', `${header}\n${txt}`);
+                App.handleInput();
                 document.getElementById('inpTable').value = '';
                 document.getElementById('inpCovers').value = '';
                 document.getElementById('inpOrderText').value = '';
@@ -990,7 +982,6 @@
             },
             
             setPayment: (m) => { App.payMethod=m; document.getElementById('btnCash').className=m==='cash'?'pay-btn active':'pay-btn'; document.getElementById('btnCard').className=m==='card'?'pay-btn active':'pay-btn'; },
-            cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText=t('send_order')||"ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; },
             cancelUpdate: () => { App.updatingOrderId=null; document.getElementById('btnSendOrder').innerText=t('send_order')||"ΑΠΟΣΤΟΛΗ 🚀"; document.getElementById('btnSendOrder').classList.remove('update-mode'); document.getElementById('cancelUpdateBtn').style.display='none'; document.getElementById('inpTable').value=''; document.getElementById('inpCovers').value=''; document.getElementById('inpOrderText').value=''; App.handleInput(); },
             prepareUpdateOrder: () => { 
                 document.getElementById('actionModal').style.display='none'; document.getElementById('myOrdersOverlay').style.display='none';
