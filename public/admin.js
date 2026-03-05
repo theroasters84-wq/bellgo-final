@@ -625,6 +625,14 @@ export const Admin = {
 
     // --- DELIVERY ASSIGN ---
     openDeliveryAssignModal: (orderId) => {
+        // ✅ NEW: Έλεγχος αν είναι Delivery. Αν όχι (Τραπέζι/Pickup), κλείνει απευθείας.
+        const order = window.App.activeOrders.find(o => o.id == orderId);
+        if (order && !order.text.includes('[DELIVERY')) {
+            window.socket.emit('ready-order', orderId, true);
+            window.App.minimizeOrder(orderId);
+            return;
+        }
+
         const modal = document.getElementById('deliveryAssignModal');
         const list = document.getElementById('driverAssignList');
         list.innerHTML = '';

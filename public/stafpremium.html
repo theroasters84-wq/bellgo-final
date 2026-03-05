@@ -88,8 +88,8 @@
             </div>
         </div>
 
-        <div id="waiterPanel">
-            <div id="menuContainer">
+        <div id="waiterPanel" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div id="menuContainer" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:100px;">
                 </div>
 
             <div id="orderPanel" class="order-panel minimized">
@@ -589,7 +589,7 @@
                 const waiterPanel = document.getElementById('waiterPanel');
                 const myOrdersBtn = document.getElementById('btnMyOrders');
                 
-                if (waiterPanel) waiterPanel.style.display = hasOrdering ? 'block' : 'none';
+                if (waiterPanel) waiterPanel.style.display = hasOrdering ? 'flex' : 'none';
                 if (myOrdersBtn) myOrdersBtn.style.display = hasOrdering ? 'flex' : 'none';
 
                 // ✅ NEW: Payment Method Toggle (Visible if Ordering is active)
@@ -871,10 +871,10 @@
                 txt.scrollTop = txt.scrollHeight;
                 App.handleInput(); 
                 
-                const panel = document.getElementById('orderPanel');
-                if (panel.classList.contains('minimized')) {
-                    App.toggleOrderPanel();
-                }
+                // const panel = document.getElementById('orderPanel');
+                // if (panel.classList.contains('minimized')) {
+                //     App.toggleOrderPanel();
+                // }
             },
 
             toggleOrderPanel: () => {
