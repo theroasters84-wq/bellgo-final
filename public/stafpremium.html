@@ -638,7 +638,8 @@
                     document.getElementById('btnAllowNotif').onclick = async () => {
                         document.getElementById('notifPermRequest').remove();
                         await App.requestNotifyPermission();
-                    
+                    };
+                }
             },
 
             requestNotifyPermission: async () => {
