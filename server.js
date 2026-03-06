@@ -959,7 +959,6 @@ io.on('connection', (socket) => {
             }
 
             // Νέα Παραγγελία
-            const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
             // ✅ FIX: Auto-accept for Admin (No ringing, no accept button)
             let initialStatus = 'pending';
             let startTime = null;
