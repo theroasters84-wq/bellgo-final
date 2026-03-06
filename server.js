@@ -1226,6 +1226,13 @@ io.on('connection', (socket) => {
                      order.text += `\n[DRIVER: ${targetDriver}]`;
                 }
                 
+                // ✅ NEW: Socket Ring for Specific Driver (Immediate Alert)
+                const key = `${socket.store}_${targetDriver}`;
+                const t = activeUsers[key];
+                if (t && t.socketId) {
+                    io.to(t.socketId).emit('ring-bell', { source: "ΑΝΑΘΕΣΗ 🛵", location: "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ" });
+                }
+                
                 // Ειδοποίηση στον συγκεκριμένο οδηγό (Push Notification)
                 if (store.staffTokens && store.staffTokens[targetDriver]) {
                     const tokenData = store.staffTokens[targetDriver];
