@@ -299,8 +299,8 @@ window.App = {
             const driverMatch = order.text.match(/\[DRIVER:\s*(.+?)\]/);
             const assignedDriver = driverMatch ? driverMatch[1] : null;
 
-            // 2. Αν ανήκει σε ΑΛΛΟΝ διανομέα, την κρύβουμε
-            if (assignedDriver && assignedDriver !== userData.name) return;
+            // 2. Αν ΔΕΝ είναι ανατεθειμένη σε εμένα (είτε είναι σε άλλον, είτε σε κανέναν), την κρύβουμε
+            if (assignedDriver !== userData.name) return;
 
             const isReady = order.status === 'ready';
             const isPaid = order.text.includes('PAID');

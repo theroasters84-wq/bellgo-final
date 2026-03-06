@@ -289,12 +289,16 @@ module.exports = {
         }
     },
 
-    notifyAdmin(storeName, title, body, excludeSocketId = null, location = "", orderId = null, storesData, activeUsers, io, YOUR_DOMAIN, admin) {
+    notifyAdmin(storeName, title, body, excludeSocketId = null, location = "", orderId = null, storesData, activeUsers, io, YOUR_DOMAIN, admin, skipAdmins = false) {
         const store = storesData[storeName];
         if (!store) return;
 
         Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
             if (excludeSocketId && u.socketId === excludeSocketId) return;
+            
+            // ✅ NEW: Αν ζητήθηκε skipAdmins (π.χ. παραγγελία από Admin), μην χτυπάς στους άλλους Admin
+            if (skipAdmins && u.role === 'admin') return;
+
             u.isRinging = true;
             if (u.socketId) io.to(u.socketId).emit('ring-bell', { source: title, location: location });
         });
@@ -302,6 +306,9 @@ module.exports = {
         if (!store.staffTokens) store.staffTokens = {};
         Object.entries(store.staffTokens).forEach(([username, data]) => {
             if (data.role === 'admin' || data.role === 'kitchen') {
+                // ✅ NEW: Skip Admins if requested
+                if (skipAdmins && data.role === 'admin') return;
+
                 // ✅ FIX: Αν είναι Online (ανοιχτή οθόνη), μην στέλνεις Push
                 const key = `${storeName}_${username}`;
                 if (activeUsers[key] && activeUsers[key].status === 'online') return;

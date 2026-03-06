@@ -983,7 +983,7 @@ io.on('connection', (socket) => {
             if (orderText.includes('[PICKUP')) notifTitle = "NEO PICKUP 🛍️";
 
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, orderId, storesData, activeUsers, io, YOUR_DOMAIN, admin);
+            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, orderId, storesData, activeUsers, io, YOUR_DOMAIN, admin, skipAdmins);
         }
         
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -1147,7 +1147,8 @@ io.on('connection', (socket) => {
         store.wallets[targetWallet] += parseFloat(amount);
 
         // ✅ NEW: Ειδοποίηση του συγκεκριμένου υπαλλήλου/διανομέα ότι χρεώθηκε/πήρε την παραγγελία
-        if (staffName) {
+        // Μόνο αν δεν το έκανε ο ίδιος (για να μην χτυπάει όταν πατάει "Παραδόθηκε")
+        if (staffName && socket.username !== staffName) {
             const key = `${socket.store}_${staffName}`;
             const staffUser = activeUsers[key];
             if (staffUser && staffUser.socketId) {
