@@ -249,11 +249,9 @@ module.exports = {
 
             const msg = {
                 token: target.fcmToken,
-                notification: { title: title, body: body },
                 
                 android: { 
                     priority: "high", 
-                    notification: { channelId: "bellgo_alarm_channel" } 
                 },
                 webpush: { 
                     headers: { "Urgency": "high" }, 
@@ -274,6 +272,13 @@ module.exports = {
                 },
                 data: { type: "alarm", ...dataPayload, title: title, body: body, url: targetUrl }
             };
+
+            // ✅ NEW: Android Native Logic (Data Only for Background Wakeup)
+            if (!target.isNative) {
+                msg.notification = { title: title, body: body };
+                msg.android.notification = { channelId: "bellgo_alarm_channel" };
+            }
+
             admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
         }
     },
@@ -295,7 +300,7 @@ module.exports = {
                 const key = `${storeName}_${username}`;
                 if (activeUsers[key] && activeUsers[key].status === 'online') return;
 
-                this.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: location }, YOUR_DOMAIN, admin);
+                this.sendPushNotification({ fcmToken: data.token, role: data.role, isNative: data.isNative }, title, body, { type: "alarm", location: location }, YOUR_DOMAIN, admin);
             }
         });
     },

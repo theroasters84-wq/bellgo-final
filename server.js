@@ -725,7 +725,8 @@ io.on('connection', (socket) => {
             if (data.token || !existing) {
                 storesData[storeName].staffTokens[username] = { 
                     token: data.token || (existing ? existing.token : null), 
-                    role: socket.role 
+                    role: socket.role,
+                    isNative: data.isNative // ✅ NEW: Store Native Status
                 };
                 Logic.saveStoreToFirebase(storeName, db, storesData);
             }
@@ -959,6 +960,17 @@ io.on('connection', (socket) => {
 
             // Νέα Παραγγελία
             const newOrder = { id: orderId, text: orderText, from: socket.username, status: 'pending', store: socket.store };
+            // ✅ FIX: Auto-accept for Admin (No ringing, no accept button)
+            let initialStatus = 'pending';
+            let startTime = null;
+            if (socket.role === 'admin') {
+                initialStatus = 'cooking';
+                startTime = Date.now();
+            }
+
+            const newOrder = { id: orderId, text: orderText, from: socket.username, status: initialStatus, store: socket.store };
+            if (startTime) newOrder.startTime = startTime;
+
             store.orders.push(newOrder);
             console.log(`📦 New order in room ${socket.store} from ${socket.username} with ID: ${orderId}`);
             
@@ -1236,7 +1248,7 @@ io.on('connection', (socket) => {
                 // Ειδοποίηση στον συγκεκριμένο οδηγό (Push Notification)
                 if (store.staffTokens && store.staffTokens[targetDriver]) {
                     const tokenData = store.staffTokens[targetDriver];
-                    Logic.sendPushNotification({ fcmToken: tokenData.token, role: 'driver' }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Σου ανατέθηκε μια παραγγελία!", { type: "alarm" }, YOUR_DOMAIN, admin);
+                    Logic.sendPushNotification({ fcmToken: tokenData.token, role: 'driver', isNative: tokenData.isNative }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Σου ανατέθηκε μια παραγγελία!", { type: "alarm" }, YOUR_DOMAIN, admin);
                 }
 
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -1606,7 +1618,7 @@ io.on('connection', (socket) => {
         if (store && store.staffTokens && store.staffTokens[tName]) {
             const tokenData = store.staffTokens[tName];
             // ✅ FIX: Στέλνουμε ΠΑΝΤΑ Push για να είμαστε σίγουροι ότι θα χτυπήσει
-            Logic.sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, YOUR_DOMAIN, admin, 10);
+            Logic.sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role, isNative: tokenData.isNative }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, YOUR_DOMAIN, admin, 10);
         } 
     });
     
@@ -1653,7 +1665,7 @@ io.on('connection', (socket) => {
             const tokenData = storesData[socket.store].staffTokens[tUser];
             if (tokenData && tokenData.token) {
                  Logic.sendPushNotification(
-                     { fcmToken: tokenData.token, role: tokenData.role }, 
+                     { fcmToken: tokenData.token, role: tokenData.role, isNative: tokenData.isNative }, 
                      "LOGOUT", 
                      "Αποσύνδεση από διαχειριστή", 
                      { type: "logout" },
@@ -1781,7 +1793,7 @@ setInterval(() => {
                     if (store.staffTokens) {
                         Object.entries(store.staffTokens).forEach(([username, data]) => {
                             if (data.role === 'admin') {
-                                Logic.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
+                                Logic.sendPushNotification({ fcmToken: data.token, role: data.role, isNative: data.isNative }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
                             }
                         });
                     }
@@ -1797,7 +1809,7 @@ setInterval(() => {
                         if (store.staffTokens) {
                             Object.entries(store.staffTokens).forEach(([username, data]) => {
                                 if (data.role === 'waiter') {
-                                    Logic.sendPushNotification({ fcmToken: data.token, role: data.role }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
+                                    Logic.sendPushNotification({ fcmToken: data.token, role: data.role, isNative: data.isNative }, title, body, { type: "alarm", location: "Σε 1 ώρα" }, YOUR_DOMAIN, admin, 3600);
                                 }
                             });
                         }
