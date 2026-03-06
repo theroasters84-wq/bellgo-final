@@ -318,7 +318,7 @@ export const Admin = {
             if (u.role === 'admin' || u.role === 'customer') return;
 
             const staffDiv = document.createElement('div');
-            const isAway = u.status === 'away' || u.status === 'offline' || u.status === 'background';
+            const isAway = u.status === 'offline'; // ✅ Gray ONLY on connection loss (not background)
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';

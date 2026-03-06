@@ -1686,7 +1686,7 @@ io.on('connection', (socket) => {
         }
 
         if (user) { 
-            user.status = 'background'; // ✅ FIX: Άμεση μετάβαση σε background αν κλείσει η σύνδεση
+            user.status = 'offline'; // ✅ FIX: Set to offline on disconnect (Gray)
             Logic.updateStoreClients(user.store, io, storesData, activeUsers, db); 
         } 
     });
@@ -1696,7 +1696,7 @@ io.on('connection', (socket) => {
         if (activeUsers[key]) { 
             activeUsers[key].lastSeen = Date.now(); 
             // ✅ FIX: Recover 'online' status if falsely away (Ghosting fix)
-            if (activeUsers[key].status === 'away') { // ✅ FIX: Μην αλλάζεις το background σε online αυτόματα
+            if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline') { // ✅ FIX: Recover from offline too
                 activeUsers[key].status = 'online';
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
@@ -1833,6 +1833,19 @@ setInterval(() => {
         } 
     } 
 }, 1000); // ✅ SERVER LOOP: Check every second
+
+// ✅ NEW: HEARTBEAT CHECK LOOP (Detect Lost Connection)
+setInterval(() => {
+    const now = Date.now();
+    for (const key in activeUsers) {
+        const user = activeUsers[key];
+        // Αν δεν έχει δώσει στίγμα για 60 δευτερόλεπτα -> Offline (Gray)
+        if (user.status !== 'offline' && (now - user.lastSeen > 60000)) {
+            user.status = 'offline';
+            Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
+        }
+    }
+}, 10000);
 
 // ✅ NEW: REWARD CLAIM ENDPOINT
 app.post('/claim-reward', async (req, res) => {

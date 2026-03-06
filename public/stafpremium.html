@@ -680,7 +680,16 @@
             },
 
             unlockAudio: () => {
-                if(window.AudioEngine) window.AudioEngine.init();
+                if(window.AudioEngine) {
+                    window.AudioEngine.init();
+                    // ✅ WARM UP ALARM SOUND (Fix for iOS/Android)
+                    if(window.AudioEngine.alarmPlayer) {
+                        window.AudioEngine.alarmPlayer.play().then(() => {
+                            window.AudioEngine.alarmPlayer.pause();
+                            window.AudioEngine.alarmPlayer.currentTime = 0;
+                        }).catch(e => console.log("Warmup error", e));
+                    }
+                }
                 document.getElementById('startScreen').style.display = 'none';
             },
 
@@ -726,6 +735,14 @@
                     if(data && data.source) bell.innerText = `🔔 ${data.source}`; else bell.innerText = "🔔";
                     bell.classList.add('ringing');
                     // No Overlay
+                });
+
+                // ✅ NEW: Stop Bell Listener (Sync with Admin)
+                socket.on('stop-bell', () => {
+                    if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                    const bell = document.getElementById('staffBellBtn');
+                    bell.style.display = 'none';
+                    bell.classList.remove('ringing');
                 });
 
                 socket.on('store-settings-update', (settings) => {
