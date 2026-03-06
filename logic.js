@@ -90,7 +90,11 @@ module.exports = {
             const lower = u.username.toLowerCase();
             if (!seenUsers.has(lower)) {
                 seenUsers.add(lower);
-                list.push({ name: u.username, username: u.username, role: u.role, status: u.status, isRinging: u.isRinging });
+                list.push({ 
+                    name: u.username, username: u.username, role: u.role, status: u.status, 
+                    isRinging: u.isRinging, isAndroid: u.isAndroid,
+                    secondsSinceSeen: (Date.now() - u.lastSeen) / 1000 
+                });
             }
         });
 

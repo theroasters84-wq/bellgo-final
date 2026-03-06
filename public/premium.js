@@ -348,7 +348,8 @@ window.App = {
                 username: userData.name, 
                 role: userData.role, 
                 token: localStorage.getItem('fcm_token'), 
-                isNative: isNative 
+                isNative: isNative,
+                isAndroid: /android/i.test(navigator.userAgent)
             });
 
             // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
@@ -362,7 +363,7 @@ window.App = {
 
         // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
         if(socket.connected) {
-            socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+            socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, isAndroid: /android/i.test(navigator.userAgent) });
         }
 
         socket.on('disconnect', () => { 

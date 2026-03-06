@@ -318,7 +318,8 @@ export const Admin = {
             if (u.role === 'admin' || u.role === 'customer') return;
 
             const staffDiv = document.createElement('div');
-            const isAway = u.status === 'offline'; // ✅ Gray ONLY on connection loss (not background)
+            // ✅ FIX: Γίνεται γκρι αν είναι offline. Για Android δίνουμε 60'' περιθώριο (για να μην αναβοσβήνει στο background)
+            const isAway = u.status === 'offline' && (!u.isAndroid || u.secondsSinceSeen > 60);
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';

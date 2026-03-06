@@ -1670,7 +1670,8 @@ window.App = {
 
             const staffDiv = document.createElement('div');
             // ✅ FIX: Χειρισμός Offline χρηστών (εμφάνιση ως Ghost/Away)
-            const isAway = u.status === 'away' || u.status === 'offline';
+            // Android: Γίνεται γκρι μόνο μετά από 60'' σιγής
+            const isAway = (u.status === 'away' || u.status === 'offline') && (!u.isAndroid || u.secondsSinceSeen > 60);
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';
