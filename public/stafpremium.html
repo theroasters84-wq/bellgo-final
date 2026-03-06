@@ -728,7 +728,28 @@
                         window.AudioEngine.isRinging = false; // ✅ Force reset to ensure play
                         window.AudioEngine.triggerAlarm(data ? data.source : null);
                     } else {
-                        new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+                        // ✅ FIX: Try file, fallback to Synth if missing
+                        const audio = new Audio('/alert.mp3');
+                        audio.play().catch(e => {
+                            console.error("Audio Play Error (Using Synth):", e);
+                            try {
+                                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                                if (AudioContext) {
+                                    const ctx = new AudioContext();
+                                    const osc = ctx.createOscillator();
+                                    const gain = ctx.createGain();
+                                    osc.type = 'square';
+                                    osc.frequency.setValueAtTime(600, ctx.currentTime);
+                                    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                                    osc.connect(gain);
+                                    gain.connect(ctx.destination);
+                                    osc.start();
+                                    osc.stop(ctx.currentTime + 0.5);
+                                }
+                            } catch(err){}
+                        });
+                        if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 2000]);
                     }
                     const bell = document.getElementById('staffBellBtn');
                     bell.style.display = 'flex';
