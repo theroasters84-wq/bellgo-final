@@ -45,7 +45,20 @@ window.App = {
         App.applyFeatureVisibility();
         App.requestNotifyPermission();
         
-        // ✅ heckSoftPosReturn();
+        // ✅ NEW: Start Shift Screen (Audio Unlock)
+        if (!document.getElementById('startScreen')) {
+            const div = document.createElement('div');
+            div.id = 'startScreen';
+            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:#121212; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;";
+            div.innerHTML = `
+                <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Driver 🛵</h1>
+                <button id="btnStartShift" style="background:#00E676; color:black; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:30px; cursor:pointer;">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+            `;
+            document.body.appendChild(div);
+            document.getElementById('btnStartShift').onclick = () => App.unlockAudio();
+        }
+        
+        App.checkSoftPosReturn();
 
         if(window.KeepAlive) window.KeepAlive.init();
     },
@@ -180,7 +193,28 @@ window.App = {
                 window.AudioEngine.isRinging = false; // ✅ Force reset to ensure play
                 window.AudioEngine.triggerAlarm(data ? data.source : null);
             } else {
-                new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+                // ✅ FIX: Try file, fallback to Synth if missing
+                const audio = new Audio('/alert.mp3');
+                audio.play().catch(e => {
+                    console.error("Audio Play Error (Using Synth):", e);
+                    try {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContext) {
+                            const ctx = new AudioContext();
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'square';
+                            osc.frequency.setValueAtTime(600, ctx.currentTime);
+                            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start();
+                            osc.stop(ctx.currentTime + 0.5);
+                        }
+                    } catch(err){}
+                });
+                if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 2000]);
             }
             
             // Εμφάνιση κουμπιού
@@ -203,7 +237,12 @@ window.App = {
 
         // ✅ NEW: DELIVERY OFFER (BROADCAST)
         socket.on('delivery-offer', (data) => {
-            if(window.AudioEngine) window.AudioEngine.triggerAlarm("ΝΕΑ ΔΙΑΝΟΜΗ");
+            if(window.AudioEngine) {
+                window.AudioEngine.triggerAlarm("ΝΕΑ ΔΙΑΝΟΜΗ");
+            } else {
+                new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+                if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 2000]);
+            }
             
             const modal = document.getElementById('offerModal');
             const btn = document.getElementById('btnAcceptOffer');

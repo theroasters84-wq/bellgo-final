@@ -12,6 +12,8 @@ const AudioEngine = {
     isRinging: false,
     wakeLock: null,
     vibInt: null,
+    useSynth: false, // ✅ Flag for fallback
+    synthInterval: null, // ✅ Interval for synth loop
 
     async init() {
         console.log("🔊 AudioEngine: DUAL PLAYER STRATEGY");
@@ -33,6 +35,13 @@ const AudioEngine = {
             this.alarmPlayer.src = "/alert.mp3"; 
             this.alarmPlayer.loop = true;
             this.alarmPlayer.volume = 1.0;
+            
+            // ✅ NEW: Detect missing file -> Switch to Synth
+            this.alarmPlayer.onerror = () => {
+                console.warn("⚠️ alert.mp3 missing! Switching to Synth.");
+                this.useSynth = true;
+            };
+            
             document.body.appendChild(this.alarmPlayer);
         }
 
@@ -87,11 +96,18 @@ const AudioEngine = {
         // 1. Αλλάζουμε τα γράμματα στην μπάρα
         this.updateDisplay("alarm");
 
-        // 2. Ξεκινάμε τον ΘΟΡΥΒΟ
-        this.alarmPlayer.currentTime = 0;
-        try {
-            await this.alarmPlayer.play();
-        } catch(e) { console.error("Audio Play Error:", e); }
+        // 2. Ξεκινάμε τον ΘΟΡΥΒΟ (File or Synth)
+        if (this.useSynth) {
+            this.startSynthLoop();
+        } else {
+            this.alarmPlayer.currentTime = 0;
+            try {
+                await this.alarmPlayer.play();
+            } catch(e) { 
+                console.error("Audio Play Error:", e); 
+                this.startSynthLoop(); // Fallback if play fails
+            }
+        }
 
         // 3. UI Overlay (Αν υπάρχει στο HTML)
         const overlay = document.getElementById('alarmOverlay');
@@ -114,8 +130,11 @@ const AudioEngine = {
         console.log("✅ ALARM STOPPED (Audio Engine)");
 
         // 1. Σταματάμε ΜΟΝΟ τον θόρυβο
-        this.alarmPlayer.pause();
-        this.alarmPlayer.currentTime = 0;
+        if (this.alarmPlayer) {
+            this.alarmPlayer.pause();
+            this.alarmPlayer.currentTime = 0;
+        }
+        this.stopSynthLoop(); // ✅ Stop Synth
 
         // 2. Επαναφέρουμε τα γράμματα
         this.updateDisplay("online");
@@ -187,6 +206,43 @@ const AudioEngine = {
                 };
             } catch (e) {}
         }
+    },
+
+    // ✅ NEW: SYNTHESIZER FUNCTIONS (No File Needed)
+    startSynthLoop() {
+        if (this.synthInterval) return;
+        this.playBeep();
+        this.synthInterval = setInterval(() => this.playBeep(), 1000);
+    },
+
+    stopSynthLoop() {
+        if (this.synthInterval) {
+            clearInterval(this.synthInterval);
+            this.synthInterval = null;
+        }
+    },
+
+    playBeep() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(600, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.1);
+            
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) {}
     }
 };
 
