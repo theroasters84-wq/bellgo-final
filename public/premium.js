@@ -562,6 +562,19 @@ window.App = {
             App.isInitialized = true; // Mark as initialized after first batch
             App.activeOrders = orders;
             App.renderDesktopIcons(orders);
+
+            // ✅ NEW: Auto-Open Order from URL (Notification Click)
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderIdParam = urlParams.get('orderId');
+            if (orderIdParam) {
+                const targetOrder = orders.find(o => o.id == orderIdParam);
+                if (targetOrder) {
+                    // Open window after a slight delay to ensure UI is ready
+                    setTimeout(() => App.openOrderWindow(targetOrder), 500);
+                    // Clear URL to prevent re-opening on refresh
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
         });
 
         // ✅ NEW: Listen for Quick Order Print (PASO)
@@ -922,7 +935,8 @@ window.App = {
         let finalBody = txt;
         
         // ✅ NEW: Get Payment Method Declaration
-        const payMethod = document.getElementById('sidebarPaymentMethod').value;
+        const payMethodEl = document.getElementById('sidebarPaymentMethod');
+        const payMethod = payMethodEl ? payMethodEl.value : '';
 
         if (App.sidebarMode === 'paso') {
             header = "[PASO]";

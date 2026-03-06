@@ -243,6 +243,12 @@ module.exports = {
         if (target && target.fcmToken) { 
             let targetUrl = "/stafpremium.html";
             if (target.role === 'admin') targetUrl = "/premium.html";
+            
+            // ✅ NEW: Append Order ID if available (for auto-open)
+            if (dataPayload.orderId && target.role === 'admin') {
+                targetUrl += `?orderId=${dataPayload.orderId}`;
+            }
+
             if (target.role === 'customer') {
                 targetUrl = target.store ? `/shop/${encodeURIComponent(target.store)}/` : "/order.html";
             }
@@ -283,7 +289,7 @@ module.exports = {
         }
     },
 
-    notifyAdmin(storeName, title, body, excludeSocketId = null, location = "", storesData, activeUsers, io, YOUR_DOMAIN, admin) {
+    notifyAdmin(storeName, title, body, excludeSocketId = null, location = "", orderId = null, storesData, activeUsers, io, YOUR_DOMAIN, admin) {
         const store = storesData[storeName];
         if (!store) return;
 
@@ -300,7 +306,7 @@ module.exports = {
                 const key = `${storeName}_${username}`;
                 if (activeUsers[key] && activeUsers[key].status === 'online') return;
 
-                this.sendPushNotification({ fcmToken: data.token, role: data.role, isNative: data.isNative }, title, body, { type: "alarm", location: location }, YOUR_DOMAIN, admin);
+                this.sendPushNotification({ fcmToken: data.token, role: data.role, isNative: data.isNative }, title, body, { type: "alarm", location: location, orderId: orderId }, YOUR_DOMAIN, admin);
             }
         });
     },

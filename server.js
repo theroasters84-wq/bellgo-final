@@ -983,7 +983,7 @@ io.on('connection', (socket) => {
             if (orderText.includes('[PICKUP')) notifTitle = "NEO PICKUP 🛍️";
 
             // Ειδοποίηση Admin για Νέα Παραγγελία
-            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, storesData, activeUsers, io, YOUR_DOMAIN, admin);
+            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, orderId, storesData, activeUsers, io, YOUR_DOMAIN, admin);
         }
         
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -1011,7 +1011,7 @@ io.on('connection', (socket) => {
             console.log(`➕ Items added to order ${id} by ${socket.username}`);
             
             // Ειδοποίηση Admin (Συναγερμός)
-            Logic.notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
+            Logic.notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`, null, "", id, storesData, activeUsers, io, YOUR_DOMAIN, admin);
             
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
@@ -1443,7 +1443,7 @@ io.on('connection', (socket) => {
         Logic.saveStoreToFirebase(socket.store, db, storesData);
         
         socket.emit('reservation-result', { success: true, reservationId: newRes.id }); // ✅ Send ID back
-        Logic.notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ (ΑΝΑΜΟΝΗ) 📅", `${name} (${pax} άτ.)\n${date} ${time}`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
+        Logic.notifyAdmin(socket.store, "ΝΕΑ ΚΡΑΤΗΣΗ (ΑΝΑΜΟΝΗ) 📅", `${name} (${pax} άτ.)\n${date} ${time}`, null, "", null, storesData, activeUsers, io, YOUR_DOMAIN, admin);
         io.to(socket.store).emit('reservations-update', store.reservations);
     });
 
@@ -1509,7 +1509,7 @@ io.on('connection', (socket) => {
         if(store && store.reservations) {
             const r = store.reservations.find(x => x.id === id);
             if(r) {
-                Logic.notifyAdmin(socket.store, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Ο πελάτης ${r.name} ακύρωσε την κράτηση (${r.date} ${r.time}).`, null, "", storesData, activeUsers, io, YOUR_DOMAIN, admin);
+                Logic.notifyAdmin(socket.store, "ΑΚΥΡΩΣΗ ΚΡΑΤΗΣΗΣ ❌", `Ο πελάτης ${r.name} ακύρωσε την κράτηση (${r.date} ${r.time}).`, null, "", null, storesData, activeUsers, io, YOUR_DOMAIN, admin);
                 store.reservations = store.reservations.filter(x => x.id !== id);
                 Logic.saveStoreToFirebase(socket.store, db, storesData);
                 io.to(socket.store).emit('reservations-update', store.reservations);
@@ -1832,8 +1832,8 @@ setInterval(() => {
             // ✅ FIX: Αν είναι Online (ανοιχτή οθόνη), μην στέλνεις Push (ενοχλεί)
             if (user.status === 'online') continue;
 
-            // ✅ LOGIC: 3s for Background/Away (Urgent)
-            const interval = 3000;
+            // ✅ LOGIC: 15s for Background/Away (Less Spam, rely on SW Loop)
+            const interval = 15000;
             
             if (!user.lastPushTime || (now - user.lastPushTime >= interval)) {
                 user.lastPushTime = now;
