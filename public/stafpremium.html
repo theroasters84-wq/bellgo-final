@@ -725,6 +725,7 @@
                     }
                     // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
                     if(window.AudioEngine) {
+                        window.AudioEngine.isRinging = false; // ✅ Force reset to ensure play
                         window.AudioEngine.triggerAlarm(data ? data.source : null);
                     } else {
                         new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
@@ -1155,7 +1156,7 @@
                 .catch(err => console.log('❌ Staff SW Error:', err));
         }
     </script>
-    <script src="player.js"></script>
-    <script src="keepalive.js"></script>
+    <script src="/player.js"></script>
+    <script src="/keepalive.js"></script>
 </body>
 </html>

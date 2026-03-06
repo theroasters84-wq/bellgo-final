@@ -45,25 +45,24 @@ window.App = {
         App.applyFeatureVisibility();
         App.requestNotifyPermission();
         
-        // ✅ Ενεργοποίηση Audio Engine (Silent Tone) με το πρώτο κλικ
-        // Αυτό παίζει το 'tone19hz.wav' για να κρατάει το κινητό ξύπνιο
-        document.body.addEventListener('click', () => { 
-            if(window.AudioEngine) {
-                window.AudioEngine.init();
-                // ✅ WARM UP ALARM SOUND (Fix for iOS/Android)
-                if(window.AudioEngine.alarmPlayer) {
-                    window.AudioEngine.alarmPlayer.play().then(() => {
-                        window.AudioEngine.alarmPlayer.pause();
-                        window.AudioEngine.alarmPlayer.currentTime = 0;
-                    }).catch(e => console.log("Warmup error", e));
-                }
-            }
-        }, {once:true});
-        
-        // ✅ Check SoftPOS Return
-        App.checkSoftPosReturn();
+        // ✅ heckSoftPosReturn();
 
         if(window.KeepAlive) window.KeepAlive.init();
+    },
+
+    unlockAudio: () => {
+        if(window.AudioEngine) {
+            window.AudioEngine.init();
+            // ✅ WARM UP ALARM SOUND (Fix for iOS/Android)
+            if(window.AudioEngine.alarmPlayer) {
+                window.AudioEngine.alarmPlayer.play().then(() => {
+                    window.AudioEngine.alarmPlayer.pause();
+                    window.AudioEngine.alarmPlayer.currentTime = 0;
+                }).catch(e => console.log("Warmup error", e));
+            }
+        }
+        const sc = document.getElementById('startScreen');
+        if(sc) sc.style.display = 'none';
     },
 
     // ✅ NEW: Feature Check Logic
@@ -178,6 +177,7 @@ window.App = {
         socket.on('ring-bell', (data) => {
             // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
             if(window.AudioEngine) {
+                window.AudioEngine.isRinging = false; // ✅ Force reset to ensure play
                 window.AudioEngine.triggerAlarm(data ? data.source : null);
             } else {
                 new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
