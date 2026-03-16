@@ -108,7 +108,7 @@ const BellGoBot = {
             if(isIos) {
                 title = "🍎 Guided Access (iPhone)";
                 instructions = `
-                    <ol style="text-align:left; color:#ccc; line-height:1.6; font-size:14px; padding-left:20px;">
+                    <ol style="text-align:left; color:#6b7280; line-height:1.6; font-size:14px; padding-left:20px;">
                         <li>Πήγαινε <b>Settings > Accessibility > Guided Access</b> και ενεργοποίησέ το.</li>
                         <li>Γύρνα εδώ και πάτα <b>3 φορές</b> γρήγορα το πλαϊνό κουμπί (Power).</li>
                         <li>Πάτα <b>Start</b> (πάνω δεξιά).</li>
@@ -116,23 +116,23 @@ const BellGoBot = {
             } else {
                 title = "🤖 App Pinning (Android)";
                 instructions = `
-                    <ol style="text-align:left; color:#ccc; line-height:1.6; font-size:14px; padding-left:20px;">
+                    <ol style="text-align:left; color:#6b7280; line-height:1.6; font-size:14px; padding-left:20px;">
                         <li>Πήγαινε <b>Ρυθμίσεις > Ασφάλεια > Καρφίτσωμα (App Pinning)</b> και ενεργοποίησέ το.</li>
                         <li>Άνοιξε τις <b>Πρόσφατες Εφαρμογές</b> (Τετράγωνο ή Swipe Up).</li>
                         <li>Πάτα το εικονίδιο της εφαρμογής (πάνω μέρος) και επίλεξε <b>Καρφίτσωμα (Pin)</b>.</li>
                     </ol>`;
             }
 
-            box.innerHTML = `
+            innerBox.innerHTML = `
                 <div style="font-size:50px; margin-bottom:10px;">🔒</div>
-                <h2 style="color:#FFD700; margin:0 0 10px 0;">Κλείδωμα Εφαρμογής</h2>
-                <p style="color:white; font-size:14px;">Για να μην κλείνει κατά λάθος, πρέπει να την "καρφιτσώσεις":</p>
-                <div style="background:#222; padding:15px; border-radius:15px; margin-bottom:20px; border:1px solid #444; text-align:left;">
+                <h2 style="color:#10B981; margin:0 0 10px 0;">Κλείδωμα Εφαρμογής</h2>
+                <p style="color:#1f2937; font-size:14px;">Για να μην κλείνει κατά λάθος, πρέπει να την "καρφιτσώσεις":</p>
+                <div style="background:#f9fafb; padding:15px; border-radius:15px; margin-bottom:20px; border:1px solid #e5e7eb; text-align:left;">
                     <h4 style="color:#2196F3; margin:0 0 10px 0;">${title}</h4>
                     ${instructions}
                 </div>
                 <button onclick="BellGoBot.finish()" style="background:#2196F3; color:white; padding:12px 30px; border:none; border-radius:30px; font-weight:bold; font-size:16px; cursor:pointer;">ΤΟ ΕΚΑΝΑ ✅</button>
-                <button onclick="BellGoBot.finish()" style="background:none; border:none; color:#777; margin-top:15px; cursor:pointer; font-size:12px;">Κλείσιμο</button>
+                <button onclick="BellGoBot.finish()" style="background:none; border:none; color:#6b7280; margin-top:15px; cursor:pointer; font-size:12px; font-weight:bold;">Κλείσιμο</button>
             `;
         }
     },
@@ -171,17 +171,17 @@ const DNDBot = {
         if(document.getElementById('dndBotOverlay')) return;
         const div = document.createElement('div');
         div.id = 'dndBotOverlay';
-        div.className = 'bot-overlay';
+        div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;";
         div.innerHTML = `
-            <div class="bot-box">
+            <div class="bot-box" style="background:#ffffff; color:#1f2937; border-radius:20px; padding:30px; box-shadow:0 10px 30px rgba(0,0,0,0.1); width:100%; max-width:350px; text-align:center;">
                 <div class="bot-icon">🤖</div>
-                <div class="bot-title">BellGo Bot</div>
-                <div class="bot-text">
+                <div class="bot-title" style="color:#10B981; font-size:22px; font-weight:bold; margin-bottom:10px;">BellGo Bot</div>
+                <div class="bot-text" style="color:#6b7280; margin-bottom:20px; font-size:14px;">
                     Γεια! Είμαι ο βοηθός σου.<br><br>
                     Για να μη χάνεις παραγγελίες, πρέπει να ρυθμίσουμε το κινητό να χτυπάει <b>ΔΥΝΑΤΑ</b> ακόμα και στο <b>ΑΘΟΡΥΒΟ</b>.
                 </div>
-                <button class="bot-btn" onclick="DNDBot.step1()">Ξεκίνα Ρύθμιση 🚀</button>
-                <button class="bot-skip" onclick="DNDBot.skip()">Όχι τώρα</button>
+                <button class="bot-btn" style="background:#10B981; color:white; border:none; padding:12px 20px; border-radius:30px; font-weight:bold; width:100%; margin-bottom:10px; cursor:pointer;" onclick="DNDBot.step1()">Ξεκίνα Ρύθμιση 🚀</button>
+                <button class="bot-skip" style="background:none; border:none; color:#6b7280; cursor:pointer; font-size:14px; text-decoration:underline;" onclick="DNDBot.skip()">Όχι τώρα</button>
             </div>
         `;
         document.body.appendChild(div);
@@ -193,27 +193,27 @@ const DNDBot = {
         });
     },
     step2: () => {
-        const box = document.querySelector('#dndBotOverlay .bot-box');
+        const box = document.querySelector('#dndBotOverlay > div');
         box.innerHTML = `
             <div class="bot-icon">📢</div>
-            <div class="bot-title">Δημιουργία Καναλιού</div>
-            <div class="bot-text">Θα στείλω τώρα μια δοκιμαστική ειδοποίηση για να εμφανιστεί η ρύθμιση στο κινητό σου.</div>
-            <button class="bot-btn" onclick="DNDBot.step3()">Στείλε Δοκιμή 🔔</button>
+            <div class="bot-title" style="color:#2196F3; font-size:22px; font-weight:bold; margin-bottom:10px;">Δημιουργία Καναλιού</div>
+            <div class="bot-text" style="color:#6b7280; margin-bottom:20px; font-size:14px;">Θα στείλω τώρα μια δοκιμαστική ειδοποίηση για να εμφανιστεί η ρύθμιση στο κινητό σου.</div>
+            <button class="bot-btn" style="background:#2196F3; color:white; border:none; padding:12px 20px; border-radius:30px; font-weight:bold; width:100%; cursor:pointer;" onclick="DNDBot.step3()">Στείλε Δοκιμή 🔔</button>
         `;
     },
     step3: () => {
         const userData = JSON.parse(localStorage.getItem('bellgo_session') || '{}');
         if(window.socket) window.socket.emit('trigger-alarm', { target: userData.name || 'User', source: 'BellGo Setup' });
-        const box = document.querySelector('#dndBotOverlay .bot-box');
+        const box = document.querySelector('#dndBotOverlay > div');
         box.innerHTML = `
             <div class="bot-icon">⚙️</div>
-            <div class="bot-title">Τελικό Βήμα</div>
-            <div class="bot-text" style="font-size:14px; text-align:left;">
+            <div class="bot-title" style="color:#10B981; font-size:22px; font-weight:bold; margin-bottom:10px;">Τελικό Βήμα</div>
+            <div class="bot-text" style="font-size:14px; text-align:left; color:#1f2937; margin-bottom:20px;">
                 1. Μόλις έρθει η ειδοποίηση, πήγαινε:<br><b>Ρυθμίσεις > Εφαρμογές > Chrome > Ειδοποιήσεις</b><br>
                 2. Βρες το <b>"bellgo_alarm_channel"</b>.<br>
                 3. Ενεργοποίησε: <b>"Παράκαμψη Μην Ενοχλείτε"</b> (Override Do Not Disturb).
             </div>
-            <button class="bot-btn" onclick="DNDBot.finish()">Το Έκανα! ✅</button>
+            <button class="bot-btn" style="background:#10B981; color:white; border:none; padding:12px 20px; border-radius:30px; font-weight:bold; width:100%; cursor:pointer;" onclick="DNDBot.finish()">Το Έκανα! ✅</button>
         `;
     },
     finish: () => {

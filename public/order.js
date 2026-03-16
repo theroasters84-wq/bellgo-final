@@ -586,12 +586,12 @@ window.App = {
         if (Notification.permission === 'default') {
             const div = document.createElement('div');
             div.id = 'notifPermRequest';
-            div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#222; border-top:2px solid #FFD700; padding:20px; z-index:10000; text-align:center; box-shadow:0 -5px 20px rgba(0,0,0,0.5);";
+            div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#ffffff; border-top:1px solid #e5e7eb; padding:20px; z-index:10000; text-align:center; box-shadow:0 -10px 30px rgba(0,0,0,0.1); border-radius:20px 20px 0 0;";
             div.innerHTML = `
-                <div style="color:white; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 ${t('enable_notifications_title') || 'Ενεργοποίηση Ειδοποιήσεων'}</div>
-                <div style="color:#ccc; font-size:12px; margin-bottom:15px;">${t('enable_notifications_desc') || 'Για να ενημερωθείτε όταν έρθει η παραγγελία σας!'}</div>
-                <button id="btnAllowNotif" style="background:#00E676; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer;">${t('enable_btn') || 'ΕΝΕΡΓΟΠΟΙΗΣΗ'}</button>
-                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#777; margin-left:10px; cursor:pointer;">${t('not_now') || 'Όχι τώρα'}</button>
+                <div style="color:#1f2937; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 ${t('enable_notifications_title') || 'Ενεργοποίηση Ειδοποιήσεων'}</div>
+                <div style="color:#6b7280; font-size:12px; margin-bottom:15px;">${t('enable_notifications_desc') || 'Για να ενημερωθείτε όταν έρθει η παραγγελία σας!'}</div>
+                <button id="btnAllowNotif" style="background:#10B981; color:white; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">${t('enable_btn') || 'ΕΝΕΡΓΟΠΟΙΗΣΗ'}</button>
+                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#6b7280; margin-left:10px; cursor:pointer; font-weight:bold;">${t('not_now') || 'Όχι τώρα'}</button>
             `;
             document.body.appendChild(div);
             
@@ -1181,19 +1181,19 @@ window.App = {
 
         activeList.forEach(r => {
             const div = document.createElement('div');
-            div.style.cssText = "background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;";
+            div.style.cssText = "background:#ffffff; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #e5e7eb; box-shadow:0 2px 5px rgba(0,0,0,0.05);";
             
-            let statusColor = '#FF9800'; // Pending
+            let statusColor = '#F59E0B'; // Pending
             let statusText = 'ΑΝΑΜΟΝΗ';
-            if (r.status === 'confirmed') { statusColor = '#00E676'; statusText = 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
+            if (r.status === 'confirmed') { statusColor = '#10B981'; statusText = 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <span style="font-weight:bold; color:white;">${r.date} - ${r.time}</span>
-                    <span style="font-size:10px; padding:2px 5px; border-radius:4px; background:${statusColor}; color:black; font-weight:bold;">${statusText}</span>
+                    <span style="font-weight:bold; color:#1f2937;">${r.date} - ${r.time}</span>
+                    <span style="font-size:10px; padding:2px 5px; border-radius:4px; background:${statusColor}; color:white; font-weight:bold;">${statusText}</span>
                 </div>
-                <div style="color:#ccc; font-size:14px;">${r.pax} Άτομα • ${r.name}</div>
-                <button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#D32F2F; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+                <div style="color:#6b7280; font-size:14px;">${r.pax} Άτομα • ${r.name}</div>
+                <button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#EF4444; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold;">ΑΚΥΡΩΣΗ</button>
             `;
             container.appendChild(div);
         });

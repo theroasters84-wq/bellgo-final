@@ -384,6 +384,15 @@ export const Admin = {
 
         secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
 
+        // ✅ NEW: E-Invoicing Button (Moved up)
+        const btnEinv = document.createElement('button');
+        btnEinv.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+        btnEinv.innerHTML = "🔌 E-INVOICING (myDATA)";
+        btnEinv.onclick = () => {
+            if (window.Apodiksh) window.Apodiksh.openSettings();
+        };
+        secDiv.appendChild(btnEinv);
+
         // 1. Change Login PIN (All Subscriptions)
         const btnPin = document.createElement('button');
         btnPin.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
@@ -393,15 +402,6 @@ export const Admin = {
             Admin.openPinModal();
         };
         secDiv.appendChild(btnPin);
-
-        // ✅ NEW: E-Invoicing Button (Moved here)
-        const btnEinv = document.createElement('button');
-        btnEinv.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
-        btnEinv.innerHTML = "🔌 E-INVOICING (myDATA)";
-        btnEinv.onclick = () => {
-            if (window.Apodiksh) window.Apodiksh.openSettings();
-        };
-        secDiv.appendChild(btnEinv);
 
         // 2. Change Admin Password (Subscription 2, 3, 4, 5)
         const hasManager = window.App.hasFeature('pack_manager');
@@ -623,70 +623,6 @@ export const Admin = {
         const win = window.open('', '', 'width=800,height=600');
         win.document.write(`<html><head><title>Print QR</title><style>body{font-family:sans-serif;} .grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:20px;} @media print { .grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; } div { page-break-inside: avoid; } }</style></head><body><div class="grid">${content}</div><script>window.print();window.close();<\/script></body></html>`);
     },
-
-    // --- DELIVERY ASSIGN ---
-    openDeliveryAssignModal: (orderId) => {
-        // ✅ NEW: Έλεγχος αν είναι Delivery. Αν όχι (Τραπέζι/Pickup), κλείνει απευθείας.
-        const order = window.App.activeOrders.find(o => o.id == orderId);
-        if (order && !order.text.includes('[DELIVERY')) {
-            window.socket.emit('ready-order', orderId, true);
-            window.App.minimizeOrder(orderId);
-            return;
-        }
-
-        const modal = document.getElementById('deliveryAssignModal');
-        const list = document.getElementById('driverAssignList');
-        list.innerHTML = '';
-        const btnAll = document.createElement('button');
-        btnAll.className = 'modal-btn';
-        btnAll.style.background = '#FFD700';
-        btnAll.style.color = 'black';
-        btnAll.innerHTML = '🔊 ΟΛΟΙ (Broadcast)';
-        btnAll.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: 'ALL' }); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
-        list.appendChild(btnAll);
-        window.App.lastStaffList.forEach(u => {
-            if (u.role === 'driver') {
-                const btn = document.createElement('button');
-                btn.className = 'modal-btn';
-                btn.style.background = '#333';
-                btn.innerHTML = `🛵 ${u.username}`;
-                btn.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username }); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
-                list.appendChild(btn);
-            }
-        });
-        const btnSilent = document.createElement('button');
-        btnSilent.className = 'modal-btn';
-        btnSilent.style.background = '#607D8B';
-        btnSilent.style.color = 'white';
-        btnSilent.innerHTML = '🔕 ΕΤΟΙΜΟ (ΧΩΡΙΣ ΚΛΗΣΗ)';
-        btnSilent.onclick = () => { window.socket.emit('ready-order', orderId, true); modal.style.display = 'none'; window.App.minimizeOrder(orderId); };
-        list.appendChild(btnSilent);
-        modal.style.display = 'flex';
-    },
-
-    // --- TREATS ---
-    showTreatOptions: (id) => {
-        const order = window.App.activeOrders.find(o => o.id == id);
-        if (!order) return;
-        const win = document.getElementById(`win-${id}`);
-        const body = win.querySelector('.win-body');
-        const footer = win.querySelector('.win-footer');
-        let itemsHtml = '<div style="margin-bottom:10px; color:#aaa;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
-        const lines = order.text.split('\n');
-        lines.forEach((line, idx) => {
-            if (!line.trim() || line.startsWith('[')) return;
-            if (line.includes(':') && !line.includes(':0')) {
-                itemsHtml += `<button onclick="App.treatItem('${id}', ${idx})" style="width:100%; padding:10px; margin-bottom:5px; background:#333; color:white; border:1px solid #555; border-radius:6px; text-align:left; cursor:pointer;">${line}</button>`;
-            } else { itemsHtml += `<div style="padding:5px; color:#777;">${line}</div>`; }
-        });
-        body.innerHTML = itemsHtml;
-        footer.innerHTML = `
-            <button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.treatFull('${id}')">🎁 ΚΕΡΑΣΜΑ ΟΛΑ</button>
-            <button class="btn-win-action" style="background:#555; color:white;" onclick="App.openOrderWindow(App.activeOrders.find(o=>o.id==${id}))">🔙 ΑΚΥΡΟ</button>
-        `;
-    },
-    treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
-    treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
 
     // --- CHAT ---
     toggleAdminChat: () => { 

@@ -7,10 +7,11 @@
     
     <link rel="manifest" id="dynamicManifest" href="/manifest.json?icon=admin">
     
-    <meta name="theme-color" content="#121212">
+    <meta name="theme-color" content="#f4f6f8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="admin.png">
+    <link rel="stylesheet" href="/style.css">
     
     <script>
         (function() {
@@ -27,46 +28,56 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #121212; color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; min-height: 100dvh; margin: 0; overflow-y: auto; padding: 20px 0; }
+        body { background-color: #fafafa; color: #262626; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; min-height: 100dvh; margin: 0; overflow-y: auto; padding: 20px 0; align-items: center; justify-content: center; }
         
-        .login-container { width: 90%; max-width: 400px; background: #1e1e1e; padding: 30px; border-radius: 12px; border: 1px solid #333; text-align: center; position: relative; margin: auto; }
-        h1 { color: #FFD700; margin-bottom: 20px; font-size: 28px; }
+        .login-container { width: 100%; max-width: 350px; background: #ffffff; padding: 40px 30px; border: 1px solid #dbdbdb; text-align: center; position: relative; margin: auto; border-radius: 1px; }
+        @media (max-width: 450px) {
+            .login-container { border: none; background: transparent; padding: 20px; }
+            body { background-color: #ffffff; }
+        }
+
+        h1 { color: #262626; margin-bottom: 30px; font-size: 36px; font-weight: 600; letter-spacing: -1px; }
         
-        #btnInstall { display: none; margin-bottom: 15px; background: #00E676; color: black; padding: 12px; border-radius: 8px; border: none; font-weight: bold; width: 100%; cursor: pointer; animation: pulse 2s infinite; font-size: 14px; }
+        #btnInstall { display: none; background: transparent; border: 1px solid #dbdbdb; color: #262626; font-weight: 600; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         
         .form-section { display: none; flex-direction: column; gap: 15px; }
         .form-section.active { display: flex; }
 
-        .inp { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 16px; width: 100%; box-sizing: border-box; text-align: center; }
+        .inp { padding: 9px 8px 7px; border-radius: 3px; border: 1px solid #dbdbdb; background: #fafafa; color: #262626; font-size: 12px; width: 100%; box-sizing: border-box; text-align: left; outline: none; }
+        .inp:focus { border-color: #a8a8a8; }
         
-        .btn-main { padding: 14px; border-radius: 6px; border: none; background: #FFD700; color: black; font-weight: bold; font-size: 18px; cursor: pointer; width: 100%; margin-top: 10px; }
-        .btn-google { background: #DB4437; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-main { padding: 8px 12px; border-radius: 8px; border: none; background: #0095f6; color: white; font-weight: 600; font-size: 14px; cursor: pointer; width: 100%; margin-top: 8px; transition: background 0.2s; }
+        .btn-main:active { background: #007ac6; }
+        .btn-main:disabled { background: #b2dffc; cursor: not-allowed; }
+        .btn-google { background: transparent; color: #385185; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; font-weight: 600; font-size: 14px; margin-top: 0; }
         
-        .btn-price { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #444; background: #333; color: white; cursor: pointer; font-size: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .btn-price:hover { background: #444; }
-        .price-tag { font-size: 18px; font-weight: bold; color: #FFD700; }
+        .btn-price { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; background: #ffffff; color: #1f2937; cursor: pointer; font-size: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .btn-price:hover { background: #f3f4f6; }
+        .price-tag { font-size: 18px; font-weight: bold; color: #10B981; }
         
-        .divider { display: flex; align-items: center; text-align: center; color: #555; margin: 10px 0; }
-        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #333; }
-        .divider:not(:empty)::before { margin-right: .25em; }
-        .divider:not(:empty)::after { margin-left: .25em; }
+        .divider { display: flex; align-items: center; text-align: center; color: #8e8e8e; margin: 15px 0; font-size: 13px; font-weight: 600; text-transform: uppercase; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #dbdbdb; }
+        .divider:not(:empty)::before { margin-right: 15px; }
+        .divider:not(:empty)::after { margin-left: 15px; }
 
-        #pinModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
-        .pin-box { background: #222; padding: 25px; border-radius: 10px; border: 2px solid #FFD700; text-align: center; width: 80%; max-width: 300px; }
-        .pin-display { font-size: 30px; letter-spacing: 10px; margin: 20px 0; font-weight: bold; color: #00E676; min-height: 40px; }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .num-btn { padding: 15px; background: #333; border: 1px solid #555; color: white; font-size: 20px; border-radius: 8px; cursor: pointer; }
-        .num-btn:active { background: #555; }
-        .forgot-link { margin-top: 15px; color: #aaa; text-decoration: underline; font-size: 12px; cursor: pointer; background: none; border: none; display: none; }
+        #pinModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 5000; align-items: center; justify-content: center; flex-direction: column; }
+        .pin-box { background: #ffffff; padding: 30px 20px; border-radius: 12px; text-align: center; width: 90%; max-width: 320px; border: 1px solid #dbdbdb; }
+        .pin-display { font-size: 32px; letter-spacing: 12px; margin: 20px 0; font-weight: 300; color: #262626; min-height: 40px; }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; justify-items: center; margin-bottom: 20px; }
+        .num-btn { width: 60px; height: 60px; background: transparent; border: 1px solid #dbdbdb; color: #262626; font-size: 24px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .num-btn:active { background: #fafafa; }
+        .forgot-link { margin-top: 15px; color: #0095f6; font-size: 12px; cursor: pointer; background: none; border: none; display: none; font-weight: 600; width: 100%; }
 
-        /* NEW ROLE GRID */
-        .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .btn-role { padding: 20px 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 14px; transition: 0.2s; }
-        .btn-role:active { transform: scale(0.95); background: #333; border-color: #FFD700; }
-        .role-icon { font-size: 24px; margin-bottom: 5px; }
+        /* INSTAGRAM STORIES STYLE FOR ROLES */
+        .role-grid { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .btn-role { background: transparent; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; padding: 0; width: 66px; }
+        .btn-role:active .role-icon { transform: scale(0.92); }
+        .story-ring { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); padding: 2px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+        .role-icon { width: 100%; height: 100%; border-radius: 50%; background: #fff; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: transform 0.2s; }
+        .role-name { font-size: 11px; color: #262626; width: 100%; text-align: center; text-overflow: ellipsis; overflow: hidden; }
         
         .btn-sub-link { background: none; border: none; color: #555; text-decoration: underline; font-size: 12px; cursor: pointer; margin-top: 10px; }
-        .btn-back { background: transparent; border: 1px solid #555; color: #aaa; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; margin-top: 15px; width: 100%; }
+        .btn-back { background: transparent; border: none; color: #0095f6; font-weight: 600; padding: 8px 15px; cursor: pointer; font-size: 14px; margin-top: 15px; width: 100%; }
 
         .password-wrapper { position: relative; width: 100%; }
         .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #aaa; font-size: 18px; background:none; border:none; padding: 0; }
@@ -84,43 +95,49 @@
 </head>
 <body>
 
+    <!-- Top Right Corner Controls -->
+    <div style="position: absolute; top: 15px; right: 15px; display: flex; align-items: center; gap: 10px; z-index: 1000;">
+        <button id="btnInstall" onclick="handleInstall()" title="Εγκατάσταση App">📲 INSTALL</button>
+        <button onclick="document.getElementById('policyModal').style.display='flex'" style="background:transparent; border:none; color:#262626; font-size:20px; cursor:pointer;" title="Όροι & Επικοινωνία">ⓘ</button>
+    </div>
+
+    <!-- Bottom Right Corner Controls (Language) -->
+    <div style="position: fixed; bottom: 15px; right: 15px; display: flex; align-items: center; gap: 10px; z-index: 1000;">
+        <button onclick="setLanguage('el')" style="background:transparent; border:none; color:#8e8e8e; font-weight:600; cursor:pointer; font-size:12px;">ΕΛ</button>
+        <button onclick="setLanguage('en')" style="background:transparent; border:none; color:#8e8e8e; font-weight:600; cursor:pointer; font-size:12px;">EN</button>
+    </div>
+
     <div class="login-container">
         <h1 onclick="window.dc=(window.dc||0)+1; if(window.dc===5) { const p = prompt('Developer Password:'); if(p === '19921992') window.location.href='developer.html'; window.dc=0; }" style="cursor:pointer; user-select:none;">BellGo 🔔</h1>
         
-        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
-            <button onclick="setLanguage('el')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇬🇷 ΕΛ</button>
-            <button onclick="setLanguage('en')" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;">🇺🇸 EN</button>
-            <button onclick="document.getElementById('policyModal').style.display='flex'" style="background:none; border:1px solid #555; color:white; padding:5px 10px; border-radius:5px; cursor:pointer;" title="Όροι & Επικοινωνία">ℹ️</button>
-        </div>
-
-        <div style="margin-bottom: 15px;">
-            <button onclick="Sundromes.openSubscriptionsModal()" style="background:linear-gradient(45deg, #FFD700, #FF9800); color:black; border:none; padding:10px 20px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px;">💎 ΔΙΑΧΕΙΡΙΣΗ ΣΥΝΔΡΟΜΩΝ</button>
-        </div>
-
-        <button id="btnInstall" onclick="handleInstall()" data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
-        
         <!-- 1. ROLE SELECTION SCREEN -->
         <div id="roleSelection" class="form-section active">
-            <p style="color:#aaa; margin-bottom:15px;" data-i18n="select_role">Επιλέξτε τον ρόλο σας:</p>
-            <div class="role-grid">
+            <p style="color:#8e8e8e; margin-bottom:20px; font-size:14px;" data-i18n="select_role">Επιλέξτε τον ρόλο σας:</p>
+            <div class="role-grid" style="margin-bottom: 10px;">
                 <button class="btn-role" onclick="UI.showAdminLogin('cashier')">
-                    <span class="role-icon">🏪</span> <span data-i18n="cashier">ΤΑΜΕΙΟ</span>
+                    <div class="story-ring"><div class="role-icon">🏪</div></div>
+                    <span class="role-name" data-i18n="cashier">Ταμείο</span>
                 </button>
+            </div>
+            <div class="role-grid">
                 <button class="btn-role" onclick="UI.showAdminLogin('kitchen')">
-                    <span class="role-icon">👨‍🍳</span> <span data-i18n="kitchen">ΚΟΥΖΙΝΑ</span>
+                    <div class="story-ring"><div class="role-icon">👨‍🍳</div></div>
+                    <span class="role-name" data-i18n="kitchen">Κουζίνα</span>
                 </button>
                 <button class="btn-role" onclick="UI.showStaffLogin('waiter')">
-                    <span class="role-icon">🤵</span> <span data-i18n="waiter">ΣΕΡΒΙΤΟΡΟΣ</span>
+                    <div class="story-ring"><div class="role-icon">🤵</div></div>
+                    <span class="role-name" data-i18n="waiter">Σέρβις</span>
                 </button>
                 <button class="btn-role" onclick="UI.showStaffLogin('driver')">
-                    <span class="role-icon">🛵</span> <span data-i18n="driver">ΔΙΑΝΟΜΕΑΣ</span>
+                    <div class="story-ring"><div class="role-icon">🛵</div></div>
+                    <span class="role-name" data-i18n="driver">Διανομή</span>
                 </button>
             </div>
         </div>
 
         <!-- 2. STAFF LOGIN FORM -->
         <div id="staffForm" class="form-section">
-            <h3 style="color:#FFD700; margin:0;" data-i18n="staff_login">Είσοδος Προσωπικού</h3>
+            <h3 style="color:#1f2937; margin:0;" data-i18n="staff_login">Είσοδος Προσωπικού</h3>
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
             <div class="password-wrapper">
@@ -138,19 +155,20 @@
 
         <!-- 3. ADMIN LOGIN FORM -->
         <div id="adminForm" class="form-section">
-            <h3 style="color:#FFD700; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
+            <h3 style="color:#1f2937; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
             <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)" data-i18n-placeholder="placeholder_email_login_buy">
             <input type="text" id="adminNameInp" class="inp" placeholder="Όνομα Ταμείου (π.χ. Μαρία)" data-i18n-placeholder="placeholder_cashier_name">
-            <button class="btn-main" id="btnAdminLogin" style="background:#2196F3; color:white;" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
+            <button class="btn-main" id="btnAdminLogin" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
             <div class="divider" data-i18n="or">Ή</div>
-            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span>G</span> <span data-i18n="google_login">Σύνδεση Google</span></button>
-            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
+            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span style="font-size:18px;">G</span> <span data-i18n="google_login">Σύνδεση με Google</span></button>
+            <button onclick="Sundromes.openSubscriptionsModal()" style="background:transparent; color:#262626; border:1px solid #dbdbdb; padding:10px 20px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; margin-top:10px;">Διαχείριση Συνδρομών</button>
+            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">Επιστροφή</button>
         </div>
 
     <div id="pinModal">
         <div class="pin-box">
-            <h3 id="pinTitle" style="margin:0; color:#FFD700;" data-i18n="enter_pin">ΕΙΣΑΓΩΓΗ PIN</h3>
-            <p id="pinSub" style="font-size:12px; color:#aaa;" data-i18n="enter_your_pin">Εισάγετε τον κωδικό καταστήματος</p>
+            <h3 id="pinTitle" style="margin:0; color:#262626; font-weight:600;" data-i18n="enter_pin">Εισαγωγή PIN</h3>
+            <p id="pinSub" style="font-size:14px; color:#8e8e8e; margin-top:5px;" data-i18n="enter_your_pin">Εισάγετε τον κωδικό καταστήματος</p>
             <div id="pinDisplay" class="pin-display"></div>
             <div class="numpad">
                 <button class="num-btn" onclick="PIN.add(1)">1</button>
@@ -162,28 +180,29 @@
                 <button class="num-btn" onclick="PIN.add(7)">7</button>
                 <button class="num-btn" onclick="PIN.add(8)">8</button>
                 <button class="num-btn" onclick="PIN.add(9)">9</button>
-                <button class="num-btn" style="background:#D32F2F;" onclick="PIN.clear()">C</button>
+                <button class="num-btn" style="color:#ed4956; border-color:transparent; font-weight:600;" onclick="PIN.clear()">C</button>
                 <button class="num-btn" onclick="PIN.add(0)">0</button>
-                <button class="num-btn" style="background:#00E676; color:black;" onclick="PIN.submit()">OK</button>
+                <button class="num-btn" style="color:#0095f6; border-color:transparent; font-weight:600;" onclick="PIN.submit()">OK</button>
             </div>
             <button id="btnForgot" class="forgot-link" onclick="PIN.forgotPin()" data-i18n="forgot_pin">Ξέχασα το PIN</button>
+            <button onclick="App.closePinModal()" style="background:none; border:none; color:#262626; margin-top:15px; font-weight:600; cursor:pointer;" data-i18n="cancel">Ακύρωση</button>
         </div>
     </div>
 
     <!-- ✅ NEW: POLICY & CONTACT MODAL -->
-    <div id="policyModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:6000; align-items:center; justify-content:center; flex-direction:column;">
-        <div class="modal-box" style="background:#1e1e1e; padding:20px; border-radius:12px; border:1px solid #333; width:90%; max-width:600px; max-height:90vh; overflow-y:auto; text-align:left; color:#ccc; font-size:14px; line-height:1.6;">
-            <h2 style="color:#FFD700; text-align:center; margin-top:0;">Όροι Χρήσης & Πολιτική</h2>
+    <div id="policyModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:6000; align-items:center; justify-content:center; flex-direction:column;">
+        <div class="modal-box" style="background:#ffffff; padding:20px; border-radius:12px; border:1px solid #e5e7eb; width:90%; max-width:600px; max-height:90vh; overflow-y:auto; text-align:left; color:#1f2937; font-size:14px; line-height:1.6; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <h2 style="color:#10B981; text-align:center; margin-top:0;">Όροι Χρήσης & Πολιτική</h2>
             
             <p><b>Στοιχεία Επιχείρησης:</b><br>
             Επωνυμία: ΙΩΑΝΝΗΣ ΔΕΡΜΑΤΗΣ Κ.ΣΙΑ<br>
             Email: theroasters84@gmail.com<br>
             Τηλέφωνο: 6936869089</p>
 
-            <h4 style="color:white; margin-bottom:5px;">1. Μοντέλο Συνδρομής</h4>
+            <h4 style="color:#1f2937; margin-bottom:5px;">1. Μοντέλο Συνδρομής</h4>
             <p style="margin-top:0;">Η πρόσβαση στην πλατφόρμα Bellgo παρέχεται με τη μορφή ετήσιας συνδρομής. Η τιμολόγηση και η εξόφληση της συνδρομής πραγματοποιούνται τμηματικά, σε μηνιαία βάση. Με την επιλογή και αγορά οποιουδήποτε πακέτου, ο χρήστης συμφωνεί στην ετήσια δέσμευση της υπηρεσίας με την αντίστοιχη μηνιαία καταβολή του ποσού.</p>
 
-            <h4 style="color:white; margin-bottom:5px;">2. Πολιτική Επιστροφής Χρημάτων (Refund Policy)</h4>
+            <h4 style="color:#1f2937; margin-bottom:5px;">2. Πολιτική Επιστροφής Χρημάτων (Refund Policy)</h4>
             <p style="margin-top:0;">Η εταιρεία μας δεσμεύεται για την ομαλή και αδιάλειπτη παροχή των υπηρεσιών της πλατφόρμας Bellgo. Επιστροφή χρημάτων (ολική ή μερική) εγκρίνεται αποκλειστικά και μόνο εφόσον συντρέχουν αθροιστικά οι παρακάτω προϋποθέσεις:</p>
             <ul style="margin-top:0;">
                 <li>Η πλατφόρμα τεθεί εκτός λειτουργίας (downtime) ή παρουσιάσει κρίσιμο τεχνικό σφάλμα που αποτρέπει τη χρήση της για δεκαπέντε (15) συνεχόμενες ημέρες.</li>
@@ -192,13 +211,13 @@
             </ul>
             <p>Σε οποιαδήποτε άλλη περίπτωση (συμπεριλαμβανομένων, ενδεικτικά, της αλλαγής γνώμης, της πρόωρης διακοπής της ετήσιας δέσμευσης από τον χρήστη, ή της μη χρήσης της πλατφόρμας), δεν πραγματοποιούνται επιστροφές χρημάτων.</p>
 
-            <h4 style="color:white; margin-bottom:5px;">3. Επικοινωνία και Υποστήριξη</h4>
+            <h4 style="color:#1f2937; margin-bottom:5px;">3. Επικοινωνία και Υποστήριξη</h4>
             <p style="margin-top:0;">Για οποιοδήποτε τεχνικό ζήτημα, αναφορά βλάβης ή απορία σχετικά με τις χρεώσεις της συνδρομής σας, η ομάδα υποστήριξης είναι στη διάθεσή σας:<br>
             Email: theroasters84@gmail.com<br>
             Τηλέφωνο: 6936869089</p>
 
             <div style="text-align:center; margin-top:20px;">
-                <button onclick="document.getElementById('policyModal').style.display='none'" style="background:#333; color:white; border:1px solid #555; padding:10px 30px; border-radius:20px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+                <button onclick="document.getElementById('policyModal').style.display='none'" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold; padding:10px 30px; border-radius:20px; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
             </div>
         </div>
     </div>
@@ -227,14 +246,15 @@
         const isAndroid = /Android/i.test(navigator.userAgent);
 
         if (isAndroid) {
-            btnInstall.innerText = "🤖 ΚΑΤΕΒΑΣΤΕ ΤΟ APP (APK)";
+            btnInstall.innerText = "🤖 APP (APK)";
             btnInstall.style.display = "block";
-            btnInstall.style.background = "#FF9800";
+            btnInstall.style.background = "#fff3e0";
+            btnInstall.style.color = "#FF9800";
+            btnInstall.style.border = "1px solid #FF9800";
         } else {
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
-                btnInstall.innerText = "📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ";
                 btnInstall.style.display = 'block';
             });
         }

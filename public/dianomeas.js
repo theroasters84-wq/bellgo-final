@@ -49,10 +49,10 @@ window.App = {
         if (!document.getElementById('startScreen')) {
             const div = document.createElement('div');
             div.id = 'startScreen';
-            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:#121212; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;";
+            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;";
             div.innerHTML = `
-                <h1 style="color:#FFD700; margin-bottom:20px; font-size:32px;">BellGo Driver 🛵</h1>
-                <button id="btnStartShift" style="background:#00E676; color:black; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:30px; cursor:pointer;">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+                <h1 style="color:#1f2937; margin-bottom:20px; font-size:32px;">BellGo Driver 🛵</h1>
+                <button id="btnStartShift" style="background:#10B981; color:white; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:30px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
             `;
             document.body.appendChild(div);
             document.getElementById('btnStartShift').onclick = () => App.unlockAudio();
@@ -306,7 +306,7 @@ window.App = {
             const isPaid = order.text.includes('PAID');
             const card = document.createElement('div');
             card.className = 'order-card';
-            card.style.cssText = `background:#222; border:2px solid ${isPaid ? '#00E676' : (isReady ? '#FFD700' : '#444')}; border-radius:12px; padding:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 10px rgba(0,0,0,0.3);`;
+            card.style.cssText = `background:#ffffff; border:2px solid ${isPaid ? '#10B981' : (isReady ? '#F59E0B' : '#e5e7eb')}; border-radius:12px; padding:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 15px rgba(0,0,0,0.05); color:#1f2937;`;
 
             let name = "Πελάτης", address = "", phone = "", paymentMethod = "❓", floor = "", zip = "";
             const lines = order.text.split('\n');
@@ -326,25 +326,25 @@ window.App = {
             let actionButtons = '';
             if (!assignedDriver) {
                 // Αν είναι ελεύθερη -> Κουμπί ΑΝΑΛΗΨΗ
-                actionButtons = `<button onclick="App.takeOrder(${order.id})" style="width:100%; margin-top:10px; padding:15px; background:#FF9800; color:black; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">🖐 ΑΝΑΛΗΨΗ</button>`;
+                actionButtons = `<button onclick="App.takeOrder(${order.id})" style="width:100%; margin-top:10px; padding:15px; background:#F59E0B; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(245,158,11,0.3);">🖐 ΑΝΑΛΗΨΗ</button>`;
             } else {
                 // Αν είναι δική μου -> Κουμπί ΠΑΡΑΔΟΘΗΚΕ (Κλείσιμο)
-                actionButtons = `<button onclick="App.completeOrder(${order.id})" style="width:100%; margin-top:10px; padding:15px; background:#00E676; color:black; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">✅ ΠΑΡΑΔΟΘΗΚΕ</button>`;
+                actionButtons = `<button onclick="App.completeOrder(${order.id})" style="width:100%; margin-top:10px; padding:15px; background:#10B981; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">✅ ΠΑΡΑΔΟΘΗΚΕ</button>`;
             }
 
             card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">
-                    <span style="font-weight:bold; color:${isReady ? '#00E676' : '#FF9800'}; font-size:16px;">${isReady ? '🚀 ΕΤΟΙΜΟ' : '⏳ ΕΤΟΙΜΑΖΕΤΑΙ...'}</span>
-                    <span style="color:#aaa; font-size:12px;">${time}</span>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #e5e7eb; padding-bottom:5px;">
+                    <span style="font-weight:bold; color:${isReady ? '#10B981' : '#F59E0B'}; font-size:16px;">${isReady ? '🚀 ΕΤΟΙΜΟ' : '⏳ ΕΤΟΙΜΑΖΕΤΑΙ...'}</span>
+                    <span style="color:#6b7280; font-size:12px;">${time}</span>
                 </div>
-                <div style="font-size:18px; font-weight:bold; color:white; margin-bottom:5px;">${name}</div>
-                <div style="font-size:20px; color:#FFD700; margin-bottom:5px; font-weight:bold; line-height:1.3;">📍 ${address}</div>
-                ${zip ? `<div style="font-size:14px; color:#aaa; margin-bottom:2px;">📮 ${zip}</div>` : ''}
-                ${floor ? `<div style="font-size:16px; color:white; font-weight:bold; margin-bottom:5px; background:#333; display:inline-block; padding:2px 8px; border-radius:4px;">🏢 ${floor}</div>` : ''}
-                <div style="font-size:16px; color:#ccc; margin-bottom:15px;">📞 <a href="tel:${phone}" style="color:#2196F3; text-decoration:none; font-weight:bold;">${phone}</a></div>
-                <div style="background:#333; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-weight:bold; color:white; font-size:14px;">${paymentMethod}</div>
-                    <div style="font-size:22px; font-weight:bold; color:${isPaid ? '#00E676' : 'white'};">${total.toFixed(2)}€ ${isPaid ? '✅' : ''}</div>
+                <div style="font-size:18px; font-weight:bold; color:#1f2937; margin-bottom:5px;">${name}</div>
+                <div style="font-size:20px; color:#2196F3; margin-bottom:5px; font-weight:bold; line-height:1.3;">📍 ${address}</div>
+                ${zip ? `<div style="font-size:14px; color:#6b7280; margin-bottom:2px;">📮 ${zip}</div>` : ''}
+                ${floor ? `<div style="font-size:16px; color:#1f2937; font-weight:bold; margin-bottom:5px; background:#f3f4f6; border:1px solid #d1d5db; display:inline-block; padding:2px 8px; border-radius:4px;">🏢 ${floor}</div>` : ''}
+                <div style="font-size:16px; color:#6b7280; margin-bottom:15px;">📞 <a href="tel:${phone}" style="color:#2196F3; text-decoration:none; font-weight:bold;">${phone}</a></div>
+                <div style="background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:bold; color:#1f2937; font-size:14px;">${paymentMethod}</div>
+                    <div style="font-size:22px; font-weight:bold; color:${isPaid ? '#10B981' : '#1f2937'};">${total.toFixed(2)}€ ${isPaid ? '✅' : ''}</div>
                 </div>
                 
                 ${assignedDriver ? `

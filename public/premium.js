@@ -8,6 +8,7 @@ import { Apodiksh } from './apodiksh.js'; // ✅ Import Apodiksh
 import { Admin } from './admin.js'; // ✅ Import Admin Logic
 import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
 import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // ✅ Import Menu Logic
+import { OrdersUI } from './premium-orders.js'; // ✅ Import Orders UI
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -60,6 +61,9 @@ const calculateTotal = (text) => {
 };
 
 window.App = {
+    // ==========================================
+    // 1. STATE & DATA (ΜΕΤΑΒΛΗΤΕΣ)
+    // ==========================================
     activeOrders: [],
     currentCategoryIndex: null,
     isChatOpen: false, 
@@ -135,18 +139,18 @@ window.App = {
         if (isIos() && !isStandalone) {
             const div = document.createElement('div');
             div.id = 'iosInstallPrompt';
-            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:20000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; color:white;";
+            div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:20000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; color:#1f2937;";
             div.innerHTML = `
                 <div style="font-size:60px; margin-bottom:20px;">📲</div>
-                <h2 style="color:#FFD700; margin-bottom:10px;">ΕΓΚΑΤΑΣΤΑΣΗ APP</h2>
-                <p style="color:#ccc; font-size:15px; margin-bottom:20px;">Για να λειτουργούν οι <b>Ειδοποιήσεις</b> και ο <b>Ήχος</b> στο iPhone, η εφαρμογή πρέπει να εγκατασταθεί.</p>
+                <h2 style="color:#10B981; margin-bottom:10px;">ΕΓΚΑΤΑΣΤΑΣΗ APP</h2>
+                <p style="color:#6b7280; font-size:15px; margin-bottom:20px;">Για να λειτουργούν οι <b>Ειδοποιήσεις</b> και ο <b>Ήχος</b> στο iPhone, η εφαρμογή πρέπει να εγκατασταθεί.</p>
                 
-                <div style="background:#222; border:1px solid #444; padding:20px; border-radius:15px; width:100%; text-align:left; font-size:14px; color:#eee;">
+                <div style="background:#ffffff; border:1px solid #e5e7eb; padding:20px; border-radius:15px; width:100%; text-align:left; font-size:14px; color:#1f2937; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
                     <div style="margin-bottom:15px;">1. Πατήστε το κουμπί <b>Share</b> <span style="font-size:18px;">⎋</span> κάτω στο Safari.</div>
                     <div>2. Επιλέξτε <b>"Προσθήκη στην Οθόνη Αφετηρίας"</b> (Add to Home Screen).</div>
                 </div>
                 
-                <button onclick="document.getElementById('iosInstallPrompt').remove()" style="margin-top:30px; background:none; border:none; color:#555; text-decoration:underline; cursor:pointer;">Συνέχεια στον Browser (Χωρίς Ήχο)</button>
+                <button onclick="document.getElementById('iosInstallPrompt').remove()" style="margin-top:30px; background:none; border:none; color:#6b7280; text-decoration:underline; cursor:pointer; font-weight:bold;">Συνέχεια στον Browser (Χωρίς Ήχο)</button>
             `;
             document.body.appendChild(div);
         }

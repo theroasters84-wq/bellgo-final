@@ -30,42 +30,42 @@ export const ReserveTable = {
         });
 
         const modal = document.createElement('div');
-        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
+        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
         
         const step1Html = `
-            <div id="step1" style="background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h2 style="color:#FFD700; margin-top:0;">🍽️ ${t('table') || 'Τραπέζι'} ${tableNumber}</h2>
-                <p style="color:#ccc;">${t('table_active') || 'Το τραπέζι είναι ενεργό.'}<br>${t('total') || 'Σύνολο'}: <b>${total.toFixed(2)}€</b></p>
+            <div id="step1" style="background:#ffffff; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                <h2 style="color:#1f2937; margin-top:0;">🍽️ ${t('table') || 'Τραπέζι'} ${tableNumber}</h2>
+                <p style="color:#6b7280;">${t('table_active') || 'Το τραπέζι είναι ενεργό.'}<br>${t('total') || 'Σύνολο'}: <b>${total.toFixed(2)}€</b></p>
                 <button id="btnExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">📂 ${t('btn_existing_order') || 'ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ'}</button>
-                <button id="btnNewOrder" style="width:100%; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-size:14px;">🆕 ${t('btn_new_order_reset') || 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)'}</button>
+                <button id="btnNewOrder" style="width:100%; padding:15px; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-size:14px; font-weight:bold;">🆕 ${t('btn_new_order_reset') || 'ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)'}</button>
             </div>
         `;
 
         const step2Html = `
-            <div id="step2" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
+            <div id="step2" style="display:none; background:#ffffff; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
                 <h3 style="color:#2196F3;">${t('options') || 'Επιλογές'}</h3>
-                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#FFD700; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">➕ ${t('btn_supplement') || 'ΣΥΜΠΛΗΡΩΣΗ'}</button>
-                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#00E676; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 / 💶 ${t('btn_pay_full') || 'ΠΛΗΡΩΜΗ'}</button>
-                <button id="btnBack1" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#10B981; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">➕ ${t('btn_supplement') || 'ΣΥΜΠΛΗΡΩΣΗ'}</button>
+                <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(33,150,243,0.3);">💳 / 💶 ${t('btn_pay_full') || 'ΠΛΗΡΩΜΗ'}</button>
+                <button id="btnBack1" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 
         const step3Html = `
-            <div id="step3" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#FFD700;">${t('new_people_question') || 'Ήρθαν νέα άτομα;'}</h3>
-                <p style="color:#ccc; font-size:12px;">${t('new_people_hint') || 'Αν ναι, συμπληρώστε τον αριθμό.'}</p>
-                <input type="number" id="inpNewPeople" placeholder="${t('placeholder_people') || 'Αρ. ατόμων (προαιρετικό)'}" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #555; background:#333; color:white; text-align:center; font-size:16px;">
+            <div id="step3" style="display:none; background:#ffffff; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                <h3 style="color:#1f2937;">${t('new_people_question') || 'Ήρθαν νέα άτομα;'}</h3>
+                <p style="color:#6b7280; font-size:12px;">${t('new_people_hint') || 'Αν ναι, συμπληρώστε τον αριθμό.'}</p>
+                <input type="number" id="inpNewPeople" placeholder="${t('placeholder_people') || 'Αρ. ατόμων (προαιρετικό)'}" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; color:#1f2937; text-align:center; font-size:16px;">
                 <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">${t('btn_continue_menu') || 'ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶'}</button>
-                <button id="btnBack2" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnBack2" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 
         const step4Html = `
-            <div id="step4" style="display:none; background:#222; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #444;">
-                <h3 style="color:#00E676;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
-                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#FF9800; color:black; border:none; border-radius:8px; font-size:16px; font-weight:bold;">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
+            <div id="step4" style="display:none; background:#ffffff; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+                <h3 style="color:#10B981;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
+                <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#F59E0B; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(245,158,11,0.3);">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
                 <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
-                <button id="btnBack3" style="background:none; border:none; color:#aaa; margin-top:10px;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnBack3" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
             </div>
         `;
 

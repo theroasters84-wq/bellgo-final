@@ -38,6 +38,42 @@
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- ✅ LIGHT THEME: White / Yellow / Green -->
+    <style>
+        body, #mainApp, .admin-main-area, #waiterPanel { background-color: #f4f6f8 !important; color: #1f2937 !important; }
+        .header { background: #ffffff !important; border-bottom: 2px solid #00E676 !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .user-info span, .user-info small { color: #1f2937 !important; }
+        .btn-icon { background: #ffffff !important; color: #1f2937 !important; border: 1px solid #d1d5db !important; }
+        .btn-icon:hover { background: #e8f5e9 !important; border-color: #00E676 !important; color: #00E676 !important; }
+        
+        .modal-box, .action-box, .orders-box-container { background: #ffffff !important; color: #1f2937 !important; border: 2px solid #00E676 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .inp-settings, .input-box, .order-text, .chat-inp, .search-inp { background: #ffffff !important; color: #1f2937 !important; border: 1px solid #d1d5db !important; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        
+        #staffChatOverlay { background: #ffffff !important; border-left: 2px solid #00E676 !important; color: #1f2937 !important; }
+        .chat-messages { background: #f4f6f8 !important; }
+        .chat-msg { color: #1f2937 !important; }
+        .overlay-header { background: #ffffff !important; border-bottom: 1px solid #e5e7eb !important; color: #1f2937 !important; }
+        .overlay-header span, .overlay-header button { color: #1f2937 !important; }
+        .chat-input-area { background: #ffffff !important; border-top: 1px solid #e5e7eb !important; }
+        
+        .panel-header-bar { background: #FFD700 !important; border-bottom: 2px solid #00E676 !important; }
+        .panel-header-bar div { color: #000000 !important; font-weight: bold; }
+        .panel-content { background: #ffffff !important; }
+        #liveTotal { color: #00E676 !important; }
+        
+        .category-title { color: #00E676 !important; background: #ffffff !important; border-bottom: 2px solid #FFD700 !important; }
+        .item-box { background: #ffffff !important; border: 1px solid #e5e7eb !important; color: #1f2937 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .item-box:hover { border-color: #FFD700 !important; }
+        
+        .tab-btn.active { color: #00E676 !important; border-bottom-color: #00E676 !important; background: #ffffff !important; }
+        .my-order-item { background: #ffffff !important; border: 1px solid #e5e7eb !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important; }
+        .order-content span { color: #1f2937 !important; font-weight: 600 !important; }
+        .order-meta span { color: #6b7280 !important; }
+        
+        h3, h2, h1 { color: #1f2937 !important; }
+        .btn-act[style*="background:#333"] { background: #f3f4f6 !important; color: #1f2937 !important; border-color: #d1d5db !important; }
+    </style>
 </head>
 <body>
 
@@ -64,27 +100,31 @@
                     <small id="headerStore" style="opacity:0.6; font-size:10px;">...</small>
                 </div>
             </div>
-            <div class="header-actions">
+            <div class="header-actions" style="position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 5000;">
                 <button id="btnMyOrders" class="btn-icon" onclick="App.toggleMyOrders()" title="Παραγγελίες" style="display:none;">
                     📋 <span id="ordersBadge" class="btn-badge">0</span>
                 </button>
-
-                <div id="chatWrapper" class="btn-icon-wrapper">
-                    <button id="chatBtn" class="btn-icon" onclick="App.toggleChat()" title="Chat">💬</button>
-                    <div id="chatBadge" class="chat-badge"></div>
-                </div>
-
-                <!-- ✅ NEW: RESERVATIONS ICON (1h Before) -->
-                <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
-                    <button id="btnRes" class="btn-icon" onclick="App.openReservations()" title="Κρατήσεις" style="background:#9C27B0; color:white;">🍽️</button>
-                    <div id="resBadge" class="chat-badge"></div>
-                </div>
-
                 <button id="staffBellBtn" class="btn-icon" onclick="App.acceptAlarmStaff()" title="ΑΠΟΔΟΧΗ" style="display:none;">🔔</button>
-                
-                <button id="btnSettings" class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings" style="display:none;">⚙️</button>
-                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen" style="display:none;">🌙</button>
-                <button class="btn-logout" onclick="App.logout()" data-i18n="exit">EXIT</button>
+
+                <!-- Κουμπί Hamburger -->
+                <button id="btnHamburgerToggle" class="btn-icon" onclick="var menu = document.getElementById('expandedMenu'); menu.style.display = (menu.style.display === 'none') ? 'flex' : 'none';" title="Επιλογές">☰</button>
+
+                <!-- Κρυφό Μενού που ξεδιπλώνει -->
+                <div id="expandedMenu" style="display: none; flex-direction: column; align-items: center; gap: 12px;">
+                    <div id="chatWrapper" class="btn-icon-wrapper">
+                        <button id="chatBtn" class="btn-icon" onclick="App.toggleChat()" title="Chat">💬</button>
+                        <div id="chatBadge" class="chat-badge"></div>
+                    </div>
+
+                    <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
+                        <button id="btnRes" class="btn-icon" onclick="App.openReservations()" title="Κρατήσεις">🍽️</button>
+                        <div id="resBadge" class="chat-badge"></div>
+                    </div>
+                    
+                    <button id="btnSettings" class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Settings" style="display:none;">⚙️</button>
+                    <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Black Screen" style="display:none;">🌙</button>
+                    <button class="btn-icon" onclick="App.logout()" style="color:var(--danger) !important;" title="Έξοδος">🚪</button>
+                </div>
             </div>
         </div>
 

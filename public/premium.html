@@ -10,13 +10,53 @@
     <meta name="theme-color" content="#121212">
     <link rel="apple-touch-icon" href="admin.png"> 
     
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css?v=4">
     
     <script type="module" src="pay.js"></script> <!-- ✅ NEW: Pay Logic -->
     <script type="module" src="apodiksh.js"></script> <!-- ✅ NEW: E-Invoicing Logic -->
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- ✅ LIGHT THEME: White / Yellow / Green -->
+    <style>
+        body, #mainApp, .admin-main-area { background-color: #f4f6f8 !important; color: #1f2937 !important; }
+        .header { background: #ffffff !important; border-bottom: 2px solid #00E676 !important; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .header-store-input { color: #1f2937 !important; font-weight: bold; }
+        .btn-icon { background: #ffffff !important; color: #1f2937 !important; border: 1px solid #d1d5db !important; }
+        .btn-icon:hover { background: #e8f5e9 !important; border-color: #00E676 !important; color: #00E676 !important; }
+        
+        #menuFullPanel { background: #ffffff !important; border-right: 1px solid #e5e7eb !important; }
+        .menu-header { background: #FFD700 !important; color: #000000 !important; }
+        .menu-title { color: #000 !important; }
+        
+        .modal-box, .qr-box { background: #ffffff !important; color: #1f2937 !important; border: 2px solid #00E676 !important; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .modal-title { color: #00E676 !important; }
+        .settings-section, .settings-sub, #presetPanel, .expenses-section { background: #f9fafb !important; border: 1px solid #e5e7eb !important; color: #1f2937 !important; }
+        .settings-label { color: #10B981 !important; }
+        .inp-settings, .input-box, .order-text, .extra-name-inp, .extra-price-inp, .chat-inp { background: #ffffff !important; color: #1f2937 !important; border: 1px solid #d1d5db !important; }
+        
+        #adminChatOverlay { background: #ffffff !important; border-left: 2px solid #00E676 !important; color: #1f2937 !important; }
+        .chat-messages { background: #f4f6f8 !important; }
+        .chat-msg { color: #1f2937 !important; }
+        
+        .switch-row span { color: #1f2937 !important; font-weight: 600; }
+        #pasoTotal { color: #00E676 !important; }
+        .sidebar-header { border-bottom: 1px solid #e5e7eb !important; }
+        
+        /* Category and Item styling for light theme */
+        .category-title { color: #00E676 !important; background: #ffffff !important; border-bottom: 2px solid #FFD700 !important; }
+        .item-box { background: #ffffff !important; border: 1px solid #e5e7eb !important; color: #1f2937 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .item-box:hover { border-color: #FFD700 !important; }
+        
+        /* Διόρθωση χρώματος γραμμάτων στα κουμπιά λειτουργίας (PASO/ΤΡΑΠΕΖΙ/DELIVERY) 
+           όταν το background τους γίνεται μαύρο/σκούρο από τη Javascript */
+        #btnModePaso[style*="333"], #btnModePaso[style*="rgb(51, 51, 51)"],
+        #btnModeTable[style*="333"], #btnModeTable[style*="rgb(51, 51, 51)"],
+        #btnModeDelivery[style*="333"], #btnModeDelivery[style*="rgb(51, 51, 51)"] {
+            color: #ffffff !important;
+        }
+    </style>
 </head>
 <body>
     <div id="mainApp">
@@ -26,23 +66,30 @@
                 <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
             </div>
             
-            <div class="header-actions">
-                <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις" data-title-key="settings" style="display:none;">⚙️</button>
-                <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" title="Έξοδα" style="background:#FF5252; color:white; display:none;">💸</button>
-                <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
-                    <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις" style="background:#9C27B0; color:white;">📅</button>
-                    <div id="resBadge" class="chat-badge" style="display:none;"></div>
+            <div class="header-actions" style="position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 5000;">
+                <button id="btnNewOrderSidebar" class="btn-icon add-btn" onclick="App.toggleOrderSidebar()" style="display:none;" title="Νέα Παραγγελία">➕</button>
+                
+                <!-- Κουμπί Hamburger -->
+                <button id="btnHamburgerToggle" class="btn-icon" onclick="var menu = document.getElementById('expandedMenu'); menu.style.display = (menu.style.display === 'none') ? 'flex' : 'none';" title="Επιλογές">☰</button>
+
+                <!-- Κρυφό Μενού που ξεδιπλώνει -->
+                <div id="expandedMenu" style="display: none; flex-direction: column; align-items: center; gap: 12px;">
+                    <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" style="display:none;" title="Μενού">🏠</button>
+                    <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
+                        <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις">📅</button>
+                        <div id="resBadge" class="chat-badge" style="display:none;"></div>
+                    </div>
+                    <button id="btnExpenses" class="btn-icon" onclick="App.openExpensesModal()" style="display:none;" title="Έξοδα">💸</button>
+                    <button id="btnCashRegister" class="btn-icon" onclick="Apodiksh.openCashRegister()" style="display:none;" title="Ταμειακή">📠</button>
+                    <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" style="display:none;" title="Πορτοφόλι">💼</button>
+                    <div class="btn-icon-wrapper" id="chatWrapper">
+                        <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">💬</button>
+                        <div id="chatBadge" class="chat-badge"></div>
+                    </div>
+                    <button id="btnSettings" class="btn-icon" onclick="App.openSettingsModal()" title="Ρυθμίσεις">⚙️</button>
+                    <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" style="display:none;" title="Μαύρη Οθόνη">🌙</button>
+                    <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" style="display:none; color:var(--danger) !important;" title="Έξοδος">🚪</button>
                 </div>
-                <button id="btnCashRegister" class="btn-icon" onclick="Apodiksh.openCashRegister()" title="Ταμειακή" style="background:#00BCD4; color:white; display:none;">📠</button> <!-- ✅ NEW: Cash Register -->
-                <button id="btnWallet" class="btn-icon" onclick="PaySystem.openWalletModal()" title="Πορτοφόλι" style="background:#673AB7; color:white; display:none;">💼</button> <!-- ✅ NEW -->
-                <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" title="Μενού" style="display:none;">📜</button>
-                <div class="btn-icon-wrapper" id="chatWrapper">
-                    <button id="adminChatBtn" class="btn-icon" onclick="App.toggleAdminChat()" title="Chat">💬</button>
-                    <div id="chatBadge" class="chat-badge"></div>
-                </div>
-                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη" style="display:none;">🌙</button>
-                <button id="btnNewOrderSidebar" class="btn-icon" onclick="App.toggleOrderSidebar()" title="Νέα Παραγγελία" style="display:none; background:#00E676; color:black;">➕</button>
-                <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" title="Έξοδος" style="display:none; background:var(--danger); color:white;">🚪</button>
             </div>
         </div>
 
@@ -84,9 +131,9 @@
             
             <div id="windowsContainer"></div>
             
-            <div id="staffContainer">
-                <div class="sidebar-header" onclick="App.toggleStaffPanel()">
-                    <span data-i18n="staff_online">ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
+            <div id="staffContainer" style="background: #ffffff; border-left: 2px solid #00E676; box-shadow: -5px 0 15px rgba(0,0,0,0.1);">
+                <div class="sidebar-header" onclick="App.toggleStaffPanel()" style="background: #FFD700; color: #000000;">
+                    <span data-i18n="staff_online" style="font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">ΠΡΟΣΩΠΙΚΟ (ONLINE)</span>
                     <span id="staffToggleIcon" class="sidebar-toggle-icon">▼</span>
                 </div>
                 <div id="staffList"></div>
@@ -95,16 +142,16 @@
 
         <!-- ✅ NEW: SIDEBAR ORDER PANEL (FULL SCREEN RIGHT) -->
         <div id="orderSidebar" class="order-panel" style="position:fixed; top:0; left:-100%; width:100%; height:100%; transition:left 0.3s; z-index:4000; border-top:none; border-right:2px solid #333; display:flex; flex-direction:column;">
-            <div class="panel-header-bar" style="background:#111; justify-content:space-between; padding:0 15px; cursor:default;">
-                <span style="font-weight:bold; color:#00E676;" data-i18n="new_order_cashier">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
-                <button id="btnCloseSidebar" onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:white; font-size:30px; padding:15px; cursor:pointer; z-index:5000;">✕</button>
+            <div class="panel-header-bar" style="background:#FFD700; justify-content:space-between; padding:0 15px; cursor:default; border-bottom: 2px solid #00E676;">
+                <span style="font-weight:bold; color:#000000;" data-i18n="new_order_cashier">ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (ΤΑΜΕΙΟ)</span>
+                <button id="btnCloseSidebar" onclick="App.toggleOrderSidebar()" style="background:none; border:none; color:#000000; font-size:30px; padding:15px; cursor:pointer; z-index:5000;">✕</button>
             </div>
-            <div class="panel-content" style="background:#1a1a1a;">
+            <div class="panel-content" style="background:#ffffff;">
                 <!-- ✅ NEW: Mode Selection (Paso, Table, Delivery) -->
                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:10px;">
                     <button id="btnModePaso" class="modal-btn" style="background:#FFD700; color:black; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('paso')" data-i18n="paso">PASO</button>
-                    <button id="btnModeTable" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('table')" data-i18n="table">ΤΡΑΠΕΖΙ</button>
-                    <button id="btnModeDelivery" class="modal-btn" style="background:#333; color:white; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('delivery')" data-i18n="delivery">DELIVERY</button>
+                    <button id="btnModeTable" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border: 1px solid #d1d5db; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('table')" data-i18n="table">ΤΡΑΠΕΖΙ</button>
+                    <button id="btnModeDelivery" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border: 1px solid #d1d5db; padding:8px; font-size:12px; margin:0;" onclick="App.setSidebarMode('delivery')" data-i18n="delivery">DELIVERY</button>
                 </div>
 
                 <!-- Table Inputs -->
@@ -129,14 +176,14 @@
                 </div>
 
                 <!-- ✅ NEW: Payment Method Selector (For Declaration) -->
-                <select id="sidebarPaymentMethod" class="inp-settings" style="margin-bottom:10px; padding:8px; background:#333; color:white; border:1px solid #555;">
+                <select id="sidebarPaymentMethod" class="inp-settings" style="margin-bottom:10px; padding:8px;">
                     <option value="💵 ΜΕΤΡΗΤΑ">💵 ΜΕΤΡΗΤΑ</option>
                     <option value="💳 ΚΑΡΤΑ">💳 ΚΑΡΤΑ</option>
                 </select>
 
-                <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #333; border-radius:8px; padding:5px;"></div>
+                <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #d1d5db; border-radius:8px; padding:5px;"></div>
                 <textarea id="sidebarOrderText" class="order-text" data-i18n-placeholder="products" placeholder="Προϊόντα..." style="height:100px;"></textarea>
-                <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#FFD700; margin-bottom:10px;" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
+                <div id="sidebarTotal" style="text-align:right; font-size:20px; font-weight:bold; color:#00E676; margin-bottom:10px;" data-i18n="total_zero">ΣΥΝΟΛΟ: 0.00€</div>
                 <button class="btn-send" onclick="App.sendSidebarOrder()"><span data-i18n="send_order">ΑΠΟΣΤΟΛΗ</span> 🚀</button>
             </div>
         </div>
@@ -144,8 +191,8 @@
     
     <div id="adminChatOverlay">
         <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:18px; font-weight:bold; color:var(--text-main);" data-i18n="group_chat">💬 Ομαδικό Chat</span>
-            <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
+            <span style="font-size:18px; font-weight:bold; color:#1f2937;" data-i18n="group_chat">💬 Ομαδικό Chat</span>
+            <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:#1f2937; font-size:24px;">✕</button>
         </div>
         <div class="chat-messages" id="adminChatBox"></div>
         <div class="chat-input-area">
@@ -436,30 +483,30 @@
 
     <!-- ✅ NEW: CASH REGISTER MODAL (ΤΑΜΕΙΑΚΗ) -->
     <div id="cashRegisterModal" class="modal-overlay" style="z-index: 5000;">
-        <div class="modal-box" style="width:100%; height:100%; max-width:none; max-height:none; background:#1a1a1a; display:flex; flex-direction:column; padding:10px; border-radius:0;">
+        <div class="modal-box" style="width:100%; height:100%; max-width:none; max-height:none; background:#ffffff; display:flex; flex-direction:column; padding:10px; border-radius:0;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 class="modal-title" style="color:#00BCD4; margin:0;">📠 ΤΑΜΕΙΑΚΗ</h3>
-                <button onclick="document.getElementById('cashRegisterModal').style.display='none'" style="background:none; border:none; color:#aaa; font-size:24px; cursor:pointer; padding:10px;">✕</button>
+                <button onclick="document.getElementById('cashRegisterModal').style.display='none'" style="background:none; border:none; color:#1f2937; font-size:24px; cursor:pointer; padding:10px;">✕</button>
             </div>
             
             <!-- Screen -->
-            <div style="background:#000; color:#00E676; font-family:'Courier New', monospace; font-size:48px; text-align:right; padding:15px; border-radius:8px; margin-bottom:10px; border:2px solid #333; font-weight:bold;">
+            <div style="background:#f4f6f8; color:#00E676; font-family:'Courier New', monospace; font-size:48px; text-align:right; padding:15px; border-radius:8px; margin-bottom:10px; border:2px solid #d1d5db; font-weight:bold;">
                 <span id="cashRegScreen">0</span><span style="font-size:24px;">€</span>
             </div>
 
             <!-- Receipt Preview (Mini List) -->
-            <div id="cashRegList" style="flex:1; overflow-y:auto; background:#222; padding:10px; margin-bottom:10px; font-size:16px; color:#ccc; border-radius:4px; border:1px solid #444;"></div>
-            <div id="cashRegTotal" style="text-align:right; font-weight:bold; color:white; margin-bottom:10px; font-size:24px;">ΣΥΝΟΛΟ: 0.00€</div>
+            <div id="cashRegList" style="flex:1; overflow-y:auto; background:#ffffff; padding:10px; margin-bottom:10px; font-size:16px; color:#1f2937; border-radius:4px; border:1px solid #d1d5db;"></div>
+            <div id="cashRegTotal" style="text-align:right; font-weight:bold; color:#1f2937; margin-bottom:10px; font-size:24px;">ΣΥΝΟΛΟ: 0.00€</div>
 
             <!-- VAT Buttons -->
             <div id="cashRegButtonsContainer" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:10px; flex-shrink: 0;"></div>
 
             <!-- Numpad -->
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:10px; flex-shrink: 0;">
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('7')">7</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('8')">8</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('9')">9</button>
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('4')">4</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('5')">5</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('6')">6</button>
-                <button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('1')">1</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('2')">2</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('3')">3</button>
-                <button class="modal-btn" style="background:#D32F2F; font-size:20px; margin:0; padding:15px;" onclick="Apodiksh.cashRegClear()">C</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('0')">0</button><button class="modal-btn" style="background:#333; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('.')">.</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('7')">7</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('8')">8</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('9')">9</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('4')">4</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('5')">5</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('6')">6</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('1')">1</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('2')">2</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('3')">3</button>
+                <button class="modal-btn" style="background:#D32F2F; color:white; font-size:20px; margin:0; padding:15px;" onclick="Apodiksh.cashRegClear()">C</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('0')">0</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #d1d5db; font-size:24px; margin:0; padding:15px;" onclick="Apodiksh.cashRegInput('.')">.</button>
             </div>
 
             <!-- Payment Actions -->
@@ -546,13 +593,13 @@
                 <label class="switch"><input type="checkbox" id="switchStaffChargeWallet" onclick="App.toggleStaffCharge(this.checked)"><span class="slider"></span></label>
             </div>
 
-            <div style="display:flex; justify-content:space-around; margin-bottom:15px; background:#333; padding:10px; border-radius:10px;">
+            <div style="display:flex; justify-content:space-around; margin-bottom:15px; background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:10px;">
                 <div style="text-align:center;">
-                    <div style="font-size:12px; color:#aaa;">ΜΕΤΡΗΤΑ (ΧΡΕΟΣ)</div>
+                    <div style="font-size:12px; color:#1f2937; font-weight:bold;">ΜΕΤΡΗΤΑ (ΧΡΕΟΣ)</div>
                     <div id="walletTotalCash" style="font-size:20px; color:#FFD700; font-weight:bold;">0.00€</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size:12px; color:#aaa;">ΚΑΡΤΕΣ (ΤΡΑΠΕΖΑ)</div>
+                    <div style="font-size:12px; color:#1f2937; font-weight:bold;">ΚΑΡΤΕΣ (ΤΡΑΠΕΖΑ)</div>
                     <div id="walletTotalCard" style="font-size:20px; color:#00E676; font-weight:bold;">0.00€</div>
                 </div>
             </div>

@@ -93,11 +93,11 @@ export const Sundromes = {
         
         if (!hasAny) {
             document.body.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:black; color:white; font-family:sans-serif; text-align:center;">
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#f4f6f8; color:#1f2937; font-family:sans-serif; text-align:center;">
                     <h1 style="color:red;">⛔ Καμία Ενεργή Συνδρομή</h1>
-                    <p style="color:#ccc;">Ο λογαριασμός δεν έχει ενεργά πακέτα.</p>
+                    <p style="color:#6b7280;">Ο λογαριασμός δεν έχει ενεργά πακέτα.</p>
                     <button onclick="Sundromes.openSubscriptionsModal('${user.store || user.email || ''}')" style="padding:15px 30px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer; font-weight:bold;">💎 ΑΓΟΡΑ ΣΥΝΔΡΟΜΗΣ</button>
-                    <button onclick="localStorage.removeItem('bellgo_session'); window.location.href='login.html'" style="padding:15px 30px; background:#333; color:white; border:1px solid #555; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer;">🚪 ΕΞΟΔΟΣ</button>
+                    <button onclick="localStorage.removeItem('bellgo_session'); window.location.href='login.html'" style="padding:15px 30px; background:#ffffff; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-size:18px; margin-top:20px; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.05);">🚪 ΕΞΟΔΟΣ</button>
                 </div>
             `;
             return false;
@@ -113,25 +113,25 @@ export const Sundromes = {
             modal.id = 'subscriptionsModal';
             modal.className = 'modal-overlay';
             // ✅ FIX: Inline styles to ensure it works in login.html without external CSS
-            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; align-items:center; justify-content:center;";
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:10000; display:flex; align-items:center; justify-content:center;";
             
             modal.innerHTML = `
-                <div class="modal-box" style="width:90%; max-width:400px; max-height:80vh; overflow-y:auto; background:#1e1e1e; padding:20px; border-radius:12px; border:1px solid #333; text-align:center;">
-                    <h2 style="color:#FFD700; text-align:center; margin-bottom:20px; margin-top:0;">💎 Διαχείριση Συνδρομών</h2>
+                <div class="modal-box" style="width:90%; max-width:400px; max-height:80vh; overflow-y:auto; background:#ffffff; padding:20px; border-radius:12px; border:1px solid #e5e7eb; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1); color:#1f2937;">
+                    <h2 style="color:#10B981; text-align:center; margin-bottom:20px; margin-top:0;">💎 Διαχείριση Συνδρομών</h2>
                     <div id="subsList" style="text-align:left;"></div>
-                    <div style="text-align:right; font-size:18px; font-weight:bold; color:#00E676; margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+                    <div style="text-align:right; font-size:18px; font-weight:bold; color:#10B981; margin-top:10px; border-top:1px solid #e5e7eb; padding-top:10px;">
                         ΣΥΝΟΛΟ: <span id="subsTotal">0.00€</span> / μήνα
                     </div>
                     <div style="margin-top:15px; text-align:left;">
-                        <label style="color:#aaa; font-size:12px;">Email Λογαριασμού (Stripe)</label>
+                        <label style="color:#6b7280; font-size:12px; font-weight:bold;">Email Λογαριασμού (Stripe)</label>
                         <div style="display:flex; gap:5px;">
-                            <input type="email" id="subsEmailInp" placeholder="example@email.com" style="flex:1; padding:10px; margin-top:5px; background:#333; border:1px solid #555; color:white; border-radius:6px; box-sizing:border-box; text-align:center;">
+                            <input type="email" id="subsEmailInp" placeholder="example@email.com" style="flex:1; padding:10px; margin-top:5px; background:#f9fafb; border:1px solid #d1d5db; color:#1f2937; border-radius:6px; box-sizing:border-box; text-align:center;">
                             <button onclick="Sundromes.verifyGoogle()" title="Επαλήθευση με Google" style="margin-top:5px; background:#DB4437; color:white; border:none; border-radius:6px; padding:0 15px; cursor:pointer; font-weight:bold; font-size:14px;">G</button>
                         </div>
                     </div>
                     <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
-                        <button onclick="Sundromes.proceedToLogin()" style="background:#2196F3; color:white; font-weight:bold; padding:12px; border:none; border-radius:8px; cursor:pointer; font-size:14px; width:100%;">📧 ΕΙΣΟΔΟΣ EMAIL & ΑΓΟΡΑ</button>
-                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" style="background:transparent; border:1px solid #555; color:#aaa; padding:10px; border-radius:8px; cursor:pointer; width:100%;">ΚΛΕΙΣΙΜΟ</button>
+                        <button onclick="Sundromes.proceedToLogin()" style="background:#2196F3; color:white; font-weight:bold; padding:12px; border:none; border-radius:8px; cursor:pointer; font-size:14px; width:100%; box-shadow:0 4px 10px rgba(33,150,243,0.3);">📧 ΕΙΣΟΔΟΣ EMAIL & ΑΓΟΡΑ</button>
+                        <button onclick="document.getElementById('subscriptionsModal').style.display='none';" style="background:#f3f4f6; border:1px solid #d1d5db; color:#6b7280; padding:10px; border-radius:8px; cursor:pointer; width:100%; font-weight:bold;">ΚΛΕΙΣΙΜΟ</button>
                     </div>
                 </div>
             `;
@@ -150,8 +150,8 @@ export const Sundromes = {
         Sundromes.packages.forEach((feat) => {
             const isActive = window.App.tempFeatures[feat.key];
             const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#2a2a2a; margin-bottom:10px; border-radius:8px; border:1px solid #444;";
-            row.innerHTML = `<div><div style="color:white; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#aaa; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked; Sundromes.calcTotal();"><span class="slider round"></span></label>`;
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#f9fafb; margin-bottom:10px; border-radius:8px; border:1px solid #e5e7eb;";
+            row.innerHTML = `<div><div style="color:#1f2937; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#6b7280; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked; Sundromes.calcTotal();"><span class="slider round"></span></label>`;
             list.appendChild(row);
         });
         Sundromes.calcTotal(); // ✅ Calculate initial total

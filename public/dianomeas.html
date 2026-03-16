@@ -18,15 +18,15 @@
         <div class="header">
             <div class="store-identity">
                 <span id="connDot" class="status-dot"></span>
-                <span id="storeNameHeader" style="margin-left:10px; color:#FFD700; font-weight:bold; font-size:18px;">DRIVER</span>
+                <span id="storeNameHeader" style="margin-left:10px; color:#1f2937; font-weight:bold; font-size:18px;">DRIVER</span>
             </div>
             <div class="header-actions">
-                <button id="driverBellBtn" class="btn-icon" onclick="App.acceptAlarm()" title="ΑΠΟΔΟΧΗ" style="display:none; background:var(--accent); color:black; border:none;">🔔</button>
+                <button id="driverBellBtn" class="btn-icon" onclick="App.acceptAlarm()" title="ΑΠΟΔΟΧΗ" style="display:none; background:var(--primary); color:white; border:none;">🔔</button>
                 <button class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
             </div>
         </div>
 
-        <div id="driverArea" style="padding:10px; overflow-y:auto; flex:1; background:#121212;">
+        <div id="driverArea" style="padding:10px; overflow-y:auto; flex:1; background:var(--bg-dark);">
             <div id="ordersList" style="display:flex; flex-direction:column; gap:10px; padding-bottom:50px;">
                 <div style="text-align:center; color:#555; margin-top:50px;">Φόρτωση...</div>
             </div>
@@ -60,13 +60,13 @@
     </div>
 
     <!-- ✅ NEW: DELIVERY OFFER MODAL -->
-    <div id="offerModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:10000;">
-        <div class="modal-box" style="background:#222; color:white; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px; border:2px solid #FFD700; box-shadow:0 0 30px #FFD700;">
+    <div id="offerModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:10000; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px);">
+        <div class="modal-box" style="background:#ffffff; color:#1f2937; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px; border:2px solid #10B981; box-shadow:0 10px 30px rgba(16,185,129,0.2);">
             <div style="font-size:50px;">🛵</div>
-            <h3 style="color:#FFD700; margin:10px 0;">ΝΕΑ ΔΙΑΝΟΜΗ!</h3>
+            <h3 style="color:#10B981; margin:10px 0;">ΝΕΑ ΔΙΑΝΟΜΗ!</h3>
             <p>Ποιος θα την αναλάβει;</p>
-            <button id="btnAcceptOffer" style="background:#00E676; color:black; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer;">🙋‍♂️ ΕΓΩ!</button>
-            <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#aaa; margin-top:15px; cursor:pointer;">ΑΚΥΡΟ</button>
+            <button id="btnAcceptOffer" style="background:#10B981; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">🙋‍♂️ ΕΓΩ!</button>
+            <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:15px; cursor:pointer;">ΑΚΥΡΟ</button>
         </div>
     </div>
 
