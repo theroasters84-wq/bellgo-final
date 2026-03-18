@@ -189,11 +189,6 @@
             <div style="font-weight:bold; font-size:18px; margin-top:10px;">ΚΛΗΣΗ!</div>
             <div id="alarmText" style="font-size:14px; margin-top:5px; font-weight:bold;">ΣΕ ΖΗΤΟΥΝ</div>
             
-            <div id="alarmLocationBox" style="display:none; flex-direction:column; align-items:center; width:100%; margin-top:10px;">
-                <div id="alarmLocationText" style="font-size:16px; color:black; font-weight:bold;">-</div>
-                <a id="btnGps" href="#" target="_blank" style="background:white; color:black; padding:5px 10px; border-radius:10px; text-decoration:none; font-weight:bold; font-size:12px; margin-top:5px;" onclick="event.stopPropagation()">📍 ΧΑΡΤΗΣ</a>
-            </div>
-            
             <div style="margin-top:20px; font-size:10px; color:black;">ΠΑΤΗΣΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
         </div>
     </div>
@@ -857,22 +852,12 @@
                     if(data && data.source) bell.innerText = `🔔 ${data.source}`; else bell.innerText = "🔔";
                     bell.classList.add('ringing');
 
-                    // ✅ SHOW OVERLAY INFO
+                    // ✅ SHOW OVERLAY INFO ONLY IF LOCKED
+                    const fakeLock = document.getElementById('fakeLockOverlay');
                     const overlay = document.getElementById('alarmOverlay');
-                    if (overlay) {
+                    if (overlay && fakeLock && fakeLock.style.display === 'flex') {
                         const text = document.getElementById('alarmText');
                         if (text && data && data.source) text.innerText = data.source;
-                        
-                        const locBox = document.getElementById('alarmLocationBox');
-                        const locText = document.getElementById('alarmLocationText');
-                        const btnGps = document.getElementById('btnGps');
-                        if (data && data.location && locBox) {
-                            locBox.style.display = 'flex';
-                            if(locText) locText.innerText = data.location;
-                            if(btnGps) btnGps.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location)}`;
-                        } else if (locBox) {
-                            locBox.style.display = 'none';
-                        }
                     }
                 });
 

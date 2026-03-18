@@ -115,7 +115,13 @@ const AudioEngine = {
 
         // 3. UI Overlay (Αν υπάρχει στο HTML)
         const overlay = document.getElementById('alarmOverlay');
-        if (overlay) overlay.style.display = 'flex';
+        const fakeLock = document.getElementById('fakeLockOverlay');
+        if (overlay) {
+            // Δείχνουμε το μεγάλο κουμπί ΜΟΝΟ αν είναι κλειδωμένη η οθόνη (Fake Lock)
+            if (fakeLock && fakeLock.style.display === 'flex') {
+                overlay.style.display = 'flex';
+            }
+        }
 
         this.vibrate(true);
         
