@@ -24,185 +24,6 @@ export const Admin = {
         window.socket.emit('admin-stop-ringing'); 
     },
 
-    // --- UI TOGGLES ---
-    togglePresetPanel: () => {
-        const p = document.getElementById('presetPanel');
-        if(p) p.style.display = (p.style.display === 'none' ? 'block' : 'none');
-    },
-
-    toggleMenuMode: () => {
-        const panel = document.getElementById('menuFullPanel');
-        const btn = document.getElementById('btnMenuToggle');
-        if (panel.style.display === 'flex') {
-            panel.style.display = 'none';
-            btn.classList.remove('menu-active');
-        } else {
-            panel.style.display = 'flex';
-            btn.classList.add('menu-active');
-        }
-    },
-    
-    toggleStaffPanel: () => {
-        const el = document.getElementById('staffContainer');
-        const icon = document.getElementById('staffToggleIcon');
-        if (el.classList.contains('minimized')) {
-            el.classList.remove('minimized');
-            icon.innerText = "▼";
-            icon.style.transform = "rotate(0deg)";
-        } else {
-            el.classList.add('minimized');
-            icon.innerText = "▲";
-            icon.style.transform = "rotate(180deg)";
-        }
-    },
-
-    // --- MODALS & SETTINGS ---
-    openPinModal: () => {
-        document.getElementById('settingsModal').style.display = 'none'; 
-        if(window.PIN) window.PIN.clear();
-        document.getElementById('pinChangeModal').style.display = 'flex';
-    },
-    closePinModal: () => { 
-        document.getElementById('pinChangeModal').style.display = 'none'; 
-        document.getElementById('settingsModal').style.display = 'flex'; 
-    },
-    
-    openSettingsModal: () => { 
-        document.getElementById('settingsModal').style.display = 'flex';
-        if(window.App) window.App.closeSettingsSub(); 
-
-        const app = window.App;
-        app.applyFeatureVisibility(); // ✅ FIX: Εκτέλεση ελέγχου ορατότητας ΠΡΩΤΑ
-
-        // ✅ NEW: Render Security Settings (Dynamic)
-        Admin.renderSecuritySettings();
-
-        // ❌ REMOVED: Lock overlay over the whole area.
-        // Settings now open freely, and code is requested only for Admin Settings.
-        const lock = document.getElementById('settingsLockOverlay');
-        if(lock) lock.style.display = 'none';
-    },
-
-    unlockSettings: () => {
-        const pin = document.getElementById('inpUnlockPin').value.trim();
-        
-        // ✅ NEW: Check Admin Lock Password first
-        if (window.App.adminPin) {
-            if (pin === String(window.App.adminPin).trim()) {
-                window.App.settingsUnlocked = true;
-                const lock = document.getElementById('settingsLockOverlay');
-                if(lock) lock.style.display = 'none';
-                document.getElementById('settingsLockedArea').style.minHeight = ''; 
-            } else {
-                alert("Λάθος Κωδικός Διαχειριστή!");
-                document.getElementById('inpUnlockPin').value = '';
-            }
-            return;
-        }
-        
-        const storeEmail = window.App.userData ? window.App.userData.store : null;
-        window.socket.emit('verify-pin', { pin: pin, email: storeEmail });
-        
-        window.socket.once('pin-verified', (data) => {
-            if (data.success) {
-                window.App.settingsUnlocked = true;
-                const lock = document.getElementById('settingsLockOverlay');
-                if(lock) lock.style.display = 'none';
-                document.getElementById('settingsLockedArea').style.minHeight = ''; 
-            } else {
-                alert("Λάθος PIN!");
-                document.getElementById('inpUnlockPin').value = '';
-            }
-        });
-    },
-    
-    updateFromLock: (type, val) => {
-        const app = window.App;
-        if (type === 'name') {
-            const el = document.getElementById('inpStoreNameHeader');
-            if(el) { el.value = val; app.saveStoreName(); }
-        } else if (type === 'hours') {
-            const el = document.getElementById('inpHours');
-            if(el) { el.value = val; app.autoSaveSettings(); }
-        } else if (type === 'reset') {
-            const el = document.getElementById('inpResetTime');
-            if(el) { el.value = val; app.autoSaveSettings(); }
-        } else if (type === 'cust') {
-            const el = document.getElementById('switchCust');
-            if(el) { el.checked = val; app.toggleStatus('customer'); }
-        } else if (type === 'staff') {
-            const el = document.getElementById('switchStaff');
-            if(el) { el.checked = val; app.toggleStatus('staff'); }
-        } else if (type === 'charge') {
-            const el = document.getElementById('switchStaffCharge');
-            if(el) { el.checked = val; app.toggleStaffCharge(val); }
-        }
-    },
-
-    openSettingsSub: (id) => {
-        // ✅ NEW: REQUIRE PIN ONLY FOR ADMIN SETTINGS (subGeneral)
-        if (id === 'subGeneral' && !window.App.settingsUnlocked && window.App.hasFeature('pack_pos')) {
-            // Open Custom Modal instead of Prompt
-            document.getElementById('adminUnlockModal').style.display = 'flex';
-            document.getElementById('inpAdminUnlockPin').value = '';
-            document.getElementById('inpAdminUnlockPin').focus();
-            return;
-        }
-
-        document.getElementById('settingsMain').style.display = 'none';
-        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
-        const target = document.getElementById(id);
-        if(target) target.style.display = 'block';
-    },
-
-    // ✅ NEW: Handle Admin Unlock from Modal
-    submitAdminUnlock: () => {
-        const pin = document.getElementById('inpAdminUnlockPin').value.trim();
-        if (!pin) return;
-
-        if (window.App.adminPin) {
-            if (pin === String(window.App.adminPin).trim()) {
-                window.App.settingsUnlocked = true;
-                document.getElementById('adminUnlockModal').style.display = 'none';
-                Admin.openSettingsSub('subGeneral');
-            } else {
-                alert("❌ Λάθος Κωδικός!");
-            }
-        } else {
-            // Fallback to Store PIN if no Admin PIN set
-            const storeEmail = window.App.userData ? window.App.userData.store : null;
-            window.socket.emit('verify-pin', { pin: pin, email: storeEmail });
-            window.socket.once('pin-verified', (data) => {
-                if (data.success) {
-                    window.App.settingsUnlocked = true;
-                    document.getElementById('adminUnlockModal').style.display = 'none';
-                    Admin.openSettingsSub('subGeneral');
-                } else {
-                    alert("❌ Λάθος PIN!");
-                }
-            });
-        }
-    },
-
-    forgotAdminUnlockPin: () => {
-        if (window.App.adminPin) {
-            if(confirm("Να σταλεί email επαναφοράς Κωδικού Διαχειριστή;")) {
-                window.socket.emit('forgot-admin-pin', { email: window.App.userData.store });
-                alert("Το email εστάλη! Ελέγξτε τα εισερχόμενά σας.");
-                document.getElementById('adminUnlockModal').style.display = 'none';
-            }
-        } else {
-            // Fallback to Store PIN reset
-            Admin.forgotPin();
-        }
-    },
-
-    closeSettingsSub: () => {
-        document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
-        const main = document.getElementById('settingsMain');
-        if(main) main.style.display = 'block';
-    },
-
     autoSaveSettings: () => {
         const app = window.App;
         const time = document.getElementById('inpResetTime').value;
@@ -249,22 +70,6 @@ export const Admin = {
         document.getElementById('settingsModal').style.display = 'none';
     },
 
-    openScheduleModal: () => {
-        document.getElementById('settingsModal').style.display = 'none';
-        const days = ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο', 'Κυριακή'];
-        const container = document.getElementById('weekDaysContainer');
-        container.innerHTML = '';
-        const sched = window.App.scheduleData || {};
-        days.forEach(day => {
-            const row = document.createElement('div');
-            row.className = 'day-row';
-            const val = sched[day] || '';
-            row.innerHTML = `<span class="day-label">${day.substring(0,3)}</span>
-                             <input type="text" class="day-input" data-day="${day}" value="${val}" placeholder="π.χ. 18:00 - 23:00">`;
-            container.appendChild(row);
-        });
-        document.getElementById('scheduleModal').style.display = 'flex';
-    },
     
     saveSchedule: () => {
         const inputs = document.querySelectorAll('.day-input');
@@ -382,11 +187,11 @@ export const Admin = {
             else targetArea.appendChild(secDiv);
         }
 
-        secDiv.innerHTML = `<h4 style="color:#aaa; margin:0 0 10px 0; font-size:12px;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
+        secDiv.innerHTML = `<h4 style="color:#6b7280; margin:0 0 10px 0; font-size:12px; font-weight:bold;">🔐 ΑΣΦΑΛΕΙΑ</h4>`;
 
         // ✅ NEW: E-Invoicing Button (Moved up)
         const btnEinv = document.createElement('button');
-        btnEinv.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+        btnEinv.style.cssText = "width:100%; background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; padding:12px; margin-bottom:10px; border-radius:8px; cursor:pointer; text-align:left; font-size:14px; font-weight:600;";
         btnEinv.innerHTML = "🔌 E-INVOICING (myDATA)";
         btnEinv.onclick = () => {
             if (window.Apodiksh) window.Apodiksh.openSettings();
@@ -395,11 +200,11 @@ export const Admin = {
 
         // 1. Change Login PIN (All Subscriptions)
         const btnPin = document.createElement('button');
-        btnPin.style.cssText = "width:100%; background:#333; color:white; border:1px solid #555; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+        btnPin.style.cssText = "width:100%; background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; padding:12px; margin-bottom:10px; border-radius:8px; cursor:pointer; text-align:left; font-size:14px; font-weight:600;";
         btnPin.innerHTML = "🔑 Αλλαγή PIN Εισόδου";
         btnPin.onclick = () => {
             if(window.PIN) { window.PIN.reset(); }
-            Admin.openPinModal();
+            window.App.openPinModal();
         };
         secDiv.appendChild(btnPin);
 
@@ -411,7 +216,7 @@ export const Admin = {
 
         if (hasPos || hasManager || hasDelivery || hasTables) {
             const btnAdmin = document.createElement('button');
-            btnAdmin.style.cssText = "width:100%; background:#333; color:#FFD700; border:1px solid #FFD700; padding:10px; margin-bottom:10px; border-radius:5px; cursor:pointer; text-align:left; font-size:14px;";
+            btnAdmin.style.cssText = "width:100%; background:#fffbeb; color:#b45309; border:1px solid #fcd34d; padding:12px; margin-bottom:10px; border-radius:8px; cursor:pointer; text-align:left; font-size:14px; font-weight:600;";
             btnAdmin.innerHTML = "🛡️ Αλλαγή Κωδικού Διαχειριστή (Lock)";
             btnAdmin.onclick = () => Admin.changeAdminPassword();
             secDiv.appendChild(btnAdmin);
@@ -449,47 +254,25 @@ export const Admin = {
         }
     },
 
-    // --- EXPENSES LOGIC ---
-    openExpensesModal: () => {
-        document.getElementById('expensesModal').style.display = 'flex';
-        window.App.renderExpensePresets();
-        window.App.renderFixedExpenses();
-        
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' });
-        const [year, month, day] = dateStr.split('-');
-        const monthKey = `${year}-${month}`;
-        
-        let currentText = "";
-        if (window.App.cachedStats && window.App.cachedStats[monthKey] && window.App.cachedStats[monthKey].days[day] && window.App.cachedStats[monthKey].days[day].expenses) {
-            currentText = window.App.cachedStats[monthKey].days[day].expenses.text || "";
-        }
-        document.getElementById('txtExpenses').value = currentText;
-        
-        let currentWages = 0;
-        if (window.App.cachedStats && window.App.cachedStats[monthKey] && window.App.cachedStats[monthKey].days[day] && window.App.cachedStats[monthKey].days[day].expenses) {
-            currentWages = window.App.cachedStats[monthKey].days[day].expenses.wages || 0;
-        }
-        document.getElementById('inpWages').value = currentWages > 0 ? currentWages : '';
-
-        window.App.calcExpensesTotal();
-
-        const txt = document.getElementById('txtExpenses');
-        const modal = document.getElementById('expensesModal');
-        if (!txt.dataset.hasListeners) {
-            txt.dataset.hasListeners = "true";
-            txt.addEventListener('focus', () => { modal.classList.add('writing-mode'); });
-            txt.addEventListener('blur', () => { setTimeout(() => modal.classList.remove('writing-mode'), 150); });
-        }
-    },
     
     renderFixedExpenses: () => {
         const container = document.getElementById('fixedExpensesContainer');
         container.innerHTML = '';
         (window.App.fixedExpenses || []).forEach((fixed, idx) => {
             const btn = document.createElement('div');
-            btn.style.cssText = "background:#444; color:#FFD700; padding:5px 10px; border-radius:15px; font-size:12px; display:flex; align-items:center; gap:5px; border:1px solid #FFD700;";
-            btn.innerHTML = `<span>${fixed.name}: <b>${fixed.price.toFixed(2)}€</b></span> <span style="color:#FF5252; font-weight:bold; font-size:10px; cursor:pointer;">✕</span>`;
+            btn.style.cssText = "background:#fffbeb; color:#b45309; padding:5px 10px; border-radius:15px; font-size:12px; display:flex; align-items:center; gap:5px; border:1px solid #fcd34d;";
+            
+            // Έλεγχος Ασφαλείας Δεδομένων
+            let name = "Άγνωστο";
+            let price = 0;
+            if (typeof fixed === 'object') {
+                name = fixed.name || name;
+                price = Number(fixed.price) || 0;
+            } else if (typeof fixed === 'string') {
+                name = fixed;
+            }
+
+            btn.innerHTML = `<span>${name}: <b>${price.toFixed(2)}€</b></span> <span style="color:#FF5252; font-weight:bold; font-size:10px; cursor:pointer;">✕</span>`;
             btn.children[1].onclick = (e) => {
                 if(confirm("Διαγραφή πάγιου εξόδου;")) {
                     window.App.fixedExpenses.splice(idx, 1);
@@ -522,7 +305,7 @@ export const Admin = {
         container.innerHTML = '';
         (window.App.expensePresets || []).forEach((preset, idx) => {
             const btn = document.createElement('div');
-            btn.style.cssText = "background:#333; color:white; padding:5px 10px; border-radius:15px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; border:1px solid #555;";
+            btn.style.cssText = "background:#f9fafb; color:#1f2937; padding:5px 10px; border-radius:15px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; border:1px solid #e5e7eb; font-weight:500;";
             let name = preset;
             let price = null;
             if(typeof preset === 'object') { name = preset.name; price = preset.price; }
@@ -591,10 +374,6 @@ export const Admin = {
     },
 
     // --- TABLE QR ---
-    openTableQrModal: () => {
-        document.getElementById('settingsModal').style.display = 'none';
-        document.getElementById('tableQrModal').style.display = 'flex';
-    },
     generateTableQrs: () => {
         const input = document.getElementById('inpTableNumbers').value.trim();
         const container = document.getElementById('qrGrid');
@@ -625,13 +404,6 @@ export const Admin = {
     },
 
     // --- CHAT ---
-    toggleAdminChat: () => { 
-        const el = document.getElementById('adminChatOverlay');
-        const app = window.App;
-        app.isChatOpen = (el.style.display === 'flex');
-        if (app.isChatOpen) { el.style.display = 'none'; app.isChatOpen = false; } 
-        else { el.style.display = 'flex'; app.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
-    },
     sendChat: () => {
         const inp = document.getElementById('adminChatInp');
         if (inp.value.trim()) { window.socket.emit('chat-message', { text: inp.value }); inp.value = ''; }
@@ -649,18 +421,6 @@ export const Admin = {
     // --- SYSTEM ---
     logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
     
-    toggleFakeLock: () => { 
-        const el = document.getElementById('fakeLockOverlay');
-        if (el.style.display === 'flex') {
-            // Unlock Attempt (Secure)
-            const pin = prompt("PIN (Admin/Waiter/Driver):");
-            if (pin) window.socket.emit('verify-pin', { pin, email: window.App.userData.store });
-        } else {
-            // Lock
-            el.style.display = 'flex';
-            if(window.socket) window.socket.emit('set-user-status', 'background');
-        }
-    },
     
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },
     startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000)

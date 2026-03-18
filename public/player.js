@@ -100,12 +100,16 @@ const AudioEngine = {
         if (this.useSynth) {
             this.startSynthLoop();
         } else {
-            this.alarmPlayer.currentTime = 0;
-            try {
-                await this.alarmPlayer.play();
-            } catch(e) { 
-                console.error("Audio Play Error:", e); 
-                this.startSynthLoop(); // Fallback if play fails
+            if (this.alarmPlayer) {
+                this.alarmPlayer.currentTime = 0;
+                try {
+                    await this.alarmPlayer.play();
+                } catch(e) { 
+                    console.error("Audio Play Error:", e); 
+                    this.startSynthLoop(); // Fallback if play fails
+                }
+            } else {
+                this.startSynthLoop(); // Fallback if player not ready
             }
         }
 

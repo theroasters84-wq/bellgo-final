@@ -56,12 +56,12 @@ export const PaySystem = {
             totalCash += amount;
 
             const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #333; background:#222; margin-bottom:5px; border-radius:8px;";
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #e5e7eb; background:#f9fafb; margin-bottom:8px; border-radius:8px;";
             
             row.innerHTML = `
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span style="font-size:20px;">👤</span>
-                    <span style="font-weight:bold; color:white;">${name}</span>
+                    <span style="font-weight:bold; color:#1f2937;">${name}</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span style="color:#FFD700; font-weight:bold; font-size:18px;">${amount.toFixed(2)}€</span>

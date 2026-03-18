@@ -3,6 +3,8 @@ import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signO
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
 import { ReserveTable } from './reserve-table.js';
+import { I18n, PushNotifications } from './shared-utils.js';
+import { initSockets } from './socket-client.js';
 
 if ('serviceWorker' in navigator) {
     // ✅ FIX: Καθαρισμός παλιού Root Service Worker (που μπλόκαρε το Dine-In)
@@ -168,64 +170,10 @@ let googleMapsUrl = "";
 let hasCheckedStripe = false; // ✅ Flag για να μην ελέγχουμε διπλά
 
 // --- I18N LOGIC (ΠΟΛΥΓΛΩΣΣΙΚΟΤΗΤΑ) ---
-let translations = {};
-
-// Function to set the language
-async function setLanguage(lang) {
-    localStorage.setItem('bellgo_lang', lang);
-    
-    try {
-        const response = await fetch(`/i18n/${lang}.json`);
-        translations = await response.json();
-        applyTranslations();
-        
-        // Update active class on switcher
-        document.getElementById('lang-el').classList.toggle('active', lang === 'el');
-        document.getElementById('lang-en').classList.toggle('active', lang === 'en');
-        document.documentElement.lang = lang;
-
-    } catch (error) {
-        console.error(`Could not load language file: ${lang}.json`, error);
-    }
-}
-
-// Function to apply translations to the page
-function applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        if (translations[key]) {
-            // Check if the element has children, if so, we only want to translate the text node
-            if(element.children.length > 0) {
-                // Find the text node that is a direct child of the element
-                for (let i = 0; i < element.childNodes.length; i++) {
-                    if (element.childNodes[i].nodeType === 3) { // Node.TEXT_NODE
-                        element.childNodes[i].nodeValue = translations[key];
-                        break;
-                    }
-                }
-            } else if (element.tagName === 'INPUT' && element.type === 'button' || element.type === 'submit') {
-                // ✅ FIX: Support for Input Buttons (value attribute)
-                element.value = translations[key];
-            } else {
-                element.innerText = translations[key];
-            }
-        }
-    });
-
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-        const key = element.getAttribute('data-i18n-placeholder');
-        if (translations[key]) {
-            element.placeholder = translations[key];
-        }
-    });
-}
-
-// ✅ FIX: Return undefined if missing, so || fallback works
-const t = (key) => translations[key];
+const t = (key) => I18n.t(key);
 
 
 window.App = {
-    setLanguage, // Make it accessible from HTML
     t: t, // ✅ Expose translation function
     existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
 
@@ -538,70 +486,18 @@ window.App = {
         
         App.connectSocket();
         // ✅ REQUEST NOTIFICATIONS FOR CUSTOMER
-        // App.requestNotifyPermission(); // ΑΦΑΙΡΕΣΗ ΑΥΤΟΜΑΤΗΣ ΚΛΗΣΗΣ (Μπλοκάρεται)
-        App.checkNotificationPermission(); // ✅ ΝΕΑ ΚΛΗΣΗ ΜΕ UI
-    },
-
-    // ✅✅✅ NEW: REQUEST PERMISSION & GET TOKEN ✅✅✅
-    requestNotifyPermission: async () => {
-        try {
-            // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
-            if (Notification.permission === 'default') {
-                await Notification.requestPermission();
-                const result = await Notification.requestPermission();
-                if (result !== 'granted') {
-                    alert(t('notifications_blocked_msg') || '⚠️ Ο Browser μπλόκαρε τις ειδοποιήσεις.\n\nΠατήστε το εικονίδιο 🔒 ή 🔔 στη γραμμή διευθύνσεων (πάνω αριστερά) και επιλέξτε "Allow/Επιτρέπεται".');
-                    return;
-                }
+        PushNotifications.checkPermission(messaging, (token) => {
+            if(window.socket && window.socket.connected) {
+                const mySocketUsername = (customerDetails && customerDetails.name ? customerDetails.name : "Πελάτης") + " (Πελάτης)";
+                window.socket.emit('join-store', { 
+                    storeName: TARGET_STORE, 
+                    username: mySocketUsername, 
+                    role: 'customer', 
+                    token: token,
+                    isNative: false 
+                });
             }
-            
-            if (Notification.permission === "granted") {
-                const registration = await navigator.serviceWorker.ready;
-                // 👇 ΕΔΩ ΒΑΖΕΙΣ ΤΟ VAPID KEY ΣΟΥ 👇
-                const token = await getToken(messaging, { 
-                    vapidKey: vapidKey, 
-                    serviceWorkerRegistration: registration 
-                }); 
-                if (token) {
-                    localStorage.setItem('fcm_token', token);
-                    // Αν το socket είναι ήδη συνδεδεμένο, στέλνουμε το token
-                    if(window.socket && window.socket.connected) {
-                        // Ξαναστέλνουμε join για update
-                        const mySocketUsername = customerDetails.name + " (Πελάτης)";
-                        window.socket.emit('join-store', { 
-                            storeName: TARGET_STORE, 
-                            username: mySocketUsername, 
-                            role: 'customer', 
-                            token: token, // 👈 Στέλνουμε το token
-                            isNative: false 
-                        });
-                    }
-                }
-            }
-        } catch (error) { console.error("Notification Error:", error); }
-    },
-
-    // ✅ NEW: ΕΛΕΓΧΟΣ ΑΔΕΙΑΣ & UI
-    checkNotificationPermission: () => {
-        if (Notification.permission === 'default') {
-            const div = document.createElement('div');
-            div.id = 'notifPermRequest';
-            div.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:#ffffff; border-top:1px solid #e5e7eb; padding:20px; z-index:10000; text-align:center; box-shadow:0 -10px 30px rgba(0,0,0,0.1); border-radius:20px 20px 0 0;";
-            div.innerHTML = `
-                <div style="color:#1f2937; font-weight:bold; margin-bottom:10px; font-size:16px;">🔔 ${t('enable_notifications_title') || 'Ενεργοποίηση Ειδοποιήσεων'}</div>
-                <div style="color:#6b7280; font-size:12px; margin-bottom:15px;">${t('enable_notifications_desc') || 'Για να ενημερωθείτε όταν έρθει η παραγγελία σας!'}</div>
-                <button id="btnAllowNotif" style="background:#10B981; color:white; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; font-size:14px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">${t('enable_btn') || 'ΕΝΕΡΓΟΠΟΙΗΣΗ'}</button>
-                <button onclick="document.getElementById('notifPermRequest').remove()" style="background:none; border:none; color:#6b7280; margin-left:10px; cursor:pointer; font-weight:bold;">${t('not_now') || 'Όχι τώρα'}</button>
-            `;
-            document.body.appendChild(div);
-            
-            document.getElementById('btnAllowNotif').onclick = async () => {
-                document.getElementById('notifPermRequest').remove();
-                await App.requestNotifyPermission();
-            };
-        } else if (Notification.permission === 'granted') {
-            App.requestNotifyPermission(); // Αν έχει ήδη άδεια, απλά ανανεώνουμε το token
-        }
+        }, true);
     },
 
     checkActiveOrderStorage: () => {
@@ -670,283 +566,26 @@ window.App = {
     },
 
     connectSocket: () => {
-        // ✅ FIX: Robust connection logic
-        if (!window.socket) {
-            window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
-        }
-        const socket = window.socket;
 
-        socket.removeAllListeners(); // Καθαρισμός παλιών listeners
+        const ctx = {
+            getSafeName: () => (customerDetails && customerDetails.name) ? customerDetails.name : "Πελάτης",
+            get TARGET_STORE() { return TARGET_STORE; },
+            get isDineIn() { return isDineIn; },
+            get tableNumber() { return tableNumber; },
+            get customerDetails() { return customerDetails; },
+            get activeOrders() { return activeOrders; },
+            set activeOrders(val) { activeOrders = val; },
+            get hasCheckedStripe() { return hasCheckedStripe; },
+            set hasCheckedStripe(val) { hasCheckedStripe = val; },
+            get storeHasStripe() { return storeHasStripe; },
+            set storeHasStripe(val) { storeHasStripe = val; },
+            get googleMapsUrl() { return googleMapsUrl; },
+            set googleMapsUrl(val) { googleMapsUrl = val; },
+            t: t,
+            ReserveTable: ReserveTable
+        };
 
-        // ✅ FIX: Safe Name Access (Prevent Crash if null)
-        const getSafeName = () => (customerDetails && customerDetails.name) ? customerDetails.name : "Πελάτης";
-
-        socket.on('connect', () => {
-            const mySocketUsername = getSafeName() + " (Πελάτης)";
-            // ✅ SEND TOKEN ON JOIN
-            socket.emit('join-store', { 
-                storeName: TARGET_STORE, 
-                username: mySocketUsername, 
-                role: 'customer', 
-                token: localStorage.getItem('fcm_token'), // 👈 Token here
-                isNative: false 
-            });
-
-            // ✅ NEW: Έλεγχος αν το τραπέζι είναι ήδη ανοιχτό
-            if (isDineIn) {
-                socket.emit('check-table-status', { table: tableNumber });
-            }
-            
-            // ✅ NEW: Έλεγχος για ενεργές κρατήσεις (για το Badge)
-            const myResIds = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
-            if (myResIds.length > 0) {
-                socket.emit('get-customer-reservations', myResIds);
-            }
-            
-            // Αφαιρέθηκε το setTimeout. Ο έλεγχος γίνεται πλέον στο 'menu-update'
-        });
-
-        socket.on('menu-update', (data) => { 
-            App.renderMenu(data); 
-            
-            // ✅ FIX: Ελέγχουμε για πληρωμή ΜΟΝΟ αφού έχουμε συνδεθεί επιτυχώς (πήραμε μενού)
-            if (!hasCheckedStripe) {
-                hasCheckedStripe = true;
-                App.checkStripeReturn();
-            }
-        });
-
-        // ✅ NEW: Απάντηση για το αν υπάρχει ενεργό τραπέζι
-        socket.on('table-status', (data) => {
-            ReserveTable.handleTableStatus(data);
-        });
-
-        // ✅✅✅ ΕΛΕΓΧΟΣ ΚΛΕΙΣΤΟΥ ΚΑΤΑΣΤΗΜΑΤΟΣ (Status Customer) ✅✅✅
-        socket.on('store-settings-update', (settings) => {
-            if (settings) {
-                if (settings.name) {
-                    const newName = settings.name;
-                    document.getElementById('storeNameHeader').innerText = newName;
-                    document.title = newName;
-                    if (!new URLSearchParams(window.location.search).get('name')) {
-                        const currentParams = new URLSearchParams(window.location.search);
-                        currentParams.set('name', newName);
-                        window.history.replaceState({}, '', `${window.location.pathname}?${currentParams.toString()}`);
-                    }
-                }
-
-                // ✅ Ενημέρωση Ωραρίου Διανομής (Header)
-                if (settings.hours) {
-                    const el = document.getElementById('todayHours');
-                    if(el) el.innerText = settings.hours;
-                }
-                
-                storeHasStripe = !!settings.stripeConnectId;
-                window.storeHasStripe = storeHasStripe; // ✅ Update global
-                
-                // ✅ Google Maps Review Button Logic
-                if (settings.googleMapsUrl) {
-                    googleMapsUrl = settings.googleMapsUrl;
-                    const btn = document.getElementById('btnReview');
-                    if(btn) btn.style.display = 'block';
-                } else {
-                    const btn = document.getElementById('btnReview');
-                    if(btn) btn.style.display = 'none';
-                }
-                
-                // ✅ NEW: Show/Hide Reservation Buttons
-                const btnBook = document.getElementById('btnBookTable');
-                if(btnBook) btnBook.style.display = settings.reservationsEnabled ? 'inline-block' : 'none';
-
-                const btnMyRes = document.getElementById('btnMyRes');
-                if(btnMyRes) btnMyRes.style.display = settings.reservationsEnabled ? 'inline-block' : 'none';
-                
-                const btnHeaderMyRes = document.getElementById('btnHeaderMyRes');
-                if(btnHeaderMyRes) btnHeaderMyRes.style.display = settings.reservationsEnabled ? 'inline-flex' : 'none';
-
-                App.handleInput();
-                
-                const closedOverlay = document.getElementById('closedOverlay');
-                const btnSend = document.getElementById('btnSendOrder');
-                
-                if (settings.statusCustomer === false) {
-                    closedOverlay.style.display = 'flex';
-                    if(btnSend) { 
-                        btnSend.disabled = true; 
-                        btnSend.innerText = t('store_closed') || 'Το κατάστημα είναι κλειστό'; 
-                    }
-                } else {
-                    closedOverlay.style.display = 'none';
-                    if(btnSend) { 
-                        btnSend.disabled = false; 
-                        btnSend.innerText = t('send_order') || 'ΑΠΟΣΤΟΛΗ ΠΑΡΑΓΓΕΛΙΑΣ'; 
-                    }
-                }
-            }
-        });
-
-        socket.on('orders-update', (orders) => {
-            const mySocketUsername = customerDetails.name + " (Πελάτης)";
-            const myServerOrders = orders.filter(o => o.from === mySocketUsername);
-            
-            let changed = false;
-            
-            // Update existing local orders
-            activeOrders.forEach(localOrder => {
-                const serverOrder = myServerOrders.find(so => so.id === localOrder.id);
-                if (serverOrder) {
-                    if (localOrder.status !== serverOrder.status) {
-                        localOrder.status = serverOrder.status;
-                        if (serverOrder.readyTime) localOrder.readyTime = serverOrder.readyTime;
-                        changed = true;
-                    }
-                    // ✅ FIX: Sync Text (ώστε να υπάρχει για τον έλεγχο Pickup)
-                    if (serverOrder.text && localOrder.text !== serverOrder.text) {
-                        localOrder.text = serverOrder.text;
-                        changed = true;
-                    }
-                } else {
-                    // ✅ NEW: Αν η παραγγελία κλείσει (διαγραφεί) από το κατάστημα (π.χ. Τραπέζι)
-                    if (localOrder.status !== 'completed' && localOrder.status !== 'ready') {
-                        localOrder.status = 'completed';
-                        localOrder.readyTime = Date.now(); // Start 30min timer
-                        changed = true;
-                    }
-                }
-            });
-
-            // ✅ FIX: Συγχρονισμός παραγγελιών από Server (για PWA/Browser Isolation)
-            myServerOrders.forEach(serverOrder => {
-                const exists = activeOrders.find(lo => lo.id === serverOrder.id);
-                if (!exists) {
-                    activeOrders.push({
-                        id: serverOrder.id,
-                        status: serverOrder.status,
-                        timestamp: serverOrder.id,
-                        text: serverOrder.text,
-                        readyTime: serverOrder.readyTime
-                    });
-                    changed = true;
-                }
-            });
-            
-            if (changed) {
-                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI(false);
-            }
-        });
-
-        // ✅ IMMEDIATE UPDATE (Fixes "den vlepw stadiaka")
-        socket.on('order-changed', (data) => {
-            const order = activeOrders.find(o => o.id === data.id);
-            if (order) {
-                // ✅ NEW: Play Alert on Ready (Όταν ο Admin πατήσει ΕΤΟΙΜΟ)
-                if (order.status !== 'ready' && data.status === 'ready') {
-                    // ✅ FIX: Stop Silent KeepAlive Audio
-                    if (window.bellgoKeepAlive) {
-                        window.bellgoKeepAlive.pause();
-                        window.bellgoKeepAlive = null;
-                        console.log("🛑 KeepAlive Stopped (Order Ready)");
-                    }
-
-                    // ✅ FIX: Alarm ONLY for Pickup (Not for Dine-In/Table)
-                    if (order.text && order.text.includes('[PICKUP')) {
-                        const audio = new Audio('/alert.mp3');
-                        const playAlert = () => {
-                            audio.currentTime = 0;
-                            audio.play().catch(e => console.log("Audio play error:", e));
-                            if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
-                        };
-                        playAlert();
-                        if (window.pickupInterval) clearInterval(window.pickupInterval);
-                        window.pickupInterval = setInterval(playAlert, 5000);
-                        const modal = document.getElementById('readyPickupModal');
-                        modal.style.display = 'flex';
-                        const btn = modal.querySelector('button');
-                        if (btn) {
-                            const oldClick = btn.onclick;
-                            btn.onclick = (e) => {
-                                clearInterval(window.pickupInterval);
-                                window.pickupInterval = null;
-                                modal.style.display = 'none';
-                                if (oldClick) oldClick.call(btn, e);
-                            };
-                        }
-                    }
-                }
-
-                order.status = data.status;
-                if (data.readyTime) order.readyTime = data.readyTime;
-                
-                localStorage.setItem('bellgo_active_orders', JSON.stringify(activeOrders));
-                App.updateStatusUI(false);
-            }
-        });
-        
-        // ✅ NEW: Reservation Result
-        socket.on('reservation-result', (res) => {
-            if(res.success) { 
-                // ✅ Show Waiting State
-                const btn = document.querySelector('#bookingModal button.btn-save-details');
-                if(btn) {
-                    btn.innerText = "⏳ ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ...";
-                    btn.disabled = true;
-                    btn.style.background = "#555";
-                }
-                App.pendingReservationId = res.reservationId;
-                
-                // ✅ NEW: Save ID to LocalStorage
-                let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
-                if(!myRes.includes(res.reservationId)) myRes.push(res.reservationId);
-                localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
-                
-                // ✅ NEW: Ανανέωση Badge άμεσα
-                window.socket.emit('get-customer-reservations', myRes);
-            }
-            else { alert("Σφάλμα: " + res.error); }
-        });
-
-        // ✅ NEW: Reservation Confirmed
-        socket.on('reservation-confirmed', (data) => {
-            if (App.pendingReservationId && data.id === App.pendingReservationId) {
-                alert("✅ Η κράτηση σας ΕΓΙΝΕ ΔΕΚΤΗ!");
-                document.getElementById('bookingModal').style.display='none';
-                App.pendingReservationId = null;
-                // Reset Button
-                const btn = document.querySelector('#bookingModal button.btn-save-details');
-                if(btn) { btn.innerText = "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
-            }
-        });
-
-        // ✅ NEW: Receive My Reservations Data
-        socket.on('my-reservations-data', (list) => {
-            App.renderMyReservations(list);
-        });
-
-        // ✅ NEW: Cancel Success
-        socket.on('reservation-cancelled-success', (id) => {
-            alert("Η κράτηση ακυρώθηκε.");
-            // Remove from local storage
-            let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
-            myRes = myRes.filter(rid => rid !== id);
-            localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
-            App.openMyReservations(); // Refresh list
-        });
-
-        // ✅ Force Connect / Re-Join if needed
-        if (!socket.connected) {
-            socket.connect();
-        } else {
-            // Αν είναι ήδη συνδεδεμένο, ξαναστέλνουμε join για σιγουριά
-            const mySocketUsername = getSafeName() + " (Πελάτης)";
-            socket.emit('join-store', { 
-                storeName: TARGET_STORE, 
-                username: mySocketUsername, 
-                role: 'customer', 
-                token: localStorage.getItem('fcm_token'),
-                isNative: false 
-            });
-        }
+        initSockets(App, ctx);
     },
 
     renderMenu: (data) => {
@@ -1426,5 +1065,5 @@ onAuthStateChanged(auth, (user) => {
 // --- INITIALIZE LANGUAGE ---
 (async () => {
     const savedLang = localStorage.getItem('bellgo_lang') || 'el';
-    await setLanguage(savedLang);
+    await I18n.setLanguage(savedLang);
 })();

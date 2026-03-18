@@ -4,9 +4,13 @@ import { firebaseConfig, vapidKey } from './config.js';
 import { StatsUI } from './premium-stats.js';
 import { Sundromes } from './sundromes.js';
 import { Admin } from './admin.js';
+import { AdminUI } from './admin-ui.js';
 import { OrdersUI } from './premium-orders.js';
 import { PaySystem } from './pay.js';
 import { Menu } from './menu-presets.js';
+import { I18n, PushNotifications } from './shared-utils.js';
+import { initKitchenSockets } from './kitchen-sockets.js'; // ✅ Import Sockets Logic
+import { DNDBot } from './dnd-bot.js'; // ✅ Import DNDBot
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -17,28 +21,7 @@ const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
 // --- I18N LOGIC (FIX FOR TRANSLATIONS) ---
-let translations = {};
-const t = (key) => translations[key] || key;
-
-async function setLanguage(lang) {
-    localStorage.setItem('bellgo_lang', lang);
-    try {
-        const response = await fetch(`/i18n/${lang}.json`);
-        translations = await response.json();
-        applyTranslations();
-    } catch (error) { console.error(`Lang Error: ${lang}`, error); }
-}
-
-function applyTranslations() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (translations[key]) el.innerText = translations[key];
-    });
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (translations[key]) el.placeholder = translations[key];
-    });
-}
+const t = (key) => I18n.t(key) || key;
 
 const calculateTotal = (text) => {
     let total = 0;
@@ -96,73 +79,6 @@ const DEFAULT_CATEGORIES = [
     { order: 8, name: "SNACKS", items: [] }
 ];
 
-// ✅ BELLGO BOT: Οδηγός για "Override Do Not Disturb" (Android)
-const DNDBot = {
-    init: () => {
-        // Τρέχει μόνο σε Android και αν δεν έχει ξαναγίνει
-        if(localStorage.getItem('bellgo_dnd_setup') === 'true') return;
-        if(!/android/i.test(navigator.userAgent)) return;
-        
-        setTimeout(DNDBot.showIntro, 1500); // Μικρή καθυστέρηση
-    },
-    showIntro: () => {
-        if(document.getElementById('dndBotOverlay')) return;
-        const div = document.createElement('div');
-        div.id = 'dndBotOverlay';
-        div.className = 'bot-overlay';
-        div.innerHTML = `
-            <div class="bot-box">
-                <div class="bot-icon">🤖</div>
-                <div class="bot-title">BellGo Bot</div>
-                <div class="bot-text">
-                    Γεια! Είμαι ο βοηθός σου.<br><br>
-                    Για να μη χάνεις παραγγελίες, πρέπει να ρυθμίσουμε το κινητό να χτυπάει <b>ΔΥΝΑΤΑ</b> ακόμα και στο <b>ΑΘΟΡΥΒΟ</b>.
-                </div>
-                <button class="bot-btn" onclick="DNDBot.step1()">Ξεκίνα Ρύθμιση 🚀</button>
-                <button class="bot-skip" onclick="DNDBot.skip()">Όχι τώρα</button>
-            </div>
-        `;
-        document.body.appendChild(div);
-    },
-    step1: () => {
-        Notification.requestPermission().then(perm => {
-            if(perm === 'granted') { DNDBot.step2(); } 
-            else { alert("⚠️ Πρέπει να πατήσεις 'Allow' / 'Επιτρέπεται' για να λειτουργήσει!"); }
-        });
-    },
-    step2: () => {
-        const box = document.querySelector('#dndBotOverlay .bot-box');
-        box.innerHTML = `
-            <div class="bot-icon">📢</div>
-            <div class="bot-title">Δημιουργία Καναλιού</div>
-            <div class="bot-text">Θα στείλω τώρα μια δοκιμαστική ειδοποίηση για να εμφανιστεί η ρύθμιση στο κινητό σου.</div>
-            <button class="bot-btn" onclick="DNDBot.step3()">Στείλε Δοκιμή 🔔</button>
-        `;
-    },
-    step3: () => {
-        if(window.socket) window.socket.emit('trigger-alarm', { target: userData.name, source: 'BellGo Setup' });
-        const box = document.querySelector('#dndBotOverlay .bot-box');
-        box.innerHTML = `
-            <div class="bot-icon">⚙️</div>
-            <div class="bot-title">Τελικό Βήμα</div>
-            <div class="bot-text" style="font-size:14px; text-align:left;">
-                1. Μόλις έρθει η ειδοποίηση, πήγαινε:<br><b>Ρυθμίσεις > Εφαρμογές > Chrome > Ειδοποιήσεις</b><br>
-                2. Βρες το <b>"bellgo_alarm_channel"</b>.<br>
-                3. Ενεργοποίησε: <b>"Παράκαμψη Μην Ενοχλείτε"</b> (Override Do Not Disturb).
-            </div>
-            <button class="bot-btn" onclick="DNDBot.finish()">Το Έκανα! ✅</button>
-        `;
-    },
-    finish: () => {
-        localStorage.setItem('bellgo_dnd_setup', 'true');
-        document.getElementById('dndBotOverlay').remove();
-        if(window.AudioEngine) window.AudioEngine.stopAlarm();
-        if(window.socket) window.socket.emit('admin-stop-ringing');
-    },
-    skip: () => { localStorage.setItem('bellgo_dnd_setup', 'true'); document.getElementById('dndBotOverlay').remove(); }
-};
-window.DNDBot = DNDBot;
-
 window.App = {
     // ==========================================
     // 1. STATE & DATA (ΜΕΤΑΒΛΗΤΕΣ)
@@ -175,7 +91,7 @@ window.App = {
     tempComingState: {},
     lastStaffList: [],
     scheduleData: {},
-    adminMode: localStorage.getItem('bellgo_admin_mode') || 'cashier', // 'cashier' or 'kitchen'
+    adminMode: 'kitchen', // ✅ FIX: Πάντα σε λειτουργία Κουζίνας, αποφεύγει bugs από το LocalStorage
     coverPrice: 0,
     sidebarMode: 'paso', // ✅ Default Mode
     kitchenSettings: JSON.parse(localStorage.getItem('bellgo_kitchen_settings') || '{"autoPrint":false, "autoClose":false}'), // ✅ NEW: Local Settings
@@ -195,15 +111,14 @@ window.App = {
     posSettings: {}, // ✅ NEW: Physical POS Settings
     posMode: 'auto', // ✅ NEW: POS Mode
     features: {}, // ✅ NEW: Local Features State
+    userData: userData, // ✅ FIX: Εξασφαλίζει ότι το admin-ui.js μπορεί να διαβάσει το κατάστημα (store) για το ξεκλείδωμα
     ...(StatsUI || {}), // ✅ Import Statistics Logic (Safe Spread)
     ...(Admin || {}), // ✅ Import Admin Logic
+    ...(AdminUI || {}), // ✅ Import Admin UI Logic
     ...(OrdersUI || {}), // ✅ Import Orders UI
     ...(PaySystem || {}), // ✅ Import PaySystem
     ...(Menu || {}), // ✅ Import Menu Logic
     
-    // Expose setLanguage for console or future use
-    setLanguage: setLanguage,
-
     // ==========================================
     // 2. INITIALIZATION (ΕΚΚΙΝΗΣΗ)
     // ==========================================
@@ -220,7 +135,11 @@ window.App = {
 
         App.connectSocket();
         App.startHeartbeat();
-        App.checkNotificationPermission(); 
+        PushNotifications.checkPermission(messaging, (token) => {
+            if(window.socket && window.socket.connected) {
+                window.socket.emit('update-token', { token: token, username: userData.name });
+            }
+        }, false);
         
         App.setupVisibilityListener();
         App.setupSettingsModalBehavior();
@@ -234,7 +153,7 @@ window.App = {
         App.applyFeatureVisibility();
 
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
-        setLanguage(savedLang);
+        I18n.setLanguage(savedLang);
     },
 
     setupIosPrompt: () => {
@@ -302,12 +221,6 @@ window.App = {
         if(startScreen) startScreen.style.display = 'none';
     },
 
-        App.connectSocket();
-        App.startHeartbeat();
-        // App.requestNotifyPermission(); 
-        App.checkNotificationPermission(); // ✅ UI Check
-        
-        // ✅ NEW: Detect Background/Foreground State
     setupVisibilityListener: () => {
         document.addEventListener('visibilitychange', () => {
             if (window.socket && window.socket.connected) {
@@ -316,7 +229,6 @@ window.App = {
         });
     },
 
-        // ✅ FIX: Close Settings on Background Click & Add Back Button
     setupSettingsModalBehavior: () => {
         const settingsModal = document.getElementById('settingsModal');
         if (settingsModal) {
@@ -343,7 +255,6 @@ window.App = {
         }, 1000);
     },
 
-        // ✅ UI CUSTOMIZATIONS: Hidden Stats, Moved Auto-Reset, Renamed Plugins
     setupCustomHacks: () => {
         setTimeout(() => {
             // 1. Hide Stats Button & Add 5-Click Secret on Settings
@@ -389,14 +300,6 @@ window.App = {
         }, 500);
     },
 
-        // ✅ Start Bot
-        DNDBot.init();
-        // DNDBot.init();
-        
-        // ✅ Check SoftPOS Return
-        App.checkSoftPosReturn();
-
-        // ✅ Init Kitchen Settings UI
     initKitchenSettingsUI: () => {
         const swAP = document.getElementById('swKitchenAutoPrint'); if(swAP) swAP.checked = App.kitchenSettings.autoPrint;
         const swAC = document.getElementById('swKitchenAutoClose'); if(swAC) swAC.checked = App.kitchenSettings.autoClose;
@@ -406,271 +309,18 @@ window.App = {
 
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
-        setLanguage(savedLang);
+        I18n.setLanguage(savedLang);
     },
     
-    // ==========================================
-    // 3. PUSH NOTIFICATIONS
-    // ==========================================
-    requestNotifyPermission: async () => {
-        // ✅ NEW: Disable on Laptop/Desktop
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (!isMobile) return;
-
-        try {
-            // ✅ FIX: Αποφυγή "Unwanted Notifications" - Ζητάμε άδεια ΜΟΝΟ αν είναι 'default'
-            if (Notification.permission === 'default') {
-                await Notification.requestPermission();
-            }
-            
-            if (Notification.permission === "granted") {
-                const registration = await navigator.serviceWorker.ready;
-                const token = await getToken(messaging, { 
-                    vapidKey: vapidKey, 
-                    serviceWorkerRegistration: registration 
-                }); 
-                if (token) {
-                    localStorage.setItem('fcm_token', token);
-                    window.socket.emit('update-token', { token: token, username: userData.name });
-                }
-            }
-        } catch (error) { console.error("Notification Error:", error); }
-    },
-
-    checkNotificationPermission: () => {
-        // ✅ NEW: Disable on Laptop/Desktop
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (!isMobile) return;
-
-        if (Notification.permission === 'default') {
-            const div = document.createElement('div');
-            div.id = 'notifPermRequest';
-            div.style.cssText = "position:fixed; bottom:20px; right:20px; width:300px; background:#333; border:1px solid #FFD700; padding:15px; z-index:10000; text-align:center; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.5);";
-            div.innerHTML = `
-                <div style="color:white; font-weight:bold; margin-bottom:5px;">🔔 Ειδοποιήσεις Ήχου</div>
-                <div style="color:#aaa; font-size:11px; margin-bottom:10px;">Απαραίτητο για να χτυπάει όταν είναι κλειστό.</div>
-                <button id="btnAllowNotif" style="background:#FFD700; color:black; border:none; padding:8px 20px; border-radius:5px; font-weight:bold; cursor:pointer;">ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
-            `;
-            document.body.appendChild(div);
-            
-            document.getElementById('btnAllowNotif').onclick = async () => {
-                await App.requestNotifyPermission();
-                document.getElementById('notifPermRequest').remove();
-            };
-        } else if (Notification.permission === 'granted') {
-            App.requestNotifyPermission();
-        }
-    },
-
-    // ==========================================
-    // 4. SOCKET.IO CONNECTION
-    // ==========================================
     connectSocket: () => {
-        if (!window.socket) {
-            window.socket = io({ transports: ['polling', 'websocket'], reconnection: true });
-        }
-        const socket = window.socket;
-        
-        // ✅ FIX: Καθαρισμός παλιών listeners για να μην διπλασιάζονται, αλλά επανασύνδεση
-        socket.removeAllListeners();
-
-        socket.on('connect', () => {
-            document.getElementById('connDot').style.background = '#00E676';
-            // ✅ NEW: Send Status Immediately on Connect
-            socket.emit('set-user-status', document.hidden ? 'background' : 'online');
-
-            const isNative = !!window.Capacitor;
-            socket.emit('join-store', { 
-                storeName: userData.store, 
-                username: userData.name, 
-                role: userData.role, 
-                token: localStorage.getItem('fcm_token'), 
-                isNative: isNative 
-            });
-
-            // ✅ NEW: Handle SoftPOS Completion
-            if (App.pendingSoftPosCompletion) {
-                const { id, amount } = App.pendingSoftPosCompletion;
-                window.socket.emit('pay-order', { id: id, method: 'card' });
-                App.pendingSoftPosCompletion = null;
-            }
-
-            // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
-            // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
-            socket.once('menu-update', () => {
-                const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
-                if (pendingStripe) {
-                    socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
-                    localStorage.removeItem('temp_stripe_connect_id');
-                    alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
-                }
-            });
-        });
-
-        // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
-        if(socket.connected) {
-            socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
-        }
-
-        socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
-        
-        socket.on('menu-update', (data) => {
-            try {
-                if (!data || data.length === 0) {
-                    App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-                } else if (typeof data === 'string' && !data.startsWith('[')) {
-                    App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
-                } else {
-                    App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
-                }
-            } catch(e) { App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
-            App.renderMenu();
-        });
-        
-        socket.on('store-settings-update', (settings) => {
-            if(settings) {
-                const inpHeader = document.getElementById('inpStoreNameHeader');
-                if(settings.name && inpHeader) inpHeader.value = settings.name;
-                if(settings.features) {
-                    App.features = settings.features;
-                    App.applyFeatureVisibility(); // ✅ Update UI based on features
-                }
-                document.getElementById('switchCust').checked = settings.statusCustomer;
-                document.getElementById('switchStaff').checked = settings.statusStaff;
-                if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
-                if(settings.hours) document.getElementById('inpHours').value = settings.hours;
-                if(settings.schedule) App.scheduleData = settings.schedule;
-                // ✅ FIX: Να δέχεται και το 0 ως τιμή
-                if(settings.coverPrice !== undefined) { 
-                    if (settings.adminPin !== undefined) App.adminPin = settings.adminPin;
-                    if (settings.pin !== undefined) App.storePin = settings.pin;
-                    App.coverPrice = parseFloat(settings.coverPrice); 
-                    document.getElementById('inpCoverPrice').value = App.coverPrice; 
-                }
-                if(settings.googleMapsUrl !== undefined) document.getElementById('inpGoogleMaps').value = settings.googleMapsUrl;
-                if(settings.autoPrint !== undefined) {
-                    App.autoPrint = settings.autoPrint;
-                    document.getElementById('selAutoPrint').value = App.autoPrint.toString();
-                }
-                if(settings.autoClosePrint !== undefined) {
-                    App.autoClosePrint = settings.autoClosePrint;
-                    const sw = document.getElementById('switchAutoClosePrint');
-                    if(sw) sw.checked = App.autoClosePrint;
-                }
-                if(settings.expensePresets) App.expensePresets = settings.expensePresets;
-                if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
-                if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; 
-                
-                // ✅ NEW: Load SoftPOS Settings
-                if(settings.softPos) App.softPosSettings = settings.softPos;
-                if(settings.posMode) App.posMode = settings.posMode;
-                if(settings.pos) App.posSettings = settings.pos; // ✅ Load Physical POS
-                if(settings.pos) App.posSettings = settings.pos; 
-
-                const statusEl = document.getElementById('stripeStatus');
-                if (settings.stripeConnectId) {
-                    statusEl.innerHTML = "✅ <b>Συνδεδεμένο!</b> ID: " + settings.stripeConnectId;
-                    statusEl.style.color = "#00E676";
-                } else {
-                    statusEl.innerText = "Μη συνδεδεμένο";
-                    statusEl.style.color = "#aaa";
-                }
-            }
-        });
-
-        socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
-        socket.on('chat-message', (data) => App.appendChat(data));
-        
-        // ✅ NEW: Secure Unlock Listener
-        socket.on('pin-verified', (data) => {
-            if (data.success && ['admin', 'driver', 'waiter'].includes(data.role)) {
-                document.getElementById('fakeLockOverlay').style.display = 'none';
-                if(window.socket) window.socket.emit('set-user-status', 'online');
-            } else {
-                alert("Access Denied (Only Admin/Waiter/Driver)");
-            }
-        });
-
-        socket.on('staff-list-update', (list) => {
-            App.lastStaffList = list; 
-            App.renderStaffList(list);
-        });
-        
-        socket.on('staff-accepted-alarm', (data) => {
-            if(!App.tempComingState) App.tempComingState = {};
-            App.tempComingState[data.username] = Date.now();
-            App.renderStaffList(App.lastStaffList);
-        });
-
-        // ✅ FIX: Προσθήκη listener για τα στατιστικά που έλειπε
-        socket.on('stats-data', (data) => App.renderStats(data));
-        
-        // ✅ Update Full Order List
-        socket.on('orders-update', (orders) => {
-            // ✅ AUTO PRINT LOGIC
-            orders.forEach(o => {
-                if (!App.knownOrderIds.has(o.id)) {
-                    App.knownOrderIds.add(o.id);
-                }
-            });
-            App.isInitialized = true; // Mark as initialized after first batch
-            App.isInitialized = true; 
-            App.activeOrders = orders;
-            App.renderDesktopIcons(orders);
-        });
-
-        // ✅ IMMEDIATE STATUS CHANGE (Fixes delays)
-        socket.on('order-changed', (data) => {
-            const existing = App.activeOrders.find(o => o.id == data.id);
-            if (existing) {
-                existing.status = data.status;
-                if (data.startTime) existing.startTime = data.startTime;
-                App.renderDesktopIcons(App.activeOrders);
-                
-                // ✅ NEW: Update Open Window if exists (Live Sync)
-                const openWin = document.getElementById(`win-${data.id}`);
-                if (openWin && openWin.style.display !== 'none') {
-                    App.openOrderWindow(existing);
-                }
-
-                // ✅ AUTO PRINT: Τυπώνει αυτόματα μόλις γίνει ΑΠΟΔΟΧΗ (Cooking)
-                if (App.kitchenSettings.autoPrint && data.status === 'cooking') { 
-                    App.printOrder(data.id);
-                }
-            }
-        });
-
-        socket.on('ring-bell', (data) => {
-            // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
-            if(window.AudioEngine) {
-                window.AudioEngine.triggerAlarm(data ? data.source : null);
-            } else {
-                new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
-            }
-        });
-
-        // ✅ NEW: Stop Alarm when someone else accepts
-        socket.on('stop-bell', () => {
-            if(window.AudioEngine) window.AudioEngine.stopAlarm();
-        });
-
-        // ✅ NEW: Force Logout (Kick)
-        socket.on('force-logout', () => {
-            localStorage.removeItem('bellgo_session');
-            window.location.replace("login.html");
-        });
+        initKitchenSockets(window.App, userData);
     },
 
-    // ✅ NEW: Feature Check Logic
-    // ==========================================
-    // 5. FEATURES & VISIBILITY
-    // ==========================================
     hasFeature: (key) => {
         const userContext = { ...userData, features: { ...userData.features, ...App.features } };
         return Sundromes.hasAccess(userContext, key);
     },
 
-    // ✅ NEW: Apply Visibility based on Features
     applyFeatureVisibility: () => {
         // Package 1 (Chat) is base.
         // Package Manager (pack_manager) is needed for Orders & Settings.
@@ -702,10 +352,14 @@ window.App = {
         }
     },
     
-    // ✅ NEW: Toggle Local Kitchen Settings
-    // ==========================================
-    // 6. UI TOGGLES & HELPERS
-    // ==========================================
     toggleKitchenSetting: (key) => {
         App.kitchenSettings[key] = !App.kitchenSettings[key];
         localStorage.setItem('bellgo_kitchen_settings', JSON.stringify(App.kitchenSettings));
+    },
+    
+    printOrder: (id) => {
+        window.socket.emit('print-order', { id });
+    }
+};
+
+window.onload = App.init;

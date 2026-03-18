@@ -101,7 +101,7 @@ export const Apodiksh = {
         list.innerHTML = '';
         Apodiksh.cashRegButtons.forEach((btn, idx) => {
             const div = document.createElement('div');
-            div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#333; padding:5px; margin-bottom:2px; border-radius:3px; font-size:12px;";
+            div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; padding:8px; margin-bottom:5px; border-radius:6px; font-size:13px; font-weight:500;";
             div.innerHTML = `
                 <span>${btn.label} (${btn.vat}%) ${btn.price ? `- ${btn.price}€` : ''}</span>
                 <button onclick="Apodiksh.removeCashRegButton(${idx})" style="background:#D32F2F; color:white; border:none; cursor:pointer; padding:2px 6px; border-radius:3px;">X</button>
@@ -186,7 +186,7 @@ export const Apodiksh = {
         buttons.forEach(btn => {
             const el = document.createElement('button');
             el.className = 'modal-btn';
-            el.style.cssText = "background:#444; font-size:14px; margin:0; font-weight:bold; height:50px;";
+            el.style.cssText = "background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:14px; margin:0; font-weight:bold; height:50px; border-radius:8px;";
             el.innerText = `${btn.label}\n${btn.vat}%${btn.price ? ` (${btn.price}€)` : ''}`;
             el.onclick = () => Apodiksh.cashRegAddItem(btn);
             container.appendChild(el);

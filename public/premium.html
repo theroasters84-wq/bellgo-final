@@ -449,10 +449,10 @@
             <h3 class="modal-title" data-i18n="pin">PIN</h3>
             <div id="pinDisplay" style="font-size:30px; letter-spacing:10px; color:var(--primary); font-weight:bold; margin:10px 0;"></div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(3)">3</button>
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(6)">6</button>
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(9)">9</button>
-                <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(3)">3</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(6)">6</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(9)">9</button>
+                <button class="modal-btn" style="background:var(--danger); color:white; border:none;" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black; border:none;" onclick="PIN.submit()">OK</button>
             </div>
             <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="cancel">ΑΚΥΡΟ</button>
             <button onclick="App.forgotPin()" style="background:none; border:none; color:#2196F3; margin-top:5px; font-size:12px;">🆘 Ξέχασα το PIN</button>
@@ -588,8 +588,8 @@
         <div class="modal-box">
             <h3 class="modal-title" style="color:#FFD700;">💼 ΠΟΡΤΟΦΟΛΙ ΠΡΟΣΩΠΙΚΟΥ</h3>
             
-            <div class="switch-row" style="background:#222; padding:10px; border-radius:10px; margin-bottom:15px; border:1px solid #444;">
-                <span style="font-weight:bold; color:white;">ΕΝΕΡΓΟΠΟΙΗΣΗ ΧΡΕΩΣΗΣ</span>
+        <div class="switch-row" style="background:#f9fafb; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #e5e7eb;">
+            <span style="font-weight:bold; color:#1f2937;">ΕΝΕΡΓΟΠΟΙΗΣΗ ΧΡΕΩΣΗΣ</span>
                 <label class="switch"><input type="checkbox" id="switchStaffChargeWallet" onclick="App.toggleStaffCharge(this.checked)"><span class="slider"></span></label>
             </div>
 

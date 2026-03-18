@@ -12,10 +12,19 @@
     
     <link rel="stylesheet" href="/style.css?v=2">
     
-    <script src="menu-presets.js"></script> 
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* ✅ Light Theme Overrides for Staff List */
+        #staffContainer { background: #fafafa !important; border-left: 1px solid #e5e7eb !important; }
+        .sidebar-header { background: #ffffff !important; color: #1f2937 !important; border-bottom: 1px solid #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .staff-folder { background: #ffffff !important; border: 1px solid #e5e7eb !important; color: #1f2937 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important; border-radius: 8px !important; margin-bottom: 8px !important; }
+        .staff-folder.ghost { background: #f3f4f6 !important; color: #9ca3af !important; border-color: #d1d5db !important; }
+        .staff-label { color: #1f2937 !important; font-weight: 600 !important; }
+        .staff-status { color: #6b7280 !important; }
+        #staffToggleIcon { color: #6b7280 !important; }
+    </style>
 </head>
 <body>
     <div id="mainApp">
@@ -44,7 +53,15 @@
 
         <div class="admin-main-area">
             <!-- Το Menu Panel υπάρχει στον κώδικα αλλά το kitchen.js το κρύβει -->
-            <div id="menuFullPanel" style="display:none;">
+            <div id="menuFullPanel">
+                <div class="menu-header">
+                    <span class="menu-title">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
+                    <div style="display:flex; gap:10px;">
+                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()" style="display:none;">🔙 ΠΙΣΩ</button>
+                        <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
+                        <button class="btn-back" onclick="App.toggleMenuMode()" title="Κλείσιμο" style="background:var(--danger); color:white;">✕ ΚΛΕΙΣΙΜΟ</button>
+                    </div>
+                </div>
                 <div id="menuInputContainer"></div>
             </div>
 
@@ -127,10 +144,10 @@
             <h3 class="modal-title" data-i18n="pin">PIN</h3>
             <div id="pinDisplay" style="font-size:30px; letter-spacing:10px; color:var(--primary); font-weight:bold; margin:10px 0;"></div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(3)">3</button>
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(6)">6</button>
-                <button class="modal-btn" style="background:#333;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(9)">9</button>
-                <button class="modal-btn" style="background:var(--danger);" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#333;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black;" onclick="PIN.submit()">OK</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(1)">1</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(2)">2</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(3)">3</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(4)">4</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(5)">5</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(6)">6</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(7)">7</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(8)">8</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(9)">9</button>
+                <button class="modal-btn" style="background:var(--danger); color:white; border:none;" onclick="PIN.clear()">C</button><button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb;" onclick="PIN.add(0)">0</button><button class="modal-btn" style="background:var(--primary); color:black; border:none;" onclick="PIN.submit()">OK</button>
             </div>
             <button onclick="App.closePinModal()" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
@@ -138,6 +155,31 @@
 
     <!-- Fake Lock Overlay -->
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div>Tap to Unlock</div></div>
+
+    <!-- Extras Modal -->
+    <div id="extrasModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:#10B981; margin-top:0;">Επιλογές (Extras)</h3>
+            <div class="extra-inputs">
+                <input type="text" id="inpExtraName" class="extra-name-inp" placeholder="Όνομα (π.χ. Τυρί)">
+                <input type="number" id="inpExtraPrice" class="extra-price-inp" placeholder="Τιμή (€)" step="0.1">
+                <button class="btn-add" onclick="App.addExtraToItem()">+ ΠΡΟΣΘΗΚΗ</button>
+            </div>
+            <div id="extrasList" class="extras-grid"></div>
+            <button class="modal-btn" style="background:#2196F3; color:white; margin-top:10px; box-shadow:0 4px 10px rgba(33,150,243,0.3);" onclick="App.saveExtrasAndClose()">ΟΛΟΚΛΗΡΩΣΗ</button>
+        </div>
+    </div>
+
+    <!-- Save Mode Modal -->
+    <div id="saveModeModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:#2196F3; margin-top:0;">Αποθήκευση Αλλαγών</h3>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:20px;">Θέλετε η αλλαγή να ισχύει μόνο για σήμερα ή μόνιμα;</p>
+            <button class="modal-btn" style="background:#FF9800; color:white; box-shadow:0 4px 10px rgba(255,152,0,0.3);" onclick="App.executeSave('temporary')">⏳ ΜΟΝΟ ΓΙΑ ΣΗΜΕΡΑ</button>
+            <button class="modal-btn" style="background:#10B981; color:white; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.executeSave('permanent')">💾 ΜΟΝΙΜΑ</button>
+            <button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; margin-top:10px;" onclick="document.getElementById('saveModeModal').style.display='none'">ΑΚΥΡΟ</button>
+        </div>
+    </div>
 
     <!-- Φόρτωση του KITCHEN.JS αντί για το premium.js -->
     <script type="module" src="kitchen.js?v=2"></script>

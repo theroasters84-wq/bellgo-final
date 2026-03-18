@@ -244,35 +244,13 @@ export const OrdersUI = {
             }
 
             const icon = document.createElement('div');
-            icon.className = `order-post ${order.status === 'pending' ? 'ringing' : ''}`;
+            icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
+            // ✅ Apply Cooking style
+            if (order.status === 'cooking') icon.classList.add('cooking');
+            // ✅ Apply Paid style
+            if (isPaid) icon.style.border = "2px solid #00E676";
             
-            // Instagram Style Inner HTML
-            let previewLines = order.text.split('\n');
-            let previewHtml = previewLines.slice(0, 5).join('<br>');
-            if(previewLines.length > 5) previewHtml += '<br><span style="color:#8e8e8e; font-size:12px;">...περισσότερα</span>';
-
-            let statusText = order.status === 'pending' ? 'ΝΕΑ' : (order.status === 'cooking' ? 'ΕΤΟΙΜΑΖΕΤΑΙ' : 'ΕΤΟΙΜΟ');
-            let statusColor = order.status === 'pending' ? '#ed4956' : (order.status === 'cooking' ? '#0095f6' : '#00E676');
-
-            icon.innerHTML = `
-                <div class="post-header">
-                    <div class="post-avatar-ring"><div class="post-avatar">${isPaid ? '✅' : '👤'}</div></div>
-                    <div class="post-title-group">
-                        <span class="post-author">${displayLabel}</span>
-                        <span class="post-time">${time}</span>
-                    </div>
-                    <div class="post-more">⋯</div>
-                </div>
-                <div class="post-image-placeholder">
-                    <div class="post-status-badge" style="background:${statusColor};">${statusText}</div>
-                    ${previewHtml}
-                </div>
-                <div class="post-action-bar">
-                    <div class="action-left">🤍 💬 ✈️</div>
-                    <div class="action-right">🔖</div>
-                </div>
-                <div class="post-likes" style="padding-bottom:10px;">Κατάσταση: <b>${isPaid ? 'Εξοφλημένη' : 'Εκκρεμεί Πληρωμή'}</b></div>
-            `;
+            icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${displayLabel}</div><div class="folder-time">${time}</div>`;
             icon.onclick = () => App.openOrderWindow(order);
             desktop.appendChild(icon);
         });
@@ -282,6 +260,13 @@ export const OrdersUI = {
         const App = window.App;
         if(window.AudioEngine) window.AudioEngine.stopAlarm();
         window.socket.emit('admin-stop-ringing'); 
+
+        // ✅ NEW: Αυτόματη Αποδοχή (Auto-Accept) όταν η Κουζίνα ανοίγει τον φάκελο της νέας παραγγελίας
+        if (App.adminMode === 'kitchen' && order.status === 'pending') {
+            window.socket.emit('accept-order', order.id);
+            order.status = 'cooking'; // Προσωρινή αλλαγή για να εμφανίσει απευθείας το "ΕΤΟΙΜΟ" στο παράθυρο
+            if (App.renderDesktopIcons) App.renderDesktopIcons(App.activeOrders); // Άμεση ενημέρωση χρώματος εικονιδίου
+        }
 
         let win = document.getElementById(`win-${order.id}`);
         if (!win) {
@@ -317,11 +302,17 @@ export const OrdersUI = {
             
             const cleanLine = line.replace(/ ✅ 💶| ✅ 💳| ✅/g, '');
             
-            const btnCash = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCard ? '0.3' : '1'}; filter:${isPaidCard ? 'grayscale(1)' : 'none'};" title="Μετρητά">💶</button>`;
-            const btnCard = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCash ? '0.3' : '1'}; filter:${isPaidCash ? 'grayscale(1)' : 'none'};" title="Κάρτα">💳</button>`;
+            let btnCash = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'cash')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCard ? '0.3' : '1'}; filter:${isPaidCard ? 'grayscale(1)' : 'none'};" title="Μετρητά">💶</button>`;
+            let btnCard = `<button onclick="App.payItemPartial(${order.id}, ${i}, 'card')" style="background:transparent; border:none; cursor:pointer; font-size:18px; margin-left:5px; opacity:${isPaidCash ? '0.3' : '1'}; filter:${isPaidCash ? 'grayscale(1)' : 'none'};" title="Κάρτα">💳</button>`;
 
-            displayItems += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding:5px 0;">
-                                <span style="color:${isPaid ? '#00E676' : 'white'};">${cleanLine}</span>
+            // Κρύβουμε τα εικονίδια πληρωμής από την κουζίνα
+            if (App.adminMode === 'kitchen') {
+                btnCash = '';
+                btnCard = '';
+            }
+
+            displayItems += `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #efefef; padding:10px 0;">
+                                <span style="color:${isPaid ? '#0095f6' : '#262626'}; font-weight:500; font-size:15px;">${cleanLine}</span>
                                 <div style="white-space:nowrap;">${btnCash}${btnCard}</div>
                              </div>`;
         }
@@ -333,161 +324,104 @@ export const OrdersUI = {
 
         let rewardBtn = '';
         if (App.rewardSettings && App.rewardSettings.enabled) {
-            rewardBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid #E91E63; color:#E91E63; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:bold;" onclick="App.openRewardQr('${order.id}')" title="QR Επιβράβευσης">🎁 QR</button>`;
+            rewardBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid #e1306c; color:#e1306c; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:600; font-size:13px;" onclick="App.openRewardQr('${order.id}')" title="QR Επιβράβευσης">🎁 QR</button>`;
         }
 
         if (App.einvoicingEnabled) {
             const hasReceipt = order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]');
-            const btnColor = hasReceipt ? '#00E676' : '#FF9800';
-            receiptBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid ${btnColor}; color:${btnColor}; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:bold;" onclick="App.issueReceipt('${order.id}')" title="Ηλ. Τιμολόγηση">${hasReceipt ? '🧾 ΕΚΔΟΘΗΚΕ' : '🧾 ΑΠΟΔΕΙΞΗ'}</button>`;
+            const btnColor = hasReceipt ? '#0095f6' : '#f56040';
+            receiptBtn = `<button class="win-btn-top" style="background:transparent; border:1px solid ${btnColor}; color:${btnColor}; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-weight:600; font-size:13px;" onclick="App.issueReceipt('${order.id}')" title="Ηλ. Τιμολόγηση">${hasReceipt ? '🧾 ΕΚΔΟΘΗΚΕ' : '🧾 ΑΠΟΔΕΙΞΗ'}</button>`;
         }
 
         if (App.adminMode !== 'kitchen') {
-             treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
-             treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
-             if (!App.printerEnabled) treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
+             treatBtn = `<button style="background:transparent; border:1px solid #dbdbdb; color:#262626; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:14px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
+             treatBtn += `<button style="background:transparent; border:1px solid #dbdbdb; color:#262626; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:14px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+             if (!App.printerEnabled) treatBtn = `<button style="background:transparent; border:1px solid #dbdbdb; color:#262626; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:14px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
         }
 
         if (order.status === 'pending') {
-            actions = `<button class="btn-win-action" style="background:#2196F3; color:white;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;
+            actions = `<button class="btn-win-action" style="background:#0095f6; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.acceptOrder(${order.id})">🔊 ΑΠΟΔΟΧΗ</button>`;
         } else if (order.status === 'cooking') {
             if (order.text.includes('[PICKUP')) {
-                actions = `<button class="btn-win-action" style="background:#FF9800; color:black;" onclick="App.markReady(${order.id})">🛍️ ΕΤΟΙΜΟ ΓΙΑ ΠΑΡΑΛΑΒΗ</button>`;
+                actions = `<button class="btn-win-action" style="background:#f56040; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.markReady(${order.id})">🛍️ ΕΤΟΙΜΟ ΓΙΑ ΠΑΡΑΛΑΒΗ</button>`;
+            } else if (order.text.includes('[ΤΡ:')) {
+                actions = `<button class="btn-win-action" style="background:#00E676; color:black; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.markReady(${order.id})">🍽️ ΕΤΟΙΜΟ (ΤΡΑΠΕΖΙ)</button>`;
             } else {
-                actions = `<button class="btn-win-action" style="background:#FFD700; color:black;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
+                actions = `<button class="btn-win-action" style="background:#fd1d1d; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.markReady(${order.id})">🛵 ΕΤΟΙΜΟ / ΔΙΑΝΟΜΗ</button>`;
             }
         } else {
             if (App.adminMode === 'kitchen') {
-                actions = `<button class="btn-win-action" style="background:#555; color:white;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
+                actions = `<button class="btn-win-action" style="background:#efefef; color:#262626; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.minimizeOrder('${order.id}')">OK (ΚΛΕΙΣΙΜΟ)</button>`;
             } else {
-                treatBtn = `<button style="background:transparent; border:1px solid #FFD700; color:#FFD700; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
+                treatBtn = `<button style="background:transparent; border:1px solid #dbdbdb; color:#262626; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:14px;" onclick="App.showTreatOptions('${order.id}')" title="Κέρασμα">🎁</button>`;
                 if (App.printerEnabled) {
-                    treatBtn += `<button style="background:transparent; border:1px solid #aaa; color:#aaa; padding:6px 12px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:16px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
+                    treatBtn += `<button style="background:transparent; border:1px solid #dbdbdb; color:#262626; padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:14px;" onclick="App.printOrder('${order.id}')" title="Εκτύπωση">🖨️</button>`;
                 }
                 if (App.hasFeature('pack_pos') && App.softPosSettings && App.softPosSettings.enabled) {
-                    actions = `<button class="btn-win-action" style="background:#00BCD4; color:white; margin-bottom:10px;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>` + actions;
+                    actions = `<button class="btn-win-action" style="background:#0095f6; color:white; margin-bottom:10px; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.payWithSoftPos('${order.id}')">📱 TAP TO PAY</button>` + actions;
                 }
-                if (App.hasFeature('pack_pos')) actions = `<button class="btn-win-action" style="background:#635BFF; color:white; margin-bottom:10px;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>` + actions;
+                if (App.hasFeature('pack_pos')) actions = `<button class="btn-win-action" style="background:#833ab4; color:white; margin-bottom:10px; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>` + actions;
                 
-                actions += `<button class="btn-win-action" style="background:#00E676;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
+                actions += `<button class="btn-win-action" style="background:#3897f0; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
             }
         }
-        win.style.border = `none`;
+        // ✅ Preserve positions/transforms during updates by avoiding cssText overwrite
+        win.style.background = "#fff";
+        win.style.color = "#262626";
+        win.style.borderRadius = "12px";
+        win.style.boxShadow = "0 10px 30px rgba(0,0,0,0.15)";
+        win.style.overflow = "hidden";
+        win.style.display = "flex";
+        win.style.flexDirection = "column";
+        win.style.border = "1px solid #dbdbdb";
         win.innerHTML = `
-            <div class="win-header">
-                <span style="font-weight:bold; color:white; font-size:24px;">${order.from}</span>
+            <div class="win-header" style="background:#fff; border-bottom:1px solid #efefef; padding:15px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; min-width:36px; border-radius:50%; background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:bold; font-size:16px; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                        ${order.from.charAt(0)}
+                    </div>
+                    <span style="font-weight:600; color:#262626; font-size:16px;">${order.from}</span>
+                </div>
                 <div class="win-controls" style="display:flex; align-items:center;">
                     ${rewardBtn}
                     ${receiptBtn}
                     ${treatBtn}
-                    <button class="win-btn-top" style="background:#FF9800; color:black; padding:6px 12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="App.minimizeOrder('${order.id}')">🔙 ΠΙΣΩ</button>
+                    <button class="win-btn-top" style="background:transparent; color:#262626; padding:6px 12px; border:1px solid #dbdbdb; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="App.minimizeOrder('${order.id}')">✕</button>
                 </div>
             </div>
-            <div class="win-body">
-                <div class="order-info-section">
+            <div class="win-body" style="padding:15px; flex:1; overflow-y:auto; background:#fafafa;">
+                <div class="order-info-section" style="font-size:13px; color:#8e8e8e; margin-bottom:15px; text-align:center;">
                     ${infoText}
                     ${timeInfo}
                 </div>
-                <div class="order-items-section">${displayItems}</div>
-                <div style="font-size:24px; color:#FFD700; font-weight:bold; text-align:right; margin-top:20px;">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
+                <div class="order-items-section" style="background:#fff; border:1px solid #efefef; border-radius:8px; padding:10px;">
+                    ${displayItems}
+                </div>
+                <div style="font-size:20px; color:#262626; font-weight:bold; text-align:right; margin-top:15px; padding-top:10px; border-top:1px solid #efefef;">
+                    ΣΥΝΟΛΟ: ${total.toFixed(2)}€
+                </div>
             </div>
-            <div class="win-footer">${actions}</div>
+            <div class="win-footer" style="padding:15px; background:#fff; border-top:1px solid #efefef; display:flex; flex-direction:column; gap:10px;">
+                ${actions}
+            </div>
         `;
         win.style.display = 'flex';
+        
+        window.highestOrderZIndex = (window.highestOrderZIndex || 2000) + 1;
+        win.style.zIndex = window.highestOrderZIndex;
+        
+        // ✅ NEW: Initialize Offset on first open
+        if (!win.dataset.initialized) {
+            const existingWins = document.querySelectorAll('.order-window[style*="display: flex"]').length;
+            const offset = (existingWins * 20) % 150; // offset slightly down & right
+            win.style.transform = `translate(calc(-50% + ${offset}px), calc(-50% + ${offset}px))`;
+            win.dataset.initialized = "true";
+        }
+        
+        // ✅ Make Window Draggable
+        if (App.makeDraggable) App.makeDraggable(win);
     },
     
-    // --- PRINT LOGIC ---
-    printOrder: (id, directObj = null) => {
-        const App = window.App;
-        let order = null;
-        if (directObj) {
-            order = directObj; 
-        } else {
-            order = App.activeOrders.find(o => o.id == id);
-        }
-        
-        if(!order) return;
-        
-        const total = calculateTotal(order.text);
-        const date = new Date(order.id).toLocaleString('el-GR');
-        const storeName = document.getElementById('inpStoreNameHeader').value || "BellGo Order";
-        const itemsHtml = order.text.replace(/\n/g, '<br>');
-
-        let qrHtml = '';
-        if (order.aadeQr) {
-            const div = document.createElement('div');
-            new QRCode(div, { text: order.aadeQr, width: 100, height: 100, correctLevel: QRCode.CorrectLevel.L });
-            
-            const img = div.querySelector('img');
-            const canvas = div.querySelector('canvas');
-            let src = '';
-            if (canvas) src = canvas.toDataURL();
-            else if (img) src = img.src;
-            
-            if (src) {
-                qrHtml = `
-                    <div style="text-align:center; margin-top:20px; border-top:1px dashed #000; padding-top:10px;">
-                        <div style="font-size:10px; font-weight:bold; margin-bottom:5px;">QR Code ΑΑΔΕ</div>
-                        <img src="${src}" style="width:100px; height:100px;"/>
-                    </div>
-                `;
-            }
-        }
-
-        let rewardQrHtml = '';
-        if (App.rewardSettings && App.rewardSettings.enabled) {
-             const baseUrl = window.location.origin;
-             const storeParam = encodeURIComponent(App.userData.store);
-             const rewardUrl = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${order.id}`;
-             
-             const divReward = document.createElement('div');
-             new QRCode(divReward, { text: rewardUrl, width: 100, height: 100, correctLevel: QRCode.CorrectLevel.L });
-             
-             const imgR = divReward.querySelector('img');
-             const canvasR = divReward.querySelector('canvas');
-             let srcR = '';
-             if (canvasR) srcR = canvasR.toDataURL();
-             else if (imgR) srcR = imgR.src;
-             
-             if (srcR) {
-                 rewardQrHtml = `
-                    <div style="text-align:center; margin-top:20px; border-top:1px dashed #000; padding-top:10px;">
-                        <div style="font-size:12px; font-weight:bold; margin-bottom:5px;">🎁 ΣΚΑΝΑΡΕ ΓΙΑ ΔΩΡΟ!</div>
-                        <img src="${srcR}" style="width:100px; height:100px;"/>
-                    </div>
-                 `;
-             }
-        }
-
-        const win = window.open('', '', 'width=300,height=600');
-        win.document.write(`
-            <html>
-            <head>
-                <title>Print Order #${id}</title>
-                <style>
-                    body { font-family: 'Courier New', monospace; width: 280px; margin: 0 auto; padding: 10px; color: black; }
-                    .header { text-align: center; font-weight: bold; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 5px; }
-                    .meta { font-size: 12px; margin-bottom: 10px; }
-                    .items { font-size: 14px; font-weight: bold; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                    .total { text-align: right; font-size: 18px; font-weight: bold; }
-                </style>
-            </head>
-            <body>
-                <div class="header">${storeName}</div>
-                <div class="meta">${date}<br>${order.from}</div>
-                <div class="items">${itemsHtml}</div>
-                <div class="total">ΣΥΝΟΛΟ: ${total.toFixed(2)}€</div>
-                ${qrHtml}
-                ${rewardQrHtml}
-                <script>window.onload = function() { window.print(); setTimeout(function(){ window.close(); }, 500); }</script>
-            </body></html>`);
-
-        if (App.autoClosePrint) {
-            const winEl = document.getElementById(`win-${id}`);
-            if(winEl) winEl.style.display = 'none';
-        }
-    },
-
     // --- WINDOW CONTROLS ---
     minimizeOrder: (id) => { document.getElementById(`win-${id}`).style.display = 'none'; },
     
@@ -539,7 +473,7 @@ export const OrdersUI = {
             if (u.role === 'driver') {
                 const btn = document.createElement('button');
                 btn.className = 'modal-btn';
-                btn.style.background = '#333';
+                btn.style.cssText = 'background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; border-radius:8px; font-weight:600; padding:12px;';
                 btn.innerHTML = `🛵 ${u.username}`;
                 btn.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username }); modal.style.display = 'none'; App.minimizeOrder(orderId); };
                 list.appendChild(btn);
@@ -563,20 +497,87 @@ export const OrdersUI = {
         const win = document.getElementById(`win-${id}`);
         const body = win.querySelector('.win-body');
         const footer = win.querySelector('.win-footer');
-        let itemsHtml = '<div style="margin-bottom:10px; color:#aaa;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
+        let itemsHtml = '<div style="margin-bottom:10px; color:#8e8e8e; font-size:14px; text-align:center;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
         const lines = order.text.split('\n');
         lines.forEach((line, idx) => {
             if (!line.trim() || line.startsWith('[')) return;
             if (line.includes(':') && !line.includes(':0')) {
-                itemsHtml += `<button onclick="App.treatItem('${id}', ${idx})" style="width:100%; padding:10px; margin-bottom:5px; background:#333; color:white; border:1px solid #555; border-radius:6px; text-align:left; cursor:pointer;">${line}</button>`;
-            } else { itemsHtml += `<div style="padding:5px; color:#777;">${line}</div>`; }
+                itemsHtml += `<button onclick="App.treatItem('${id}', ${idx})" style="width:100%; padding:12px; margin-bottom:8px; background:#fff; color:#262626; border:1px solid #dbdbdb; border-radius:8px; text-align:left; cursor:pointer; font-weight:500; font-size:15px; transition:background 0.2s;">${line}</button>`;
+            } else { itemsHtml += `<div style="padding:8px; color:#8e8e8e; font-size:14px;">${line}</div>`; }
         });
         body.innerHTML = itemsHtml;
         footer.innerHTML = `
-            <button class="btn-win-action" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="App.treatFull('${id}')">🎁 ΚΕΡΑΣΜΑ ΟΛΑ</button>
-            <button class="btn-win-action" style="background:#555; color:white;" onclick="App.openOrderWindow(App.activeOrders.find(o=>o.id==${id}))">🔙 ΑΚΥΡΟ</button>
+            <button class="btn-win-action" style="background:#e1306c; color:white; margin-bottom:10px; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.treatFull('${id}')">🎁 ΚΕΡΑΣΜΑ ΟΛΑ</button>
+            <button class="btn-win-action" style="background:#efefef; color:#262626; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.openOrderWindow(App.activeOrders.find(o=>o.id==${id}))">🔙 ΑΚΥΡΟ</button>
         `;
     },
     treatItem: (id, idx) => { if(confirm("Κέρασμα για αυτό το είδος;")) window.socket.emit('treat-order', { id: id, type: 'partial', index: idx }); },
-    treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); }
+    treatFull: (id) => { if(confirm("Κέρασμα ΟΛΗ η παραγγελία;")) window.socket.emit('treat-order', { id: id, type: 'full' }); },
+    
+    // --- DRAG & DROP LOGIC ---
+    makeDraggable: (el) => {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        const header = el.querySelector('.win-header');
+        if (!header) return;
+        
+        header.style.cursor = 'move';
+        
+        el.onmousedown = el.ontouchstart = () => {
+            window.highestOrderZIndex = (window.highestOrderZIndex || 2000) + 1;
+            el.style.zIndex = window.highestOrderZIndex;
+        };
+
+        const dragMouseDown = (e) => {
+            if (e.target.tagName === 'BUTTON') return; // Don't drag if clicking buttons
+            e = e || window.event;
+            
+            window.highestOrderZIndex = (window.highestOrderZIndex || 2000) + 1;
+            el.style.zIndex = window.highestOrderZIndex;
+
+            if (e.type === 'touchstart') {
+                pos3 = e.touches[0].clientX;
+                pos4 = e.touches[0].clientY;
+            } else {
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+            }
+            document.onmouseup = closeDragElement;
+            document.onmousemove = elementDrag;
+            document.ontouchend = closeDragElement;
+            document.ontouchmove = elementDrag;
+        };
+
+        const elementDrag = (e) => {
+            e = e || window.event;
+            let clientX = e.type && e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            let clientY = e.type && e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            pos1 = pos3 - clientX;
+            pos2 = pos4 - clientY;
+            pos3 = clientX;
+            pos4 = clientY;
+            
+            // ✅ Disable CSS transform constraint so we can move freely via top/left
+            if (el.style.transform && el.style.transform !== 'none') {
+                const rect = el.getBoundingClientRect();
+                el.style.transform = 'none';
+                el.style.left = rect.left + 'px';
+                el.style.top = rect.top + 'px';
+            }
+
+            el.style.top = (el.offsetTop - pos2) + "px";
+            el.style.left = (el.offsetLeft - pos1) + "px";
+        };
+
+        const closeDragElement = () => {
+            document.onmouseup = null;
+            document.onmousemove = null;
+            document.ontouchend = null;
+            document.ontouchmove = null;
+        };
+
+        header.onmousedown = dragMouseDown;
+        header.ontouchstart = dragMouseDown;
+    }
 };

@@ -81,7 +81,8 @@
         import { firebaseConfig } from './config.js';
         
         // Σύνδεση στο Socket
-        const socket = io({ transports: ['polling', 'websocket'] });
+        const serverUrl = window.location.hostname.includes('onrender.com') ? "" : "https://bellgo-final.onrender.com";
+        const socket = io(serverUrl, { transports: ['polling', 'websocket'] });
         
         window.Debug = {
             log: (type, data) => {

@@ -179,7 +179,7 @@ app.get('/manifest.json', async (req, res) => {
         "start_url": startUrl,   
         "scope": scopeUrl,        
         "display": "standalone",
-        "background_color": "#it",
+        "background_color": "#ffffff",
         "icons": [
             { "src": `/${iconFile}`, "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
             { "src": `/${iconFile}`, "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
@@ -188,7 +188,7 @@ app.get('/manifest.json', async (req, res) => {
 });
 
 /* ---------------- SOCKET.IO ---------------- */
-require('./socket-events')({ io, storesData, activeUsers, tempBlacklist, db, admin, stripe, YOUR_DOMAIN });
+require('./socket-events')({ io, storesData, activeUsers, tempBlacklist, db, admin, stripe, YOUR_DOMAIN, transporter });
 
 /* ---------------- CRON JOBS & TIMERS ---------------- */
 require('./cron-jobs')({ io, storesData, activeUsers, db, transporter, YOUR_DOMAIN, admin });

@@ -271,7 +271,8 @@
 
             connectSocket: () => {
                 if (socket && socket.connected) return;
-                socket = io({ transports: ['polling', 'websocket'], reconnection: true });
+                const serverUrl = window.location.hostname.includes('onrender.com') ? "" : "https://bellgo-final.onrender.com";
+                socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
                 window.socket = socket; 
 
                 socket.on('connect', () => {

@@ -338,10 +338,12 @@ export const Menu = {
     renderMenu: function() {
         const App = window.App;
         const container = document.getElementById('menuInputContainer');
+        if (!container) return; // ✅ Αποτρέπει το error αν δεν υπάρχει το HTML element (π.χ. στην Κουζίνα)
         container.innerHTML = '';
         App.menuData.sort((a,b) => a.order - b.order);
         if (App.currentCategoryIndex === null) {
-            document.getElementById('btnBackCat').style.display = 'none';
+            const btnBack = document.getElementById('btnBackCat');
+            if (btnBack) btnBack.style.display = 'none';
             App.menuData.forEach((cat, index) => {
                 const div = document.createElement('div');
                 div.className = 'category-box';
@@ -361,7 +363,8 @@ export const Menu = {
         } else {
             const cat = App.menuData[App.currentCategoryIndex];
             if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
-            document.getElementById('btnBackCat').style.display = 'block';
+            const btnBack = document.getElementById('btnBackCat');
+            if (btnBack) btnBack.style.display = 'block';
             cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
         }
     },
