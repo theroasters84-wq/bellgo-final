@@ -22,6 +22,7 @@
             </div>
             <div class="header-actions">
                 <button id="driverBellBtn" class="btn-icon" onclick="App.acceptAlarm()" title="ΑΠΟΔΟΧΗ" style="display:none; background:var(--primary); color:white; border:none;">🔔</button>
+                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη" style="display:none;">🌙</button>
                 <button class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
             </div>
         </div>
@@ -68,6 +69,11 @@
             <button id="btnAcceptOffer" style="background:#10B981; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">🙋‍♂️ ΕΓΩ!</button>
             <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:15px; cursor:pointer;">ΑΚΥΡΟ</button>
         </div>
+    </div>
+
+    <!-- ✅ NEW: FAKE LOCK OVERLAY -->
+    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
+        <div>Tap to Unlock</div>
     </div>
 
     <script type="module" src="dianomeas.js"></script>

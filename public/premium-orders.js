@@ -143,6 +143,25 @@ export const OrdersUI = {
         const txt = document.getElementById('sidebarOrderText').value;
         const total = calculateTotal(txt);
         document.getElementById('sidebarTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
+
+        // ✅ Υπολογισμός τεμαχίων για το Badge (Συννεφάκι)
+        let itemCount = 0;
+        txt.split('\n').forEach(line => {
+            if (!line.trim()) return;
+            const match = line.match(/^(\d+)\s+/);
+            if (match) itemCount += parseInt(match[1]);
+            else itemCount += 1;
+        });
+
+        const badge = document.getElementById('cartBadgeAdmin');
+        if (badge) {
+            if (itemCount > 0) {
+                badge.style.display = 'inline-block';
+                badge.innerText = itemCount;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
     },
     
     sendSidebarOrder: () => {
@@ -218,6 +237,7 @@ export const OrdersUI = {
         if(document.getElementById('sidebarDelPhone')) document.getElementById('sidebarDelPhone').value = '';
         if(document.getElementById('sidebarDelZip')) document.getElementById('sidebarDelZip').value = '';
         App.toggleOrderSidebar(); 
+        App.calcSidebarTotal(); // ✅ Μηδενίζει το Badge μετά την αποστολή
     },
 
     // --- DESKTOP ORDERS LOGIC ---

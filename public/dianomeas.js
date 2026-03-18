@@ -270,8 +270,25 @@ window.App = {
     toggleFakeLock: () => { 
         const el = document.getElementById('fakeLockOverlay');
         if(!el) return;
-        if (el.style.display === 'flex') { el.style.display = 'none'; } 
-        else { el.style.display = 'flex'; }
+
+        if (el.style.display === 'flex') {
+            const pin = prompt("Εισάγετε PIN:");
+            if (pin && window.socket) {
+                window.socket.emit('verify-pin', { pin, email: userData.store });
+                window.socket.once('pin-verified', (data) => {
+                    if (data.success) {
+                        el.style.display = 'none';
+                        if(window.socket) window.socket.emit('set-user-status', 'online');
+                    } else {
+                        alert("❌ Λάθος PIN!");
+                    }
+                });
+            }
+        } else {
+            el.style.display = 'flex';
+            // ✅ Ενημέρωση κατάστασης (online/background) ώστε να λαμβάνει Push Notifications
+            if(window.socket) window.socket.emit('set-user-status', 'background');
+        }
     },
 
     openQrPayment: async (id) => {

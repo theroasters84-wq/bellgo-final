@@ -255,6 +255,57 @@ window.App = {
                 const headerActions = menuPanel.querySelector('.menu-header > div');
                 if(headerActions) headerActions.insertBefore(wrapper, headerActions.firstChild);
             }
+
+            // ✅ NEW: Κουμπί Αυξομείωσης (Toggle) για το Textarea της παραγγελίας
+            const txt = document.getElementById('sidebarOrderText');
+            if (txt && txt.parentNode) {
+                const btnContainer = document.createElement('div');
+                btnContainer.style.cssText = 'display: flex; justify-content: flex-end; margin-bottom: 5px; width: 100%; flex-shrink: 0;';
+                
+                const btnToggle = document.createElement('button');
+                btnToggle.id = 'btnToggleCart'; // ✅ Προσθήκη ID για να το βρίσκουμε
+                btnToggle.innerHTML = '<span id="btnToggleCartText">▲</span><span id="cartBadgeAdmin" style="display:none; background:#EF4444; color:white; border-radius:50%; padding:2px 6px; font-size:11px; margin-left:8px; font-weight:bold; box-shadow:0 1px 3px rgba(0,0,0,0.3);">0</span>';
+                btnToggle.title = 'Εμφάνιση/Απόκρυψη Καλαθιού';
+                btnToggle.style.cssText = 'background: #ffffff; color: #1f2937; border: 1px solid #d1d5db; border-radius: 6px; padding: 4px 15px; cursor: pointer; font-size: 12px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: 0.2s; display:flex; align-items:center; justify-content:center;';
+                
+                let isExpanded = false;
+                
+                // ✅ Αρχικά το πεδίο είναι τελείως κρυμμένο
+                txt.style.setProperty('display', 'none', 'important');
+
+                btnToggle.onclick = (e) => { 
+                    e.preventDefault(); 
+                    isExpanded = !isExpanded;
+                    
+                    // ✅ Εξαφανίζουμε το μενού για να απλώσει το πεδίο σε όλη την οθόνη και να σπρώξει το Total/Κουμπί κάτω
+                    const menu = document.getElementById('sidebarMenuContainer');
+                    const textSpan = document.getElementById('btnToggleCartText');
+                    if (isExpanded) {
+                        if (menu) menu.style.display = 'none';
+                        txt.style.setProperty('display', 'block', 'important');
+                        txt.style.setProperty('flex', '1', 'important');
+                        txt.style.setProperty('height', 'auto', 'important');
+                        txt.style.setProperty('max-height', 'none', 'important');
+                        if(textSpan) textSpan.innerText = '▼';
+                    } else {
+                        if (menu) menu.style.display = '';
+                        txt.style.setProperty('display', 'none', 'important');
+                        txt.style.setProperty('flex', 'none', 'important');
+                        txt.style.setProperty('height', '80px', 'important');
+                        txt.style.setProperty('max-height', '60vh', 'important');
+                        if(textSpan) textSpan.innerText = '▲';
+                    }
+                };
+
+                // Ενημέρωση του Badge αν πληκτρολογείς με το χέρι
+                if (!txt.dataset.hasInputListener) {
+                    txt.addEventListener('input', () => { if(window.App && window.App.calcSidebarTotal) window.App.calcSidebarTotal(); });
+                    txt.dataset.hasInputListener = 'true';
+                }
+                
+                btnContainer.appendChild(btnToggle);
+                txt.parentNode.insertBefore(btnContainer, txt);
+            }
         }, 500);
 
         // ✅ Start Bot
