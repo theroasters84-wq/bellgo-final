@@ -245,11 +245,13 @@ module.exports = {
 
     sendPushNotification(target, title, body, dataPayload = { type: "alarm" }, YOUR_DOMAIN, admin) {
         if (target && target.fcmToken) { 
-            let targetUrl = "/stafpremium.html";
-            if (target.role === 'admin') targetUrl = "/premium.html";
+            let targetUrl = "/staff/app";
+            if (target.role === 'admin') targetUrl = "/manage/premium.html";
+            else if (target.role === 'kitchen') targetUrl = "/manage/kitchen.html";
+            else if (target.role === 'driver') targetUrl = "/staff/driver";
             
             // ✅ NEW: Append Order ID if available (for auto-open)
-            if (dataPayload.orderId && target.role === 'admin') {
+            if (dataPayload.orderId && (target.role === 'admin' || target.role === 'kitchen')) {
                 targetUrl += `?orderId=${dataPayload.orderId}`;
             }
 

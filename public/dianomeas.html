@@ -15,13 +15,14 @@
 </head>
 <body>
     <div id="mainApp">
-        <div class="header">
+        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot"></span>
                 <span id="storeNameHeader" style="margin-left:10px; color:#1f2937; font-weight:bold; font-size:18px;">DRIVER</span>
             </div>
             <div class="header-actions">
                 <button id="driverBellBtn" class="btn-icon" onclick="App.acceptAlarm()" title="ΑΠΟΔΟΧΗ" style="display:none; background:var(--primary); color:white; border:none;">🔔</button>
+                <button id="btnSettings" class="btn-icon" onclick="document.getElementById('settingsModal').style.display='flex'" title="Ρυθμίσεις" style="display:none;">⚙️</button>
                 <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη" style="display:none;">🌙</button>
                 <button class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
             </div>
@@ -71,9 +72,41 @@
         </div>
     </div>
 
-    <!-- ✅ NEW: FAKE LOCK OVERLAY -->
-    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
-        <div>Tap to Unlock</div>
+    <!-- ✅ NEW: SETTINGS MODAL -->
+    <div id="settingsModal" class="modal-overlay" onclick="document.getElementById('settingsModal').style.display='none'">
+        <div class="modal-box" onclick="event.stopPropagation()" style="max-width: 300px; border-radius:15px; border:2px solid #10B981;">
+            <h3 style="color:#10B981; text-align:center; margin:0; margin-bottom:15px;">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <button class="btn-act" style="background:#10B981; color:white; margin-bottom:10px; border-radius:8px; padding:15px; font-weight:bold; border:none; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
+            <button class="btn-act" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:15px; font-weight:bold; width:100%;" onclick="document.getElementById('settingsModal').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
+    <!-- ✅ NEW: FAKE LOCK OVERLAY (Double Tap) -->
+    <div id="fakeLockOverlay" onclick="let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.openUnlockPin(); this.lastTap=0; } else { this.lastTap=now; }">
+        <div style="pointer-events:none; font-size:20px; color:#555; font-weight:bold;">Double Tap to Unlock</div>
+    </div>
+
+    <!-- ✅ NEW: PIN UNLOCK MODAL -->
+    <div id="pinUnlockModal" class="modal-overlay" style="z-index: 25000;">
+        <div class="modal-box" style="max-width: 300px; padding: 20px; text-align: center;">
+            <h3 style="margin-top:0; color:#1f2937;">ΞΕΚΛΕΙΔΩΜΑ</h3>
+            <div id="unlockPinDisplay" style="font-size:32px; letter-spacing:10px; margin:20px 0; color:#10B981; height:40px; font-weight:bold;"></div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:15px;">
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(1)">1</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(2)">2</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(3)">3</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(4)">4</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(5)">5</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(6)">6</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(7)">7</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(8)">8</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(9)">9</button>
+                <button class="modal-btn" style="background:#EF4444; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.clear()">C</button>
+                <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(0)">0</button>
+                <button class="modal-btn" style="background:#10B981; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.submit()">OK</button>
+            </div>
+            <button onclick="UnlockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer;">ΑΚΥΡΟ</button>
+        </div>
     </div>
 
     <script type="module" src="dianomeas.js"></script>

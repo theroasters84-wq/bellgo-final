@@ -92,7 +92,7 @@
     </div>
 
     <div id="mainApp">
-        <div class="header">
+        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div style="display:flex; align-items:center;">
                 <span id="connDot" style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block; margin-right:10px;" onclick="App.forceReconnect()"></span>
                 <div class="user-info">
@@ -182,8 +182,47 @@
             </div>
         </div>
 
-        <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
-            <div>Tap to Unlock</div>
+    <!-- ✅ NEW: ALARM OVERLAY (Κλήση Προσωπικού) -->
+    <div id="alarmOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.9); backdrop-filter:blur(5px);">
+        <div class="alarm-circle-btn" onclick="App.acceptAlarmStaff()" style="width:250px; height:250px; border-radius:50%; background:#00E676; border:6px solid white; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 50px #00E676; cursor:pointer; animation:pulse 1s infinite alternate; color:black;">
+            <div style="font-size:60px;">⚠️</div>
+            <div style="font-weight:bold; font-size:18px; margin-top:10px;">ΚΛΗΣΗ!</div>
+            <div id="alarmText" style="font-size:14px; margin-top:5px; font-weight:bold;">ΣΕ ΖΗΤΟΥΝ</div>
+            
+            <div id="alarmLocationBox" style="display:none; flex-direction:column; align-items:center; width:100%; margin-top:10px;">
+                <div id="alarmLocationText" style="font-size:16px; color:black; font-weight:bold;">-</div>
+                <a id="btnGps" href="#" target="_blank" style="background:white; color:black; padding:5px 10px; border-radius:10px; text-decoration:none; font-weight:bold; font-size:12px; margin-top:5px;" onclick="event.stopPropagation()">📍 ΧΑΡΤΗΣ</a>
+            </div>
+            
+            <div style="margin-top:20px; font-size:10px; color:black;">ΠΑΤΗΣΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
+        </div>
+    </div>
+
+        <div id="fakeLockOverlay" onclick="let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.openUnlockPin(); this.lastTap=0; } else { this.lastTap=now; }">
+            <div style="pointer-events:none; font-size:20px; color:#555; font-weight:bold;">Double Tap to Unlock</div>
+        </div>
+        
+        <!-- ✅ NEW: PIN UNLOCK MODAL -->
+        <div id="pinUnlockModal" class="modal-overlay" style="z-index: 25000;">
+            <div class="modal-box" style="max-width: 300px; padding: 20px; text-align: center;">
+                <h3 style="margin-top:0; color:#1f2937;">ΞΕΚΛΕΙΔΩΜΑ</h3>
+                <div id="unlockPinDisplay" style="font-size:32px; letter-spacing:10px; margin:20px 0; color:#10B981; height:40px; font-weight:bold;"></div>
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:15px;">
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(1)">1</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(2)">2</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(3)">3</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(4)">4</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(5)">5</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(6)">6</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(7)">7</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(8)">8</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(9)">9</button>
+                    <button class="modal-btn" style="background:#EF4444; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.clear()">C</button>
+                    <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(0)">0</button>
+                    <button class="modal-btn" style="background:#10B981; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.submit()">OK</button>
+                </div>
+                <button onclick="UnlockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer;">ΑΚΥΡΟ</button>
+            </div>
         </div>
 
         <div id="myOrdersOverlay" class="overlay-screen" onclick="App.toggleMyOrders()">
@@ -350,6 +389,28 @@
                 price = parseFloat(parts[parts.length - 1]);
             } else { name = str.trim(); }
             return { name, price: isNaN(price) ? 0 : price };
+        };
+
+        let pinValueUnlock = '';
+        window.UnlockPIN = {
+            add: (n) => { if(pinValueUnlock.length < 4) { pinValueUnlock += n; document.getElementById('unlockPinDisplay').innerText = '*'.repeat(pinValueUnlock.length); } },
+            clear: () => { pinValueUnlock = ''; document.getElementById('unlockPinDisplay').innerText = ''; },
+            submit: () => {
+                if(pinValueUnlock.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+                window.socket.emit('verify-pin', { pin: pinValueUnlock, email: userData.store });
+                window.socket.once('pin-verified', (data) => {
+                    if(data.success) {
+                        document.getElementById('pinUnlockModal').style.display = 'none';
+                        document.getElementById('fakeLockOverlay').style.display = 'none';
+                        if(window.socket) window.socket.emit('set-user-status', 'online');
+                        UnlockPIN.clear();
+                    } else {
+                        alert("❌ Λάθος PIN!");
+                        UnlockPIN.clear();
+                    }
+                });
+            },
+            close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); }
         };
 
         window.UI = {
@@ -795,7 +856,24 @@
                     // ✅ Εμφάνιση ποιος καλεί (Ταμείο ή Κουζίνα)
                     if(data && data.source) bell.innerText = `🔔 ${data.source}`; else bell.innerText = "🔔";
                     bell.classList.add('ringing');
-                    // No Overlay
+
+                    // ✅ SHOW OVERLAY INFO
+                    const overlay = document.getElementById('alarmOverlay');
+                    if (overlay) {
+                        const text = document.getElementById('alarmText');
+                        if (text && data && data.source) text.innerText = data.source;
+                        
+                        const locBox = document.getElementById('alarmLocationBox');
+                        const locText = document.getElementById('alarmLocationText');
+                        const btnGps = document.getElementById('btnGps');
+                        if (data && data.location && locBox) {
+                            locBox.style.display = 'flex';
+                            if(locText) locText.innerText = data.location;
+                            if(btnGps) btnGps.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location)}`;
+                        } else if (locBox) {
+                            locBox.style.display = 'none';
+                        }
+                    }
                 });
 
                 // ✅ NEW: Stop Bell Listener (Sync with Admin)
@@ -1252,22 +1330,11 @@
             sendChat: () => { const inp=document.getElementById('waiterChatInp'); if(inp.value.trim()){window.socket.emit('chat-message',{text:inp.value});inp.value='';} },
             appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
             toggleFakeLock: () => { 
-                const el=document.getElementById('fakeLockOverlay'); 
-                if (el.style.display === 'flex') {
-                    const pin = prompt("Εισάγετε PIN:");
-                    if (pin && window.socket) {
-                        window.socket.emit('verify-pin', { pin, email: userData.store });
-                        window.socket.once('pin-verified', (data) => {
-                            if (data.success) {
-                                el.style.display = 'none';
-                            } else {
-                                alert("❌ Λάθος PIN!");
-                            }
-                        });
-                    }
-                } else {
-                    el.style.display = 'flex';
-                }
+                document.getElementById('fakeLockOverlay').style.display = 'flex';
+            },
+            openUnlockPin: () => {
+                document.getElementById('pinUnlockModal').style.display = 'flex';
+                if(window.UnlockPIN) window.UnlockPIN.clear();
             },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)

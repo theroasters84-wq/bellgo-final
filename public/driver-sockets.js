@@ -104,6 +104,24 @@ export function initDriverSockets(App, userData) {
             bell.classList.add('ringing');
             bell.innerText = data && data.source ? `🔔 ${data.source}` : "🔔";
         }
+
+        // ✅ SHOW OVERLAY INFO
+        const overlay = document.getElementById('alarmOverlay');
+        if (overlay) {
+            const text = document.getElementById('alarmText');
+            if (text && data && data.source) text.innerText = data.source;
+            
+            const locBox = document.getElementById('alarmLocationBox');
+            const locText = document.getElementById('alarmLocationText');
+            const btnGps = document.getElementById('btnGps');
+            if (data && data.location && locBox) {
+                locBox.style.display = 'flex';
+                if(locText) locText.innerText = data.location;
+                if(btnGps) btnGps.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location)}`;
+            } else if (locBox) {
+                locBox.style.display = 'none';
+            }
+        }
     });
 
     socket.on('stop-bell', () => {

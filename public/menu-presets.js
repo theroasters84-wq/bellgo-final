@@ -322,14 +322,35 @@ export const Menu = {
     handlePlusButton: function() {
         const App = window.App;
         if (App.currentCategoryIndex === null) {
-            let order = prompt("Αριθμός Σειράς (π.χ. 1, 2):");
-            if(!order) return;
-            let name = prompt("Όνομα Κατηγορίας (π.χ. ΚΑΦΕΔΕΣ):");
-            if(!name) return;
-            App.pendingAction = () => {
-                App.menuData.push({ id: Date.now(), order: parseInt(order) || 99, name: name.toUpperCase(), items: [] });
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.style.display = 'flex';
+            overlay.style.zIndex = '10000';
+
+            // Αυτόματος υπολογισμός της επόμενης σειράς (μπήκε στο τέλος)
+            const maxOrder = App.menuData.reduce((max, cat) => Math.max(max, cat.order || 0), 0);
+            const nextOrder = maxOrder + 1;
+
+            overlay.innerHTML = `
+                <div class="modal-box" style="width:90%; max-width:350px; text-align:center;">
+                    <h3 style="color:#10B981; margin-top:0;">Νέα Κατηγορία</h3>
+                    <input type="text" id="inpNewCatName" class="inp-settings" placeholder="Όνομα (π.χ. ΚΑΦΕΔΕΣ)" style="margin-bottom:15px; text-align:center; font-weight:bold;">
+                    <button id="btnCreateCat" class="modal-btn" style="background:#10B981; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΔΗΜΙΟΥΡΓΙΑ</button>
+                    <button id="btnCancelCat" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;">ΑΚΥΡΩΣΗ</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            document.getElementById('inpNewCatName').focus();
+
+            document.getElementById('btnCreateCat').onclick = () => {
+                const name = document.getElementById('inpNewCatName').value.trim();
+                if (name) {
+                    App.menuData.push({ id: Date.now(), order: nextOrder, name: name.toUpperCase(), items: [] });
+                    App.renderMenu();
+                }
+                overlay.remove();
             };
-            App.openSaveModal(); 
+            document.getElementById('btnCancelCat').onclick = () => overlay.remove();
         } else {
             App.addItemInput('');
         }
@@ -365,8 +386,36 @@ export const Menu = {
             if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
             const btnBack = document.getElementById('btnBackCat');
             if (btnBack) btnBack.style.display = 'block';
+            
+            // ✅ NEW: Κουμπί Γρήγορης Εισαγωγής (Bulk Paste)
+            const bulkBtn = document.createElement('button');
+            bulkBtn.innerText = '📋 Γρήγορη Εισαγωγή (Paste)';
+            bulkBtn.style.cssText = 'width: 100%; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-bottom: 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);';
+            bulkBtn.onclick = () => App.openBulkPasteModal();
+            container.appendChild(bulkBtn);
+            
             cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
         }
+
+        // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Εμφανίζεται πάντα στο τέλος)
+        const saveBtn = document.createElement('button');
+        saveBtn.innerText = '💾 Αποθήκευση Καταλόγου';
+        saveBtn.style.cssText = 'margin-top: 25px; background: #10B981; color: white; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 800; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: block;';
+        saveBtn.onclick = () => {
+            // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
+            App.menuData.forEach(cat => { 
+                if (cat.items) {
+                    cat.items = cat.items.filter(i => {
+                        if(typeof i === 'string') return i.trim() !== '';
+                        return i.name && i.name.trim() !== '';
+                    }); 
+                }
+            });
+            // Αποστολή μόνιμης αποθήκευσης στον server
+            window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
+            alert('Ο κατάλογος αποθηκεύτηκε επιτυχώς!');
+        };
+        container.appendChild(saveBtn);
     },
 
     addItemInput: function(val, index = null) {
@@ -375,85 +424,108 @@ export const Menu = {
         const wrapper = document.createElement('div');
         wrapper.className = 'item-wrapper';
         
-        let displayText = "";
+        let itemName = "";
+        let itemPrice = "";
         let itemObj = null;
 
         if (typeof val === 'object' && val !== null) {
             itemObj = val;
-            displayText = `${itemObj.name}:${itemObj.price}`;
-        } else {
-            displayText = val;
+            itemName = itemObj.name || "";
+            itemPrice = itemObj.price !== undefined ? itemObj.price : "";
+        } else if (typeof val === 'string' && val.trim() !== "") {
+            const parts = val.split(':');
+            if (parts.length > 1) {
+                itemName = parts.slice(0, -1).join(':').trim();
+                itemPrice = parseFloat(parts[parts.length - 1]) || 0;
+            } else {
+                itemName = val.trim();
+            }
         }
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'menu-input-box';
-        input.value = displayText;
-        input.placeholder = "Προϊόν:Τιμή"; 
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'menu-input-box';
+        nameInput.style.flex = '2';
+        nameInput.style.paddingRight = '10px'; // Override default CSS 40px
+        nameInput.value = itemName;
+        nameInput.placeholder = "Όνομα Προϊόντος"; 
+
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.step = '0.01';
+        priceInput.className = 'menu-input-box';
+        priceInput.style.flex = '1';
+        priceInput.value = itemPrice;
+        priceInput.placeholder = "Τιμή"; 
 
         const vatInput = document.createElement('input');
         vatInput.type = 'number';
         vatInput.placeholder = 'ΦΠΑ';
         const vatDisplay = App.einvoicingEnabled ? 'inline-block' : 'none';
-        vatInput.style.cssText = `width:50px; padding:10px; margin-left:5px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; text-align:center; font-size:14px; display:${vatDisplay};`;
+        vatInput.style.cssText = `width:60px; padding:12px; margin-left:5px; background:#ffffff; border:1px solid #d1d5db; color:#1f2937; border-radius:12px; text-align:center; font-size:15px; display:${vatDisplay}; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);`;
         
         if (itemObj && itemObj.vat !== undefined) vatInput.value = itemObj.vat;
         else vatInput.value = 24;
+        
+        const silentUpdate = () => {
+            const newName = nameInput.value.trim();
+            const newPrice = parseFloat(priceInput.value) || 0;
+            const newVat = parseInt(vatInput.value) || 24;
+            
+            const cat = App.menuData[App.currentCategoryIndex];
+            if (!cat) return;
+
+            let existingExtras = (itemObj && itemObj.extras) ? itemObj.extras : [];
+            if (index !== null && typeof cat.items[index] === 'object' && cat.items[index].extras) {
+                existingExtras = cat.items[index].extras;
+            }
+            let newItem;
+
+            if (index !== null && typeof cat.items[index] === 'object') {
+                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat };
+            } else {
+                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras };
+            }
+
+            if (index === null) {
+                index = cat.items.length;
+                cat.items.push(newItem);
+            } else {
+                cat.items[index] = newItem;
+            }
+        };
         
         const extrasBtn = document.createElement('button');
         extrasBtn.className = 'btn-item-extras';
         extrasBtn.innerHTML = '+';
         if (itemObj && itemObj.extras && itemObj.extras.length > 0) extrasBtn.classList.add('has-extras');
-        extrasBtn.onclick = () => { App.openExtrasModal(App.currentCategoryIndex, index); };
+        extrasBtn.onclick = () => { 
+            silentUpdate(); // Διασφαλίζει ότι το νέο προϊόν "γράφτηκε" στη μνήμη πριν ανοίξουν τα extras
+            App.openExtrasModal(App.currentCategoryIndex, index); 
+        };
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-item-del';
         delBtn.innerText = 'X';
         delBtn.onclick = () => {
             wrapper.remove();
-            App.pendingAction = () => {
-                const cat = App.menuData[App.currentCategoryIndex];
-                if (index !== null) cat.items.splice(index, 1);
-            };
-            App.openSaveModal();
-        };
-        
-        const updateItem = (e) => {
-            if (e.relatedTarget === input || e.relatedTarget === vatInput) return;
-            const newVal = input.value.trim();
-            if (!newVal) return;
-            
             const cat = App.menuData[App.currentCategoryIndex];
-            const parts = newVal.split(':');
-            let price = 0; 
-            let name = newVal;
-            if(parts.length > 1) {
-                 name = parts.slice(0, -1).join(':').trim();
-                 price = parseFloat(parts[parts.length-1]) || 0;
+            if (index !== null && cat && cat.items) {
+                cat.items[index] = { name: '' };
             }
-            const vat = parseInt(vatInput.value) || 24;
-            let newItem;
-            if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: name, price: price, vat: vat };
-            } else {
-                newItem = { name: name, price: price, vat: vat, extras: [] };
-            }
-            App.pendingAction = () => {
-                if(index === null) cat.items.push(newItem); 
-                else cat.items[index] = newItem;
-            };
-            App.openSaveModal();
         };
         
-        input.addEventListener('blur', updateItem);
-        vatInput.addEventListener('blur', updateItem);
+        nameInput.addEventListener('input', silentUpdate);
+        priceInput.addEventListener('input', silentUpdate);
+        vatInput.addEventListener('input', silentUpdate);
         
-        wrapper.appendChild(input);
+        wrapper.appendChild(nameInput);
+        wrapper.appendChild(priceInput);
         wrapper.appendChild(vatInput);
         wrapper.appendChild(extrasBtn);
         if (index !== null) wrapper.appendChild(delBtn); 
         container.appendChild(wrapper);
-        if(index === null) input.focus();
+        if(index === null) nameInput.focus();
     },
     
     goBackToCategories: function() { window.App.currentCategoryIndex = null; window.App.renderMenu(); },
@@ -471,5 +543,137 @@ export const Menu = {
         window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
         document.getElementById('saveModeModal').style.display = 'none';
         App.renderMenu(); 
-    }
+    },
+
+    // --- BULK PASTE LOGIC ---
+    openBulkPasteModal: function() {
+        const App = window.App;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'bulkPasteModal';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '10000';
+
+        overlay.innerHTML = `
+            <div class="modal-box" style="width:90%; max-width:500px; text-align:left;">
+                <h3 style="color:#2196F3; margin-top:0; text-align:center;">Γρήγορη Εισαγωγή</h3>
+                <div style="background:#e0f2fe; color:#0369a1; padding:12px; border-radius:8px; font-size:13px; margin-bottom:15px; line-height:1.5; border:1px solid #bae6fd;">
+                    💡 <b>Συμβουλή:</b> Κάντε επικόλληση τα προϊόντα σας (ένα ανά γραμμή, π.χ. "Freddo Espresso 3.50"). Το σύστημα θα αναγνωρίσει αυτόματα την τιμή. Τον ΦΠΑ και τις υποκατηγορίες/έξτρα θα χρειαστεί να τα ρυθμίσετε χειροκίνητα μετά την εισαγωγή.
+                </div>
+                <textarea id="inpBulkPaste" class="order-text" style="height:250px; width:100%; margin-bottom:15px; border-radius:8px; resize:vertical;" placeholder="Επικόλληση εδώ..."></textarea>
+                <div style="display:flex; gap:10px;">
+                    <button id="btnBulkInsert" class="modal-btn" style="background:#10B981; color:white; margin:0; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΕΙΣΑΓΩΓΗ</button>
+                    <button id="btnBulkCancel" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; margin:0;">ΑΚΥΡΩΣΗ</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('inpBulkPaste').focus();
+
+        document.getElementById('btnBulkInsert').onclick = () => {
+            const text = document.getElementById('inpBulkPaste').value;
+            const lines = text.split('\n');
+            const cat = App.menuData[App.currentCategoryIndex];
+            
+            if (cat) {
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return;
+                    // Regex: Βρίσκει αριθμό (με . ή ,) στο τέλος, αγνοώντας σύμβολα νομίσματος
+                    const match = trimmed.match(/^(.*?)\s*([0-9]+[.,]?[0-9]*)\s*(?:€|euro|ευρώ)?\s*$/i);
+                    let name = trimmed, price = 0;
+                    if (match) { name = match[1].trim() || "Προϊόν"; price = parseFloat(match[2].replace(',', '.')) || 0; }
+                    cat.items.push({ name: name, price: price, vat: 24, extras: [] });
+                });
+            }
+            overlay.remove();
+            App.renderMenu();
+        };
+
+        document.getElementById('btnBulkCancel').onclick = () => overlay.remove();
+    },
+
+    // --- EXTRAS LOGIC ---
+    openExtrasModal: function(catIndex, itemIndex) {
+        const App = window.App;
+        App.currentExtrasCatIndex = catIndex;
+        App.currentExtrasItemIndex = itemIndex;
+
+        const cat = App.menuData[catIndex];
+        if (!cat || !cat.items[itemIndex]) return;
+
+        const item = cat.items[itemIndex];
+        
+        if (typeof item === 'string') {
+            const parts = item.split(':');
+            let price = 0; let name = item;
+            if (parts.length > 1) { name = parts.slice(0, -1).join(':').trim(); price = parseFloat(parts[parts.length - 1]) || 0; }
+            cat.items[itemIndex] = { name: name, price: price, vat: 24, extras: [] };
+        } else if (!item.extras) {
+            cat.items[itemIndex].extras = [];
+        }
+
+        App.tempExtras = JSON.parse(JSON.stringify(cat.items[itemIndex].extras));
+        
+        const title = document.getElementById('extrasModalTitle') || document.querySelector('#extrasModal h3');
+        if (title) title.innerText = `EXTRAS: ${cat.items[itemIndex].name}`;
+        
+        App.renderExtrasList();
+        const modal = document.getElementById('extrasModal');
+        if(modal) modal.style.display = 'flex';
+    },
+
+    renderExtrasList: function() {
+        const App = window.App;
+        const container = document.getElementById('extrasListContainer') || document.getElementById('extrasList');
+        if (!container) return;
+
+        container.innerHTML = '';
+        App.tempExtras.forEach((ex, idx) => {
+            const row = document.createElement('div');
+            row.className = 'extra-item-row';
+            row.innerHTML = `
+                <span>${ex.name} ${ex.price > 0 ? `(+${ex.price}€)` : ''}</span>
+                <button onclick="App.removeExtra(${idx})" style="background:#EF4444; color:white; border:none; padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.3);">X</button>
+            `;
+            container.appendChild(row);
+        });
+    },
+
+    addExtraRow: function() {
+        const App = window.App;
+        const nameInp = document.getElementById('inpExtraName');
+        const priceInp = document.getElementById('inpExtraPrice');
+        const name = nameInp ? nameInp.value.trim() : '';
+        const price = priceInp ? parseFloat(priceInp.value) || 0 : 0;
+
+        if (!name) return alert("Παρακαλώ εισάγετε όνομα extra!");
+
+        App.tempExtras.push({ name: name, price: price });
+        
+        if (nameInp) nameInp.value = '';
+        if (priceInp) priceInp.value = '';
+        
+        App.renderExtrasList();
+    },
+
+    addExtraToItem: function() { window.App.addExtraRow(); },
+
+    removeExtra: function(idx) {
+        window.App.tempExtras.splice(idx, 1);
+        window.App.renderExtrasList();
+    },
+
+    saveExtras: function() {
+        const App = window.App;
+        const cat = App.menuData[App.currentExtrasCatIndex];
+        if (cat && cat.items[App.currentExtrasItemIndex]) {
+            cat.items[App.currentExtrasItemIndex].extras = JSON.parse(JSON.stringify(App.tempExtras));
+        }
+        const modal = document.getElementById('extrasModal');
+        if (modal) modal.style.display = 'none';
+        App.renderMenu(); 
+    },
+
+    saveExtrasAndClose: function() { window.App.saveExtras(); }
 };

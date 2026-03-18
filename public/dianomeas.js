@@ -113,6 +113,11 @@ window.App = {
             btnFakeLock.style.display = hasChat ? 'flex' : 'none';
         }
         
+        const btnSettings = document.getElementById('btnSettings');
+        if (btnSettings) {
+            btnSettings.style.display = hasChat ? 'flex' : 'none';
+        }
+        
         // Αν έχουμε ΜΟΝΟ Chat (Συνδρομή 1), κρύβουμε τυχόν άλλα στοιχεία αν υπάρχουν
         if (hasChat && !hasManager && !hasDelivery) {
             // Εδώ θα μπορούσαμε να κρύψουμε κι άλλα αν υπήρχαν
@@ -270,22 +275,12 @@ window.App = {
     toggleFakeLock: () => { 
         const el = document.getElementById('fakeLockOverlay');
         if(!el) return;
-
-        if (el.style.display === 'flex') {
-            const pin = prompt("Εισάγετε PIN:");
-            if (pin && window.socket) {
-                window.socket.emit('verify-pin', { pin, email: userData.store });
-                window.socket.once('pin-verified', (data) => {
-                    if (data.success) {
-                        el.style.display = 'none';
-                    } else {
-                        alert("❌ Λάθος PIN!");
-                    }
-                });
-            }
-        } else {
-            el.style.display = 'flex';
-        }
+        el.style.display = 'flex';
+    },
+    
+    openUnlockPin: () => {
+        document.getElementById('pinUnlockModal').style.display = 'flex';
+        if(window.UnlockPIN) window.UnlockPIN.clear();
     },
 
     openQrPayment: async (id) => {
@@ -353,3 +348,25 @@ window.App = {
     }
 };
 window.onload = App.init;
+
+let pinValueUnlock = '';
+window.UnlockPIN = {
+    add: (n) => { if(pinValueUnlock.length < 4) { pinValueUnlock += n; document.getElementById('unlockPinDisplay').innerText = '*'.repeat(pinValueUnlock.length); } },
+    clear: () => { pinValueUnlock = ''; document.getElementById('unlockPinDisplay').innerText = ''; },
+    submit: () => {
+        if(pinValueUnlock.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+        window.socket.emit('verify-pin', { pin: pinValueUnlock, email: userData.store });
+        window.socket.once('pin-verified', (data) => {
+            if(data.success) {
+                document.getElementById('pinUnlockModal').style.display = 'none';
+                document.getElementById('fakeLockOverlay').style.display = 'none';
+                if(window.socket) window.socket.emit('set-user-status', 'online');
+                UnlockPIN.clear();
+            } else {
+                alert("❌ Λάθος PIN!");
+                UnlockPIN.clear();
+            }
+        });
+    },
+    close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); }
+};
