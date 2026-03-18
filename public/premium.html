@@ -97,10 +97,11 @@
             <div id="menuFullPanel">
                 <div class="menu-header">
                     <span class="menu-title" data-i18n="edit_menu">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px; margin-right: 60px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()" style="display:none;" data-i18n="back">🔙 ΠΙΣΩ</button>
                         <button class="btn-back" onclick="App.togglePresetPanel()" title="Presets" style="background:#FF9800; color:black;">📋</button>
-                        <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()">🔙 <span data-i18n="back">ΠΙΣΩ</span></button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
+                        <button class="btn-back" onclick="App.toggleMenuMode()" title="Αρχική Οθόνη" style="background:var(--danger); color:white; padding: 8px 12px;">✕</button>
                     </div>
                 </div>
                 
@@ -673,7 +674,7 @@
         <button onclick="event.stopPropagation(); App.forgotPin()" style="margin-top:20px; background:none; border:none; color:#2196F3; font-size:14px; cursor:pointer;">🆘 Ξέχασα το PIN</button>
     </div>
 
-    <script type="module" src="premium.js"></script>
+    <script type="module" src="premium.js?v=7"></script>
     <script type="module" src="premium2.js"></script>
     <script type="module" src="premium3.js"></script>
     <script src="player.js"></script>

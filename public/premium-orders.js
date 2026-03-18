@@ -139,8 +139,62 @@ export const OrdersUI = {
         App.calcSidebarTotal();
     },
     
+    // ✅ NEW: Οπτικό Καλάθι (Visual Cart με κουμπιά διαγραφής ✖ αριστερά)
+    renderVisualCart: (txtId, containerId) => {
+        const txt = document.getElementById(txtId);
+        if (!txt) return;
+        let container = document.getElementById(containerId);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = containerId;
+            container.style.cssText = "display:flex; flex-direction:column; gap:5px; margin-bottom:10px; overflow-y:auto; flex-shrink:0;";
+            txt.parentNode.insertBefore(container, txt);
+        }
+        
+        if (window.getComputedStyle(txt).display === 'none') {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.innerHTML = '';
+        const lines = txt.value.split('\n');
+        let hasItems = false;
+        
+        lines.forEach((line, idx) => {
+            if (!line.trim()) return;
+            hasItems = true;
+            const div = document.createElement('div');
+            div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px; border:1px solid #d1d5db; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
+            
+            const textSpan = document.createElement('span');
+            textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600;";
+            textSpan.innerText = line;
+
+            const btnX = document.createElement('button');
+            btnX.innerText = "✖";
+            btnX.title = "Διαγραφή Προϊόντος";
+            btnX.style.cssText = "background:#EF4444; color:white; border:none; border-radius:6px; width:30px; height:30px; cursor:pointer; margin-right:10px; font-size:14px; font-weight:bold; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(239,68,68,0.3); transition:0.2s;";
+            btnX.onclick = (e) => {
+                e.preventDefault();
+                const currentLines = txt.value.split('\n');
+                currentLines.splice(idx, 1);
+                txt.value = currentLines.join('\n');
+                if (window.App && window.App.calcSidebarTotal) window.App.calcSidebarTotal(); 
+            };
+
+            div.appendChild(btnX); // Μπαίνει πρώτο (αριστερά)
+            div.appendChild(textSpan);
+            container.appendChild(div);
+        });
+        
+        container.style.display = hasItems ? 'flex' : 'none';
+        txt.placeholder = hasItems ? '+ Προσθήκη Σημείωσης/Χειρόγραφου...' : 'Προϊόντα...';
+    },
+
     calcSidebarTotal: () => {
-        const txt = document.getElementById('sidebarOrderText').value;
+        const txtEl = document.getElementById('sidebarOrderText');
+        if (!txtEl) return;
+        const txt = txtEl.value;
         const total = calculateTotal(txt);
         document.getElementById('sidebarTotal').innerText = `ΣΥΝΟΛΟ: ${total.toFixed(2)}€`;
 
@@ -161,6 +215,10 @@ export const OrdersUI = {
             } else {
                 badge.style.display = 'none';
             }
+        }
+        
+        if (window.App && window.App.renderVisualCart) {
+            window.App.renderVisualCart('sidebarOrderText', 'sidebarVisualCart');
         }
     },
     

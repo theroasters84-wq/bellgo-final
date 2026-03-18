@@ -10,7 +10,7 @@ import { Admin } from './admin.js'; // ✅ Import Admin Logic
 import { AdminUI } from './admin-ui.js'; // ✅ Import Admin UI Logic
 import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
 import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // ✅ Import Menu Logic
-import { OrdersUI } from './premium-orders.js'; // ✅ Import Orders UI
+import { OrdersUI } from './premium-orders.js?v=6'; // ✅ Import Orders UI
 import { I18n, PushNotifications } from './shared-utils.js';
 import { initPremiumSockets } from './premium-sockets.js'; // ✅ Import WebSockets
 
@@ -295,6 +295,8 @@ window.App = {
                         txt.style.setProperty('max-height', '60vh', 'important');
                         if(textSpan) textSpan.innerText = '▲';
                     }
+                    // ✅ Ενημέρωση Visual Cart κατά το άνοιγμα/κλείσιμο
+                    if (window.App && window.App.calcSidebarTotal) window.App.calcSidebarTotal();
                 };
 
                 // Ενημέρωση του Badge αν πληκτρολογείς με το χέρι

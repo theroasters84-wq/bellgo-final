@@ -296,9 +296,7 @@
                 App.logout();
                 return;
             }
-            const title = payload.notification?.title || payload.data?.title || 'BellGo';
-            const body = payload.notification?.body || payload.data?.body;
-            new Notification(title, { body: body, icon: '/admin.png' });
+            // ✅ FIX: Δεν εμφανίζουμε Notification αν είναι ανοιχτή η εφαρμογή γιατί μπλοκάρει τη δόνηση
         });
 
         if ('serviceWorker' in navigator) {
@@ -978,6 +976,56 @@
                 // }
             },
 
+            // ✅ NEW: Οπτικό Καλάθι και για τον Σερβιτόρο!
+            renderVisualCart: (txtId, containerId) => {
+                const txt = document.getElementById(txtId);
+                if (!txt) return;
+                let container = document.getElementById(containerId);
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = containerId;
+                    container.style.cssText = "display:flex; flex-direction:column; gap:5px; margin-bottom:10px; max-height:200px; overflow-y:auto; flex-shrink:0;";
+                    txt.parentNode.insertBefore(container, txt);
+                }
+                
+                const lines = txt.value.split('\n');
+                let hasItems = false;
+                container.innerHTML = '';
+                
+                lines.forEach((line, idx) => {
+                    if (!line.trim()) return;
+                    hasItems = true;
+                    const div = document.createElement('div');
+                    div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px; border:1px solid #d1d5db; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600;";
+                    textSpan.innerText = line;
+
+                    const btnX = document.createElement('button');
+                    btnX.innerText = "✖";
+                    btnX.title = "Διαγραφή";
+                    btnX.style.cssText = "background:#EF4444; color:white; border:none; border-radius:6px; width:30px; height:30px; cursor:pointer; margin-right:10px; font-size:14px; font-weight:bold; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(239,68,68,0.3); transition:0.2s;";
+                    btnX.onclick = (e) => {
+                        e.preventDefault();
+                        const currentLines = txt.value.split('\n');
+                        currentLines.splice(idx, 1);
+                        txt.value = currentLines.join('\n');
+                        App.handleInput();
+                    };
+
+                    div.appendChild(btnX); // Μπαίνει αριστερά
+                    div.appendChild(textSpan);
+                    container.appendChild(div);
+                });
+                
+                container.style.display = hasItems ? 'flex' : 'none';
+                
+                // ✅ Οπτική Βελτίωση: Όταν έχει προϊόντα, το κουτί κειμένου μικραίνει για να αφήσει χώρο
+                txt.style.height = hasItems ? '45px' : '100px';
+                txt.placeholder = hasItems ? '+ Προσθήκη Σημείωσης...' : 'Προϊόντα...';
+            },
+
             toggleOrderPanel: () => {
                 const p = document.getElementById('orderPanel');
                 const icon = document.getElementById('panelIcon');
@@ -1020,6 +1068,8 @@
                     badge.style.display = totalItems > 0 ? 'inline-block' : 'none';
                     badge.innerText = totalItems;
                 }
+
+                if (App.renderVisualCart) App.renderVisualCart('inpOrderText', 'staffVisualCart');
             },
 
             // ✅ Bridge for player.js compatibility
@@ -1203,10 +1253,21 @@
             appendChat: (d) => { if(d.sender!==userData.name && !App.isChatOpen)document.getElementById('chatBadge').style.display='block'; const b=document.getElementById('waiterChatBox'); if(b){b.innerHTML+=`<div class="chat-msg ${d.sender===userData.name?'me':'other'}"><b>${d.sender}:</b> ${d.text}</div>`;b.scrollTop=b.scrollHeight;} },
             toggleFakeLock: () => { 
                 const el=document.getElementById('fakeLockOverlay'); 
-                const isLocked = (el.style.display !== 'flex');
-                el.style.display = isLocked ? 'flex' : 'none';
-                // ✅ Αν κλειδώσει, δηλώνουμε background για να έρχονται ειδοποιήσεις
-                if(window.socket) window.socket.emit('set-user-status', isLocked ? 'background' : 'online');
+                if (el.style.display === 'flex') {
+                    const pin = prompt("Εισάγετε PIN:");
+                    if (pin && window.socket) {
+                        window.socket.emit('verify-pin', { pin, email: userData.store });
+                        window.socket.once('pin-verified', (data) => {
+                            if (data.success) {
+                                el.style.display = 'none';
+                            } else {
+                                alert("❌ Λάθος PIN!");
+                            }
+                        });
+                    }
+                } else {
+                    el.style.display = 'flex';
+                }
             },
             logout: () => { window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("/staff/login"); },
             startHeartbeat: () => setInterval(() => { if(window.socket?.connected) window.socket.emit('heartbeat'); }, 3000)

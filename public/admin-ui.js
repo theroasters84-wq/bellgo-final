@@ -246,7 +246,6 @@ export const AdminUI = {
                 window.socket.once('pin-verified', (data) => {
                     if (data.success) {
                         el.style.display = 'none';
-                        if(window.socket) window.socket.emit('set-user-status', 'online');
                     } else {
                         alert("❌ Λάθος PIN!");
                     }
@@ -254,7 +253,6 @@ export const AdminUI = {
             }
         } else {
             el.style.display = 'flex';
-            if(window.socket) window.socket.emit('set-user-status', 'background');
         }
     }
 };

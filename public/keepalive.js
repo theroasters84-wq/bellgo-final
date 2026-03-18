@@ -43,10 +43,12 @@ const KeepAlive = {
 
     // 2. BACK BUTTON TRAP: Ακυρώνει το κουμπί 'Πίσω'
     preventBackExit: () => {
-        history.pushState(null, document.title, location.href);
+        // ✅ FIX: Χρήση Hash (#) για 100% ασφαλή παγίδευση χωρίς να κάνει reload ο browser (που προκαλεί τη λευκή/splash οθόνη)
+        if (window.location.hash !== '#locked') {
+            window.history.pushState(null, null, window.location.href.split('#')[0] + '#locked');
+        }
         window.addEventListener('popstate', function (event) {
-            history.pushState(null, document.title, location.href);
-            // Προαιρετικά: Εμφάνιση Toast "Δεν μπορείτε να βγείτε"
+            window.history.pushState(null, null, window.location.href.split('#')[0] + '#locked');
         });
     },
 

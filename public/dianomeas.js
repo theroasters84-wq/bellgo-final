@@ -278,7 +278,6 @@ window.App = {
                 window.socket.once('pin-verified', (data) => {
                     if (data.success) {
                         el.style.display = 'none';
-                        if(window.socket) window.socket.emit('set-user-status', 'online');
                     } else {
                         alert("❌ Λάθος PIN!");
                     }
@@ -286,8 +285,6 @@ window.App = {
             }
         } else {
             el.style.display = 'flex';
-            // ✅ Ενημέρωση κατάστασης (online/background) ώστε να λαμβάνει Push Notifications
-            if(window.socket) window.socket.emit('set-user-status', 'background');
         }
     },
 
