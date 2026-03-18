@@ -79,13 +79,15 @@ export const PaySystem = {
     },
 
     resetWallet: (name) => {
-        if(confirm(`Μηδενισμός ταμείου για: ${name};`)) {
+        const msg = (window.App && window.App.t) ? window.App.t('reset_wallet_confirm') : "Μηδενισμός ταμείου για:";
+        if(confirm(`${msg} ${name}?`)) {
             window.socket.emit('reset-wallet', name);
         }
     },
 
     resetAll: () => {
-        if(confirm("ΠΡΟΣΟΧΗ: Μηδενισμός ΟΛΩΝ των ταμείων;")) {
+        const msg = (window.App && window.App.t) ? window.App.t('reset_all_confirm') : "ΠΡΟΣΟΧΗ: Μηδενισμός ΟΛΩΝ των ταμείων;";
+        if(confirm(msg)) {
             window.socket.emit('reset-wallet', 'ALL');
         }
     },

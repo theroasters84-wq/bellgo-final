@@ -55,9 +55,83 @@ const KeepAlive = {
     // 3. CONFIRM CLOSE: Ρωτάει πριν κλείσει το Tab
     preventTabClose: () => {
         window.addEventListener('beforeunload', function (e) {
+            const lang = document.documentElement.lang || 'el';
+            const msg = lang === 'en' ? 'Are you sure you want to close the application?' : 'Είστε σίγουροι ότι θέλετε να κλείσετε την εφαρμογή;';
             e.preventDefault();
-            e.returnValue = 'Είστε σίγουροι ότι θέλετε να κλείσετε την εφαρμογή;';
-            return 'Είστε σίγουροι ότι θέλετε να κλείσετε την εφαρμογή;';
+            e.returnValue = msg;
+            return msg;
+        });
+    },
+
+    // 4. BACKGROUND WARNING: Προειδοποιεί αν κλειδώσουν την οθόνη ή βγουν από το app
+    warnOnBackground: () => {
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                // Έλεγχος αν ο χρήστης έχει ήδη ανοιχτό το Fake Lock
+                const fakeLock = document.getElementById('fakeLockOverlay');
+                if (fakeLock && fakeLock.style.display === 'flex') {
+                    return; // Είναι ήδη στο Fake Lock, άρα έκανε το σωστό! Δεν τον ενοχλούμε.
+                }
+
+                // ✅ Ήχος προειδοποίησης (Σαν κλήση) μέσω AudioEngine
+                if (window.AudioEngine && window.AudioEngine.triggerAlarm) {
+                    window.AudioEngine.triggerAlarm();
+                    
+                    const lang = document.documentElement.lang || 'el';
+                    const wrongLockTxt = lang === 'en' ? "🔔 WRONG LOCK" : "🔔 ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ";
+                    const stopSoundTxt = lang === 'en' ? "🔔 STOP SOUND (WRONG LOCK)" : "🔔 ΣΤΑΜΑΤΗΣΤΕ ΤΟΝ ΗΧΟ (ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ)";
+
+                    // Εμφάνιση του κουμπιού αποδοχής για να μπορέσει να το σταματήσει όταν επιστρέψει
+                    const staffBell = document.getElementById('staffBellBtn');
+                    const driverBell = document.getElementById('driverBellBtn');
+                    
+                    if (staffBell) { 
+                        staffBell.style.display = 'flex'; 
+                        staffBell.innerText = wrongLockTxt; 
+                        staffBell.classList.add('ringing'); 
+                    } else if (driverBell) { 
+                        driverBell.style.display = 'flex'; 
+                        driverBell.innerText = wrongLockTxt; 
+                        driverBell.classList.add('ringing'); 
+                    } else {
+                        let warnBtn = document.getElementById('warningStopBtn');
+                        if (!warnBtn) {
+                            warnBtn = document.createElement('button');
+                            warnBtn.id = 'warningStopBtn';
+                            warnBtn.innerHTML = stopSoundTxt;
+                            warnBtn.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#EF4444; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:14px; z-index:40000; box-shadow:0 10px 30px rgba(239,68,68,0.5); cursor:pointer; animation:pulse 1s infinite alternate;";
+                            warnBtn.onclick = () => { if (window.AudioEngine) window.AudioEngine.stopAlarm(); warnBtn.style.display = 'none'; };
+                            document.body.appendChild(warnBtn);
+                        }
+                        warnBtn.innerHTML = stopSoundTxt;
+                        warnBtn.style.display = 'block';
+                    }
+                }
+
+                // Αν ΔΕΝ έχει Fake Lock και βγει / κλειδώσει την οθόνη
+                if (Notification.permission === 'granted' && !window.Capacitor) {
+                    try {
+                        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                            const lang = document.documentElement.lang || 'el';
+                            const warningTitle = lang === 'en' ? "⚠️ WARNING (BellGo)" : "⚠️ ΠΡΟΣΟΧΗ (BellGo)";
+                            const warningBody = lang === 'en' ? "Don't lock/hide the app! Use the 🌙 'Black Screen' to not miss orders." : "Μην κλειδώνεις/κρύβεις την εφαρμογή! Πάτα τη 🌙 'Μαύρη Οθόνη' για να μην χάνεις παραγγελίες.";
+                            
+                            navigator.serviceWorker.ready.then(reg => {
+                                reg.showNotification(warningTitle, {
+                                    body: warningBody,
+                                    icon: "/admin.png",
+                                    tag: "lock-warning",
+                                    vibrate: [200, 100, 200],
+                                    sound: "/alert.mp3", // ✅ Προσθήκη Ήχου στην ειδοποίηση
+                                    requireInteraction: true
+                                });
+                            });
+                        }
+                    } catch(e) {
+                        console.log("Warning notification failed", e);
+                    }
+                }
+            }
         });
     },
 
@@ -66,6 +140,7 @@ const KeepAlive = {
         KeepAlive.enableWakeLock();
         KeepAlive.preventBackExit();
         KeepAlive.preventTabClose();
+        KeepAlive.warnOnBackground();
     },
 };
 

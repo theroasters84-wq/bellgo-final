@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { firebaseConfig } from './config.js';
 import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes
+import { I18n } from './shared-utils.js'; // ✅ Import I18n
 
 if ('serviceWorker' in navigator) {
     // ✅ FIX: Καθαρισμός παλιού Root Service Worker που προκαλεί προβλήματα
@@ -78,12 +79,12 @@ try {
 let currentPinMode = 'enter'; 
 let tempPin = '';
 let pinValue = '';
+let storePinToSave = '';
 let adminUser = null; 
 let adminPlan = 'basic';
 
 // --- I18N LOGIC ---
-let translations = {};
-const t = (key) => translations[key] || key;
+const t = (key) => I18n.t(key) || key;
 
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -128,7 +129,12 @@ window.onload = function() {
 
     // Load Language
     const savedLang = localStorage.getItem('bellgo_lang') || 'el';
-    setLanguage(savedLang);
+    I18n.setLanguage(savedLang);
+};
+
+window.setLanguage = (lang) => {
+    console.log("🌍 Switching language to:", lang);
+    I18n.setLanguage(lang);
 };
 
 // --- UI NAVIGATION ---
@@ -141,6 +147,18 @@ window.UI = {
         if(mode) { localStorage.setItem('bellgo_admin_mode', mode); } // ✅ Αποθήκευση Mode (cashier/kitchen)
         document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
         document.getElementById('adminForm').classList.add('active');
+        
+        if (mode === 'kitchen') {
+            document.getElementById('adminOnlyExtras').style.display = 'none';
+            document.getElementById('adminFormTitle').innerText = "Είσοδος Κουζίνας";
+        } else {
+            document.getElementById('adminOnlyExtras').style.display = 'block';
+            document.getElementById('adminFormTitle').innerText = "Διαχείριση (Admin)";
+        }
+    },
+    toggleAdminPinVisibility: () => {
+        const inp = document.getElementById('adminPinInp');
+        if(inp) inp.type = inp.type === 'password' ? 'text' : 'password';
     },
     showStaffLogin: (role) => {
         document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
@@ -183,18 +201,31 @@ window.PIN = {
         }
     },
     submit: () => {
-        if (pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+        if (pinValue.length < 4) return alert(t('pin_4_digits') || "Το PIN πρέπει να είναι 4 ψηφία");
         if (currentPinMode === 'enter') {
-            socket.emit('verify-pin', { pin: pinValue, email: adminUser.email });
+            socket.emit('verify-pin', { pin: pinValue, email: adminUser.email, personalEmail: adminUser.personalEmail || adminUser.email });
         } else if (currentPinMode === 'create') {
             tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
             currentPinMode = 'confirm';
-            document.getElementById('pinTitle').innerText = t('confirm') || "ΕΠΙΒΕΒΑΙΩΣΗ";
-            document.getElementById('pinSub').innerText = t('type_again') || "Πληκτρολογήστε το ξανά";
+            document.getElementById('pinTitle').innerText = t('new_pin_title') || "ΕΠΙΒΕΒΑΙΩΣΗ PIN";
+            document.getElementById('pinSub').innerText = t('new_pin_sub') || "Πληκτρολογήστε το ξανά";
         } else if (currentPinMode === 'confirm') {
             if (pinValue === tempPin) {
-                socket.emit('set-new-pin', { pin: pinValue, email: adminUser.email });
-            } else { alert("Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); }
+                storePinToSave = pinValue;
+                tempPin = ''; pinValue = ''; PIN.updateDisplay();
+                currentPinMode = 'create_admin';
+                document.getElementById('pinTitle').innerText = t('admin_pin_title') || "ΚΩΔΙΚΟΣ ΔΙΑΧΕΙΡΙΣΤΗ";
+                document.getElementById('pinSub').innerText = t('admin_pin_sub') || "Ορίστε το Admin PIN (Μόνο για εσάς)";
+            } else { alert(t('pins_not_match') || "Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create'; pinValue = ''; PIN.updateDisplay(); document.getElementById('pinTitle').innerText = t('staff_pin_title') || "PIN ΠΡΟΣΩΠΙΚΟΥ"; document.getElementById('pinSub').innerText = t('staff_pin_sub') || "Ορίστε κωδικό για τους υπαλλήλους"; }
+        } else if (currentPinMode === 'create_admin') {
+            tempPin = pinValue; pinValue = ''; PIN.updateDisplay();
+            currentPinMode = 'confirm_admin';
+            document.getElementById('pinTitle').innerText = t('admin_pin_confirm_title') || "ΕΠΙΒΕΒΑΙΩΣΗ ADMIN PIN";
+            document.getElementById('pinSub').innerText = t('admin_pin_confirm_sub') || "Πληκτρολογήστε ξανά το Admin PIN";
+        } else if (currentPinMode === 'confirm_admin') {
+            if (pinValue === tempPin) {
+                socket.emit('set-new-pin', { pin: storePinToSave, adminPin: pinValue, email: adminUser.email });
+            } else { alert(t('pins_not_match') || "Οι κωδικοί δεν ταιριάζουν."); currentPinMode = 'create_admin'; pinValue = ''; PIN.updateDisplay(); document.getElementById('pinTitle').innerText = t('admin_pin_title') || "ΚΩΔΙΚΟΣ ΔΙΑΧΕΙΡΙΣΤΗ"; document.getElementById('pinSub').innerText = t('admin_pin_sub') || "Ορίστε το Admin PIN (Μόνο για εσάς)"; }
         }
     }
 };
@@ -205,13 +236,23 @@ window.Staff = {
         const pin = document.getElementById('stPin').value.trim();
         const role = document.getElementById('stRole').value;
         const adminEmail = document.getElementById('stStore').value.trim(); 
+        const userEmail = document.getElementById('stUserEmail').value.trim();
 
-        if (!name || !pin || !adminEmail) return alert("Συμπληρώστε τα πεδία!");
+        if (!name || !pin || !adminEmail || !userEmail) return alert(t('fill_all_fields') || "Συμπληρώστε όλα τα πεδία!");
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(userEmail)) {
+            return alert(t('invalid_personal_email') || "Παρακαλώ εισάγετε ένα έγκυρο Προσωπικό Email!");
+        }
+
+        if (userEmail.toLowerCase() === adminEmail.toLowerCase()) {
+            return alert(t('same_email_error') || "Το Προσωπικό Email δεν μπορεί να είναι ίδιο με το Email της Επιχείρησης!");
+        }
         
         const btn = document.getElementById('btnStaffLogin');
-        btn.innerText = "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
+        btn.innerText = t('checking') || "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
 
-        socket.emit('verify-pin', { pin: pin, email: adminEmail });
+        socket.emit('verify-pin', { pin: pin, email: adminEmail, personalEmail: userEmail });
         
         socket.once('pin-verified', async (res) => {
             if (res.success) {
@@ -236,7 +277,7 @@ window.Staff = {
                     }
 
                     if (isActive) {
-                        const sessionData = { name: name, store: subData.storeId || adminEmail, role: role, plan: plan, features: features };
+                        const sessionData = { name: name, email: userEmail, store: subData.storeId || adminEmail, role: role, plan: plan, features: features };
                         // ✅ FIX: Clear any temp features from simulation to ensure clean state
                         localStorage.removeItem('bellgo_temp_features');
                         
@@ -252,17 +293,21 @@ window.Staff = {
                             window.location.replace("/manage/index.html"); 
                         }
                     } else {
-                        alert("Δεν βρέθηκε ενεργή συνδρομή για αυτό το κατάστημα.");
-                        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                        alert(t('no_sub_found') || "Δεν βρέθηκε ενεργή συνδρομή για αυτό το κατάστημα.");
+                        btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                     }
                 } catch (e) { 
-                    alert("Σφάλμα δικτύου."); 
-                    btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                    alert(t('network_error') || "Σφάλμα δικτύου."); 
+                    btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                 }
             } else {
-                alert("Λάθος PIN!");
+                if (res.reason === 'whitelist_rejected') {
+                    alert(t('whitelist_rejected') || "⛔ Δεν έχετε άδεια πρόσβασης!\nΤο email σας δεν βρίσκεται στη λίστα εγκεκριμένων υπαλλήλων (Whitelist).");
+                } else {
+                    alert(t('wrong_pin') || "❌ Λάθος PIN!");
+                }
                 PIN.clear();
-                btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
             }
         });
     }
@@ -272,11 +317,19 @@ window.Admin = {
     manualLogin: async () => {
         const email = document.getElementById('adminEmailInp').value.trim();
         const name = document.getElementById('adminNameInp').value.trim(); // ✅ Λήψη Ονόματος
-        if(!email) return alert("Παρακαλώ εισάγετε email.");
+        const personalEmail = document.getElementById('adminPersonalEmailInp').value.trim();
+        const mode = localStorage.getItem('bellgo_admin_mode');
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(personalEmail)) {
+            return alert(t('invalid_personal_email') || "Παρακαλώ εισάγετε ένα έγκυρο Προσωπικό Email!");
+        }
+
+        if(!email) return alert(t('enter_email_alert') || "Παρακαλώ εισάγετε email.");
         localStorage.setItem('bellgo_last_email', email); // ✅ Save email for next time
         
         const btn = document.getElementById('btnAdminLogin');
-        btn.innerText = "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
+        btn.innerText = t('checking') || "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
 
         // ✅ HACK: Παράκαμψη Stripe για Demo Emails (που τελειώνουν σε 1992+)
         // Αν το email έχει έτος >= 1992, το θεωρούμε Premium και μπαίνουμε.
@@ -284,10 +337,10 @@ window.Admin = {
         if (match) {
             const year = parseInt(match[1]);
             if (year >= 1992) {
-                adminUser = { email: email, displayName: name || "Admin", features: {} }; // Hack features handled in premium.js
+                adminUser = { email: email, personalEmail: personalEmail, displayName: name || "Admin", features: {} }; 
                 adminPlan = 'premium'; // Force premium για να μπει στο dashboard
                 socket.emit('check-pin-status', { email: email });
-                btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+                btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
                 return; // Σταματάμε εδώ, δεν καλούμε το Stripe
             }
         }
@@ -297,7 +350,7 @@ window.Admin = {
         const data = await Sundromes.checkLogin(email);
         
         if (data) {
-            adminUser = { email: email, displayName: name || "Admin" };
+            adminUser = { email: email, personalEmail: personalEmail, displayName: name || "Admin" };
             adminPlan = data.plan; 
             adminUser.features = data.features || {}; 
             
@@ -311,7 +364,7 @@ window.Admin = {
             socket.emit('check-pin-status', { email: email });
         }
         
-        btn.innerText = "ΕΙΣΟΔΟΣ"; btn.disabled = false;
+        btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
     },
 
     googleLogin: () => {
@@ -361,22 +414,31 @@ socket.on('forgot-pin-response', (res) => {
 });
 
 socket.on('pin-status', (data) => {
-    document.getElementById('pinModal').style.display = 'flex';
+    if (!document.getElementById('adminForm').classList.contains('active')) return;
+
+    const pinInp = document.getElementById('adminPinInp');
+    const enteredPin = pinInp ? pinInp.value.trim() : '';
+
     if (data.hasPin) {
-        currentPinMode = 'enter';
-        document.getElementById('pinTitle').innerText = t('enter_pin') || "ΕΙΣΑΓΩΓΗ PIN";
-        document.getElementById('pinSub').innerText = t('enter_your_pin') || "Βάλτε τον κωδικό σας";
-        document.getElementById('btnForgot').style.display = 'block';
+        if (enteredPin) {
+            currentPinMode = 'direct';
+            socket.emit('verify-pin', { pin: enteredPin, email: adminUser.email, personalEmail: adminUser.personalEmail || adminUser.email });
+        } else {
+            alert(t('fill_pin_alert') || "Παρακαλώ συμπληρώστε τον Κωδικό Καταστήματος (PIN) στο πεδίο για να συνδεθείτε.");
+            if (pinInp) pinInp.focus();
+        }
     } else {
+        document.getElementById('pinModal').style.display = 'flex';
         currentPinMode = 'create';
-        document.getElementById('pinTitle').innerText = t('create_pin') || "ΔΗΜΙΟΥΡΓΙΑ PIN";
-        document.getElementById('pinSub').innerText = t('set_new_pin') || "Ορίστε έναν νέο 4-ψήφιο κωδικό";
+        document.getElementById('pinTitle').innerText = t('staff_pin_title') || "PIN ΠΡΟΣΩΠΙΚΟΥ";
+        document.getElementById('pinSub').innerText = t('staff_pin_sub') || "Ορίστε κωδικό για τους υπαλλήλους";
         document.getElementById('btnForgot').style.display = 'none';
+        if (pinInp) pinInp.value = ''; 
     }
 });
 
 socket.on('pin-success', (data) => {
-    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan, features: adminUser.features };
+    const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.personalEmail || adminUser.email, plan: adminPlan, features: adminUser.features };
     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
     
     if(adminPlan === 'premium' || adminPlan === 'custom') {
@@ -391,10 +453,10 @@ socket.on('pin-success', (data) => {
 });
 
 socket.on('pin-verified', (res) => {
-    // 🔥 FIXED: Only run if Modal is OPEN (Admin Flow)
-    if (document.getElementById('pinModal').style.display === 'flex' && currentPinMode === 'enter') {
+    // 🔥 FIXED: Run for Admin Flow (Modal or Direct)
+    if (document.getElementById('adminForm').classList.contains('active') && (currentPinMode === 'enter' || currentPinMode === 'direct')) {
         if (res.success) {
-            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.email, plan: adminPlan, features: adminUser.features };
+            const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.personalEmail || adminUser.email, plan: adminPlan, features: adminUser.features };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
             if(adminPlan === 'premium' || adminPlan === 'custom') {
@@ -407,8 +469,17 @@ socket.on('pin-verified', (res) => {
             }
             else window.location.replace("/manage/index.html");
         } else {
-            alert("Λάθος PIN!");
-            PIN.clear();
+            if (res.reason === 'whitelist_rejected') {
+                alert(t('whitelist_rejected') || "⛔ Δεν έχετε άδεια πρόσβασης!\nΤο email σας δεν βρίσκεται στη λίστα εγκεκριμένων υπαλλήλων (Whitelist).");
+            } else {
+                alert(t('wrong_pin') || "❌ Λάθος PIN!");
+            }
+            if (currentPinMode === 'enter') {
+                PIN.clear();
+            } else {
+                document.getElementById('adminPinInp').value = '';
+                document.getElementById('adminPinInp').focus();
+            }
         }
     }
 });
@@ -418,19 +489,3 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('adminEmailInp').value = user.email;
     }
 });
-
-window.setLanguage = async (lang) => {
-    localStorage.setItem('bellgo_lang', lang);
-    try {
-        const response = await fetch(`/i18n/${lang}.json`);
-        translations = await response.json();
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (translations[key]) el.innerText = translations[key];
-        });
-        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-            const key = el.getAttribute('data-i18n-placeholder');
-            if (translations[key]) el.placeholder = translations[key];
-        });
-    } catch (error) { console.error(`Lang Error: ${lang}`, error); }
-};

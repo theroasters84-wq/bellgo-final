@@ -175,6 +175,7 @@ const t = (key) => I18n.t(key);
 
 window.App = {
     t: t, // ✅ Expose translation function
+    tMenu: (text) => I18n.tMenu(text), // ✅ Expose menu translator
     existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
 
     installPWA: async () => {
@@ -187,7 +188,7 @@ window.App = {
             }
             deferredPrompt = null;
         } else if (isIos()) {
-            alert("Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
+            alert(t('install_ios_prompt') || "Για εγκατάσταση σε iPhone:\n1. Πατήστε το κουμπί 'Share' (κάτω)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
         }
     },
 
@@ -195,7 +196,7 @@ window.App = {
         if (googleMapsUrl) window.open(googleMapsUrl, '_blank');
     },
 
-    loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert("Login Error: " + e.message)); },
+    loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert((t('error') || "Σφάλμα: ") + e.message)); },
     logout: () => { signOut(auth).then(() => location.reload()); },
 
     checkDetails: () => {
@@ -251,7 +252,7 @@ window.App = {
             // ✅ FIX: Αν είναι DineIn, δεν ανοίγουμε φόρμα αμέσως.
             // Δημιουργούμε προσωρινό session και αφήνουμε το socket να αποφασίσει (Active/Inactive).
             if (isDineIn) {
-                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Πελάτης";
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('customer_default') || "Πελάτης");
                 customerDetails = { name: defaultName, table: tableNumber, type: 'dinein' };
                 localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
                 shouldOpenForm = false;
@@ -290,7 +291,7 @@ window.App = {
             if (!covers && !App.existingOrderId) return alert(t('enter_covers_error') || "Παρακαλώ εισάγετε αριθμό ατόμων!");
             // ✅ FIX: Allow name input if available, otherwise default
             let name = document.getElementById('inpName').value.trim();
-            if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : t('customer_default') || "Πελάτης";
+            if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('customer_default') || "Πελάτης");
             customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
         } else {
             const choice = sessionStorage.getItem('bellgo_choice_made');
@@ -331,7 +332,7 @@ window.App = {
                  btnTable.id = 'btnChoiceTable';
                  btnTable.className = 'btn-save-details';
                  btnTable.style.cssText = "margin-bottom:15px; background:#00E676; color:black;";
-                 btnTable.innerHTML = `🍽️ ΠΑΡΑΓΓΕΛΙΑ ΣΤΟ ΤΡΑΠΕΖΙ ${TABLE_ID}`;
+                 btnTable.innerHTML = `🍽️ ${t('table_order') || 'ΠΑΡΑΓΓΕΛΙΑ ΣΤΟ ΤΡΑΠΕΖΙ'} ${TABLE_ID}`;
                  btnTable.onclick = () => App.chooseAction('dinein');
                  h3.after(btnTable);
              }
@@ -343,7 +344,7 @@ window.App = {
 
     // ✅ NEW: GPS Location for Delivery
     getGpsLocation: (btn) => {
-        if (!navigator.geolocation) return alert("Η γεωθεσία δεν υποστηρίζεται.");
+        if (!navigator.geolocation) return alert(t('geolocation_unsupported') || "Η γεωθεσία δεν υποστηρίζεται.");
         
         const originalText = btn.innerText;
         btn.innerText = "⏳";
@@ -359,7 +360,7 @@ window.App = {
                 btn.innerText = "✅";
                 setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 2000);
             },
-            (err) => { alert("Σφάλμα GPS: " + err.message); btn.innerText = originalText; btn.disabled = false; },
+            (err) => { alert((t('gps_error') || "Σφάλμα GPS: ") + err.message); btn.innerText = originalText; btn.disabled = false; },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     },
@@ -390,7 +391,7 @@ window.App = {
         } else if (action === 'book') {
             // Αν δεν υπάρχουν στοιχεία, φτιάχνουμε προσωρινά για να συνδεθεί το socket
             if (!customerDetails) {
-                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Επισκέπτης";
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('guest_default') || "Επισκέπτης");
                 customerDetails = { name: defaultName, type: 'delivery' };
             }
             App.startApp(); // Εκκίνηση εφαρμογής (Socket connection)
@@ -411,7 +412,7 @@ window.App = {
     startApp: () => {
         // ✅ FIX: Check Store ID to prevent hanging
         if (!TARGET_STORE) {
-            alert("⚠️ Σφάλμα: Δεν βρέθηκε κατάστημα. Παρακαλώ σκανάρετε ξανά το QR.");
+            alert(t('store_not_found_error') || "⚠️ Σφάλμα: Δεν βρέθηκε κατάστημα. Παρακαλώ σκανάρετε ξανά το QR.");
             return;
         }
 
@@ -582,6 +583,7 @@ window.App = {
             get googleMapsUrl() { return googleMapsUrl; },
             set googleMapsUrl(val) { googleMapsUrl = val; },
             t: t,
+            tMenu: (text) => I18n.tMenu(text),
             ReserveTable: ReserveTable
         };
 
@@ -607,7 +609,7 @@ window.App = {
             menu.forEach(cat => {
                 const title = document.createElement('div');
                 title.className = 'category-title';
-                title.innerText = cat.name;
+                title.innerText = I18n.tMenu(cat.name); // ✅ Translated Category
                 const itemsDiv = document.createElement('div');
                 itemsDiv.className = 'category-items';
 
@@ -620,7 +622,8 @@ window.App = {
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
                         box.style.touchAction = 'manipulation';
                         box.style.cursor = 'pointer'; // ✅ Fix for iOS click registration
-                        box.innerHTML = `<span class="item-name">${name}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
+                        let displayItemName = I18n.tMenu(name); // ✅ Translated Item Name
+                        box.innerHTML = `<span class="item-name">${displayItemName}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
                         
                         // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ
                         let lastTap = 0;
@@ -758,7 +761,7 @@ window.App = {
         const phone = document.getElementById('inpBookPhone').value;
         const token = localStorage.getItem('fcm_token'); // ✅ Send Token
         
-        if(!date || !time || !pax || !name || !phone) return alert("Συμπληρώστε όλα τα πεδία!");
+        if(!date || !time || !pax || !name || !phone) return alert(t('fill_all_fields') || "Συμπληρώστε όλα τα πεδία!");
         
         window.socket.emit('create-reservation', { date, time, pax, name, phone, customerToken: token });
     },
@@ -768,7 +771,7 @@ window.App = {
         // Αν δεν είναι συνδεδεμένο, κάνε connect (για την περίπτωση που πατάει από το αρχικό modal)
         if (!window.socket || !window.socket.connected) {
              if (!customerDetails) {
-                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : "Επισκέπτης";
+                const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('guest_default') || "Επισκέπτης");
                 customerDetails = { name: defaultName, type: 'delivery' };
             }
             App.startApp();
@@ -776,7 +779,7 @@ window.App = {
 
         const myResIds = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
         if (myResIds.length === 0) {
-            alert("Δεν βρέθηκαν κρατήσεις σε αυτή τη συσκευή.");
+            alert(t('no_local_reservations') || "Δεν βρέθηκαν κρατήσεις σε αυτή τη συσκευή.");
             return;
         }
         
@@ -784,7 +787,7 @@ window.App = {
         document.getElementById('choiceModal').style.display = 'none';
         
         document.getElementById('myReservationsModal').style.display = 'flex';
-        document.getElementById('myReservationsList').innerHTML = '<p style="text-align:center; color:#aaa;">Φόρτωση...</p>';
+        document.getElementById('myReservationsList').innerHTML = `<p style="text-align:center; color:#aaa;">${t('loading') || 'Φόρτωση...'}</p>`;
         
         window.socket.emit('get-customer-reservations', myResIds);
     },
@@ -812,7 +815,7 @@ window.App = {
         if(b2) { b2.innerText = count; b2.style.display = count > 0 ? 'inline-block' : 'none'; }
 
         if (activeList.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#aaa;">Δεν υπάρχουν ενεργές κρατήσεις.</p>';
+            container.innerHTML = `<p style="text-align:center; color:#aaa;">${t('no_active_reservations') || 'Δεν υπάρχουν ενεργές κρατήσεις.'}</p>`;
             return;
         }
 
@@ -823,23 +826,23 @@ window.App = {
             div.style.cssText = "background:#ffffff; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #e5e7eb; box-shadow:0 2px 5px rgba(0,0,0,0.05);";
             
             let statusColor = '#F59E0B'; // Pending
-            let statusText = 'ΑΝΑΜΟΝΗ';
-            if (r.status === 'confirmed') { statusColor = '#10B981'; statusText = 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
+            let statusText = t('status_pending_res') || 'ΑΝΑΜΟΝΗ';
+            if (r.status === 'confirmed') { statusColor = '#10B981'; statusText = t('status_confirmed_res') || 'ΕΠΙΒΕΒΑΙΩΜΕΝΗ'; }
 
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                     <span style="font-weight:bold; color:#1f2937;">${r.date} - ${r.time}</span>
                     <span style="font-size:10px; padding:2px 5px; border-radius:4px; background:${statusColor}; color:white; font-weight:bold;">${statusText}</span>
                 </div>
-                <div style="color:#6b7280; font-size:14px;">${r.pax} Άτομα • ${r.name}</div>
-                <button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#EF4444; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold;">ΑΚΥΡΩΣΗ</button>
+                <div style="color:#6b7280; font-size:14px;">${r.pax} ${t('people') || 'Άτομα'} • ${r.name}</div>
+                <button onclick="App.cancelMyReservation(${r.id})" style="width:100%; margin-top:10px; background:#EF4444; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer; font-weight:bold;">${t('cancel') || 'ΑΚΥΡΩΣΗ'}</button>
             `;
             container.appendChild(div);
         });
     },
 
     cancelMyReservation: (id) => {
-        if(confirm("Είστε σίγουροι ότι θέλετε να ακυρώσετε την κράτηση;")) {
+        if(confirm(t('cancel_reservation_confirm') || "Είστε σίγουροι ότι θέλετε να ακυρώσετε την κράτηση;")) {
             window.socket.emit('cancel-reservation-customer', id);
         }
     },
@@ -891,7 +894,7 @@ window.App = {
     sendOrder: (items, method) => {
         // ✅ FIX: Safety Check for Customer Details
         if (!customerDetails) {
-            alert("⚠️ Σφάλμα: Λείπουν τα στοιχεία πελάτη. Η σελίδα θα ανανεωθεί.");
+            alert(t('missing_customer_details_error') || "⚠️ Σφάλμα: Λείπουν τα στοιχεία πελάτη. Η σελίδα θα ανανεωθεί.");
             window.location.reload();
             return;
         }

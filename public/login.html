@@ -102,13 +102,25 @@
     </div>
 
     <!-- Bottom Right Corner Controls (Language) -->
-    <div style="position: fixed; bottom: 15px; right: 15px; display: flex; align-items: center; gap: 10px; z-index: 1000;">
-        <button onclick="setLanguage('el')" style="background:transparent; border:none; color:#8e8e8e; font-weight:600; cursor:pointer; font-size:12px;">ΕΛ</button>
-        <button onclick="setLanguage('en')" style="background:transparent; border:none; color:#8e8e8e; font-weight:600; cursor:pointer; font-size:12px;">EN</button>
+    <div style="position: fixed; bottom: 20px; right: 20px; display: flex; align-items: center; gap: 5px; z-index: 25000; background: #ffffff; padding: 5px 10px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.15); border: 1px solid #e5e7eb;">
+        <button onclick="window.setLanguage('el')" style="background:transparent; border:none; color:#1f2937; font-weight:bold; cursor:pointer; font-size:14px; padding:5px 10px; border-radius:15px;">ΕΛ</button>
+        <span style="color:#d1d5db; font-size:14px;">|</span>
+        <button onclick="window.setLanguage('en')" style="background:transparent; border:none; color:#1f2937; font-weight:bold; cursor:pointer; font-size:14px; padding:5px 10px; border-radius:15px;">EN</button>
     </div>
 
     <div class="login-container">
-        <h1 onclick="window.dc=(window.dc||0)+1; if(window.dc===5) { const p = prompt('Developer Password:'); if(p === '19921992') window.location.href='developer.html'; window.dc=0; }" style="cursor:pointer; user-select:none;">BellGo 🔔</h1>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 30px;">
+            <h1 onclick="window.dc=(window.dc||0)+1; if(window.dc===5) { const p = prompt('Developer Password:'); if(p === '19921992') window.location.href='developer.html'; window.dc=0; }" style="cursor:pointer; user-select:none; margin-bottom: 0;">BellGo 🔔</h1>
+            
+            <!-- ✅ GOOGLE TRANSLATE WIDGET -->
+            <div id="google_translate_element" style="transform:scale(0.85); transform-origin:left center; z-index: 9999;"></div>
+            <script type="text/javascript">
+              function googleTranslateElementInit() {
+                new google.translate.TranslateElement({ pageLanguage: 'el', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+              }
+            </script>
+            <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+        </div>
         
         <!-- 1. ROLE SELECTION SCREEN -->
         <div id="roleSelection" class="form-section active">
@@ -139,6 +151,7 @@
         <div id="staffForm" class="form-section">
             <h3 style="color:#1f2937; margin:0;" data-i18n="staff_login">Είσοδος Προσωπικού</h3>
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
+            <input type="email" id="stUserEmail" class="inp" placeholder="Το Προσωπικό σου Email" data-i18n-placeholder="placeholder_personal_email">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
             <div class="password-wrapper">
                 <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin">
@@ -155,13 +168,20 @@
 
         <!-- 3. ADMIN LOGIN FORM -->
         <div id="adminForm" class="form-section">
-            <h3 style="color:#1f2937; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
-            <input type="email" id="adminEmailInp" class="inp" placeholder="Email (για είσοδο ή αγορά)" data-i18n-placeholder="placeholder_email_login_buy">
-            <input type="text" id="adminNameInp" class="inp" placeholder="Όνομα Ταμείου (π.χ. Μαρία)" data-i18n-placeholder="placeholder_cashier_name">
+            <h3 id="adminFormTitle" style="color:#1f2937; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
+            <input type="email" id="adminEmailInp" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
+            <input type="email" id="adminPersonalEmailInp" class="inp" placeholder="Το Προσωπικό σου Email" data-i18n-placeholder="placeholder_personal_email">
+            <input type="text" id="adminNameInp" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
+            <div class="password-wrapper">
+                <input type="password" id="adminPinInp" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin">
+                <button class="password-toggle" onclick="UI.toggleAdminPinVisibility()" type="button">👁️</button>
+            </div>
             <button class="btn-main" id="btnAdminLogin" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
-            <div class="divider" data-i18n="or">Ή</div>
-            <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span style="font-size:18px;">G</span> <span data-i18n="google_login">Σύνδεση με Google</span></button>
-            <button onclick="Sundromes.openSubscriptionsModal()" style="background:transparent; color:#262626; border:1px solid #dbdbdb; padding:10px 20px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; margin-top:10px;">Διαχείριση Συνδρομών</button>
+            <div id="adminOnlyExtras">
+                <div class="divider" data-i18n="or">Ή</div>
+                <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span style="font-size:18px;">G</span> <span data-i18n="google_login">Σύνδεση με Google</span></button>
+                <button onclick="Sundromes.openSubscriptionsModal()" style="background:transparent; color:#262626; border:1px solid #dbdbdb; padding:10px 20px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; margin-top:10px;">Διαχείριση Συνδρομών</button>
+            </div>
             <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">Επιστροφή</button>
         </div>
 

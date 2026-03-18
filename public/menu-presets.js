@@ -331,12 +331,18 @@ export const Menu = {
             const maxOrder = App.menuData.reduce((max, cat) => Math.max(max, cat.order || 0), 0);
             const nextOrder = maxOrder + 1;
 
+            const t = window.App && window.App.t ? window.App.t : (k) => k;
+            const newCatTxt = t('new_category') || 'Νέα Κατηγορία';
+            const catNamePlh = t('cat_name_placeholder') || 'Όνομα (π.χ. ΚΑΦΕΔΕΣ)';
+            const createTxt = t('create') || 'ΔΗΜΙΟΥΡΓΙΑ';
+            const cancelTxt = t('cancel') || 'ΑΚΥΡΩΣΗ';
+
             overlay.innerHTML = `
                 <div class="modal-box" style="width:90%; max-width:350px; text-align:center;">
-                    <h3 style="color:#10B981; margin-top:0;">Νέα Κατηγορία</h3>
-                    <input type="text" id="inpNewCatName" class="inp-settings" placeholder="Όνομα (π.χ. ΚΑΦΕΔΕΣ)" style="margin-bottom:15px; text-align:center; font-weight:bold;">
-                    <button id="btnCreateCat" class="modal-btn" style="background:#10B981; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΔΗΜΙΟΥΡΓΙΑ</button>
-                    <button id="btnCancelCat" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;">ΑΚΥΡΩΣΗ</button>
+                    <h3 style="color:#10B981; margin-top:0;" data-i18n="new_category">${newCatTxt}</h3>
+                    <input type="text" id="inpNewCatName" class="inp-settings" placeholder="${catNamePlh}" data-i18n-placeholder="cat_name_placeholder" style="margin-bottom:15px; text-align:center; font-weight:bold;">
+                    <button id="btnCreateCat" class="modal-btn" style="background:#10B981; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);" data-i18n="create">${createTxt}</button>
+                    <button id="btnCancelCat" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" data-i18n="cancel">${cancelTxt}</button>
                 </div>
             `;
             document.body.appendChild(overlay);
@@ -358,6 +364,7 @@ export const Menu = {
 
     renderMenu: function() {
         const App = window.App;
+        const t = App && App.t ? App.t : (k) => k;
         const container = document.getElementById('menuInputContainer');
         if (!container) return; // ✅ Αποτρέπει το error αν δεν υπάρχει το HTML element (π.χ. στην Κουζίνα)
         container.innerHTML = '';
@@ -389,8 +396,8 @@ export const Menu = {
             
             // ✅ NEW: Κουμπί Γρήγορης Εισαγωγής (Bulk Paste)
             const bulkBtn = document.createElement('button');
-            bulkBtn.innerText = '📋 Γρήγορη Εισαγωγή (Paste)';
-            bulkBtn.style.cssText = 'width: 100%; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; margin-bottom: 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);';
+            bulkBtn.innerText = t('bulk_paste_btn') || '📋 Γρήγορη Εισαγωγή (Paste)';
+            bulkBtn.style.cssText = 'display: block; background: #635BFF; margin-bottom: 15px; padding: 14px 15px; border-radius: 8px; cursor: pointer; color: white; border: none; font-weight: bold; width: 100%; box-shadow: 0 4px 10px rgba(99, 91, 255, 0.3); font-size: 15px;';
             bulkBtn.onclick = () => App.openBulkPasteModal();
             container.appendChild(bulkBtn);
             
@@ -399,7 +406,7 @@ export const Menu = {
 
         // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Εμφανίζεται πάντα στο τέλος)
         const saveBtn = document.createElement('button');
-        saveBtn.innerText = '💾 Αποθήκευση Καταλόγου';
+        saveBtn.innerText = t('save_catalog') || '💾 Αποθήκευση Καταλόγου';
         saveBtn.style.cssText = 'margin-top: 25px; background: #10B981; color: white; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 800; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: block;';
         saveBtn.onclick = () => {
             // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
@@ -554,16 +561,23 @@ export const Menu = {
         overlay.style.display = 'flex';
         overlay.style.zIndex = '10000';
 
+        const t = window.App && window.App.t ? window.App.t : (k) => k;
+        const titleTxt = t('bulk_insert_title') || 'Γρήγορη Εισαγωγή';
+        const helpTxt = t('bulk_insert_help') || '💡 Κάντε επικόλληση τα προϊόντα σας...';
+        const pastePlh = t('paste_here') || 'Επικόλληση εδώ...';
+        const insertTxt = t('bulk_insert_btn') || 'Εισαγωγή';
+        const cancelTxt = t('cancel') || 'Ακύρωση';
+
         overlay.innerHTML = `
             <div class="modal-box" style="width:90%; max-width:500px; text-align:left;">
-                <h3 style="color:#2196F3; margin-top:0; text-align:center;">Γρήγορη Εισαγωγή</h3>
-                <div style="background:#e0f2fe; color:#0369a1; padding:12px; border-radius:8px; font-size:13px; margin-bottom:15px; line-height:1.5; border:1px solid #bae6fd;">
-                    💡 <b>Συμβουλή:</b> Κάντε επικόλληση τα προϊόντα σας (ένα ανά γραμμή, π.χ. "Freddo Espresso 3.50"). Το σύστημα θα αναγνωρίσει αυτόματα την τιμή. Τον ΦΠΑ και τις υποκατηγορίες/έξτρα θα χρειαστεί να τα ρυθμίσετε χειροκίνητα μετά την εισαγωγή.
+                <h3 style="color:#635BFF; margin-top:0; text-align:center;" data-i18n="bulk_insert_title">${titleTxt}</h3>
+                <div style="background:#f3f4f6; color:#1f2937; padding:12px; border-radius:8px; font-size:13px; margin-bottom:15px; line-height:1.5; border:1px solid #e5e7eb;" data-i18n="bulk_insert_help">
+                    ${helpTxt}
                 </div>
-                <textarea id="inpBulkPaste" class="order-text" style="height:250px; width:100%; margin-bottom:15px; border-radius:8px; resize:vertical;" placeholder="Επικόλληση εδώ..."></textarea>
+                <textarea id="inpBulkPaste" class="order-text" style="width:100%; height:200px; margin-top:10px; margin-bottom:15px; border-radius:8px; resize:vertical;" placeholder="${pastePlh}" data-i18n-placeholder="paste_here"></textarea>
                 <div style="display:flex; gap:10px;">
-                    <button id="btnBulkInsert" class="modal-btn" style="background:#10B981; color:white; margin:0; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΕΙΣΑΓΩΓΗ</button>
-                    <button id="btnBulkCancel" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; margin:0;">ΑΚΥΡΩΣΗ</button>
+                    <button id="btnBulkInsert" class="modal-btn" style="background:#10B981; color:white; margin:0; box-shadow:0 4px 10px rgba(16,185,129,0.3);" data-i18n="bulk_insert_btn">${insertTxt}</button>
+                    <button id="btnBulkCancel" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; margin:0;" data-i18n="cancel">${cancelTxt}</button>
                 </div>
             </div>
         `;

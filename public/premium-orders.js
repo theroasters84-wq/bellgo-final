@@ -72,7 +72,7 @@ export const OrdersUI = {
                 btn.id = 'btnToggleDeliveryDetails';
                 btn.className = 'sidebar-btn';
                 btn.style.cssText = "background:#444; color:#FFD700; margin-bottom:10px; width:100%; padding:10px; border:1px solid #FFD700; border-radius:5px; font-weight:bold; cursor:pointer;";
-                btn.innerHTML = "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
+                btn.innerHTML = App.t('customer_details_click') || "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
                 btn.onclick = () => {
                     divDel.style.display = 'flex';
                     btn.style.display = 'none';
@@ -82,7 +82,7 @@ export const OrdersUI = {
                 divDel.parentNode.insertBefore(btn, divDel);
                 
                 const closeBtn = document.createElement('button');
-                closeBtn.innerHTML = "OK (ΚΛΕΙΣΙΜΟ)";
+                closeBtn.innerHTML = App.t('ok_close') || "OK (ΚΛΕΙΣΙΜΟ)";
                 closeBtn.style.cssText = "background:#00E676; color:black; border:none; padding:8px; width:100%; margin-top:5px; border-radius:5px; font-weight:bold; cursor:pointer;";
                 closeBtn.onclick = () => {
                     divDel.style.display = 'none';
@@ -90,9 +90,9 @@ export const OrdersUI = {
                     const name = document.getElementById('sidebarDelName').value;
                     const phone = document.getElementById('sidebarDelPhone').value;
                     if(name || phone) {
-                        btn.innerHTML = `📝 ${name || ''} ${phone ? '('+phone+')' : ''} <br><span style='font-size:10px; color:#aaa;'>(Πατήστε για αλλαγή)</span>`;
+                        btn.innerHTML = `📝 ${name || ''} ${phone ? '('+phone+')' : ''} <br><span style='font-size:10px; color:#aaa;'>(${App.t('click_to_change') || 'Πατήστε για αλλαγή'})</span>`;
                     } else {
-                        btn.innerHTML = "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
+                        btn.innerHTML = App.t('customer_details_click') || "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)";
                     }
                 };
                 divDel.appendChild(closeBtn);
@@ -101,7 +101,7 @@ export const OrdersUI = {
             btn.style.display = 'block';
             divDel.style.display = 'none'; 
             const name = document.getElementById('sidebarDelName').value;
-            if(name) btn.innerHTML = `📝 ${name} <span style='font-size:10px; color:#aaa;'>(Πατήστε για αλλαγή)</span>`;
+            if(name) btn.innerHTML = `📝 ${name} <span style='font-size:10px; color:#aaa;'>(${App.t('click_to_change') || 'Πατήστε για αλλαγή'})</span>`;
         }
     },
     
@@ -112,7 +112,7 @@ export const OrdersUI = {
         App.menuData.forEach(cat => {
             const title = document.createElement('div');
             title.className = 'category-title';
-            title.innerText = cat.name;
+            title.innerText = App.tMenu ? App.tMenu(cat.name) : cat.name; // ✅ Translated Category
             const itemsDiv = document.createElement('div');
             itemsDiv.className = 'category-items';
             cat.items.forEach(item => {
@@ -120,9 +120,10 @@ export const OrdersUI = {
                 if(typeof item === 'object') { name = item.name; price = item.price; }
                 else { const p = item.split(':'); name = p[0]; if(p.length>1) price=parseFloat(p[p.length-1]); }
                 
+                let displayItemName = App.tMenu ? App.tMenu(name) : name; // ✅ Translated Item
                 const box = document.createElement('div');
                 box.className = 'item-box';
-                box.innerHTML = `<span class="item-name">${name}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
+                box.innerHTML = `<span class="item-name">${displayItemName}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
                 box.onclick = () => App.addToSidebarOrder(name, price);
                 itemsDiv.appendChild(box);
             });
@@ -242,7 +243,7 @@ export const OrdersUI = {
         } else if (App.sidebarMode === 'table') {
             const table = document.getElementById('sidebarTable').value;
             const covers = parseInt(document.getElementById('sidebarCovers').value) || 0;
-            if (!table) return alert("Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
+            if (!table) return alert(App.t('alert_empty_table') || "Παρακαλώ βάλτε τραπέζι ή επιλέξτε PASO.");
 
             const existingOrder = App.activeOrders.find(o => {
                 const match = o.text.match(/\[ΤΡ:\s*([^|\]]+)/);
@@ -278,14 +279,14 @@ export const OrdersUI = {
             const floor = document.getElementById('sidebarDelFloor').value.trim();
             const phone = document.getElementById('sidebarDelPhone').value.trim();
             const zip = document.getElementById('sidebarDelZip').value.trim();
-            if(!name || !addr || !phone) return alert("Συμπληρώστε τα στοιχεία Delivery!");
+            if(!name || !addr || !phone) return alert(App.t('alert_fill_delivery') || "Συμπληρώστε τα στοιχεία Delivery!");
             header = `[DELIVERY 🛵]\n👤 ${name}\n📍 ${addr}\n📮 T.K.: ${zip || '-'}\n🏢 ${floor || '-'}\n📞 ${phone}\n${payMethod}`;
         }
         
         const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
         window.socket.emit('new-order', `${header}${separator}${finalBody}`);
         
-        alert("Εστάλη!");
+        alert(App.t('alert_sent') || "Εστάλη!");
         document.getElementById('sidebarOrderText').value = '';
         if(document.getElementById('sidebarTable')) document.getElementById('sidebarTable').value = '';
         if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = '';
@@ -575,7 +576,7 @@ export const OrdersUI = {
         const win = document.getElementById(`win-${id}`);
         const body = win.querySelector('.win-body');
         const footer = win.querySelector('.win-footer');
-        let itemsHtml = '<div style="margin-bottom:10px; color:#8e8e8e; font-size:14px; text-align:center;">Επιλέξτε είδος για κέρασμα ή πατήστε "ΟΛΑ":</div>';
+        let itemsHtml = `<div style="margin-bottom:10px; color:#8e8e8e; font-size:14px; text-align:center;">${App.t('alert_choose_treat') || 'Επιλέξτε είδος για κέρασμα ή πατήστε ΟΛΑ'}:</div>`;
         const lines = order.text.split('\n');
         lines.forEach((line, idx) => {
             if (!line.trim() || line.startsWith('[')) return;

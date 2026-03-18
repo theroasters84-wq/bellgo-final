@@ -20,6 +20,7 @@ const defaultSettings = {
     reservationsEnabled: false, 
     totalTables: 0, 
     einvoicing: {}, 
+    whitelistEnabled: false,
     pos: { provider: '', id: '', key: '' }, 
     cashRegButtons: [], 
     reward: { enabled: false, gift: "Δωρεάν Προϊόν", target: 5 }, 

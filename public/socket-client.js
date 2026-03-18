@@ -10,8 +10,7 @@ export function initSockets(App, ctx) {
     const socket = window.socket;
 
     socket.on('connect', () => {
-        const mySocketUsername = ctx.getSafeName() + " (Πελάτης)";
-        // ✅ SEND TOKEN ON JOIN
+        const mySocketUsername = ctx.getSafeName() + " (
         socket.emit('join-store', { 
             storeName: ctx.TARGET_STORE, 
             username: mySocketUsername, 
@@ -114,9 +113,8 @@ export function initSockets(App, ctx) {
     socket.on('orders-update', (orders) => {
         const customerDetails = ctx.customerDetails;
         let activeOrders = ctx.activeOrders;
-        const mySocketUsername = customerDetails.name + " (Πελάτης)";
-        const myServerOrders = orders.filter(o => o.from === mySocketUsername);
-        
+        const mySocketUsername = customerDetails.name + " (" + (ctx.t('customer_default') || "Πελάτης") + ")";
+        const myServerOrders = orders.filter(o => o.from ==e 
         let changed = false;
         
         // Update existing local orders
@@ -220,10 +218,9 @@ export function initSockets(App, ctx) {
             // ✅ Show Waiting State
             const btn = document.querySelector('#bookingModal button.btn-save-details');
             if(btn) {
-                btn.innerText = "⏳ ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ...";
+                btn.innerText = "⏳ " + (ctx.t('waiting_confirmation') || "ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ...");
                 btn.disabled = true;
-                btn.style.background = "#555";
-            }
+                btn.style.backgroun}
             App.pendingReservationId = res.reservationId;
             
             // ✅ NEW: Save ID to LocalStorage
@@ -240,42 +237,38 @@ export function initSockets(App, ctx) {
     // ✅ NEW: Reservation Confirmed
     socket.on('reservation-confirmed', (data) => {
         if (App.pendingReservationId && data.id === App.pendingReservationId) {
-            alert("✅ Η κράτηση σας ΕΓΙΝΕ ΔΕΚΤΗ!");
+            alert("✅ " + (ctx.t('reservation_accepted') || "Η κράτηση σας ΕΓΙΝΕ ΔΕΚΤΗ!"));
             document.getElementById('bookingModal').style.display='none';
             App.pendingReservationId = null;
-            // Reset Button
-            const btn = document.querySelector('#bookingModal button.btn-save-details');
-            if(btn) { btn.innerText = "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
+            // Reset  document.querySelector('#bookingModal button.btn-save-details');
+            if(btn) { btn.innerText = ctx.t('book_btn') || "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
         }
     });
 
-    // ✅ NEW: Receive My Reservations Data
     socket.on('my-reservations-data', (list) => {
         App.renderMyReservations(list);
     });
 
     // ✅ NEW: Cancel Success
     socket.on('reservation-cancelled-success', (id) => {
-        alert("Η κράτηση ακυρώθηκε.");
+        alert(ctx.t('reservation_cancelled') || "Η κράτηση ακυρώθηκε.");
         // Remove from local storage
         let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
         myRes = myRes.filter(rid => rid !== id);
         localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
-        App.openMyReservations(); // Refresh list
-    });
+        App.op
 
     // ✅ Force Connect / Re-Join if needed
     if (!socket.connected) {
         socket.connect();
     } else {
         // Αν είναι ήδη συνδεδεμένο, ξαναστέλνουμε join για σιγουριά
-        const mySocketUsername = ctx.getSafeName() + " (Πελάτης)";
+        const mySocketUsername = ctx.getSafeName() + " (" + (ctx.t('customer_default') || "Πελάτης") + ")";
         socket.emit('join-store', { 
             storeName: ctx.TARGET_STORE, 
             username: mySocketUsername, 
             role: 'customer', 
             token: localStorage.getItem('fcm_token'),
-            isNative: false 
         });
     }
 }

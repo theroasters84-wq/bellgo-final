@@ -44,6 +44,8 @@ const calculateTotal = (text) => {
 };
 
 window.App = {
+    t: t, // ✅ Expose for dynamic UI
+    tMenu: (text) => I18n.tMenu(text), // ✅ Expose menu translator
     // ==========================================
     // 1. STATE & DATA (ΜΕΤΑΒΛΗΤΕΣ)
     // ==========================================
@@ -115,6 +117,14 @@ window.App = {
         const btnRes = document.getElementById('btnReservations');
         if(btnRes && btnRes.parentElement) btnRes.parentElement.style.display = 'none';
 
+        // ✅ FIX: Κρύβουμε την "Πόρτα" (ΕΞΟΔΟΣ) από την κεντρική οθόνη μόνιμα με CSS
+        if (!document.getElementById('hideDoorStyle')) {
+            const hideDoorStyle = document.createElement('style');
+            hideDoorStyle.id = 'hideDoorStyle';
+            hideDoorStyle.innerHTML = `button[onclick*="logout"]:not(#btnSettingsLogoutDynamic), button[onclick*="Logout"]:not(#btnSettingsLogoutDynamic) { display: none !important; }`;
+            document.head.appendChild(hideDoorStyle);
+        }
+
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
         const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
@@ -145,17 +155,30 @@ window.App = {
         // ✅ FIX: Άμεση εμφάνιση ονόματος (για να μην φαίνεται κενό μέχρι να συνδεθεί)
         const cachedName = localStorage.getItem('bellgo_store_name');
         const inpHeader = document.getElementById('inpStoreNameHeader');
-        if (inpHeader && cachedName) {
-            inpHeader.value = cachedName;
+        if (inpHeader) {
+            if (cachedName) inpHeader.value = cachedName;
+            inpHeader.readOnly = true; // Κλειδώνει την άμεση πληκτρολόγηση
+            inpHeader.style.outline = 'none'; // Αφαίρεση focus ring
+            
+            // Προσθήκη εικονιδίου "Μολύβι" για επεξεργασία
+            if (!document.getElementById('btnEditStoreName')) {
+                const editBtn = document.createElement('button');
+                editBtn.id = 'btnEditStoreName';
+                editBtn.innerHTML = '✏️';
+                editBtn.title = 'Επεξεργασία Ονόματος';
+                editBtn.style.cssText = 'background:transparent; border:none; cursor:pointer; font-size:16px; margin-left:5px; padding:0; outline:none;';
+                editBtn.onclick = App.editStoreNamePrompt;
+                inpHeader.parentNode.insertBefore(editBtn, inpHeader.nextSibling);
+            }
         }
 
         if (App.adminMode === 'kitchen') {
             // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
             const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'none';
             const btnMenu = document.getElementById('btnMenuToggle'); if(btnMenu) btnMenu.style.display = 'none';
-            const btnSet = document.getElementById('btnSettings'); if(btnSet) btnSet.style.display = 'none';
-            const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'flex';
+            const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'none';
             const inpHeader = document.getElementById('inpStoreNameHeader'); if(inpHeader) inpHeader.disabled = true;
+            const editBtn = document.getElementById('btnEditStoreName'); if(editBtn) editBtn.style.display = 'none'; // Κρύβουμε το μολύβι στην κουζίνα
             // 🔒 ΚΟΥΖΙΝΑ: Απενεργοποίηση Sidebar
             const sb = document.getElementById('orderSidebar');
             if(sb) sb.style.display = 'none';
@@ -428,6 +451,29 @@ window.App = {
     saveStoreName: () => {
         const newName = document.getElementById('inpStoreNameHeader').value.trim();
         if(newName) window.socket.emit('save-store-name', newName);
+    },
+
+    editStoreNamePrompt: () => {
+        const requiredPin = App.adminPin || App.storePin;
+        if (!requiredPin) {
+            alert("⏳ Παρακαλώ περιμένετε να φορτώσουν οι ρυθμίσεις...");
+            return;
+        }
+
+        const enteredPin = prompt("🔐 Εισάγετε τον Κωδικό Διαχειριστή (PIN) για αλλαγή ονόματος:");
+        if (enteredPin !== requiredPin) {
+            if (enteredPin !== null) alert("❌ Λάθος κωδικός!");
+            return;
+        }
+        
+        const currentName = document.getElementById('inpStoreNameHeader').value || "";
+        const newName = prompt("📝 Ορίστε το νέο όνομα του καταστήματος:", currentName);
+        
+        if (newName && newName.trim() !== "" && newName.trim() !== currentName) {
+            window.socket.emit('save-store-name', newName.trim());
+            document.getElementById('inpStoreNameHeader').value = newName.trim();
+            localStorage.setItem('bellgo_store_name', newName.trim());
+        }
     },
 
     toggleStatus: (type) => {

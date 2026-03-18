@@ -12,10 +12,19 @@ module.exports = function(socket, context, getMyStore) {
     socket.on('verify-pin', async (data) => {
         const pin = data.pin || data;
         let email = data.email || socket.store;
+        let personalEmail = data.personalEmail;
+
         if (email) {
             email = email.toLowerCase().trim();
             const store = await Logic.getStoreData(email, db, storesData);
             if (store.settings.pin === pin || store.settings.adminPin === pin) {
+                // Check Whitelist
+                if (personalEmail && store.settings.staffWhitelist && store.settings.staffWhitelist.length > 0) {
+                    const isApproved = store.settings.staffWhitelist.includes(personalEmail.toLowerCase().trim());
+                    if (!isApproved && store.settings.adminPin !== pin) {
+                        return socket.emit('pin-verified', { success: false, reason: 'whitelist_rejected' });
+                    }
+                }
                 socket.emit('pin-verified', { success: true, storeId: email });
             } else {
                 socket.emit('pin-verified', { success: false });
@@ -36,6 +45,7 @@ module.exports = function(socket, context, getMyStore) {
         if (email) {
             const store = await Logic.getStoreData(email, db, storesData);
             store.settings.pin = data.pin;
+            if (data.adminPin) store.settings.adminPin = data.adminPin; // ✅ Save Admin PIN during registration
             store.settings.adminEmail = email;
             socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
             Logic.updateStoreClients(email, io, storesData, activeUsers, db);
@@ -132,6 +142,7 @@ module.exports = function(socket, context, getMyStore) {
             if (data.features) store.settings.features = { ...store.settings.features, ...data.features };
             if (data.adminPin) store.settings.adminPin = data.adminPin;
             if (data.pin) store.settings.pin = data.pin;
+            if (data.staffWhitelist !== undefined) store.settings.staffWhitelist = data.staffWhitelist;
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });

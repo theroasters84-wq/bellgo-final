@@ -12,10 +12,24 @@ module.exports = function(socket, context, getMyStore) {
     socket.on('verify-pin', async (data) => {
         const pin = data.pin || data;
         let email = data.email || socket.store;
+        let personalEmail = data.personalEmail || "";
+
         if (email) {
             email = email.toLowerCase().trim();
             const store = await Logic.getStoreData(email, db, storesData);
             if (store.settings.pin === pin || store.settings.adminPin === pin) {
+                // ✅ Check Whitelist (Μόνο κατά την Είσοδο - Login)
+                // Αν το socket.store δεν είναι ορισμένο, ο χρήστης βρίσκεται στη φόρμα εισόδου.
+                if (!socket.store && store.settings.whitelistEnabled) {
+                    const list = store.settings.staffWhitelist || [];
+                    const pEmail = personalEmail.toLowerCase().trim();
+                    const isApproved = list.includes(pEmail);
+                    const usedMasterPin = (store.settings.adminPin === pin && store.settings.adminPin !== store.settings.pin);
+                    
+                    if (!isApproved && !usedMasterPin) {
+                        return socket.emit('pin-verified', { success: false, reason: 'whitelist_rejected' });
+                    }
+                }
                 socket.emit('pin-verified', { success: true, storeId: email });
             } else {
                 socket.emit('pin-verified', { success: false });
@@ -36,6 +50,7 @@ module.exports = function(socket, context, getMyStore) {
         if (email) {
             const store = await Logic.getStoreData(email, db, storesData);
             store.settings.pin = data.pin;
+            if (data.adminPin) store.settings.adminPin = data.adminPin; // ✅ Save Admin PIN during registration
             store.settings.adminEmail = email;
             socket.emit('pin-success', { msg: "Ο κωδικός ορίστηκε!" });
             Logic.updateStoreClients(email, io, storesData, activeUsers, db);
@@ -132,6 +147,8 @@ module.exports = function(socket, context, getMyStore) {
             if (data.features) store.settings.features = { ...store.settings.features, ...data.features };
             if (data.adminPin) store.settings.adminPin = data.adminPin;
             if (data.pin) store.settings.pin = data.pin;
+            if (data.staffWhitelist !== undefined) store.settings.staffWhitelist = data.staffWhitelist;
+            if (data.whitelistEnabled !== undefined) store.settings.whitelistEnabled = data.whitelistEnabled;
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });

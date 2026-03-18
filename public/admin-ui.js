@@ -58,6 +58,35 @@ export const AdminUI = {
 
         const lock = document.getElementById('settingsLockOverlay');
         if(lock) lock.style.display = 'none';
+
+        // ✅ ΕΞΟΔΟΣ μέσα στις ρυθμίσεις (προσθήκη στο κεντρικό μενού για να το βλέπουν οι σερβιτόροι)
+        let settingsMain = document.getElementById('settingsMain');
+        if (!settingsMain) {
+            const sModal = document.getElementById('settingsModal');
+            if (sModal) settingsMain = sModal.querySelector('.modal-box') || sModal.firstElementChild;
+        }
+        
+        if (settingsMain && !document.getElementById('btnSettingsLogoutDynamic')) {
+            const logoutBtn = document.createElement('button');
+            logoutBtn.id = 'btnSettingsLogoutDynamic';
+            logoutBtn.setAttribute('data-i18n', 'exit');
+            logoutBtn.innerHTML = '🚪 ΕΞΟΔΟΣ';
+            logoutBtn.style.cssText = 'width:100%; padding:15px; margin-top:20px; background:#EF4444; color:white; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(239,68,68,0.3); display:block !important;';
+            logoutBtn.onclick = () => { 
+                const msg = (window.App && window.App.t) ? window.App.t('logout_confirm') : "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;";
+                if(confirm(msg)) { 
+                    if(window.Admin && window.Admin.logout) window.Admin.logout(); 
+                    else { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); } 
+                } 
+            };
+            
+            const existingCloseBtn = Array.from(settingsMain.children).find(el => el.getAttribute('data-i18n') === 'close' || (el.innerText || '').includes('ΚΛΕΙΣΙΜΟ'));
+            if (existingCloseBtn) {
+                settingsMain.insertBefore(logoutBtn, existingCloseBtn);
+            } else {
+                settingsMain.appendChild(logoutBtn);
+            }
+        }
     },
 
     unlockSettings: () => {
@@ -240,17 +269,85 @@ export const AdminUI = {
     toggleFakeLock: () => { 
         const el = document.getElementById('fakeLockOverlay');
         if (el.style.display === 'flex') {
-            const pin = prompt("Εισάγετε PIN:");
-            if (pin && window.socket) {
-                window.socket.emit('verify-pin', { pin, email: window.App.userData.store });
-                window.socket.once('pin-verified', (data) => {
-                    if (data.success) {
-                        el.style.display = 'none';
-                    } else {
-                        alert("❌ Λάθος PIN!");
+            let unlockModal = document.getElementById('dynamicFakeLockUnlockModal');
+            if (!unlockModal) {
+                window.AdminFakeLockPIN = {
+                    value: '',
+                    add: (n) => { 
+                        if(window.AdminFakeLockPIN.value.length < 4) { 
+                            window.AdminFakeLockPIN.value += n; 
+                            document.getElementById('fakeLockPinDisplay').innerText = '*'.repeat(window.AdminFakeLockPIN.value.length); 
+                        } 
+                    },
+                    clear: () => { 
+                        window.AdminFakeLockPIN.value = ''; 
+                        document.getElementById('fakeLockPinDisplay').innerText = ''; 
+                    },
+                    submit: () => {
+                        const pin = window.AdminFakeLockPIN.value;
+                        if(pin.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+                        if (window.socket) {
+                            window.socket.emit('verify-pin', { pin, email: window.App.userData.store });
+                            window.socket.once('pin-verified', (data) => {
+                                if (data.success) {
+                                    document.getElementById('fakeLockOverlay').style.display = 'none';
+                                    document.getElementById('dynamicFakeLockUnlockModal').style.display = 'none';
+                                    if (window.socket) window.socket.emit('set-user-status', 'online');
+                                    window.AdminFakeLockPIN.clear();
+                                } else {
+                                    alert("❌ Λάθος PIN!");
+                                    window.AdminFakeLockPIN.clear();
+                                }
+                            });
+                        }
+                    },
+                    forgot: () => {
+                        if (confirm("Να σταλεί email επαναφοράς PIN στο κατάστημα;")) {
+                            if(window.socket) window.socket.emit('forgot-pin', { email: window.App.userData.store });
+                            alert("Το email εστάλη! Ενημερώστε τον διαχειριστή.");
+                        }
+                    },
+                    close: () => {
+                        document.getElementById('dynamicFakeLockUnlockModal').style.display = 'none';
+                        window.AdminFakeLockPIN.clear();
                     }
-                });
+                };
+
+                const unlockText = (window.App && window.App.t) ? window.App.t('unlock') : "ΞΕΚΛΕΙΔΩΜΑ";
+                const forgotPinSosText = (window.App && window.App.t) ? window.App.t('forgot_pin_sos') : "🆘 ΞΕΧΑΣΑ ΤΟ PIN";
+                const cancelText = (window.App && window.App.t) ? window.App.t('cancel') : "ΑΚΥΡΟ";
+
+                unlockModal = document.createElement('div');
+                unlockModal.id = 'dynamicFakeLockUnlockModal';
+                unlockModal.className = 'modal-overlay';
+                unlockModal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:25000; display:flex; align-items:center; justify-content:center;';
+                
+                unlockModal.innerHTML = `
+                    <div class="modal-box" style="background:white; padding:20px; border-radius:12px; width:90%; max-width:300px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                        <h3 style="color:#1f2937; margin-top:0;" data-i18n="unlock">${unlockText}</h3>
+                        <div id="fakeLockPinDisplay" style="font-size:32px; letter-spacing:10px; margin:20px 0; color:#10B981; height:40px; font-weight:bold;"></div>
+                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:15px;">
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(1)">1</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(2)">2</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(3)">3</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(4)">4</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(5)">5</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(6)">6</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(7)">7</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(8)">8</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(9)">9</button>
+                            <button style="background:#EF4444; color:white; font-size:20px; padding:15px; border-radius:8px; border:none; cursor:pointer;" onclick="AdminFakeLockPIN.clear()">C</button>
+                            <button style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; border-radius:8px; cursor:pointer;" onclick="AdminFakeLockPIN.add(0)">0</button>
+                            <button style="background:#10B981; color:white; font-size:20px; padding:15px; border-radius:8px; border:none; cursor:pointer;" onclick="AdminFakeLockPIN.submit()">OK</button>
+                        </div>
+                        <button onclick="AdminFakeLockPIN.forgot()" style="background:none; border:none; color:#0095f6; font-weight:bold; cursor:pointer; margin-bottom:10px; width:100%;" data-i18n="forgot_pin_sos">${forgotPinSosText}</button>
+                        <button onclick="AdminFakeLockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer; width:100%;" data-i18n="cancel">${cancelText}</button>
+                    </div>
+                `;
+                document.body.appendChild(unlockModal);
             }
+            window.AdminFakeLockPIN.clear();
+            unlockModal.style.display = 'flex';
         } else {
             el.style.display = 'flex';
         }

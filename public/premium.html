@@ -59,11 +59,21 @@
     </style>
 </head>
 <body>
+
     <div id="mainApp">
         <div class="header">
             <div class="store-identity">
                 <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
                 <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
+                
+                <!-- ✅ GOOGLE TRANSLATE WIDGET -->
+                <div id="google_translate_element" style="display:inline-block; margin-left:10px; transform:scale(0.8); transform-origin:left center; z-index: 9999;"></div>
+                <script type="text/javascript">
+                  function googleTranslateElementInit() {
+                    new google.translate.TranslateElement({ pageLanguage: 'el', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+                  }
+                </script>
+                <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </div>
             
             <div class="header-actions" style="position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 5000;">
@@ -107,10 +117,10 @@
                 
                 <!-- ✅ NEW: PRESETS PANEL INSIDE MENU -->
                 <div id="presetPanel" style="display:none; background:#222; padding:10px; margin-bottom:15px; border-radius:10px; border:1px solid #444;">
-                    <span style="color:#aaa; font-size:12px; display:block; margin-bottom:5px;">Φόρτωση Έτοιμου Μενού:</span>
+                    <span style="color:#aaa; font-size:12px; display:block; margin-bottom:5px;" data-i18n="load_preset">Φόρτωση Έτοιμου Μενού:</span>
                     <div style="display:flex; gap:10px;">
                         <select id="selShopTypePanel" class="inp-settings" style="margin:0; padding:5px; font-size:14px;">
-                            <option value="" disabled selected>Επιλέξτε...</option>
+                            <option value="" disabled selected data-i18n="select_preset">Επιλέξτε...</option>
                             <option value="coffee_takeaway">☕ Cafe Takeaway</option>
                             <option value="coffee_bar">🍸 Cafe Bar</option>
                             <option value="pizzeria">🍕 Pizzeria</option>
@@ -171,15 +181,15 @@
                 <div id="divDeliveryInputs" style="display:none; flex-direction:column; gap:8px; margin-bottom:10px;">
                     <input type="text" id="sidebarDelName" class="inp-settings" data-i18n-placeholder="customer_name" placeholder="Όνομα Πελάτη" style="margin:0; padding:8px;">
                     <input type="text" id="sidebarDelAddr" class="inp-settings" data-i18n-placeholder="address" placeholder="Διεύθυνση" style="margin:0; padding:8px;">
-                    <input type="text" id="sidebarDelFloor" class="inp-settings" placeholder="Όροφος / Κουδούνι" style="margin:0; padding:8px;">
+                    <input type="text" id="sidebarDelFloor" class="inp-settings" data-i18n-placeholder="floor_bell" placeholder="Όροφος / Κουδούνι" style="margin:0; padding:8px;">
                     <input type="tel" id="sidebarDelPhone" class="inp-settings" data-i18n-placeholder="phone" placeholder="Τηλέφωνο" style="margin:0; padding:8px;">
-                    <input type="text" id="sidebarDelZip" class="inp-settings" placeholder="Τ.Κ." style="margin:0; padding:8px;">
+                    <input type="text" id="sidebarDelZip" class="inp-settings" data-i18n-placeholder="zip_code" placeholder="Τ.Κ." style="margin:0; padding:8px;">
                 </div>
 
                 <!-- ✅ NEW: Payment Method Selector (For Declaration) -->
                 <select id="sidebarPaymentMethod" class="inp-settings" style="margin-bottom:10px; padding:8px;">
-                    <option value="💵 ΜΕΤΡΗΤΑ">💵 ΜΕΤΡΗΤΑ</option>
-                    <option value="💳 ΚΑΡΤΑ">💳 ΚΑΡΤΑ</option>
+                    <option value="💵 ΜΕΤΡΗΤΑ" data-i18n="cash_method">💵 ΜΕΤΡΗΤΑ</option>
+                    <option value="💳 ΚΑΡΤΑ" data-i18n="card_method">💳 ΚΑΡΤΑ</option>
                 </select>
 
                 <div id="sidebarMenuContainer" style="flex:1; overflow-y:auto; margin-bottom:10px; border:1px solid #d1d5db; border-radius:8px; padding:5px;"></div>
@@ -212,12 +222,12 @@
                     <button id="btnSettingsStore" class="modal-btn" onclick="App.openSettingsSub('subStore')" data-i18n="store_and_schedule">🏪 ΚΑΤΑΣΤΗΜΑ & ΩΡΑΡΙΟ</button>
                     <button id="btnSettingsPrint" class="modal-btn" onclick="App.openSettingsSub('subPrint')" data-i18n="printing">🖨️ ΕΚΤΥΠΩΣΗ</button>
                     <button id="btnSettingsQr" class="modal-btn" onclick="App.openSettingsSub('subQr')" data-i18n="qr_and_links">📱 QR & LINKS</button>
-                    <button id="btnSettingsAdmin" class="modal-btn" onclick="App.openSettingsSub('subGeneral')">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
+                    <button id="btnSettingsAdmin" class="modal-btn" onclick="App.openSettingsSub('subGeneral')" data-i18n="admin_settings">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
                     <button id="btnSettingsLoyalty" class="modal-btn" style="background:#E91E63; color:white;" onclick="App.openSettingsSub('subLoyalty')" data-i18n="loyalty_settings">🎁 ΡΥΘΜΙΣΕΙΣ LOYALTY</button>
-                    <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()">🔌 E-INVOICING (myDATA)</button>
+                    <button id="btnSettingsEinvoicing" class="modal-btn" style="background:#009688; color:white;" onclick="Apodiksh.openSettings()" data-i18n="e_invoicing">🔌 E-INVOICING (myDATA)</button>
                 </div>
                 
-                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
+                <button class="modal-btn" style="background:var(--danger); margin-top:15px;" onclick="if(confirm(window.App && window.App.t ? window.App.t('logout_confirm') : 'Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;')) App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
                 <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
             </div>
 
@@ -235,16 +245,16 @@
                         <label class="switch"><input type="checkbox" id="switchStaff" onclick="App.toggleStatus('staff')"><span class="slider"></span></label>
                     </div>
                     <div class="switch-row" id="rowStaffCharge">
-                        <span>ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
+                        <span data-i18n="staff_charge">ΧΡΕΩΣΗ ΠΡΟΣΩΠΙΚΟΥ</span>
                         <label class="switch"><input type="checkbox" id="switchStaffCharge" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                     <!-- ✅ NEW: RESERVATIONS SETTINGS -->
                     <div class="switch-row" id="rowReservations">
-                        <span>ONLINE ΚΡΑΤΗΣΕΙΣ</span>
+                        <span data-i18n="online_reservations">ONLINE ΚΡΑΤΗΣΕΙΣ</span>
                         <label class="switch"><input type="checkbox" id="switchReservations" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                     <div id="rowTotalTables" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-                        <span style="font-size:12px; color:#aaa;">ΣΥΝΟΛΟ ΤΡΑΠΕΖΙΩΝ:</span>
+                        <span style="font-size:12px; color:#aaa;" data-i18n="total_tables">ΣΥΝΟΛΟ ΤΡΑΠΕΖΙΩΝ:</span>
                         <input type="number" id="inpTotalTables" class="inp-settings" style="width:60px; text-align:center;" placeholder="0" onblur="App.autoSaveSettings()">
                     </div>
                 </div>
@@ -286,9 +296,9 @@
             <div id="subQr" class="settings-sub" style="display:none;">
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="qr_and_links">QR & LINKS</h4>
                 <div class="settings-section">
-                    <div class="settings-label">LINKS</div>
+                    <div class="settings-label" data-i18n="links">LINKS</div>
                     <input type="text" id="inpGoogleMaps" class="inp-settings" data-i18n-placeholder="google_maps_url" placeholder="Google Maps URL (Αξιολόγηση)" onblur="App.autoSaveSettings()">
-                    <button class="modal-btn" style="background:#FFD700; color:black; margin-top:5px;" onclick="App.showReviewQr()">⭐ QR ΑΞΙΟΛΟΓΗΣΗΣ</button>
+                    <button class="modal-btn" style="background:#FFD700; color:black; margin-top:5px;" onclick="App.showReviewQr()" data-i18n="qr_review">⭐ QR ΑΞΙΟΛΟΓΗΣΗΣ</button>
                 </div>
                 <button id="btnQrTables" class="modal-btn" style="background:#673AB7; color:white; margin-top:5px;" onclick="App.openTableQrModal()"><span data-i18n="qr_tables_dinein">🖨️ QR ΤΡΑΠΕΖΙΩΝ (DINE-IN)</span></button>
                 <button id="btnShowLink" class="modal-btn" style="background:#2196F3;" onclick="App.showLink()"><span data-i18n="store_link">🔗 LINK ΚΑΤΑΣΤΗΜΑΤΟΣ</span></button>
@@ -297,23 +307,29 @@
 
             <!-- ✅ NEW: LOYALTY SETTINGS -->
             <div id="subLoyalty" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">🎁 ΕΠΙΒΡΑΒΕΥΣΗ (LOYALTY)</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="loyalty">🎁 ΕΠΙΒΡΑΒΕΥΣΗ (LOYALTY)</h4>
                 <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
                     <div class="switch-row">
-                        <span>ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
+                        <span data-i18n="enable">ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
                         <label class="switch"><input type="checkbox" id="switchRewardEnabled" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
                     <div style="margin-top:10px;">
-                        <label style="color:#aaa; font-size:12px;">Δώρο (π.χ. Καφές)</label>
+                        <label style="color:#aaa; font-size:12px;" data-i18n="gift_name">Δώρο (π.χ. Καφές)</label>
                         <input type="text" id="inpRewardGift" class="inp-settings" placeholder="Όνομα Δώρου" onblur="App.autoSaveSettings()">
                     </div>
                     <div style="margin-top:10px;">
-                        <label style="color:#aaa; font-size:12px;">Στόχος Πόντων</label>
+                        <label style="color:#aaa; font-size:12px;" data-i18n="points_target">Στόχος Πόντων</label>
                         <input type="number" id="inpRewardTarget" class="inp-settings" placeholder="5" value="5" onblur="App.autoSaveSettings()">
                     </div>
                     <div style="margin-top:10px;">
-                        <label style="color:#aaa; font-size:12px;">Αυτόματη Εμφάνιση QR</label>
-                        <select id="selRewardMode" class="inp-settings" onchange="App.autoSaveSettings()"><option value="manual">Χειροκίνητα (Κουμπί)</option><option value="all">Όλα (Αυτόματα)</option><option value="table">Μόνο Τραπέζια</option><option value="paso">Μόνο Paso</option><option value="delivery">Μόνο Delivery</option></select>
+                        <label style="color:#aaa; font-size:12px;" data-i18n="auto_qr">Αυτόματη Εμφάνιση QR</label>
+                        <select id="selRewardMode" class="inp-settings" onchange="App.autoSaveSettings()">
+                            <option value="manual" data-i18n="manual_btn">Χειροκίνητα (Κουμπί)</option>
+                            <option value="all" data-i18n="all_auto">Όλα (Αυτόματα)</option>
+                            <option value="table" data-i18n="tables_only">Μόνο Τραπέζια</option>
+                            <option value="paso" data-i18n="paso_only">Μόνο Paso</option>
+                            <option value="delivery" data-i18n="delivery_only">Μόνο Delivery</option>
+                        </select>
                     </div>
                 </div>
                 <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
@@ -321,67 +337,67 @@
 
             <!-- SUB: GENERAL -->
             <div id="subGeneral" class="settings-sub" style="display:none;">
-                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</h4>
+                <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="admin_settings">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</h4>
                 
 
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div id="softPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
-                    <div class="settings-label" style="color:#00E676;">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
+                    <div class="settings-label" style="color:#00E676;" data-i18n="softpos">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
                     <select id="selSoftPosProvider" class="inp-settings" onchange="PaySystem.updateSoftPosUI()">
-                        <option value="">Επιλέξτε Πάροχο...</option>
+                        <option value="" data-i18n="choose_provider">Επιλέξτε Πάροχο...</option>
                         <option value="viva">Viva Wallet</option>
                         <option value="alpha">Alpha Bank (Nexi)</option>
                         <option value="eurobank">Eurobank (Worldline)</option>
                         <option value="piraeus">Piraeus (Epay)</option>
-                        <option value="custom">Άλλο / Προσαρμοσμένο</option>
+                        <option value="custom" data-i18n="custom_provider">Άλλο / Προσαρμοσμένο</option>
                     </select>
                     
                     <div id="softPosLinks" style="margin:10px 0; font-size:12px; color:#aaa; display:none; text-align:center;">
                         <a id="linkSoftPosReg" href="#" target="_blank" style="color:#2196F3; text-decoration:underline; font-weight:bold;">🔗 Εγγραφή στον Πάροχο</a>
                     </div>
 
-                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Αναγνωριστικό Εμπόρου / TID" onblur="App.autoSaveSettings()">
-                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="Κλειδί API / Token (Προαιρετικό)" onblur="App.autoSaveSettings()">
+                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Αναγνωριστικό Εμπόρου / TID" onblur="App.autoSaveSettings()" data-i18n-placeholder="merchant_id">
+                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="Κλειδί API / Token (Προαιρετικό)" onblur="App.autoSaveSettings()" data-i18n-placeholder="api_key">
                     
                     <div class="switch-row" style="margin-top:5px;">
-                        <span>ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
+                        <span data-i18n="enable">ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
                         <label class="switch"><input type="checkbox" id="switchSoftPosEnabled" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
 
                     <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
-                        <div class="settings-label" style="color:#aaa;">ΛΕΙΤΟΥΡΓΙΑ POS (Admin/Σερβιτόρος)</div>
+                        <div class="settings-label" style="color:#aaa;" data-i18n="pos_mode">ΛΕΙΤΟΥΡΓΙΑ POS (Admin/Σερβιτόρος)</div>
                         <select id="selPosMode" class="inp-settings" onchange="App.autoSaveSettings()">
-                            <option value="auto">⚡ Αυτόματη Αποστολή</option>
-                            <option value="ask">❓ Ερώτηση Επιβεβαίωσης</option>
+                            <option value="auto" data-i18n="auto_send">⚡ Αυτόματη Αποστολή</option>
+                            <option value="ask" data-i18n="ask_confirm">❓ Ερώτηση Επιβεβαίωσης</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- ✅ NEW: PHYSICAL POS SETTINGS -->
                 <div id="physicalPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
-                    <div class="settings-label" style="color:#00BCD4;">📡 ΦΥΣΙΚΟ ΤΕΡΜΑΤΙΚΟ (WiFi/Ethernet)</div>
-                    <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
-                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Αναγνωριστικό Τερματικού / IP" onblur="App.autoSaveSettings()">
-                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="Κλειδί API / Θύρα" onblur="App.autoSaveSettings()">
+                    <div class="settings-label" style="color:#00BCD4;" data-i18n="physical_pos">📡 ΦΥΣΙΚΟ ΤΕΡΜΑΤΙΚΟ (WiFi/Ethernet)</div>
+                    <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="" data-i18n="no_connection">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
+                    <input type="text" id="inpPosId" class="inp-settings" placeholder="Αναγνωριστικό Τερματικού / IP" onblur="App.autoSaveSettings()" data-i18n-placeholder="terminal_ip">
+                    <input type="text" id="inpPosKey" class="inp-settings" placeholder="Κλειδί API / Θύρα" onblur="App.autoSaveSettings()" data-i18n-placeholder="terminal_port">
                 </div>
 
                 <!-- ✅ NEW: STRIPE CONNECT -->
                 <div id="stripeSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
-                    <div class="settings-label" style="color:#635BFF;">💳 STRIPE (Πληρωμές με Κάρτα)</div>
+                    <div class="settings-label" style="color:#635BFF;" data-i18n="stripe_payments">💳 STRIPE (Πληρωμές με Κάρτα)</div>
                     <div id="stripeStatus" style="color:#aaa; font-size:12px; margin-bottom:5px;">Κατάσταση: ...</div>
-                    <button class="modal-btn" style="background:#635BFF; color:white;" onclick="window.location.href='/connect-stripe'">🔗 ΣΥΝΔΕΣΗ STRIPE</button>
+                    <button class="modal-btn" style="background:#635BFF; color:white;" onclick="window.location.href='/connect-stripe'" data-i18n="connect_stripe">🔗 ΣΥΝΔΕΣΗ STRIPE</button>
                 </div>
 
                 <!-- BANNERS -->
                 <div id="softPosSetupBanner" style="display:none; background:#FF9800; color:black; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
-                    <b>⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
-                    <span style="font-size:12px;">Συμπληρώστε τα στοιχεία (Merchant ID) για να ενεργοποιηθεί η χρέωση.</span>
+                    <b data-i18n="setup_complete">⚠️ ΟΛΟΚΛΗΡΩΣΗ ΕΓΚΑΤΑΣΤΑΣΗΣ</b><br>
+                    <span style="font-size:12px;" data-i18n="setup_desc">Συμπληρώστε τα στοιχεία (Merchant ID) για να ενεργοποιηθεί η χρέωση.</span>
                 </div>
 
                 <div id="softPosDownloadBanner" style="display:none; background:#2196F3; color:white; padding:10px; border-radius:8px; margin-bottom:10px; text-align:center;">
-                    <b>📲 ΚΑΤΕΒΑΣΤΕ ΤΗΝ ΕΦΑΡΜΟΓΗ</b><br>
-                    <span style="font-size:12px;">Admin, Σερβιτόροι & Διανομείς πρέπει να έχουν το App του παρόχου.</span>
-                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="PaySystem.openSoftPosDownload()">Λήψη Εφαρμογής</button>
+                    <b data-i18n="download_app">📲 ΚΑΤΕΒΑΣΤΕ ΤΗΝ ΕΦΑΡΜΟΓΗ</b><br>
+                    <span style="font-size:12px;" data-i18n="download_desc">Admin, Σερβιτόροι & Διανομείς πρέπει να έχουν το App του παρόχου.</span>
+                    <button id="btnDownloadSoftPos" class="modal-btn" style="background:white; color:#2196F3; margin-top:5px; width:auto; padding:5px 15px;" onclick="PaySystem.openSoftPosDownload()" data-i18n="get_app">Λήψη Εφαρμογής</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -428,19 +444,19 @@
 
     <div id="extrasModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" id="extrasModalTitle" data-i18n="extras">EXTRA ΥΛΙΚΑ</h3>
+            <h3 class="modal-title" id="extrasModalTitle" data-i18n="options">Επιλογές (Extras)</h3>
             <div id="extrasListContainer" class="extras-list"></div>
             
             <div style="border-top:1px solid #333; padding-top:15px; margin-top:10px;">
                 <div class="settings-label" data-i18n="add_new">ΠΡΟΣΘΗΚΗ ΝΕΟΥ</div>
                 <div class="extra-inputs">
-                    <input type="text" id="inpExtraName" class="extra-name-inp" data-i18n-placeholder="name_ex_sauce" placeholder="Όνομα (π.χ. Σως)">
-                    <input type="number" id="inpExtraPrice" class="extra-price-inp" placeholder="€" step="0.10">
+                    <input type="text" id="inpExtraName" class="extra-name-inp" data-i18n-placeholder="name_ex_cheese" placeholder="Όνομα (π.χ. Τυρί)">
+                    <input type="number" id="inpExtraPrice" class="extra-price-inp" data-i18n-placeholder="price_eur" placeholder="Τιμή (€)" step="0.10">
                 </div>
-                <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()"><span data-i18n="add">➕ ΠΡΟΣΘΗΚΗ</span></button>
+                <button class="modal-btn" style="background:#2196F3;" onclick="App.addExtraRow()" data-i18n="add">➕ ΠΡΟΣΘΗΚΗ</button>
             </div>
             
-            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:15px;" onclick="App.saveExtras()"><span data-i18n="ready">💾 ΕΤΟΙΜΟ</span></button>
+            <button class="modal-btn" style="background:var(--primary); color:black; margin-top:15px;" onclick="App.saveExtras()" data-i18n="finish">ΟΛΟΚΛΗΡΩΣΗ</button>
             <button onclick="document.getElementById('extrasModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:5px;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
@@ -474,10 +490,10 @@
 
     <div id="saveModeModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" data-i18n="save">ΑΠΟΘΗΚΕΥΣΗ</h3>
-            <p style="color:#aaa;" data-i18n="how_to_save">Πώς θέλετε να αποθηκευτεί;</p>
-            <button class="modal-btn" style="background:#2196F3;" onclick="App.executeSave('temporary')"><span data-i18n="today_only">📅 ΣΗΜΕΡΑ ΜΟΝΟ</span></button>
-            <button class="modal-btn" style="background:var(--danger);" onclick="App.executeSave('permanent')"><span data-i18n="permanently">♾️ ΜΟΝΙΜΑ</span></button>
+            <h3 class="modal-title" data-i18n="save_changes">Αποθήκευση Αλλαγών</h3>
+            <p style="color:#aaa;" data-i18n="save_how">Θέλετε η αλλαγή να ισχύει μόνο για σήμερα ή μόνιμα;</p>
+            <button class="modal-btn" style="background:#FF9800; color:white; box-shadow:0 4px 10px rgba(255,152,0,0.3);" onclick="App.executeSave('temporary')" data-i18n="only_today">⏳ ΜΟΝΟ ΓΙΑ ΣΗΜΕΡΑ</button>
+            <button class="modal-btn" style="background:#10B981; color:white; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.executeSave('permanent')" data-i18n="permanently">💾 ΜΟΝΙΜΑ</button>
             <button onclick="document.getElementById('saveModeModal').style.display='none'" style="background:none; border:none; color:#777;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
@@ -587,35 +603,35 @@
     <!-- ✅ NEW: WALLET MODAL -->
     <div id="walletModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" style="color:#FFD700;">💼 ΠΟΡΤΟΦΟΛΙ ΠΡΟΣΩΠΙΚΟΥ</h3>
+            <h3 class="modal-title" style="color:#FFD700;" data-i18n="staff_wallet">💼 ΠΟΡΤΟΦΟΛΙ ΠΡΟΣΩΠΙΚΟΥ</h3>
             
         <div class="switch-row" style="background:#f9fafb; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #e5e7eb;">
-            <span style="font-weight:bold; color:#1f2937;">ΕΝΕΡΓΟΠΟΙΗΣΗ ΧΡΕΩΣΗΣ</span>
+            <span style="font-weight:bold; color:#1f2937;" data-i18n="enable_charge">ΕΝΕΡΓΟΠΟΙΗΣΗ ΧΡΕΩΣΗΣ</span>
                 <label class="switch"><input type="checkbox" id="switchStaffChargeWallet" onclick="App.toggleStaffCharge(this.checked)"><span class="slider"></span></label>
             </div>
 
             <div style="display:flex; justify-content:space-around; margin-bottom:15px; background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:10px;">
                 <div style="text-align:center;">
-                    <div style="font-size:12px; color:#1f2937; font-weight:bold;">ΜΕΤΡΗΤΑ (ΧΡΕΟΣ)</div>
+                    <div style="font-size:12px; color:#1f2937; font-weight:bold;" data-i18n="cash_debt">ΜΕΤΡΗΤΑ (ΧΡΕΟΣ)</div>
                     <div id="walletTotalCash" style="font-size:20px; color:#FFD700; font-weight:bold;">0.00€</div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size:12px; color:#1f2937; font-weight:bold;">ΚΑΡΤΕΣ (ΤΡΑΠΕΖΑ)</div>
+                    <div style="font-size:12px; color:#1f2937; font-weight:bold;" data-i18n="cards_bank">ΚΑΡΤΕΣ (ΤΡΑΠΕΖΑ)</div>
                     <div id="walletTotalCard" style="font-size:20px; color:#00E676; font-weight:bold;">0.00€</div>
                 </div>
             </div>
 
             <div id="walletList" style="flex:1; overflow-y:auto; width:100%;"></div>
             
-            <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="PaySystem.resetAll()">🗑️ ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
-            <button onclick="document.getElementById('walletModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+            <button class="modal-btn" style="background:#D32F2F; margin-top:10px;" onclick="PaySystem.resetAll()" data-i18n="reset_all">🗑️ ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
+            <button onclick="document.getElementById('walletModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
     <!-- ✅ NEW: RESERVATIONS MODAL (AGENDA) -->
     <div id="reservationsModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title" style="color:#9C27B0;">📅 ΑΤΖΕΝΤΑ ΚΡΑΤΗΣΕΩΝ</h3>
+            <h3 class="modal-title" style="color:#9C27B0;" data-i18n="agenda">📅 ΑΤΖΕΝΤΑ ΚΡΑΤΗΣΕΩΝ</h3>
             <div id="reservationsList" style="flex:1; overflow-y:auto; width:100%; display:flex; flex-direction:column; gap:10px;"></div>
             <button onclick="document.getElementById('reservationsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΚΛΕΙΣΙΜΟ</button>
         </div>
@@ -624,7 +640,7 @@
     <!-- ✅ NEW: DELIVERY ASSIGN MODAL -->
     <div id="deliveryAssignModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 class="modal-title">🛵 ΑΝΑΘΕΣΗ ΔΙΑΝΟΜΗΣ</h3>
+            <h3 class="modal-title" data-i18n="assign_delivery">🛵 ΑΝΑΘΕΣΗ ΔΙΑΝΟΜΗΣ</h3>
             <div id="driverAssignList" style="display:flex; flex-direction:column; gap:10px; width:100%;"></div>
             <button onclick="document.getElementById('deliveryAssignModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:15px;">ΑΚΥΡΟ</button>
         </div>
@@ -670,8 +686,8 @@
     </div>
 
     <div id="fakeLockOverlay" onclick="App.toggleFakeLock()">
-        <div>Πατήστε για Ξεκλείδωμα</div>
-        <button onclick="event.stopPropagation(); App.forgotPin()" style="margin-top:20px; background:none; border:none; color:#2196F3; font-size:14px; cursor:pointer;">🆘 Ξέχασα το PIN</button>
+        <div data-i18n="tap_to_unlock">Πατήστε για Ξεκλείδωμα</div>
+        <button onclick="event.stopPropagation(); App.forgotPin()" style="margin-top:20px; background:none; border:none; color:#2196F3; font-size:14px; cursor:pointer;" data-i18n="forgot_pin_sos">🆘 Ξέχασα το PIN</button>
     </div>
 
     <script type="module" src="premium.js?v=7"></script>

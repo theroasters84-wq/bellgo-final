@@ -98,6 +98,8 @@ export function initPremiumSockets(App, userData) {
             }
             if(settings.expensePresets) App.expensePresets = settings.expensePresets;
             if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
+            if(settings.staffWhitelist) App.staffWhitelist = settings.staffWhitelist;
+            if(settings.whitelistEnabled !== undefined) App.whitelistEnabled = settings.whitelistEnabled;
             
             // ✅ NEW: Load E-Invoicing State
             if(settings.reward) {
@@ -170,24 +172,6 @@ export function initPremiumSockets(App, userData) {
             if (settings.pin !== undefined) {
                 App.storePin = settings.pin;
             }
-            
-            if (App.hasFeature('pack_pos') && !settings.adminPin && !App.hasPromptedLockPass) {
-                App.hasPromptedLockPass = true;
-                setTimeout(() => {
-                    const p1 = prompt("🔐 ΡΥΘΜΙΣΗ ΑΣΦΑΛΕΙΑΣ (1/2)\n\nΟρίστε έναν Κωδικό Διαχειριστή (διαφορετικό από το PIN) για το κλείδωμα των ρυθμίσεων:");
-                    if (p1) {
-                        const p2 = prompt("🔐 ΕΠΙΒΕΒΑΙΩΣΗ (2/2)\n\nΠληκτρολογήστε ξανά τον κωδικό:");
-                        if (p1.trim() === p2?.trim()) {
-                            window.socket.emit('save-store-settings', { adminPin: p1.trim() });
-                            alert("✅ Ο κωδικός αποθηκεύτηκε! Θα σας ζητείται στις Ρυθμίσεις.");
-                        } else {
-                            alert("❌ Οι κωδικοί δεν ταιριάζουν. Θα σας ζητηθεί ξανά στην επόμενη είσοδο.");
-                            App.hasPromptedLockPass = false; // Retry next time
-                        }
-                    }
-                }, 1000);
-            }
-
         }
     });
 

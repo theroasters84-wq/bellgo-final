@@ -15,7 +15,7 @@ import { DNDBot } from './dnd-bot.js'; // ✅ Import DNDBot
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
 const userData = JSON.parse(savedSession || '{}');
-if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert("Access Denied"); window.location.replace("login.html"); }
+if (userData.role !== 'admin' && userData.role !== 'kitchen') { alert(I18n.t('access_denied') || "Access Denied"); window.location.replace("login.html"); }
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
@@ -50,18 +50,18 @@ window.PIN = {
         pinValue = ''; tempPin = ''; pinStep = 'create'; 
         PIN.updateDisplay(); 
         const title = document.querySelector('#pinChangeModal .modal-title');
-        if(title) title.innerText = "PIN";
+        if(title) title.innerText = t('pin') || "PIN";
     },
     updateDisplay: () => { document.getElementById('pinDisplay').innerText = pinValue; },
     submit: () => {
-        if(pinValue.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+        if(pinValue.length < 4) return alert(t('pin_4_digits') || "Το PIN πρέπει να είναι 4 ψηφία");
         
         if (pinStep === 'create') {
             tempPin = pinValue; pinStep = 'confirm'; pinValue = ''; PIN.updateDisplay();
             const title = document.querySelector('#pinChangeModal .modal-title');
-            if(title) title.innerText = "ΕΠΙΒΕΒΑΙΩΣΗ";
+            if(title) title.innerText = t('new_pin_title') || "ΕΠΙΒΕΒΑΙΩΣΗ";
         } else if (pinStep === 'confirm') {
-            if (pinValue !== tempPin) { alert("❌ Τα PIN δεν ταιριάζουν!"); PIN.reset(); return; }
+            if (pinValue !== tempPin) { alert(t('pins_not_match') || "❌ Τα PIN δεν ταιριάζουν!"); PIN.reset(); return; }
             window.socket.emit('set-new-pin', { pin: pinValue, email: userData.email });
             App.closePinModal();
         }
@@ -128,6 +128,14 @@ window.App = {
             App.features = { ...userData.features };
         }
 
+        // ✅ FIX: Κρύβουμε την "Πόρτα" (ΕΞΟΔΟΣ) από την κεντρική οθόνη μόνιμα με CSS
+        if (!document.getElementById('hideDoorStyle')) {
+            const hideDoorStyle = document.createElement('style');
+            hideDoorStyle.id = 'hideDoorStyle';
+            hideDoorStyle.innerHTML = `button[onclick*="logout"]:not(#btnSettingsLogoutDynamic), button[onclick*="Logout"]:not(#btnSettingsLogoutDynamic) { display: none !important; }`;
+            document.head.appendChild(hideDoorStyle);
+        }
+
         // ✅ iOS INSTALL PROMPT (Admin/Staff Only)
         App.setupIosPrompt();
         App.setupAudioUnlock();
@@ -190,16 +198,16 @@ window.App = {
     },
 
     applyKitchenUI: () => {
-        if (userData.store) {
-            const inpHeader = document.getElementById('inpStoreNameHeader');
-            if (inpHeader) inpHeader.value = userData.store;
-        }
+        const cachedName = localStorage.getItem('bellgo_store_name');
+        const displayName = cachedName || userData.store || "Kitchen View";
+        const inpHeader = document.getElementById('inpStoreNameHeader');
+        if (inpHeader) inpHeader.value = displayName;
 
         if (App.adminMode === 'kitchen') {
             // 👨‍🍳 KITCHEN MODE: Καθαρό περιβάλλον
             const btnNew = document.getElementById('btnNewOrderSidebar'); if(btnNew) btnNew.style.display = 'none';
             const btnMenu = document.getElementById('btnMenuToggle'); if(btnMenu) btnMenu.style.display = 'none';
-            const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'flex';
+            const btnExit = document.getElementById('btnKitchenExit'); if(btnExit) btnExit.style.display = 'none';
             const inpHeader = document.getElementById('inpStoreNameHeader'); if(inpHeader) inpHeader.disabled = true;
             // 🔒 ΚΟΥΖΙΝΑ: Απενεργοποίηση Sidebar
             const sb = document.getElementById('orderSidebar');
@@ -243,6 +251,26 @@ window.App = {
                 closeBtn.style.cssText = "position:absolute; top:15px; right:15px; background:transparent; border:none; color:#aaa; font-size:20px; font-weight:bold; cursor:pointer; z-index:10;";
                 closeBtn.onclick = () => settingsModal.style.display = 'none';
                 box.appendChild(closeBtn);
+            }
+
+            // ✅ ΕΞΟΔΟΣ μέσα στις ρυθμίσεις (αν δεν υπάρχει ήδη)
+            const hasLogout = Array.from(box.querySelectorAll('button')).some(b => (b.getAttribute('onclick') || '').includes('logout'));
+            if (!hasLogout && !document.getElementById('btnSettingsLogoutDynamic')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'btnSettingsLogoutDynamic';
+                logoutBtn.setAttribute('data-i18n', 'exit');
+                logoutBtn.innerHTML = '🚪 ΕΞΟΔΟΣ';
+                logoutBtn.style.cssText = 'width:100%; padding:15px; margin-top:20px; background:#EF4444; color:white; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(239,68,68,0.3); display:block !important;';
+                logoutBtn.onclick = () => { 
+                    const msg = (window.App && window.App.t) ? window.App.t('logout_confirm') : "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;";
+                    if(confirm(msg)) { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); } 
+                };
+                const existingCloseBtn = Array.from(box.children).find(el => (el.innerText || '').includes('ΚΛΕΙΣΙΜΟ') || el.getAttribute('data-i18n') === 'close');
+                if (existingCloseBtn) {
+                    box.insertBefore(logoutBtn, existingCloseBtn);
+                } else {
+                    box.appendChild(logoutBtn);
+                }
             }
         }
     },

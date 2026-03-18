@@ -127,7 +127,7 @@ export function initDriverSockets(App, userData) {
     socket.on('payment-confirmed', (data) => {
         if (App.currentQrOrderId && App.currentQrOrderId == data.orderId) {
             document.getElementById('qrModal').style.display = 'none';
-            alert("Η πληρωμή έγινε δεκτή! ✅");
+            alert(App.t('payment_accepted') || "Η πληρωμή έγινε δεκτή! ✅");
             App.currentQrOrderId = null;
         }
     });

@@ -14,11 +14,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
+
     <div id="mainApp">
         <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot"></span>
                 <span id="storeNameHeader" style="margin-left:10px; color:#1f2937; font-weight:bold; font-size:18px;">DRIVER</span>
+                
+                <!-- ✅ GOOGLE TRANSLATE WIDGET -->
+                <div id="google_translate_element" style="display:inline-block; margin-left:10px; transform:scale(0.8); transform-origin:left center; z-index: 9999;"></div>
+                <script type="text/javascript">
+                  function googleTranslateElementInit() {
+                    new google.translate.TranslateElement({ pageLanguage: 'el', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+                  }
+                </script>
+                <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </div>
             <div class="header-actions">
                 <button id="driverBellBtn" class="btn-icon" onclick="App.acceptAlarm()" title="ΑΠΟΔΟΧΗ" style="display:none; background:var(--primary); color:white; border:none;">🔔</button>
@@ -30,7 +40,7 @@
 
         <div id="driverArea" style="padding:10px; overflow-y:auto; flex:1; background:var(--bg-dark);">
             <div id="ordersList" style="display:flex; flex-direction:column; gap:10px; padding-bottom:50px;">
-                <div style="text-align:center; color:#555; margin-top:50px;">Φόρτωση...</div>
+                <div style="text-align:center; color:#555; margin-top:50px;" data-i18n="loading">Φόρτωση...</div>
             </div>
         </div>
     </div>
@@ -38,21 +48,21 @@
     <!-- ✅ NEW: QR Modal -->
     <div id="qrModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center;">
         <div class="modal-box" style="background:white; color:black; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px;">
-            <h3 style="margin:0 0 15px 0;">💳 ΠΛΗΡΩΜΗ (SCAN)</h3>
+            <h3 style="margin:0 0 15px 0;" data-i18n="payment_scan">💳 ΠΛΗΡΩΜΗ (SCAN)</h3>
             <div id="qrcode" style="display:flex; justify-content:center; margin-bottom:15px;"></div>
-            <div style="font-size:12px; color:#555; margin-bottom:15px;">Ο πελάτης σκανάρει για πληρωμή</div>
-            <button onclick="document.getElementById('qrModal').style.display='none'" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; width:100%;">ΚΛΕΙΣΙΜΟ</button>
+            <div style="font-size:12px; color:#555; margin-bottom:15px;" data-i18n="customer_scans">Ο πελάτης σκανάρει για πληρωμή</div>
+            <button onclick="document.getElementById('qrModal').style.display='none'" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; width:100%;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
     <!-- ✅ NEW: ALARM OVERLAY (Αντιγραφή από Staff App) -->
-    <div id="alarmOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.9); backdrop-filter:blur(5px);">
+    <div id="alarmOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:30000; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.9); backdrop-filter:blur(5px);">
         <div class="alarm-circle-btn" onclick="App.acceptAlarm()" style="width:250px; height:250px; border-radius:50%; background:#00E676; border:6px solid white; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 0 50px #00E676; cursor:pointer; animation:pulse 1s infinite alternate;">
             <div style="font-size:60px;">⚠️</div>
-            <div style="font-weight:bold; font-size:18px; margin-top:10px;">ΚΛΗΣΗ!</div>
-            <div id="alarmText" style="font-size:14px; margin-top:5px;">ΣΕ ΖΗΤΟΥΝ</div>
+            <div style="font-weight:bold; font-size:18px; margin-top:10px;" data-i18n="alarm_call">ΚΛΗΣΗ!</div>
+            <div id="alarmText" style="font-size:14px; margin-top:5px;" data-i18n="alarm_requested">ΣΕ ΖΗΤΟΥΝ</div>
             
-            <div style="margin-top:20px; font-size:10px; color:black;">ΠΑΤΗΣΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
+            <div style="margin-top:20px; font-size:10px; color:black;" data-i18n="alarm_press_accept">ΠΑΤΗΣΤΕ ΓΙΑ ΑΠΟΔΟΧΗ</div>
         </div>
     </div>
 
@@ -60,31 +70,31 @@
     <div id="offerModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:10000; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px);">
         <div class="modal-box" style="background:#ffffff; color:#1f2937; text-align:center; padding:20px; border-radius:15px; width:90%; max-width:350px; border:2px solid #10B981; box-shadow:0 10px 30px rgba(16,185,129,0.2);">
             <div style="font-size:50px;">🛵</div>
-            <h3 style="color:#10B981; margin:10px 0;">ΝΕΑ ΔΙΑΝΟΜΗ!</h3>
-            <p>Ποιος θα την αναλάβει;</p>
-            <button id="btnAcceptOffer" style="background:#10B981; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">🙋‍♂️ ΕΓΩ!</button>
-            <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:15px; cursor:pointer;">ΑΚΥΡΟ</button>
+            <h3 style="color:#10B981; margin:10px 0;" data-i18n="new_delivery">ΝΕΑ ΔΙΑΝΟΜΗ!</h3>
+            <p data-i18n="who_takes_it">Ποιος θα την αναλάβει;</p>
+            <button id="btnAcceptOffer" style="background:#10B981; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:18px; width:100%; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);" data-i18n="i_take_it">🙋‍♂️ ΕΓΩ!</button>
+            <button onclick="document.getElementById('offerModal').style.display='none'" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:15px; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
 
     <!-- ✅ NEW: SETTINGS MODAL -->
     <div id="settingsModal" class="modal-overlay" onclick="document.getElementById('settingsModal').style.display='none'">
         <div class="modal-box" onclick="event.stopPropagation()" style="max-width: 300px; border-radius:15px; border:2px solid #10B981;">
-            <h3 style="color:#10B981; text-align:center; margin:0; margin-bottom:15px;">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
-            <button class="btn-act" style="background:#10B981; color:white; margin-bottom:10px; border-radius:8px; padding:15px; font-weight:bold; border:none; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="BellGoBot.start()">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
-            <button class="btn-act" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:15px; font-weight:bold; width:100%;" onclick="document.getElementById('settingsModal').style.display='none'">ΚΛΕΙΣΙΜΟ</button>
+            <h3 style="color:#10B981; text-align:center; margin:0; margin-bottom:15px;" data-i18n="settings_title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            <button class="btn-act" style="background:#10B981; color:white; margin-bottom:10px; border-radius:8px; padding:15px; font-weight:bold; border:none; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="BellGoBot.start()" data-i18n="bot_settings">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
+            <button class="btn-act" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:15px; font-weight:bold; width:100%;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
     </div>
 
     <!-- ✅ NEW: FAKE LOCK OVERLAY (Double Tap) -->
     <div id="fakeLockOverlay" onclick="let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.openUnlockPin(); this.lastTap=0; } else { this.lastTap=now; }">
-        <div style="pointer-events:none; font-size:20px; color:#555; font-weight:bold;">Double Tap to Unlock</div>
+        <div style="pointer-events:none; font-size:20px; color:#555; font-weight:bold;" data-i18n="double_tap_to_unlock">Double Tap to Unlock</div>
     </div>
 
     <!-- ✅ NEW: PIN UNLOCK MODAL -->
     <div id="pinUnlockModal" class="modal-overlay" style="z-index: 25000;">
         <div class="modal-box" style="max-width: 300px; padding: 20px; text-align: center;">
-            <h3 style="margin-top:0; color:#1f2937;">ΞΕΚΛΕΙΔΩΜΑ</h3>
+            <h3 style="margin-top:0; color:#1f2937;" data-i18n="unlock">ΞΕΚΛΕΙΔΩΜΑ</h3>
             <div id="unlockPinDisplay" style="font-size:32px; letter-spacing:10px; margin:20px 0; color:#10B981; height:40px; font-weight:bold;"></div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:15px;">
                 <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(1)">1</button>
@@ -100,7 +110,8 @@
                 <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(0)">0</button>
                 <button class="modal-btn" style="background:#10B981; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.submit()">OK</button>
             </div>
-            <button onclick="UnlockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer;">ΑΚΥΡΟ</button>
+            <button onclick="UnlockPIN.forgot()" style="background:none; border:none; color:#0095f6; font-weight:bold; cursor:pointer; margin-bottom:10px; width:100%;" data-i18n="forgot_pin_sos">🆘 ΞΕΧΑΣΑ ΤΟ PIN</button>
+            <button onclick="UnlockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer;" data-i18n="cancel">ΑΚΥΡΟ</button>
         </div>
     </div>
 

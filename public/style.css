@@ -627,3 +627,31 @@ button[style*="background:var(--accent)"], button[style*="background:#FFD700"], 
 #pasoTotal { color: var(--text-main) !important; }
 
 .switch-row span { color: var(--text-main) !important; }
+
+/* ==========================================================================
+   ✅ GOOGLE TRANSLATE WIDGET CLEANUP & FIXES
+   Εξαφανίζει την ενοχλητική μπάρα της Google και φτιάχνει το Layout
+   ========================================================================== */
+
+/* Κρύβει το ενοχλητικό banner στην κορυφή */
+.skiptranslate > iframe.skiptranslate { display: none !important; visibility: hidden !important; }
+
+/* Αποτρέπει το "σπρώξιμο" της εφαρμογής προς τα κάτω */
+body { top: 0px !important; }
+
+/* Κρύβει το λογότυπο "Powered by Google" */
+.goog-logo-link { display: none !important; }
+.goog-te-gadget { color: transparent !important; font-size: 0px !important; }
+
+/* Ομορφαίνει το αναδυόμενο μενού επιλογής γλώσσας */
+.goog-te-gadget .goog-te-combo { 
+    color: #1f2937 !important; 
+    font-size: 14px !important; 
+    padding: 4px 8px; 
+    border-radius: 6px; 
+    border: 1px solid #d1d5db; 
+    background: #ffffff;
+    outline: none;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

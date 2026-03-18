@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
 import { Sundromes } from './sundromes.js';
-import { PushNotifications } from './shared-utils.js';
+import { PushNotifications, I18n } from './shared-utils.js';
 import { initDriverSockets } from './driver-sockets.js'; // ✅ Import Sockets Logic
 
 // --- AUTH CHECK ---
@@ -14,14 +14,17 @@ try { userData = JSON.parse(savedSession || '{}'); } catch(e) {
 }
 
 if (userData.role !== 'driver' && userData.role !== 'admin') { 
-    alert("Πρόσβαση μόνο για Διανομείς."); 
+    alert(I18n.t('driver_access_only') || "Πρόσβαση μόνο για Διανομείς."); 
     window.location.replace("login.html"); 
 }
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
+const t = (key) => I18n.t(key) || key;
+
 window.App = {
+    t: t, // ✅ Expose for dynamic UI
     activeOrders: [],
     currentQrOrderId: null, // ✅ NEW: Track open QR
     isChatOpen: false, // ✅ NEW: Chat State
@@ -45,6 +48,18 @@ window.App = {
         Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
 
         App.applyFeatureVisibility();
+
+        // ✅ FIX: Κρύβουμε την "Πόρτα" (ΕΞΟΔΟΣ) από την κεντρική οθόνη μόνιμα με CSS
+        if (!document.getElementById('hideDoorStyle')) {
+            const hideDoorStyle = document.createElement('style');
+            hideDoorStyle.id = 'hideDoorStyle';
+            hideDoorStyle.innerHTML = `button[onclick*="logout"]:not(#btnSettingsLogoutDynamic), button[onclick*="Logout"]:not(#btnSettingsLogoutDynamic) { display: none !important; }`;
+            document.head.appendChild(hideDoorStyle);
+        }
+
+        // ✅ Ελέγχουμε αν υπάρχει το settings modal και προσθέτουμε ΕΞΟΔΟ
+        App.setupDriverSettingsExit();
+
         PushNotifications.requestPermission(messaging, (token) => {
             if(window.socket && window.socket.connected) {
                 window.socket.emit('update-token', { token: token, username: userData.name });
@@ -58,13 +73,16 @@ window.App = {
             div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:#f4f6f8; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;";
             div.innerHTML = `
                 <h1 style="color:#1f2937; margin-bottom:20px; font-size:32px;">BellGo Driver 🛵</h1>
-                <button id="btnStartShift" style="background:#10B981; color:white; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:30px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ</button>
+                <button id="btnStartShift" style="background:#10B981; color:white; border:none; padding:15px 30px; font-size:18px; font-weight:bold; border-radius:30px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);" data-i18n="start_shift">${App.t('start_shift') || 'ΕΝΑΡΞΗ ΒΑΡΔΙΑΣ'}</button>
             `;
             document.body.appendChild(div);
             document.getElementById('btnStartShift').onclick = () => App.unlockAudio();
         }
         
         App.checkSoftPosReturn();
+
+        const savedLang = localStorage.getItem('bellgo_lang') || 'el';
+        I18n.setLanguage(savedLang);
 
         if(window.KeepAlive) window.KeepAlive.init();
     },
@@ -124,6 +142,31 @@ window.App = {
         }
     },
 
+    // ✅ NEW: Προσθήκη Εξόδου στις Ρυθμίσεις του Διανομέα
+    setupDriverSettingsExit: () => {
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            const box = settingsModal.querySelector('.modal-box') || settingsModal.firstElementChild;
+            if (box) {
+                const hasLogout = Array.from(box.querySelectorAll('button')).some(b => (b.getAttribute('onclick') || '').includes('logout'));
+                if (!hasLogout && !document.getElementById('btnSettingsLogoutDynamic')) {
+                    const logoutBtn = document.createElement('button');
+                    logoutBtn.id = 'btnSettingsLogoutDynamic';
+                    logoutBtn.setAttribute('data-i18n', 'exit');
+                    logoutBtn.innerHTML = '🚪 ΕΞΟΔΟΣ';
+                    logoutBtn.style.cssText = 'width:100%; padding:15px; margin-top:20px; background:#EF4444; color:white; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(239,68,68,0.3); display:block !important;';
+                    logoutBtn.onclick = () => { if(confirm(App.t('logout_confirm') || "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;")) App.logout(); };
+                    const existingCloseBtn = Array.from(box.children).find(el => (el.innerText || '').includes('ΚΛΕΙΣΙΜΟ') || el.getAttribute('data-i18n') === 'close');
+                    if (existingCloseBtn) {
+                        box.insertBefore(logoutBtn, existingCloseBtn);
+                    } else {
+                        box.appendChild(logoutBtn);
+                    }
+                }
+            }
+        }
+    },
+
     connectSocket: () => {
         initDriverSockets(window.App, userData);
     },
@@ -141,7 +184,7 @@ window.App = {
         });
 
         if (deliveryOrders.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#555; margin-top:50px; font-size:18px;">Δεν υπάρχουν ενεργές διανομές.</div>';
+            container.innerHTML = `<div style="text-align:center; color:#555; margin-top:50px; font-size:18px;">${App.t('no_active_deliveries') || 'Δεν υπάρχουν ενεργές διανομές.'}</div>`;
             return;
         }
 
@@ -161,9 +204,10 @@ window.App = {
             const card = document.createElement('div');
             card.className = 'order-card';
             card.style.cssText = `background:#ffffff; border:2px solid ${isPaid ? '#10B981' : (isReady ? '#F59E0B' : '#e5e7eb')}; border-radius:12px; padding:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 15px rgba(0,0,0,0.05); color:#1f2937;`;
-
-            let name = "Πελάτης", address = "", phone = "", paymentMethod = "❓", floor = "", zip = "";
+            
+            let name = App.t('customer') || "Πελάτης", address = "", phone = "", paymentMethod = "❓", floor = "", zip = "";
             const lines = order.text.split('\n');
+
             lines.forEach(line => {
                 if (line.includes('👤')) name = line.replace('👤', '').trim();
                 if (line.includes('📍')) address = line.replace('📍', '').trim();
@@ -203,8 +247,8 @@ window.App = {
                 
                 ${assignedDriver ? `
                     <div style="display:flex; gap:10px;">
-                        <button onclick="App.openMap('${address}')" style="flex:1; padding:15px; background:#2196F3; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">🗺️ ΧΑΡΤΗΣ</button>
-                        <button onclick="App.openQrPayment('${order.id}')" style="flex:1; padding:15px; background:#635BFF; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">💳 QR</button>
+                        <button onclick="App.openMap('${address}')" style="flex:1; padding:15px; background:#2196F3; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">${App.t('map') || '🗺️ ΧΑΡΤΗΣ'}</button>
+                        <button onclick="App.openQrPayment('${order.id}')" style="flex:1; padding:15px; background:#635BFF; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">${App.t('qr') || '💳 QR'}</button>
                     </div>
                 ` : ''}
 
@@ -215,7 +259,7 @@ window.App = {
     },
 
     calculateTotal: (text) => { let t=0; if(!text)return 0; text.split('\n').forEach(l=>{ const m=l.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/); if(m) t+=(parseInt(m[1]||'1')*parseFloat(m[3])); }); return t; },
-    openMap: (addr) => { if(!addr) return alert("Δεν υπάρχει διεύθυνση."); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank'); },
+    openMap: (addr) => { if(!addr) return alert(App.t('no_address') || "Δεν υπάρχει διεύθυνση."); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank'); },
     
     // ✅ NEW: Take Order Function
     takeOrder: (id) => {
@@ -226,7 +270,7 @@ window.App = {
     completeOrder: (id) => { 
         // ✅ NEW: SoftPOS Choice
         if (App.softPosSettings && App.softPosSettings.enabled) {
-            const choice = prompt("Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (SoftPOS)", "1");
+            const choice = prompt(App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (SoftPOS)", "1");
             if (choice === '2') {
                 const order = App.activeOrders.find(o => o.id == id);
                 const total = App.calculateTotal(order.text);
@@ -237,7 +281,7 @@ window.App = {
             }
         }
 
-        if(confirm("Η παραγγελία παραδόθηκε και εισπράχθηκε;")) {
+        if(confirm(App.t('order_delivered_prompt') || "Η παραγγελία παραδόθηκε και εισπράχθηκε;")) {
             const order = App.activeOrders.find(o => o.id == id);
             const total = App.calculateTotal(order.text);
             // Χρέωση στο πορτοφόλι του διανομέα και κλείσιμο
@@ -288,18 +332,18 @@ window.App = {
         const order = App.activeOrders.find(o => o.id == id);
         if(!order) return;
         const total = App.calculateTotal(order.text);
-        if(total <= 0) return alert("Μηδενικό ποσό.");
+        if(total <= 0) return alert(App.t('zero_amount') || "Μηδενικό ποσό.");
         try {
             const res = await fetch('/create-qr-payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: total, storeName: userData.store, orderId: id }) });
             const data = await res.json();
             if(data.url) { const c = document.getElementById('qrcode'); c.innerHTML = ""; new QRCode(c, { text: data.url, width: 200, height: 200 }); document.getElementById('qrModal').style.display = 'flex'; } 
-            else { alert("Σφάλμα: " + (data.error || "Άγνωστο")); }
-        } catch(e) { alert("Σφάλμα σύνδεσης."); }
+            else { alert((App.t('error') || "Σφάλμα: ") + (data.error || "Άγνωστο")); }
+        } catch(e) { alert(App.t('connection_error') || "Σφάλμα σύνδεσης."); }
     },
 
     // ✅ NEW: ACCEPT ALARM FUNCTION
     acceptAlarm: () => {
-        if(window.AudioEngine) window.AudioEngine.stopAlarm();
+        if(window.AudioEngine) window.AudioEngine.stopAlarm(); 
         const bell = document.getElementById('driverBellBtn');
         if(bell) {
             bell.style.display = 'none';
@@ -311,7 +355,7 @@ window.App = {
     // ✅ NEW: Trigger SoftPOS App
     triggerSoftPosPayment: (amount, context) => {
         const s = App.softPosSettings;
-        if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
+        if (!s || !s.enabled) return alert(App.t('softpos_disabled') || "Το SoftPOS δεν είναι ενεργοποιημένο.");
 
         const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
         
@@ -335,14 +379,14 @@ window.App = {
             const audio = new Audio('/alert.mp3');
             audio.play().catch(e=>{});
             
-            alert(`✅ Η πληρωμή ${amount}€ ολοκληρώθηκε!`);
+            alert(`✅ ${App.t('payment_completed') || 'Η πληρωμή ολοκληρώθηκε!'} (${amount}€)`);
             
             if (context) {
                 App.pendingSoftPosCompletion = { id: context, amount: amount };
             }
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (status === 'cancel') {
-            alert("❌ Ακυρώθηκε.");
+            alert(`❌ ${App.t('payment_cancelled') || 'Ακυρώθηκε.'}`);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
@@ -354,7 +398,7 @@ window.UnlockPIN = {
     add: (n) => { if(pinValueUnlock.length < 4) { pinValueUnlock += n; document.getElementById('unlockPinDisplay').innerText = '*'.repeat(pinValueUnlock.length); } },
     clear: () => { pinValueUnlock = ''; document.getElementById('unlockPinDisplay').innerText = ''; },
     submit: () => {
-        if(pinValueUnlock.length < 4) return alert("Το PIN πρέπει να είναι 4 ψηφία");
+        if(pinValueUnlock.length < 4) return alert(App.t('pin_4_digits') || "Το PIN πρέπει να είναι 4 ψηφία");
         window.socket.emit('verify-pin', { pin: pinValueUnlock, email: userData.store });
         window.socket.once('pin-verified', (data) => {
             if(data.success) {
@@ -363,10 +407,16 @@ window.UnlockPIN = {
                 if(window.socket) window.socket.emit('set-user-status', 'online');
                 UnlockPIN.clear();
             } else {
-                alert("❌ Λάθος PIN!");
+                alert(App.t('wrong_pin') || "❌ Λάθος PIN!");
                 UnlockPIN.clear();
             }
         });
     },
-    close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); }
+    close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); },
+    forgot: () => {
+        if (confirm(App.t('forgot_pin_confirm') || "Να σταλεί email επαναφοράς PIN στο κατάστημα;")) {
+            if(window.socket) window.socket.emit('forgot-pin', { email: userData.store });
+            alert(App.t('email_sent_inform') || "Το email εστάλη! Ενημερώστε τον διαχειριστή.");
+        }
+    }
 };

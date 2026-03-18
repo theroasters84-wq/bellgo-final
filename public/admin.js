@@ -208,6 +208,15 @@ export const Admin = {
         };
         secDiv.appendChild(btnPin);
 
+        // 1.5 Διαχείριση Whitelist
+        const btnWhitelist = document.createElement('button');
+        btnWhitelist.style.cssText = "width:100%; background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; padding:12px; margin-bottom:10px; border-radius:8px; cursor:pointer; text-align:left; font-size:14px; font-weight:600;";
+        btnWhitelist.innerHTML = "📋 Λίστα Εγκεκριμένων Υπαλλήλων (Whitelist)";
+        btnWhitelist.onclick = () => {
+            if (window.App && window.App.openWhitelistModal) window.App.openWhitelistModal();
+        };
+        secDiv.appendChild(btnWhitelist);
+
         // 2. Change Admin Password (Subscription 2, 3, 4, 5)
         const hasManager = window.App.hasFeature('pack_manager');
         const hasDelivery = window.App.hasFeature('pack_delivery');
@@ -223,6 +232,90 @@ export const Admin = {
         }
     },
 
+    toggleWhitelist: (isEnabled) => {
+        window.App.whitelistEnabled = isEnabled;
+        window.socket.emit('save-store-settings', { whitelistEnabled: isEnabled });
+    },
+
+    openWhitelistModal: () => {
+        let modal = document.getElementById('whitelistModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'whitelistModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:25000; display:flex; align-items:center; justify-content:center;';
+            
+            modal.innerHTML = `
+                <div class="modal-box" style="background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 10px 30px rgba(0,0,0,0.3); text-align:left;">
+                    <h3 style="color:#1f2937; margin-top:0; border-bottom:1px solid #e5e7eb; padding-bottom:10px;">📋 Εγκεκριμένοι Υπάλληλοι</h3>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#f9fafb; padding:10px; border-radius:8px; border:1px solid #e5e7eb;">
+                        <span style="font-weight:bold; font-size:14px; color:#1f2937;">Ενεργοποίηση Ελέγχου</span>
+                        <label class="switch" style="margin:0;"><input type="checkbox" id="switchWhitelistEnabled" onchange="window.App.toggleWhitelist(this.checked)"><span class="slider"></span></label>
+                    </div>
+
+                    <p style="font-size:12px; color:#6b7280;">Προσθέστε τα προσωπικά email του προσωπικού σας. Αν ο έλεγχος είναι ενεργός, <b>ΜΟΝΟ</b> αυτά τα email θα μπορούν να συνδεθούν ως προσωπικό.</p>
+                    
+                    <div style="display:flex; gap:5px; margin-bottom:15px;">
+                        <input type="email" id="inpWhitelistEmail" placeholder="π.χ. maria@gmail.com" style="flex:1; padding:10px; border:1px solid #d1d5db; border-radius:6px; outline:none;">
+                        <button onclick="window.App.addWhitelistEmail()" style="background:#10B981; color:white; border:none; border-radius:6px; padding:0 15px; font-weight:bold; cursor:pointer;">+</button>
+                    </div>
+                    <div id="whitelistContainer" style="max-height:200px; overflow-y:auto; margin-bottom:15px; display:flex; flex-direction:column; gap:5px;"></div>
+                    
+                    <button onclick="document.getElementById('whitelistModal').style.display='none'" style="width:100%; padding:12px; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-weight:bold; cursor:pointer;">ΚΛΕΙΣΙΜΟ</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        const sw = document.getElementById('switchWhitelistEnabled');
+        if (sw) sw.checked = !!window.App.whitelistEnabled;
+        
+        window.App.renderWhitelist();
+        modal.style.display = 'flex';
+    },
+
+    renderWhitelist: () => {
+        const container = document.getElementById('whitelistContainer');
+        if(!container) return;
+        container.innerHTML = '';
+        const list = window.App.staffWhitelist || [];
+        if(list.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; font-size:13px; text-align:center; padding:10px;">Η λίστα είναι κενή.</div>';
+            return;
+        }
+        list.forEach((email, idx) => {
+            const el = document.createElement('div');
+            el.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#f9fafb; padding:10px; border-radius:6px; border:1px solid #e5e7eb; font-size:14px;";
+            el.innerHTML = `
+                <span style="color:#1f2937; font-weight:500;">${email}</span>
+                <button onclick="window.App.removeWhitelistEmail(${idx})" style="background:#EF4444; color:white; border:none; padding:5px 10px; border-radius:4px; font-weight:bold; cursor:pointer; font-size:12px;">X</button>
+            `;
+            container.appendChild(el);
+        });
+    },
+
+    addWhitelistEmail: () => {
+        const inp = document.getElementById('inpWhitelistEmail');
+        const email = inp.value.trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if(!emailRegex.test(email)) return alert("Παρακαλώ εισάγετε ένα έγκυρο email.");
+        if(!window.App.staffWhitelist) window.App.staffWhitelist = [];
+        if(window.App.staffWhitelist.includes(email)) return alert("Το email υπάρχει ήδη στη λίστα!");
+        window.App.staffWhitelist.push(email);
+        window.socket.emit('save-store-settings', { staffWhitelist: window.App.staffWhitelist });
+        inp.value = '';
+        window.App.renderWhitelist();
+    },
+
+    removeWhitelistEmail: (idx) => {
+        if(confirm("Διαγραφή αυτού του email από τη λίστα;")) {
+            window.App.staffWhitelist.splice(idx, 1);
+            window.socket.emit('save-store-settings', { staffWhitelist: window.App.staffWhitelist });
+            window.App.renderWhitelist();
+        }
+    },
+    
     changeAdminPassword: () => {
         if (window.App.adminPin) {
             const current = prompt("🔒 Εισάγετε τον ΤΡΕΧΟΝΤΑ Κωδικό Διαχειριστή:");

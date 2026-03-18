@@ -39,7 +39,7 @@ export function initKitchenSockets(App, userData) {
             if (pendingStripe) {
                 socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
                 localStorage.removeItem('temp_stripe_connect_id');
-                alert("Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
+                alert((window.App && window.App.t ? window.App.t('stripe_connected') : null) || "Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
             }
         });
     });
@@ -71,7 +71,10 @@ export function initKitchenSockets(App, userData) {
     socket.on('store-settings-update', (settings) => {
         if(settings) {
             const inpHeader = document.getElementById('inpStoreNameHeader');
-            if(settings.name && inpHeader) inpHeader.value = settings.name;
+            if(settings.name && inpHeader) {
+                inpHeader.value = settings.name;
+                localStorage.setItem('bellgo_store_name', settings.name);
+            }
             if(settings.features) {
                 App.features = settings.features;
                 App.applyFeatureVisibility(); // ✅ Update UI based on features
@@ -112,6 +115,8 @@ export function initKitchenSockets(App, userData) {
             }
             if(settings.expensePresets) App.expensePresets = settings.expensePresets;
             if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
+            if(settings.staffWhitelist) App.staffWhitelist = settings.staffWhitelist;
+            if(settings.whitelistEnabled !== undefined) App.whitelistEnabled = settings.whitelistEnabled;
             
             // ✅ NEW: Load SoftPOS Settings
             if(settings.softPos) App.softPosSettings = settings.softPos;
@@ -131,7 +136,7 @@ export function initKitchenSockets(App, userData) {
         }
     });
 
-    socket.on('pin-success', () => { alert("Το PIN άλλαξε επιτυχώς!"); });
+    socket.on('pin-success', () => { alert((window.App && window.App.t ? window.App.t('pin_changed') : null) || "Το PIN άλλαξε επιτυχώς!"); });
     socket.on('chat-message', (data) => App.appendChat(data));
     
 
@@ -189,6 +194,14 @@ export function initKitchenSockets(App, userData) {
             window.AudioEngine.triggerAlarm(data ? data.source : null);
         } else {
             new Audio('/alert.mp3').play().catch(e => console.error("Audio Play Error:", e));
+        }
+
+        // ✅ SHOW OVERLAY INFO ONLY IF LOCKED
+        const fakeLock = document.getElementById('fakeLockOverlay');
+        const overlay = document.getElementById('alarmOverlay');
+        if (overlay && fakeLock && fakeLock.style.display === 'flex') {
+            const text = document.getElementById('alarmText');
+            if (text && data && data.source) text.innerText = data.source;
         }
     });
 
