@@ -7,6 +7,7 @@
     
     <link rel="manifest" href="/manifest.json?icon=admin&id=staff_app">
     <meta name="theme-color" content="#121212">
+    <link rel="icon" href="admin.png">
     
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
@@ -16,7 +17,7 @@
 <body>
 
     <div id="mainApp">
-        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
+        <div class="header" ondblclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot"></span>
                 <span id="storeNameHeader" style="margin-left:10px; color:#1f2937; font-weight:bold; font-size:18px;">DRIVER</span>
@@ -72,6 +73,8 @@
     <div id="settingsModal" class="modal-overlay" onclick="document.getElementById('settingsModal').style.display='none'">
         <div class="modal-box" onclick="event.stopPropagation()" style="max-width: 300px; border-radius:15px; border:2px solid #10B981;">
             <h3 style="color:#10B981; text-align:center; margin:0; margin-bottom:15px;" data-i18n="settings_title">⚙️ ΡΥΘΜΙΣΕΙΣ</h3>
+            
+
             <button class="btn-act" style="background:#10B981; color:white; margin-bottom:10px; border-radius:8px; padding:15px; font-weight:bold; border:none; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="BellGoBot.start()" data-i18n="bot_settings">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
             <button class="btn-act" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; padding:15px; font-weight:bold; width:100%;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
         </div>
@@ -108,25 +111,13 @@
 
     <script type="module" src="dianomeas.js"></script>
     <script src="player.js"></script> <!-- ✅ Audio Engine -->
-    <script src="keepalive.js"></script>
+    <script src="keepalive.js?v=3"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js', { scope: '/staff/' })
                 .then(() => console.log('✅ Driver SW Registered'))
                 .catch(err => console.log('❌ Driver SW Error:', err));
         }
-        
-        // ✅ Σύνδεση για λήψη της ρύθμισης KeepAlive για τον Διανομέα
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (window.socket) {
-                    window.socket.on('store-settings-update', (settings) => {
-                        if (settings && settings.warnOnBackground === false) window.disableBackgroundWarning = true;
-                        else window.disableBackgroundWarning = false;
-                    });
-                }
-            }, 2000);
-        });
     </script>
 </body>
 </html>

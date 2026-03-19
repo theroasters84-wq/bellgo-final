@@ -1,18 +1,18 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
-import { StatsUI } from './premium-stats.js';
-import { PaySystem } from './pay.js'; // ✅ Import PaySystem
-import { Sundromes } from './sundromes.js'; // ✅ Import Sundromes (Case Sensitive Fix)
-import { Apodiksh } from './apodiksh.js'; // ✅ Import Apodiksh
-import { PrintSystem } from './premium-print.js'; // ✅ Import Print Logic
-import { Admin } from './admin.js'; // ✅ Import Admin Logic
-import { AdminUI } from './admin-ui.js'; // ✅ Import Admin UI Logic
-import { ReserveTable } from './reserve-table.js'; // ✅ Import Reservation Logic
-import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js'; // ✅ Import Menu Logic
-import { OrdersUI } from './premium-orders.js?v=6'; // ✅ Import Orders UI
-import { I18n, PushNotifications } from './shared-utils.js';
-import { initPremiumSockets } from './premium-sockets.js'; // ✅ Import WebSockets
+import { StatsUI } from './premium-stats.js?v=4';
+import { PaySystem } from './pay.js?v=4'; // ✅ Force Update
+import { Sundromes } from './sundromes.js?v=4'; 
+import { Apodiksh } from './apodiksh.js?v=4'; // ✅ Force Update
+import { PrintSystem } from './premium-print.js?v=4'; 
+import { Admin } from './admin.js?v=5'; 
+import { AdminUI } from './admin-ui.js?v=4'; 
+import { ReserveTable } from './reserve-table.js?v=4'; 
+import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js?v=4'; 
+import { OrdersUI } from './premium-orders.js?v=7'; 
+import { I18n, PushNotifications } from './shared-utils.js?v=4';
+import { initPremiumSockets } from './premium-sockets.js?v=4'; // ✅ Force Update Sockets (Critical Fix)
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");
@@ -389,6 +389,10 @@ window.App = {
             const el = document.getElementById(id);
             if (el) {
                 if (visibleIds.has(id)) {
+                    if (id === 'btnFakeLock' && window.disableFakeLock) {
+                        el.style.display = 'none';
+                        return;
+                    }
                     // Αν είναι εικονίδιο header, συνήθως θέλει flex, αλλιώς block
                     const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
                     const isSwitch = el.classList.contains('switch-row'); // ✅ FIX: Keep flex for switches

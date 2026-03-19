@@ -58,11 +58,49 @@ export function initDriverSockets(App, userData) {
             }
             if(settings.softPos) App.softPosSettings = settings.softPos;
             if(settings.features) {
-                App.features = settings.features;
-                // ✅ Re-check subscription (Real-time unlock)
-                Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
-                App.applyFeatureVisibility();
+                const fStr = JSON.stringify(settings.features);
+                if (window.lastFeatsStr !== fStr) {
+                    App.features = settings.features;
+                    // ✅ Re-check subscription (Real-time unlock)
+                    Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
+                    App.applyFeatureVisibility();
+                    window.lastFeatsStr = fStr;
+                }
             }
+            
+            if (settings.warnOnBackground !== undefined) {
+                const isWarnEnabled = settings.warnOnBackground !== false;
+                const sw = document.getElementById('switchWarnOnBackgroundDriver');
+                if (sw) sw.checked = isWarnEnabled;
+                window.disableBackgroundWarning = !isWarnEnabled;
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_keepalive');
+                if (saved !== null) {
+                    const isWarnEnabled = saved === 'true';
+                    const sw = document.getElementById('switchWarnOnBackgroundDriver');
+                    if (sw) sw.checked = isWarnEnabled;
+                    window.disableBackgroundWarning = !isWarnEnabled;
+                }
+            }
+
+            if (settings.fakeLockEnabled !== undefined) {
+                const isFakeLockEnabled = settings.fakeLockEnabled !== false;
+                const swF = document.getElementById('switchFakeLockDriver');
+                if (swF) swF.checked = isFakeLockEnabled;
+                window.disableFakeLock = !isFakeLockEnabled;
+                localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_fakelock');
+                if (saved !== null) {
+                    const isFakeLockEnabled = saved === 'true';
+                    const swF = document.getElementById('switchFakeLockDriver');
+                    if (swF) swF.checked = isFakeLockEnabled;
+                    window.disableFakeLock = !isFakeLockEnabled;
+                }
+            }
+            const btnFakeLock = document.getElementById('btnFakeLock');
+            if (btnFakeLock) btnFakeLock.style.display = window.disableFakeLock ? 'none' : 'flex';
         }
     });
 

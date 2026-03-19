@@ -143,6 +143,8 @@ module.exports = function(socket, context, getMyStore) {
             if (data.adminPin) store.settings.adminPin = data.adminPin;
             if (data.pin) store.settings.pin = data.pin;
             if (data.staffWhitelist !== undefined) store.settings.staffWhitelist = data.staffWhitelist;
+            if (data.warnOnBackground !== undefined) store.settings.warnOnBackground = data.warnOnBackground;
+            if (data.fakeLockEnabled !== undefined) store.settings.fakeLockEnabled = data.fakeLockEnabled;
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });

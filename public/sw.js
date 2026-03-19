@@ -7,9 +7,9 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 let notificationInterval;
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V22)
+   2. CONFIGURATION & CACHE (V68)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v52'; // ✅ Bump Version to force new player.js (Single Player)
+const CACHE_NAME = 'bellgo-v68'; // ✅ Restore missing CACHE_NAME
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

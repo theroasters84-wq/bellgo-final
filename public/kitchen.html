@@ -9,6 +9,7 @@
     
     <meta name="theme-color" content="#121212">
     <link rel="apple-touch-icon" href="admin.png"> 
+    <link rel="icon" href="admin.png">
     
     <link rel="stylesheet" href="/style.css?v=2">
     
@@ -45,7 +46,7 @@
                     <div id="chatBadge" class="chat-badge"></div>
                 </div>
                 
-                <button class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
+                <button id="btnFakeLock" class="btn-icon" onclick="App.toggleFakeLock()" title="Μαύρη Οθόνη">🌙</button>
                 
                 <!-- Κουμπί Εξόδου ειδικά για την κουζίνα -->
                 <button id="btnKitchenExit" class="btn-icon" onclick="App.logout()" title="Έξοδος" style="background:var(--danger); color:white;">🚪</button>
@@ -127,6 +128,7 @@
                     </div>
                 </div>
 
+
                 <button class="modal-btn" onclick="App.openSettingsSub('subKitchenAdmin')" data-i18n="admin_settings">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</button>
 
                 <button onclick="document.getElementById('settingsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px; cursor:pointer; width:100%; padding:10px; font-weight:bold;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
@@ -164,7 +166,7 @@
     </div>
 
     <!-- Fake Lock Overlay -->
-    <div id="fakeLockOverlay" onclick="App.toggleFakeLock()"><div data-i18n="tap_to_unlock">Tap to Unlock</div></div>
+    <div id="fakeLockOverlay" onclick="if(window.disableFakeLock) return; App.toggleFakeLock()"><div data-i18n="tap_to_unlock">Tap to Unlock</div></div>
 
     <!-- Extras Modal -->
     <div id="extrasModal" class="modal-overlay">
@@ -194,7 +196,7 @@
     <!-- Φόρτωση του KITCHEN.JS αντί για το premium.js -->
     <script type="module" src="kitchen.js?v=2"></script>
     <script src="player.js"></script>
-    <script src="keepalive.js"></script>
+    <script src="keepalive.js?v=3"></script>
     <script>
         // ✅ Inject Security Functions to App (Since kitchen.js is not in context)
         window.addEventListener('load', () => {

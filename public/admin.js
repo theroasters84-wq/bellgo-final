@@ -37,6 +37,9 @@ export const Admin = {
         const resEnabled = document.getElementById('switchReservations').checked;
         const totalTables = document.getElementById('inpTotalTables').value;
         
+        const swWarn = document.getElementById('switchWarnOnBackground');
+        const warnBg = swWarn ? swWarn.checked : true;
+        
         let rewardData = app.rewardSettings || {};
         const elReward = document.getElementById('switchRewardEnabled');
         if (elReward) {
@@ -62,7 +65,7 @@ export const Admin = {
             key: document.getElementById('inpPosKey').value
         };
 
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: app.features });
+        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: app.features, warnOnBackground: warnBg });
     },
     
     saveSettings: () => {

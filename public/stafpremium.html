@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="admin.png">
+    <link rel="icon" href="admin.png">
 
     <link rel="stylesheet" href="/style.css">
 
@@ -92,7 +93,7 @@
     </div>
 
     <div id="mainApp">
-        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
+        <div class="header" ondblclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button')) return; App.toggleFakeLock();" onclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button')) return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div style="display:flex; align-items:center;">
                 <span id="connDot" style="width:10px; height:10px; background:red; border-radius:50%; display:inline-block; margin-right:10px;" onclick="App.forceReconnect()"></span>
                 <div class="user-info">
@@ -275,6 +276,8 @@
         <div id="settingsModal" class="overlay-screen" onclick="document.getElementById('settingsModal').style.display='none'">
             <div class="action-box" onclick="event.stopPropagation()">
                 <h3 style="color:#FFD700; text-align:center; margin:0; margin-bottom:15px;" data-i18n="settings">ΡΥΘΜΙΣΕΙΣ</h3>
+                
+
                 <button class="btn-act" style="background:#FFD700; color:black; margin-bottom:10px;" onclick="BellGoBot.start()" data-i18n="bot_settings">🤖 ΡΥΘΜΙΣΗ & ΚΛΕΙΔΩΜΑ (BOT)</button>
                 <button class="btn-act" style="background:#EF4444; color:white; margin-bottom:10px; font-weight:bold;" onclick="if(confirm(window.App && window.App.t ? window.App.t('logout_confirm') : 'Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;')) App.logout()" data-i18n="exit">🚪 ΕΞΟΔΟΣ</button>
                 <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('settingsModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
@@ -710,7 +713,7 @@
                 
                 // 3. Fake Lock & Settings (Available in Chat or Ordering)
                 const fakeLockBtn = document.getElementById('btnFakeLock');
-                if (fakeLockBtn) fakeLockBtn.style.display = (hasChat || hasOrdering) ? 'flex' : 'none';
+                if (fakeLockBtn) fakeLockBtn.style.display = (!window.disableFakeLock && (hasChat || hasOrdering)) ? 'flex' : 'none';
 
                 const settingsBtn = document.getElementById('btnSettings');
                 if (settingsBtn) settingsBtn.style.display = (hasChat || hasOrdering) ? 'flex' : 'none';
@@ -880,10 +883,14 @@
                         }
                         App.staffChargeMode = settings.staffCharge || false; // ✅ Update local state
                         if(settings.features) {
-                            App.features = settings.features;
-                            // ✅ Re-check subscription (Real-time unlock)
-                            Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
-                            App.applyFeatureVisibility(); // ✅ Update UI dynamically
+                            const fStr = JSON.stringify(settings.features);
+                            if (window.lastFeatsStr !== fStr) {
+                                App.features = settings.features;
+                                // ✅ Re-check subscription (Real-time unlock)
+                                Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
+                                App.applyFeatureVisibility(); // ✅ Update UI dynamically
+                                window.lastFeatsStr = fStr;
+                            }
                         }
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
@@ -895,9 +902,37 @@
                             if(btnSend) { btnSend.disabled = false; }
                         }
                         
-                        // ✅ Ενημέρωση ρύθμισης KeepAlive για το Σέρβις
-                        if (settings.warnOnBackground === false) window.disableBackgroundWarning = true;
-                        else window.disableBackgroundWarning = false;
+                        if (settings.warnOnBackground !== undefined) {
+                            const isWarnEnabled = settings.warnOnBackground !== false;
+                            const sw = document.getElementById('switchWarnOnBackgroundStaff');
+                            if (sw) sw.checked = isWarnEnabled;
+                            window.disableBackgroundWarning = !isWarnEnabled;
+                            localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                        } else {
+                            const saved = localStorage.getItem('bellgo_keepalive');
+                            if (saved !== null) {
+                                const isWarnEnabled = saved === 'true';
+                                const sw = document.getElementById('switchWarnOnBackgroundStaff');
+                                if (sw) sw.checked = isWarnEnabled;
+                                window.disableBackgroundWarning = !isWarnEnabled;
+                            }
+                        }
+
+                        if (settings.fakeLockEnabled !== undefined) {
+                            const isFakeLockEnabled = settings.fakeLockEnabled !== false;
+                            const swF = document.getElementById('switchFakeLockStaff');
+                            if (swF) swF.checked = isFakeLockEnabled;
+                            window.disableFakeLock = !isFakeLockEnabled;
+                            localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
+                        } else {
+                            const saved = localStorage.getItem('bellgo_fakelock');
+                            if (saved !== null) {
+                                const isFakeLockEnabled = saved === 'true';
+                                const swF = document.getElementById('switchFakeLockStaff');
+                                if (swF) swF.checked = isFakeLockEnabled;
+                                window.disableFakeLock = !isFakeLockEnabled;
+                            }
+                        }
                     }
                 });
 
@@ -1354,6 +1389,6 @@
         }
     </script>
     <script src="/player.js"></script>
-    <script src="/keepalive.js"></script>
+    <script src="/keepalive.js?v=3"></script>
 </body>
 </html>

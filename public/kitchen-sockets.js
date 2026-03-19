@@ -76,8 +76,12 @@ export function initKitchenSockets(App, userData) {
                 localStorage.setItem('bellgo_store_name', settings.name);
             }
             if(settings.features) {
-                App.features = settings.features;
-                App.applyFeatureVisibility(); // ✅ Update UI based on features
+                const fStr = JSON.stringify(settings.features);
+                if (window.lastFeatsStr !== fStr) {
+                    App.features = settings.features;
+                    App.applyFeatureVisibility(); // ✅ Update UI based on features
+                    window.lastFeatsStr = fStr;
+                }
             }
             
             // ✅ FIX: Ασφαλείς αναθέσεις (γιατί στην κουζίνα λείπουν αυτά τα κουμπιά)
@@ -134,9 +138,39 @@ export function initKitchenSockets(App, userData) {
                 }
             }
         
-        // ✅ Ενημέρωση ρύθμισης KeepAlive για την Κουζίνα
-        if (settings.warnOnBackground === false) window.disableBackgroundWarning = true;
-        else window.disableBackgroundWarning = false;
+            if (settings.warnOnBackground !== undefined) {
+                const isWarnEnabled = settings.warnOnBackground !== false;
+                const sw = document.getElementById('switchWarnOnBackgroundKitchen');
+                if (sw) sw.checked = isWarnEnabled;
+                window.disableBackgroundWarning = !isWarnEnabled;
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_keepalive');
+                if (saved !== null) {
+                    const isWarnEnabled = saved === 'true';
+                    const sw = document.getElementById('switchWarnOnBackgroundKitchen');
+                    if (sw) sw.checked = isWarnEnabled;
+                    window.disableBackgroundWarning = !isWarnEnabled;
+                }
+            }
+
+            if (settings.fakeLockEnabled !== undefined) {
+                const isFakeLockEnabled = settings.fakeLockEnabled !== false;
+                const swF = document.getElementById('switchFakeLockKitchen');
+                if (swF) swF.checked = isFakeLockEnabled;
+                window.disableFakeLock = !isFakeLockEnabled;
+                localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_fakelock');
+                if (saved !== null) {
+                    const isFakeLockEnabled = saved === 'true';
+                    const swF = document.getElementById('switchFakeLockKitchen');
+                    if (swF) swF.checked = isFakeLockEnabled;
+                    window.disableFakeLock = !isFakeLockEnabled;
+                }
+            }
+            const btnFakeLock = document.getElementById('btnFakeLock');
+            if (btnFakeLock) btnFakeLock.style.display = window.disableFakeLock ? 'none' : 'flex';
         }
     });
 

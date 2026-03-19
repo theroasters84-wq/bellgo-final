@@ -67,8 +67,12 @@ export function initPremiumSockets(App, userData) {
                 localStorage.setItem('bellgo_store_name', settings.name); // ✅ Cache Name
             }
             if(settings.features) {
-                App.features = settings.features;
-                App.applyFeatureVisibility(); // ✅ Update UI based on features
+                const fStr = JSON.stringify(settings.features);
+                if (window.lastFeatsStr !== fStr) {
+                    App.features = settings.features;
+                    App.applyFeatureVisibility(); // ✅ Update UI based on features
+                    window.lastFeatsStr = fStr;
+                }
             }
             document.getElementById('switchCust').checked = settings.statusCustomer;
             document.getElementById('switchStaff').checked = settings.statusStaff;
@@ -145,7 +149,7 @@ export function initPremiumSockets(App, userData) {
                 document.getElementById('inpSoftPosMerchantId').value = settings.softPos.merchantId || '';
                 document.getElementById('inpSoftPosApiKey').value = settings.softPos.apiKey || '';
                 document.getElementById('switchSoftPosEnabled').checked = settings.softPos.enabled || false;
-                if(window.PaySystem) window.PaySystem.updateSoftPosUI();
+                // ✅ REMOVED to prevent infinite loop with cached pay.js
             }
             if(settings.posMode) {
                 App.posMode = settings.posMode;
@@ -172,6 +176,39 @@ export function initPremiumSockets(App, userData) {
             if (settings.pin !== undefined) {
                 App.storePin = settings.pin;
             }
+            
+            if (settings.warnOnBackground !== undefined) {
+                const isWarnEnabled = settings.warnOnBackground !== false;
+                const swWarn = document.getElementById('switchWarnOnBackground');
+                if (swWarn) swWarn.checked = isWarnEnabled;
+                window.disableBackgroundWarning = !isWarnEnabled;
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_keepalive');
+                if (saved !== null) {
+                    const isWarnEnabled = saved === 'true';
+                    const swWarn = document.getElementById('switchWarnOnBackground');
+                    if (swWarn) swWarn.checked = isWarnEnabled;
+                    window.disableBackgroundWarning = !isWarnEnabled;
+                }
+            }
+            
+            if (settings.fakeLockEnabled !== undefined) {
+                const isFakeLockEnabled = settings.fakeLockEnabled !== false;
+                const swFake = document.getElementById('switchFakeLockEnabled');
+                if (swFake) swFake.checked = isFakeLockEnabled;
+                window.disableFakeLock = !isFakeLockEnabled;
+                localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
+            } else {
+                const saved = localStorage.getItem('bellgo_fakelock');
+                if (saved !== null) {
+                    const isFakeLockEnabled = saved === 'true';
+                    const swFake = document.getElementById('switchFakeLockEnabled');
+                    if (swFake) swFake.checked = isFakeLockEnabled;
+                    window.disableFakeLock = !isFakeLockEnabled;
+                }
+            }
+            if (window.App && window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
         }
     });
 

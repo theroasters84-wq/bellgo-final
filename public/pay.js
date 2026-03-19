@@ -117,8 +117,6 @@ export const PaySystem = {
         if (isEnabled && !merchantId) { setupBanner.style.display = 'block'; downloadBanner.style.display = 'none'; }
         else if (isEnabled && merchantId) { setupBanner.style.display = 'none'; downloadBanner.style.display = 'block'; }
         else { setupBanner.style.display = 'none'; downloadBanner.style.display = 'none'; }
-        
-        if(window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
     },
 
     openSoftPosDownload: () => {

@@ -164,14 +164,14 @@ const AudioEngine = {
                 title: "🚨 ΚΛΗΣΗ ΚΟΥΖΙΝΑΣ",
                 artist: "Πάτα ΠΑΥΣΗ για Αποδοχή",
                 album: "BellGo Alert",
-                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
             });
         } else {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: "BellGo Online",
                 artist: "Σύστημα Ενεργό",
                 album: "Αναμονή...",
-                artwork: [{ src: "icon.png", sizes: "512x512", type: "image/png" }]
+                artwork: [{ src: "/admin.png", sizes: "512x512", type: "image/png" }]
             });
         }
         navigator.mediaSession.playbackState = "playing";

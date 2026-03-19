@@ -9,11 +9,10 @@
     
     <meta name="theme-color" content="#121212">
     <link rel="apple-touch-icon" href="admin.png"> 
+    <link rel="icon" href="admin.png">
     
     <link rel="stylesheet" href="/style.css?v=4">
     
-    <script type="module" src="pay.js"></script> <!-- ✅ NEW: Pay Logic -->
-    <script type="module" src="apodiksh.js"></script> <!-- ✅ NEW: E-Invoicing Logic -->
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -61,7 +60,7 @@
 <body>
 
     <div id="mainApp">
-        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
+        <div class="header" ondblclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; App.toggleFakeLock();" onclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
                 <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
@@ -330,11 +329,19 @@
             <div id="subGeneral" class="settings-sub" style="display:none;">
                 <h4 style="color:#aaa; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;" data-i18n="admin_settings">🔐 ΡΥΘΜΙΣΕΙΣ ΔΙΑΧΕΙΡΙΣΤΗ</h4>
                 
+                <!-- ✅ NEW: KEEPALIVE APP SETTINGS -->
+                <div class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
+                    <div class="settings-label" style="color:#FF9800;">🛡️ KEEPALIVE APP (Προστασία)</div>
+                    <div class="switch-row" style="margin-top:5px;">
+                        <span style="font-size:14px; font-weight:bold;">Συναγερμός στο Παρασκήνιο<br><small style="font-weight:normal; font-size:11px; color:#aaa;">(Όταν κλείνουν την εφαρμογή)</small></span>
+                        <label class="switch"><input type="checkbox" id="switchWarnOnBackground" onchange="const val = this.checked; localStorage.setItem('bellgo_keepalive', val); window.disableBackgroundWarning = !val; window.socket.emit('save-store-settings', { warnOnBackground: val });"><span class="slider"></span></label>
+                    </div>
+                </div>
 
                 <!-- ✅ NEW: EASY TAP TO PAY (SoftPOS) -->
                 <div id="softPosSettingsContainer" class="settings-section" style="background:#222; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #444;">
                     <div class="settings-label" style="color:#00E676;" data-i18n="softpos">📱 ΑΝΕΠΑΦΗ ΠΛΗΡΩΜΗ (SoftPOS)</div>
-                    <select id="selSoftPosProvider" class="inp-settings" onchange="PaySystem.updateSoftPosUI()">
+                    <select id="selSoftPosProvider" class="inp-settings" onchange="PaySystem.updateSoftPosUI(); App.autoSaveSettings()">
                         <option value="" data-i18n="choose_provider">Επιλέξτε Πάροχο...</option>
                         <option value="viva">Viva Wallet</option>
                         <option value="alpha">Alpha Bank (Nexi)</option>
@@ -347,12 +354,12 @@
                         <a id="linkSoftPosReg" href="#" target="_blank" style="color:#2196F3; text-decoration:underline; font-weight:bold;">🔗 Εγγραφή στον Πάροχο</a>
                     </div>
 
-                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Αναγνωριστικό Εμπόρου / TID" onblur="App.autoSaveSettings()" data-i18n-placeholder="merchant_id">
-                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="Κλειδί API / Token (Προαιρετικό)" onblur="App.autoSaveSettings()" data-i18n-placeholder="api_key">
+                    <input type="text" id="inpSoftPosMerchantId" class="inp-settings" placeholder="Αναγνωριστικό Εμπόρου / TID" onblur="PaySystem.updateSoftPosUI(); App.autoSaveSettings()" data-i18n-placeholder="merchant_id">
+                    <input type="text" id="inpSoftPosApiKey" class="inp-settings" placeholder="Κλειδί API / Token (Προαιρετικό)" onblur="PaySystem.updateSoftPosUI(); App.autoSaveSettings()" data-i18n-placeholder="api_key">
                     
                     <div class="switch-row" style="margin-top:5px;">
                         <span data-i18n="enable">ΕΝΕΡΓΟΠΟΙΗΣΗ</span>
-                        <label class="switch"><input type="checkbox" id="switchSoftPosEnabled" onclick="App.autoSaveSettings()"><span class="slider"></span></label>
+                        <label class="switch"><input type="checkbox" id="switchSoftPosEnabled" onchange="PaySystem.updateSoftPosUI(); App.autoSaveSettings()"><span class="slider"></span></label>
                     </div>
 
                     <div style="margin-top:10px; border-top:1px solid #444; padding-top:10px;">
@@ -681,11 +688,9 @@
         <button onclick="event.stopPropagation(); App.forgotPin()" style="margin-top:20px; background:none; border:none; color:#2196F3; font-size:14px; cursor:pointer;" data-i18n="forgot_pin_sos">🆘 Ξέχασα το PIN</button>
     </div>
 
-    <script type="module" src="premium.js?v=7"></script>
-    <script type="module" src="premium2.js"></script>
-    <script type="module" src="premium3.js"></script>
+    <script type="module" src="premium.js?v=16"></script>
     <script src="player.js"></script>
-    <script src="keepalive.js"></script>
+    <script src="keepalive.js?v=3"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js', { scope: '/manage/' })
@@ -729,23 +734,6 @@
                     }
                 };
             }
-            
-            // ✅ Σύνδεση για ενημέρωση του διακόπτη KeepAlive από τον server
-            setTimeout(() => {
-                if (window.socket) {
-                    window.socket.on('store-settings-update', (settings) => {
-                        if (settings) {
-                            const sw = document.getElementById('switchWarnOnBackground');
-                            if (sw && settings.warnOnBackground !== undefined) {
-                                sw.checked = settings.warnOnBackground;
-                            } else if (sw) {
-                                sw.checked = true; // Προεπιλογή: Ενεργό
-                            }
-                            window.disableBackgroundWarning = settings.warnOnBackground === false;
-                        }
-                    });
-                }
-            }, 2000);
         });
     </script>
 </body>
