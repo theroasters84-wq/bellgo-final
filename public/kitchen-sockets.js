@@ -133,6 +133,10 @@ export function initKitchenSockets(App, userData) {
                     statusEl.style.color = "#aaa";
                 }
             }
+        
+        // ✅ Ενημέρωση ρύθμισης KeepAlive για την Κουζίνα
+        if (settings.warnOnBackground === false) window.disableBackgroundWarning = true;
+        else window.disableBackgroundWarning = false;
         }
     });
 

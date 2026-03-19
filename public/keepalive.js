@@ -67,6 +67,9 @@ const KeepAlive = {
     warnOnBackground: () => {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
+                // ✅ Έλεγχος αν ο διαχειριστής έχει απενεργοποιήσει τη λειτουργία από τις ρυθμίσεις
+                if (window.disableBackgroundWarning) return;
+
                 // Έλεγχος αν ο χρήστης έχει ήδη ανοιχτό το Fake Lock
                 const fakeLock = document.getElementById('fakeLockOverlay');
                 if (fakeLock && fakeLock.style.display === 'flex') {

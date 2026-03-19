@@ -99,15 +99,6 @@
                     <span id="headerName" style="font-weight:bold; font-size:14px; color:#1f2937; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">STORE</span>
                     <small id="headerStore" style="opacity:0.8; font-size:11px; color:var(--primary); font-weight:bold;">👤 ...</small>
                 </div>
-                
-                <!-- ✅ GOOGLE TRANSLATE WIDGET -->
-                <div id="google_translate_element" style="display:inline-block; margin-left:10px; transform:scale(0.8); transform-origin:left center; z-index: 9999;"></div>
-                <script type="text/javascript">
-                  function googleTranslateElementInit() {
-                    new google.translate.TranslateElement({ pageLanguage: 'el', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
-                  }
-                </script>
-                <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </div>
             <div class="header-actions" style="position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 5000;">
                 <button id="btnMyOrders" class="btn-icon" onclick="App.toggleMyOrders()" title="Παραγγελίες" style="display:none;">
@@ -224,6 +215,7 @@
                     <button class="modal-btn" style="background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; font-size:24px; padding:15px; margin:0;" onclick="UnlockPIN.add(0)">0</button>
                     <button class="modal-btn" style="background:#10B981; color:white; font-size:20px; padding:15px; margin:0; border:none;" onclick="UnlockPIN.submit()">OK</button>
                 </div>
+                <button onclick="UnlockPIN.forgot()" style="background:none; border:none; color:#0095f6; font-weight:bold; cursor:pointer; margin-bottom:10px; width:100%;" data-i18n="forgot_pin_sos">🆘 ΞΕΧΑΣΑ ΤΟ PIN</button>
                 <button onclick="UnlockPIN.close()" style="background:none; border:none; color:#6b7280; font-weight:bold; cursor:pointer;">ΑΚΥΡΟ</button>
             </div>
         </div>
@@ -401,7 +393,13 @@
                     }
                 });
             },
-            close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); }
+            close: () => { document.getElementById('pinUnlockModal').style.display = 'none'; UnlockPIN.clear(); },
+            forgot: () => {
+                if (confirm(t('forgot_pin_confirm') || "Να σταλεί email επαναφοράς PIN στο κατάστημα;")) {
+                    if(window.socket) window.socket.emit('forgot-pin', { email: userData.store });
+                    alert(t('email_sent_inform') || "Το email εστάλη! Ενημερώστε τον διαχειριστή.");
+                }
+            }
         };
 
         window.UI = {
@@ -896,6 +894,10 @@
                             closedOverlay.style.display = 'none';
                             if(btnSend) { btnSend.disabled = false; }
                         }
+                        
+                        // ✅ Ενημέρωση ρύθμισης KeepAlive για το Σέρβις
+                        if (settings.warnOnBackground === false) window.disableBackgroundWarning = true;
+                        else window.disableBackgroundWarning = false;
                     }
                 });
 

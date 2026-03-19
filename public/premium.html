@@ -61,19 +61,10 @@
 <body>
 
     <div id="mainApp">
-        <div class="header">
+        <div class="header" ondblclick="if(event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; App.toggleFakeLock();" onclick="if(event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
                 <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
-                
-                <!-- ✅ GOOGLE TRANSLATE WIDGET -->
-                <div id="google_translate_element" style="display:inline-block; margin-left:10px; transform:scale(0.8); transform-origin:left center; z-index: 9999;"></div>
-                <script type="text/javascript">
-                  function googleTranslateElementInit() {
-                    new google.translate.TranslateElement({ pageLanguage: 'el', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
-                  }
-                </script>
-                <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </div>
             
             <div class="header-actions" style="position: fixed; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: center; gap: 12px; z-index: 5000;">
@@ -738,6 +729,23 @@
                     }
                 };
             }
+            
+            // ✅ Σύνδεση για ενημέρωση του διακόπτη KeepAlive από τον server
+            setTimeout(() => {
+                if (window.socket) {
+                    window.socket.on('store-settings-update', (settings) => {
+                        if (settings) {
+                            const sw = document.getElementById('switchWarnOnBackground');
+                            if (sw && settings.warnOnBackground !== undefined) {
+                                sw.checked = settings.warnOnBackground;
+                            } else if (sw) {
+                                sw.checked = true; // Προεπιλογή: Ενεργό
+                            }
+                            window.disableBackgroundWarning = settings.warnOnBackground === false;
+                        }
+                    });
+                }
+            }, 2000);
         });
     </script>
 </body>
