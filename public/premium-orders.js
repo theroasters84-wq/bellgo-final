@@ -324,6 +324,7 @@ export const OrdersUI = {
 
             const icon = document.createElement('div');
             icon.className = `order-folder ${order.status === 'pending' ? 'ringing' : ''}`;
+            icon.dataset.orderId = order.id; // ✅ Προσθήκη ID για 100% σίγουρο εντοπισμό
             // ✅ Apply Cooking style
             if (order.status === 'cooking') icon.classList.add('cooking');
             // ✅ Apply Paid style

@@ -283,7 +283,7 @@ module.exports = {
                         }
                     }
                 },
-                data: { type: "alarm", ...dataPayload, title: title, body: body, url: targetUrl }
+                data: { type: "alarm", ...Object.fromEntries(Object.entries(dataPayload).map(([k, v]) => [k, String(v)])), title: title, body: body, url: targetUrl } // ✅ NEW: Ensure only string values
             };
 
             // ✅ NEW: Android Native Logic (Data Only for Background Wakeup)

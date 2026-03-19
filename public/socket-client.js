@@ -1,8 +1,9 @@
 export function initSockets(App, ctx) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
         const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+        console.log("🔌 Πελάτης συνδέεται στο:", serverUrl || "Local Network", "| Live Forced:", forceLive);
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
     }
     window.socket.removeAllListeners();
@@ -10,7 +11,7 @@ export function initSockets(App, ctx) {
     const socket = window.socket;
 
     socket.on('connect', () => {
-        const mySocketUsername = ctx.getSafeName() + " (
+        const mySocketUsername = ctx.getSafeName() + " (" + (ctx.t('customer_default') || "Πελάτης") + ")";
         socket.emit('join-store', { 
             storeName: ctx.TARGET_STORE, 
             username: mySocketUsername, 
@@ -114,7 +115,17 @@ export function initSockets(App, ctx) {
         const customerDetails = ctx.customerDetails;
         let activeOrders = ctx.activeOrders;
         const mySocketUsername = customerDetails.name + " (" + (ctx.t('customer_default') || "Πελάτης") + ")";
-        const myServerOrders = orders.filter(o => o.from ==e 
+        
+        const myServerOrders = orders.filter(o => {
+            if (o.from !== mySocketUsername) return false;
+            // ✅ FIX: Strict filtering by Table/Mode to avoid mixing orders from different tables
+            if (ctx.isDineIn) {
+                const match = o.text ? o.text.match(/\[ΤΡ:\s*([^|\]]+)/) : null;
+                return match && match[1].trim() === String(ctx.tableNumber).trim();
+            } else {
+                return o.text && !o.text.includes('[ΤΡ:');
+            }
+        });
         let changed = false;
         
         // Update existing local orders
@@ -220,7 +231,8 @@ export function initSockets(App, ctx) {
             if(btn) {
                 btn.innerText = "⏳ " + (ctx.t('waiting_confirmation') || "ΑΝΑΜΟΝΗ ΕΠΙΒΕΒΑΙΩΣΗΣ...");
                 btn.disabled = true;
-                btn.style.backgroun}
+                btn.style.background = "#555";
+            }
             App.pendingReservationId = res.reservationId;
             
             // ✅ NEW: Save ID to LocalStorage
@@ -240,7 +252,7 @@ export function initSockets(App, ctx) {
             alert("✅ " + (ctx.t('reservation_accepted') || "Η κράτηση σας ΕΓΙΝΕ ΔΕΚΤΗ!"));
             document.getElementById('bookingModal').style.display='none';
             App.pendingReservationId = null;
-            // Reset  document.querySelector('#bookingModal button.btn-save-details');
+            const btn = document.querySelector('#bookingModal button.btn-save-details');
             if(btn) { btn.innerText = ctx.t('book_btn') || "ΚΡΑΤΗΣΗ"; btn.disabled = false; btn.style.background = "#9C27B0"; }
         }
     });
@@ -256,7 +268,8 @@ export function initSockets(App, ctx) {
         let myRes = JSON.parse(localStorage.getItem('bellgo_my_reservations') || '[]');
         myRes = myRes.filter(rid => rid !== id);
         localStorage.setItem('bellgo_my_reservations', JSON.stringify(myRes));
-        App.op
+        App.openMyReservations();
+    });
 
     // ✅ Force Connect / Re-Join if needed
     if (!socket.connected) {

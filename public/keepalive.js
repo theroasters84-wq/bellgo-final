@@ -65,6 +65,12 @@ const KeepAlive = {
 
     // 4. BACKGROUND WARNING: Προειδοποιεί αν κλειδώσουν την οθόνη ή βγουν από το app
     warnOnBackground: () => {
+        // ✅ Διαβάζουμε ΑΜΕΣΑ την τοπική ρύθμιση για να μην χτυπάει στο 1ο κατέβασμα της οθόνης
+        const savedKeepAlive = localStorage.getItem('bellgo_keepalive');
+        if (savedKeepAlive !== null) {
+            window.disableBackgroundWarning = (savedKeepAlive === 'false');
+        }
+
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
                 // ✅ Έλεγχος αν ο διαχειριστής έχει απενεργοποιήσει τη λειτουργία από τις ρυθμίσεις

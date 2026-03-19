@@ -10,6 +10,7 @@
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Delivery">
 
@@ -75,6 +76,19 @@
             <button class="btn-save-details" onclick="App.openMyReservations()" style="background:#333; margin-top:15px; font-size:14px;">📋 ΟΙ ΚΡΑΤΗΣΕΙΣ ΜΟΥ</button>
         </div>
     </div>
+
+    <!-- ✅ NEW: TABLE CHOICE MODAL (Dine-In Only) -->
+    <div id="tableChoiceModal" class="overlay-screen" style="display:none; z-index: 12500;">
+        <div class="details-box" style="text-align:center;">
+            <h3 style="color:#00E676; margin-bottom:20px;">🍽️ <span data-i18n="table_welcome">Καλώς ήρθατε στο Τραπέζι</span> <span id="welcomeTableNum"></span></h3>
+            <button class="btn-save-details" onclick="App.tableAction('menu')" style="margin-bottom:15px; background:#2196F3;">📜 <span data-i18n="view_menu">ΔΕΣ ΤΟ ΜΕΝΟΥ</span></button>
+            <button class="btn-save-details" onclick="App.tableAction('order')" style="margin-bottom:15px; background:#10B981;">🛒 <span data-i18n="order_now">ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ</span></button>
+            <button class="btn-save-details" onclick="App.tableAction('call')" style="background:#F59E0B;">🛎️ <span data-i18n="call_waiter">ΚΑΛΕΣΕ ΤΟΝ ΣΕΡΒΙΤΟΡΟ</span></button>
+        </div>
+    </div>
+    
+    <!-- ✅ NEW: MENU ONLY RETURN BUTTON -->
+    <button id="btnExitMenuOnly" onclick="App.exitMenuOnly()" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#333; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3);" data-i18n="return_btn">🔙 ΕΠΙΣΤΡΟΦΗ</button>
 
     <div id="detailsOverlay" class="overlay-screen">
         <div class="details-box" style="position:relative;">
@@ -174,6 +188,8 @@
     <div id="appContent" style="display:none;">
         <div class="header">
             <div class="header-left">
+                <!-- ✅ NEW: Hamburger Menu Button -->
+                <button id="btnCustomerMenuToggle" onclick="App.showMenuOptions()" style="background:transparent; border:none; color:var(--text-main); font-size:28px; cursor:pointer; padding:0; margin-right:10px;">☰</button>
                 <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
                     ⏳ <span id="miniStatusText">...</span>
                 </button>
@@ -201,6 +217,8 @@
                     🍽️ <span style="font-size:10px;">ΚΡΑΤΗΣΕΙΣ</span>
                     <span id="resBadgeHeader" style="display:none; background:red; color:white; border-radius:50%; padding:1px 5px; font-size:10px; font-weight:bold;">0</span>
                 </button>
+                <button id="btnMyBill" class="btn-header-install" onclick="App.openMyBill()" style="display:none; background:#3897f0; color:white; margin-right:5px;">📝 <span data-i18n="my_bill">ΛΟΓΑΡΙΑΣΜΟΣ</span></button>
+                <button id="btnCallWaiterAdmin" class="btn-header-install" onclick="App.callWaiterAdmin()" style="display:none; background:#F59E0B; color:white; margin-right:5px;">🛎️ <span data-i18n="call">ΚΛΗΣΗ</span></button>
                 <button id="btnInstallHeader" class="btn-header-install" onclick="App.installPWA()">📲 <span data-i18n="app">APP</span></button>
             </div>
         </div>
@@ -219,14 +237,14 @@
                 <div id="panelIcon" class="toggle-icon">▲</div>
             </div>
             <div class="panel-content">
-                <div class="address-bar">
+                <div class="address-bar" style="flex-wrap:wrap; gap:5px;">
                     <span id="displayAddress">...</span>
                     <!-- ✅ NEW: BOOKING BUTTON -->
                     <button id="btnMyRes" onclick="App.openMyReservations()" style="display:none; background:#333; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold; position:relative;">
                         🍽️ <span id="resBadge" style="display:none; position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; padding:2px 5px; font-size:10px;">0</span>
                     </button>
                     <button id="btnBookTable" onclick="App.openBookingModal()" style="display:none; background:#9C27B0; color:white; border:none; padding:5px 10px; border-radius:5px; margin-left:5px; cursor:pointer; font-weight:bold;">📅 ΚΡΑΤΗΣΗ</button>
-                    <button class="btn-edit" onclick="App.editDetails()">✏️ <span data-i18n="change">Αλλαγή</span></button>
+                    <button class="btn-edit" onclick="App.editDetails()">✏️ <span id="editDetailsText" data-i18n="change">Αλλαγή</span></button>
                 </div>
                 
                 <textarea id="orderText" class="order-text" 
@@ -241,6 +259,18 @@
             </div>
         </div>
 
+    <!-- ✅ NEW: MY BILL MODAL (Λογαριασμός Πελάτη) -->
+    <div id="myBillModal" class="overlay-screen" style="z-index: 13500; display:none;">
+        <div class="details-box" style="background:#ffffff; color:#1f2937;">
+            <h3 style="color:#2196F3; margin:0; display:flex; align-items:center; justify-content:center; gap:10px;">
+                📝 <span data-i18n="my_bill">Ο ΛΟΓΑΡΙΑΣΜΟΣ ΜΟΥ</span>
+            </h3>
+            <div id="myBillList" style="margin-top:15px; max-height:400px; overflow-y:auto; width:100%; text-align:left; font-size:14px;"></div>
+            <div id="myBillTotal" style="text-align:right; font-size:22px; font-weight:bold; color:#00E676; margin-top:10px; padding-top:10px; border-top:2px solid #e5e7eb;">ΣΥΝΟΛΟ: 0.00€</div>
+            <button onclick="document.getElementById('myBillModal').style.display='none'" style="background:#f3f4f6; border:1px solid #d1d5db; color:#1f2937; margin-top:15px; cursor:pointer; width:100%; font-weight:bold; padding:12px; border-radius:8px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
         <div id="statusOverlay">
             <div class="status-content">
                 <h2 style="color:#FFD700; margin-top:0;" data-i18n="order_status">Κατάσταση Παραγγελιών</h2>
@@ -250,6 +280,6 @@
         </div>
     </div>
 
-    <script type="module" src="/order.js"></script>
+    <script type="module" src="/order.js?v=6"></script>
 </body>
 </html>

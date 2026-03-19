@@ -188,6 +188,15 @@ app.get('/manifest.json', async (req, res) => {
 });
 
 /* ---------------- SOCKET.IO ---------------- */
+
+// ✅ NEW: Global Server Logger (Παρακολουθεί ΟΛΑ τα events)
+io.on('connection', (socket) => {
+    socket.onAny((eventName, ...args) => {
+        if (eventName === 'heartbeat') return; // Κρύβουμε το heartbeat για να μη γεμίζει η οθόνη
+        console.log(`[SERVER] 📥 EVENT: '${eventName}' | Από: ${socket.username || socket.id}`);
+    });
+});
+
 require('./socket-events')({ io, storesData, activeUsers, tempBlacklist, db, admin, stripe, YOUR_DOMAIN, transporter });
 
 /* ---------------- CRON JOBS & TIMERS ---------------- */

@@ -77,7 +77,76 @@ module.exports = function(socket, context, getMyStore) {
             const markedLines = lines.map(l => `++ ${l}`).join('\n');
             existingOrder.text += `\n${markedLines}`;
             existingOrder.status = 'pending';
-            Logic.notifyAdmin(socket.store, "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ ➕", `Από: ${socket.username}`, null, "", id, storesData, activeUsers, io, YOUR_DOMAIN, admin);
+            // ✅ Αφαιρέθηκε η ειδοποίηση "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ +" (ώστε να μην πετάγεται το καμπανάκι στον Admin)
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+        }
+    });
+
+    socket.on('admin-only-call', (data, callback) => {
+        try {
+            console.log(`[SERVER] 🛎️ Κλήση τραπεζιού: ${data.table} για το κατάστημα ${socket.store}`);
+            const store = getMyStore();
+            if (!store) {
+                console.log(`[SERVER] ❌ Δεν βρέθηκε το κατάστημα ${socket.store}`);
+                if (callback) callback({ success: false, error: 'Store not found' });
+                return;
+            }
+            const table = data.table || '?';
+            const msg = data.msg || 'Ζητάει εξυπηρέτηση';
+            
+            let foundOrder = false;
+            // Ψάχνουμε τον ενεργό φάκελο του τραπεζιού
+            store.orders.forEach(o => {
+                if (o.text) { // ✅ Ασφάλεια αποφυγής κρασαρίσματος
+                    const textMatch = o.text.match(/\[ΤΡ:\s*([^|\]]+)/);
+                    if (textMatch && textMatch[1].trim() === String(table).trim() && o.status !== 'completed') {
+                        o.isCalling = true;
+                        foundOrder = true;
+                    }
+                }
+            });
+
+            // Αν δεν έχει παραγγείλει ακόμα, δημιουργούμε προσωρινό φάκελο Κλήσης
+            if (!foundOrder) {
+                const orderId = Date.now();
+                const newOrder = { id: orderId, text: `[ΤΡ: ${table} | AT: - | 🛎️]\n👤 Πελάτης\n---\n❗ ΖΗΤΑΕΙ ΕΞΥΠΗΡΕΤΗΣΗ`, from: "ΚΛΗΣΗ ΤΡΑΠΕΖΙΟΥ", status: "pending", store: socket.store, isCalling: true };
+                store.orders.push(newOrder);
+            }
+
+            Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+
+            // ✅ FIX: Broadcast κατευθείαν σε όλο το κατάστημα
+            io.to(socket.store).emit('ring-bell', { source: `🛎️ ΤΡΑΠΕΖΙ ${table}`, location: msg, roleTarget: 'admin' });
+
+            if (store.staffTokens) {
+                Object.entries(store.staffTokens).forEach(([username, tData]) => {
+                    if (tData.role === 'admin') {
+                        const key = `${socket.store}_${username}`;
+                        if (activeUsers[key] && activeUsers[key].status === 'online') return;
+                        Logic.sendPushNotification({ fcmToken: tData.token, role: tData.role, isNative: tData.isNative }, `🛎️ ΚΛΗΣΗ: ΤΡΑΠΕΖΙ ${table}`, msg, { type: "alarm" }, YOUR_DOMAIN, admin);
+                    }
+                });
+            }
+            if (callback) callback({ success: true });
+        } catch (e) {
+            console.error("❌ Admin Only Call Error:", e);
+            if (callback) callback({ success: false, error: e.message });
+        }
+    });
+
+    // ✅ Καθαρισμός Καμπάνας μόλις το ανοίξει ο Admin
+    socket.on('clear-call', (orderId) => {
+        const store = getMyStore();
+        if (!store) return;
+        const o = store.orders.find(x => x.id == orderId);
+        if (o && o.isCalling) {
+            o.isCalling = false;
+            
+            // Αν ήταν απλή κλήση χωρίς παραγγελία, διαγράφουμε τον φάκελο εντελώς
+            if (o.from === "ΚΛΗΣΗ ΤΡΑΠΕΖΙΟΥ") {
+                store.orders = store.orders.filter(x => x.id != orderId);
+            }
+            
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
     });

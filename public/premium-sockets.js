@@ -3,8 +3,9 @@ import { DEFAULT_CATEGORIES } from './menu-presets.js';
 export function initPremiumSockets(App, userData) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
         const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+        console.log("🔌 Ταμείο συνδέεται στο:", serverUrl || "Local Network", "| Live Forced:", forceLive);
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
     }
     const socket = window.socket;
@@ -250,6 +251,32 @@ export function initPremiumSockets(App, userData) {
     
     // ✅ Update Full Order List
     socket.on('orders-update', (orders) => {
+        // ✅ NEW: Παρεμβολή στο κλικ του Φακέλου για να καθαρίζει η κλήση!
+        if (App.openOrderWindow && !App._wrappedOpenOrderWindow) {
+            const orig = App.openOrderWindow;
+            App.openOrderWindow = function(order) {
+                if (order && order.isCalling) {
+                    window.socket.emit('clear-call', order.id);
+                    order.isCalling = false; // ✅ Άμεσος τοπικός καθαρισμός
+                    
+                    if (order.isFakeCall || order.from === "ΚΛΗΣΗ ΤΡΑΠΕΖΙΟΥ") {
+                        App.activeOrders = App.activeOrders.filter(x => x.id != order.id);
+                        if (typeof App.renderDesktopIcons === 'function') App.renderDesktopIcons(App.activeOrders);
+                    }
+
+                    if(window.AudioEngine) window.AudioEngine.stopAlarm();
+                    const bell = document.getElementById('adminBellBtn');
+                    if (bell) bell.style.display = 'none';
+                    
+                    if (order.from === "ΚΛΗΣΗ ΤΡΑΠΕΖΙΟΥ") {
+                        return; // ✅ Μην ανοίγεις το παράθυρο. Απλά διέγραψε την κλήση!
+                    }
+                }
+                orig.call(App, order);
+            };
+            App._wrappedOpenOrderWindow = true;
+        }
+
         // ✅ AUTO PRINT LOGIC
         orders.forEach(o => {
             if (!App.knownOrderIds.has(o.id)) {
@@ -257,8 +284,33 @@ export function initPremiumSockets(App, userData) {
             }
         });
         App.isInitialized = true; // Mark as initialized after first batch
-        App.activeOrders = orders;
-        App.renderDesktopIcons(orders);
+        
+        // ✅ FRONTEND AUTO-HEAL 2: Διατήρηση των τοπικών φακέλων κλήσης για να μην τους σβήνει ο Server!
+        const fakeOrders = (App.activeOrders || []).filter(o => o.isFakeCall);
+        App.activeOrders = [...orders, ...fakeOrders];
+        
+        if (typeof App.renderDesktopIcons === 'function') {
+            App.renderDesktopIcons(App.activeOrders);
+        }
+
+        // ✅ NEW: Βάζουμε το καμπανάκι πάνω στους φακέλους που καλούν
+        setTimeout(() => {
+            App.activeOrders.forEach(o => {
+                if (o.isCalling) {
+                    const folders = document.querySelectorAll('.order-folder');
+                    folders.forEach(f => {
+                        if (f.dataset.orderId == o.id) { // ✅ FIX: Εντοπισμός βάσει dataset
+                            f.classList.add('is-calling');
+                            if (!f.querySelector('.folder-bell')) {
+                                f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:20px; animation:shake 0.5s infinite; background:white; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">🛎️</div>`);
+                                f.style.boxShadow = "0 0 15px #EF4444";
+                                f.style.border = "2px solid #EF4444";
+                            }
+                        }
+                    });
+                }
+            });
+        }, 100);
 
         // ✅ NEW: Auto-Open Order from URL (Notification Click)
         const urlParams = new URLSearchParams(window.location.search);
@@ -313,12 +365,94 @@ export function initPremiumSockets(App, userData) {
     });
 
     socket.on('ring-bell', (data) => {
-        if(window.AudioEngine) window.AudioEngine.triggerAlarm(data ? data.source : null);
+        console.log("🔔 ΕΛΗΦΘΗ ΣΗΜΑ ΚΛΗΣΗΣ ΑΠΟ SERVER:", data);
+        
+        if (data && data.roleTarget && data.roleTarget !== 'admin') return; // ✅ Αγνοεί κλήσεις αν δεν προορίζονται για Admin
+        
+        // ✅ FRONTEND AUTO-HEAL: Φτιάχνει τον φάκελο μόνο του, ακόμα κι αν ο server έχει παλιό κώδικα!
+        if (data && data.source && data.source.includes('🛎️ ΤΡΑΠΕΖΙ')) {
+            const tableNum = data.source.replace('🛎️ ΤΡΑΠΕΖΙ', '').trim();
+            let found = false;
+            App.activeOrders.forEach(o => {
+                const match = o.text ? o.text.match(/\[ΤΡ:\s*([^|\]]+)/) : null;
+                if (match && match[1].trim() === tableNum && o.status !== 'completed') {
+                    o.isCalling = true;
+                    found = true;
+                }
+            });
+            if (!found) {
+                const fakeId = Date.now();
+                App.activeOrders.push({
+                    id: fakeId,
+                    text: `[ΤΡ: ${tableNum} | AT: - | 🛎️]\n👤 Πελάτης\n---\n❗ ΖΗΤΑΕΙ ΕΞΥΠΗΡΕΤΗΣΗ`,
+                    from: "ΚΛΗΣΗ ΤΡΑΠΕΖΙΟΥ",
+                    status: "pending",
+                    isCalling: true,
+                    isFakeCall: true
+                });
+            }
+            if (typeof App.renderDesktopIcons === 'function') App.renderDesktopIcons(App.activeOrders);
+            
+            setTimeout(() => {
+                const folders = document.querySelectorAll('.order-folder');
+                App.activeOrders.forEach(o => {
+                    if (o.isCalling) {
+                        folders.forEach(f => {
+                            if (f.dataset.orderId == o.id) {
+                                f.classList.add('is-calling');
+                                if (!f.querySelector('.folder-bell')) {
+                                    f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:20px; animation:shake 0.5s infinite; background:white; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">🛎️</div>`);
+                                    f.style.boxShadow = "0 0 15px #EF4444";
+                                    f.style.border = "2px solid #EF4444";
+                                }
+                            }
+                        });
+                    }
+                });
+            }, 100);
+        }
+
+        // ✅ FIX: Force reset and play, Fallback to Synth if AudioEngine is blocked
+        if(window.AudioEngine) {
+            window.AudioEngine.isRinging = false; 
+            window.AudioEngine.triggerAlarm(data ? data.source : null);
+        } else {
+            const audio = new Audio('/alert.mp3');
+            audio.play().catch(e => {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        const ctx = new AudioContext();
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(600, ctx.currentTime);
+                        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.5);
+                    }
+                } catch(err){}
+            });
+            if(navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
+        }
+        
+        // ✅ Εμφάνιση του μεγάλου κόκκινου κουμπιού της κλήσης
+        const bell = document.getElementById('adminBellBtn');
+        if (bell) {
+            bell.style.display = 'flex';
+            if (data && data.source) bell.innerText = '🔔 ' + data.source;
+            else bell.innerText = '🔔';
+        }
     });
 
     // ✅ NEW: Stop Alarm when someone else accepts
     socket.on('stop-bell', () => {
         if(window.AudioEngine) window.AudioEngine.stopAlarm();
+        const bell = document.getElementById('adminBellBtn');
+        if (bell) bell.style.display = 'none';
     });
 
     // ✅ NEW: Force Logout (Kick)

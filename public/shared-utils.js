@@ -106,6 +106,7 @@ export const I18n = {
             wages: "👷 WAGES (Daily)",
             customer_details_click: "📝 CUSTOMER DETAILS (CLICK)",
             ok_close: "OK (CLOSE)",
+            change: "Change",
             click_to_change: "Click to change",
             send_order: "SEND ORDER",
             
@@ -246,7 +247,34 @@ export const I18n = {
             geolocation_unsupported: "Geolocation is not supported by your browser.",
             gps_error: "GPS Error: ",
             book_btn: "BOOK",
-            table_order: "TABLE ORDER"
+            table_order: "TABLE ORDER",
+            
+            call: "CALL",
+            confirm_call_waiter: "Do you want to call a waiter?",
+            waiter_called_success: "Call sent! The manager will send a waiter shortly.",
+            my_bill: "MY BILL",
+            
+            view_menu: "VIEW MENU",
+            order_now: "ORDER NOW",
+            call_waiter: "CALL WAITER",
+            table_welcome: "Welcome to Table",
+            return_btn: "🔙 RETURN",
+            menu_only_alert: "To place an order, press 'RETURN' and select 'ORDER NOW'.",
+
+            // ✅ Table Modal
+            table_active: "The table is active.",
+            btn_existing_order: "EXISTING ORDER",
+            btn_new_order_reset: "NEW ORDER (Reset)",
+            btn_supplement: "ADD ITEMS",
+            btn_pay_full: "PAY NOW",
+            new_people_question: "Did new people arrive?",
+            new_people_hint: "If yes, please enter the number.",
+            placeholder_people: "No. of people (optional)",
+            btn_continue_menu: "CONTINUE TO MENU ▶",
+            payment_method: "Payment Method",
+            btn_call_waiter: "CALL WAITER",
+            btn_pay_stripe: "ONLINE (Stripe)",
+            waiter_notified: "Waiter has been notified!"
         },
         el: {
             select_role: "Επιλέξτε τον ρόλο σας:",
@@ -345,6 +373,7 @@ export const I18n = {
             wages: "👷 ΜΕΡΟΚΑΜΑΤΑ (Ημέρας)",
             customer_details_click: "📝 ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ (ΚΛΙΚ)",
             ok_close: "OK (ΚΛΕΙΣΙΜΟ)",
+            change: "Αλλαγή",
             click_to_change: "Πατήστε για αλλαγή",
             send_order: "ΑΠΟΣΤΟΛΗ",
             
@@ -485,7 +514,34 @@ export const I18n = {
             geolocation_unsupported: "Η γεωθεσία δεν υποστηρίζεται.",
             gps_error: "Σφάλμα GPS: ",
             book_btn: "ΚΡΑΤΗΣΗ",
-            table_order: "ΠΑΡΑΓΓΕΛΙΑ ΣΤΟ ΤΡΑΠΕΖΙ"
+            table_order: "ΠΑΡΑΓΓΕΛΙΑ ΣΤΟ ΤΡΑΠΕΖΙ",
+            
+            call: "ΚΛΗΣΗ",
+            confirm_call_waiter: "Θέλετε να καλέσετε τον σερβιτόρο;",
+            waiter_called_success: "Η κλήση εστάλη! Ο υπεύθυνος θα στείλει τον σερβιτόρο σας.",
+            my_bill: "ΛΟΓΑΡΙΑΣΜΟΣ",
+            
+            view_menu: "ΔΕΣ ΤΟ ΜΕΝΟΥ",
+            order_now: "ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ",
+            call_waiter: "ΚΑΛΕΣΕ ΤΟΝ ΣΕΡΒΙΤΟΡΟ",
+            table_welcome: "Καλώς ήρθατε στο Τραπέζι",
+            return_btn: "🔙 ΕΠΙΣΤΡΟΦΗ",
+            menu_only_alert: "Για να παραγγείλετε, πατήστε 'ΕΠΙΣΤΡΟΦΗ' και επιλέξτε 'ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ'.",
+
+            // ✅ Table Modal
+            table_active: "Το τραπέζι είναι ενεργό.",
+            btn_existing_order: "ΥΠΑΡΧΟΥΣΑ ΠΑΡΑΓΓΕΛΙΑ",
+            btn_new_order_reset: "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ (Reset)",
+            btn_supplement: "ΣΥΜΠΛΗΡΩΣΗ",
+            btn_pay_full: "ΠΛΗΡΩΜΗ",
+            new_people_question: "Ήρθαν νέα άτομα;",
+            new_people_hint: "Αν ναι, συμπληρώστε τον αριθμό.",
+            placeholder_people: "Αρ. ατόμων (προαιρετικό)",
+            btn_continue_menu: "ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶",
+            payment_method: "Τρόπος Πληρωμής",
+            btn_call_waiter: "ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ",
+            btn_pay_stripe: "ONLINE (Stripe)",
+            waiter_notified: "Ειδοποιήσαμε τον σερβιτόρο!"
         }
     },
 

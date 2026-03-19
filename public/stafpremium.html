@@ -9,6 +9,7 @@
     
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="admin.png">
     <link rel="icon" href="admin.png">
@@ -538,6 +539,7 @@
             updatingOrderId: null,
             staffChargeMode: false, // ✅ NEW
             payMethod: 'cash',
+            coverPrice: 0, // ✅ NEW: Αποθήκευση τιμής κουβέρ
             isChatOpen: false,
             justPaid: false, // ✅ NEW: Flag to ignore self-ringing after payment
             features: {}, // ✅ NEW: Local Features
@@ -882,6 +884,7 @@
                             localStorage.setItem('bellgo_store_name', settings.name);
                         }
                         App.staffChargeMode = settings.staffCharge || false; // ✅ Update local state
+                        if (settings.coverPrice !== undefined) App.coverPrice = parseFloat(settings.coverPrice); // ✅ Αποθήκευση τιμής κουβέρ
                         if(settings.features) {
                             const fStr = JSON.stringify(settings.features);
                             if (window.lastFeatsStr !== fStr) {
@@ -1197,7 +1200,8 @@
                 const txt = document.getElementById('inpOrderText').value;
                 const tbl = document.getElementById('inpTable').value;
                 const payIcon = App.payMethod === 'card' ? '💳' : '💵';
-                const cv = document.getElementById('inpCovers').value;
+                const cvStr = document.getElementById('inpCovers').value;
+                const cv = parseInt(cvStr) || 0;
                 
                 if (App.updatingOrderId) {
                      // ✅ FIX: Χρήση add-items για ++ και Alarm στον Admin
@@ -1209,7 +1213,31 @@
                 }
                 if(!tbl || tbl.trim() === '') return alert(t('fill_table_number') || "Παρακαλώ συμπληρώστε αριθμό τραπεζιού!");
                 if(!txt) return alert(t('empty_order') || "Κενή παραγγελία");
-                const header = `[ΤΡ: ${tbl||'-'} | AT: ${cv||'-'} | ${payIcon}]`;
+                
+                // ✅ NEW: Αυτόματη εύρεση υπάρχοντος τραπεζιού για συμπλήρωση
+                const existingOrder = App.allActiveOrders.find(o => {
+                    const match = o.text.match(/\[ΤΡ:\s*([^|\]]+)/);
+                    return match && match[1].trim() === tbl.trim() && o.status !== 'completed';
+                });
+
+                if (existingOrder) {
+                    let finalBody = txt;
+                    if (cv > 0 && App.coverPrice > 0) {
+                        finalBody += `\n${cv} ΚΟΥΒΕΡ:${(cv * App.coverPrice).toFixed(2)}`;
+                    }
+                    window.socket.emit('add-items', { id: existingOrder.id, items: finalBody });
+                    alert((t('added_items') || "Προστέθηκαν! ➕") + ` (Τραπέζι ${tbl})`);
+                    
+                    document.getElementById('inpTable').value = '';
+                    document.getElementById('inpCovers').value = '';
+                    document.getElementById('inpOrderText').value = '';
+                    document.getElementById('liveTotal').innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: 0.00€`;
+                    if(document.getElementById('cartCountBadge')) document.getElementById('cartCountBadge').style.display = 'none';
+                    App.setPayment('cash');
+                    return;
+                }
+
+                const header = `[ΤΡ: ${tbl||'-'} | AT: ${cvStr||'-'} | ${payIcon}]`;
                 window.socket.emit('new-order', `${header}\n${txt}`);
                 App.handleInput();
                 document.getElementById('inpTable').value = '';
@@ -1389,6 +1417,6 @@
         }
     </script>
     <script src="/player.js"></script>
-    <script src="/keepalive.js?v=3"></script>
+    <script src="/keepalive.js?v=4"></script>
 </body>
 </html>

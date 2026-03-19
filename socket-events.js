@@ -8,6 +8,12 @@ module.exports = function(context) {
     const { io, storesData, activeUsers, tempBlacklist, db, admin, stripe, YOUR_DOMAIN, transporter } = context;
 
     io.on('connection', (socket) => {
+        // ✅ ΠΑΝΤΟΔΥΝΑΜΟΣ LOGGER - Καταγράφει ΟΛΑ τα εισερχόμενα σήματα
+        socket.onAny((eventName, ...args) => {
+            if (eventName === 'heartbeat' || eventName === 'get-stats' || eventName === 'get-wallet-data' || eventName === 'get-reservations') return;
+            console.log(`[⚡ EVENT LOG] Πήρα σήμα: '${eventName}' από: ${socket.username || socket.id}`);
+        });
+
         const getMyStore = () => {
             if (!socket.store) return null;
             return storesData[socket.store];

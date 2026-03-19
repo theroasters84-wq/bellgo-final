@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
-import { ReserveTable } from './reserve-table.js';
+import { ReserveTable } from './reserve-table.js?v=5';
 import { I18n, PushNotifications } from './shared-utils.js';
 import { initSockets } from './socket-client.js';
 
@@ -41,7 +41,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     const btnLogin = document.getElementById('btnInstallLogin');
     if(btnLogin) btnLogin.style.display = 'block';
     const btnHeader = document.getElementById('btnInstallHeader');
-    if(btnHeader) btnHeader.style.display = 'block';
+        const isTable = !!new URLSearchParams(window.location.search).get('table');
+        if(btnHeader && !isTable) btnHeader.style.display = 'block';
 });
 
 // iOS Detection
@@ -53,7 +54,8 @@ if (isIos() && !window.navigator.standalone) {
         const btnLogin = document.getElementById('btnInstallLogin');
         if(btnLogin) btnLogin.style.display = 'block';
         const btnHeader = document.getElementById('btnInstallHeader');
-        if(btnHeader) btnHeader.style.display = 'block';
+            const isTable = !!new URLSearchParams(window.location.search).get('table');
+            if(btnHeader && !isTable) btnHeader.style.display = 'block';
 }
 
 const app = initializeApp(firebaseConfig);
@@ -85,9 +87,18 @@ if (TABLE_ID) {
     let currentDetails = JSON.parse(localStorage.getItem('bellgo_customer_info') || 'null');
     
     if (!isPaymentReturn) {
+        // ✅ FIX: Καθαρίζουμε την επιλογή σε κάθε ανανέωση για να βγαίνει ΠΑΝΤΑ το αρχικό μενού
+        sessionStorage.removeItem('bellgo_table_choice_made');
+
         // Αν είναι νέα καρτέλα (Scan) ή αν άλλαξε το τραπέζι -> Reset Covers
         if (isNewSession || (currentDetails && currentDetails.table !== TABLE_ID)) {
             sessionStorage.setItem('bellgo_session_active', 'true');
+            
+            if (currentDetails && currentDetails.table !== TABLE_ID) {
+                console.log("🔄 Table Change Detected: Clearing old orders!");
+                localStorage.removeItem('bellgo_active_orders');
+            }
+            
             if (currentDetails) {
                 console.log("🔄 New Scan or Table Change: Resetting Covers");
                 delete currentDetails.covers; // Force ask for covers
@@ -106,12 +117,14 @@ if (TABLE_ID) {
         currentDetails.type = 'delivery';
         delete currentDetails.table;
         localStorage.setItem('bellgo_customer_info', JSON.stringify(currentDetails));
+        
+        console.log("🔄 Mode Change Detected: Clearing old orders!");
+        localStorage.removeItem('bellgo_active_orders');
     }
 }
 
 let isDineIn = !!TABLE_ID;
-let tableNumber = TABLE_ID;
-window.tableNumber = tableNumber; // ✅ Expose for ReserveTable
+window.tableNumber = TABLE_ID; // ✅ Expose for ReserveTable
 
 // Auto-detect store from path
 if (!TARGET_STORE) {
@@ -207,14 +220,22 @@ window.App = {
 
         // ✅ AUTO-SWITCH FIX: Αν το Mode δεν ταιριάζει με τα αποθηκευμένα, καθαρισμός!
         if (customerDetails) {
+            let modeChanged = false;
             if (isDineIn && customerDetails.type !== 'dinein') {
-                customerDetails = null; // Ήταν Delivery/Pickup, τώρα είναι Τραπέζι -> Reset
+                modeChanged = true;
             } else if (!isDineIn && customerDetails.type === 'dinein') {
-                customerDetails = null; // Ήταν Τραπέζι, τώρα είναι Delivery/Pickup -> Reset
+                modeChanged = true;
             } else if (!isDineIn && choice) {
                 // ✅ FIX: Reset αν άλλαξε από Delivery σε Pickup ή αντίστροφα
-                if (choice === 'pickup' && customerDetails.type !== 'pickup') customerDetails = null;
-                if (choice === 'order' && customerDetails.type !== 'delivery') customerDetails = null;
+                if (choice === 'pickup' && customerDetails.type !== 'pickup') modeChanged = true;
+                if (choice === 'order' && customerDetails.type !== 'delivery') modeChanged = true;
+            }
+            
+            if (modeChanged) {
+                customerDetails = null;
+                activeOrders = [];
+                localStorage.removeItem('bellgo_active_orders');
+                if (window.App && window.App.updateStatusUI) window.App.updateStatusUI(false);
             }
         }
 
@@ -223,7 +244,7 @@ window.App = {
             document.getElementById('detailsTitle').innerText = t('welcome') || 'Καλώς ήρθατε!';
             document.getElementById('deliveryFields').style.display = 'none';
             document.getElementById('dineInFields').style.display = 'block';
-            document.getElementById('tableDisplay').innerText = `${t('table')}: ${tableNumber}`;
+            document.getElementById('tableDisplay').innerText = `${t('table')}: ${window.tableNumber}`;
         } else {
             // ✅ NEW: Ερώτηση για Παραγγελία ή Κράτηση (Μόνο στο Delivery)
             if (!choice) {
@@ -253,7 +274,7 @@ window.App = {
             // Δημιουργούμε προσωρινό session και αφήνουμε το socket να αποφασίσει (Active/Inactive).
             if (isDineIn) {
                 const defaultName = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('customer_default') || "Πελάτης");
-                customerDetails = { name: defaultName, table: tableNumber, type: 'dinein' };
+                customerDetails = { name: defaultName, table: window.tableNumber, type: 'dinein' };
                 localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
                 shouldOpenForm = false;
             } else {
@@ -262,8 +283,8 @@ window.App = {
         } else {
             if (isDineIn) {
                 // ✅ FIX: Δεν ζητάμε covers εδώ. Θα το ζητήσουμε ΜΟΝΟ αν το τραπέζι είναι ανενεργό (μέσω socket)
-                if (customerDetails.table != tableNumber) {
-                    customerDetails.table = tableNumber;
+                if (customerDetails.table != window.tableNumber) {
+                    customerDetails.table = window.tableNumber;
                     localStorage.setItem('bellgo_customer_info', JSON.stringify(customerDetails));
                 }
             }
@@ -292,7 +313,7 @@ window.App = {
             // ✅ FIX: Allow name input if available, otherwise default
             let name = document.getElementById('inpName').value.trim();
             if (!name) name = (currentUser && currentUser.displayName) ? currentUser.displayName : (t('customer_default') || "Πελάτης");
-            customerDetails = { name, covers, table: tableNumber, type: 'dinein' };
+            customerDetails = { name, covers, table: window.tableNumber, type: 'dinein' };
         } else {
             const choice = sessionStorage.getItem('bellgo_choice_made');
             const isPickup = (choice === 'pickup');
@@ -320,6 +341,15 @@ window.App = {
     // ✅ NEW: Επιστροφή στην αρχική επιλογή
     goBackToChoice: () => {
         document.getElementById('detailsOverlay').style.display = 'none';
+        
+        // ✅ FIX: Σωστή επιστροφή στο μενού επιλογής αν είναι Τραπέζι
+        if (isDineIn) {
+             sessionStorage.removeItem('bellgo_table_choice_made');
+             document.getElementById('tableChoiceModal').style.display = 'flex';
+             document.getElementById('appContent').style.display = 'flex'; 
+             return;
+        }
+
         sessionStorage.removeItem('bellgo_choice_made');
         
         // ✅ NEW: Αν υπάρχει τραπέζι (URL), πρόσθεσε επιλογή για επιστροφή στο τραπέζι
@@ -340,6 +370,29 @@ window.App = {
         }
 
         document.getElementById('choiceModal').style.display = 'flex';
+    },
+
+    // ✅ NEW: Εμφάνιση του κεντρικού μενού επιλογών (Hamburger)
+    showMenuOptions: () => {
+        const modal = document.getElementById('choiceModal');
+        let closeBtn = document.getElementById('btnCloseChoiceModal');
+        if (!closeBtn) {
+            closeBtn = document.createElement('button');
+            closeBtn.id = 'btnCloseChoiceModal';
+            closeBtn.innerText = t('cancel') || "ΑΚΥΡΩΣΗ";
+            closeBtn.style.cssText = "background:transparent; border:none; color:#aaa; margin-top:15px; cursor:pointer; font-size:14px; width:100%; font-weight:bold;";
+            closeBtn.onclick = () => modal.style.display = 'none';
+            modal.querySelector('.details-box').appendChild(closeBtn);
+        }
+        
+        // Εμφανίζουμε το κουμπί Ακύρωσης ΜΟΝΟ αν έχει ήδη επιλέξει κάτι (για να μην το κλείσει αν μπαίνει για 1η φορά)
+        if (sessionStorage.getItem('bellgo_choice_made') || isDineIn) {
+            closeBtn.style.display = 'block';
+        } else {
+            closeBtn.style.display = 'none';
+        }
+        
+        modal.style.display = 'flex';
     },
 
     // ✅ NEW: GPS Location for Delivery
@@ -433,7 +486,7 @@ window.App = {
             const cleanName = decodeURIComponent(PRELOADED_NAME);
             document.getElementById('storeNameHeader').innerText = cleanName;
             document.title = cleanName;
-            let maniUrl = `manifest.json?name=${PRELOADED_NAME}&icon=shop`;
+            let maniUrl = `/manifest.json?name=${PRELOADED_NAME}&icon=shop`; // ✅ FIX: Βάλαμε / μπροστά για σωστό Path
             if (TARGET_STORE) maniUrl += `&store=${TARGET_STORE}`;
             document.getElementById('dynamicManifest').setAttribute('href', maniUrl);
         } else if(TARGET_STORE) {
@@ -442,8 +495,41 @@ window.App = {
         
         // ✅ Εμφάνιση σωστής επικεφαλίδας (Τραπέζι ή Διεύθυνση)
         if (isDineIn) {
-             document.getElementById('displayAddress').innerText = `🍽️ ${t('table')} ${tableNumber} (${customerDetails.covers} ${t('pax')})`;
+             document.getElementById('displayAddress').innerText = `🍽️ ${t('table') || 'Τραπέζι'} ${window.tableNumber} (${customerDetails.covers} ${t('people') || 'Άτομα'})`;
+             const btnMenuToggle = document.getElementById('btnCustomerMenuToggle');
+             if (btnMenuToggle) btnMenuToggle.style.display = 'none';
+             const editSpan = document.getElementById('editDetailsText');
+             if (editSpan) { editSpan.setAttribute('data-i18n', 'people'); editSpan.innerText = t('people') || 'Άτομα'; }
+             const btnInstallHeader = document.getElementById('btnInstallHeader');
+             if (btnInstallHeader) btnInstallHeader.style.display = 'none';
+             const btnCall = document.getElementById('btnCallWaiterAdmin');
+             if (btnCall) btnCall.style.display = 'inline-block';
+             const btnBill = document.getElementById('btnMyBill');
+             if (btnBill) btnBill.style.display = 'inline-block';
+
+             // ✅ Εμφάνιση Initial Modal για Τραπέζι
+             const tableChoice = sessionStorage.getItem('bellgo_table_choice_made');
+             if (!tableChoice) {
+                 const wTable = document.getElementById('welcomeTableNum');
+                 if(wTable) wTable.innerText = window.tableNumber;
+                 document.getElementById('tableChoiceModal').style.display = 'flex';
+             } else if (tableChoice === 'menu') {
+                 window.isMenuOnlyMode = true;
+                 const panel = document.getElementById('orderPanel');
+                 if (panel) panel.style.display = 'none';
+                 const btnExit = document.getElementById('btnExitMenuOnly');
+                 if (btnExit) btnExit.style.display = 'block';
+             }
         } else {
+             const btnMenuToggle = document.getElementById('btnCustomerMenuToggle');
+             if (btnMenuToggle) btnMenuToggle.style.display = 'inline-block';
+             const editSpan = document.getElementById('editDetailsText');
+             if (editSpan) { editSpan.setAttribute('data-i18n', 'change'); editSpan.innerText = t('change') || 'Αλλαγή'; }
+             const btnCall = document.getElementById('btnCallWaiterAdmin');
+             if (btnCall) btnCall.style.display = 'none';
+             const btnBill = document.getElementById('btnMyBill');
+             if (btnBill) btnBill.style.display = 'inline-block'; // Το βλέπουν και στο Delivery
+             
              if (customerDetails.type === 'pickup') {
                  document.getElementById('displayAddress').innerText = `🛍️ ${t('pickup_from_store') || 'Παραλαβή από Κατάστημα'}`;
              } else {
@@ -572,7 +658,7 @@ window.App = {
             getSafeName: () => (customerDetails && customerDetails.name) ? customerDetails.name : "Πελάτης",
             get TARGET_STORE() { return TARGET_STORE; },
             get isDineIn() { return isDineIn; },
-            get tableNumber() { return tableNumber; },
+            get tableNumber() { return window.tableNumber; },
             get customerDetails() { return customerDetails; },
             get activeOrders() { return activeOrders; },
             set activeOrders(val) { activeOrders = val; },
@@ -630,6 +716,11 @@ window.App = {
                         box.addEventListener('click', (e) => { 
                             e.preventDefault(); 
                             
+                            if (window.isMenuOnlyMode) {
+                                alert(t('menu_only_alert') || "Για να παραγγείλετε, πατήστε 'ΕΠΙΣΤΡΟΦΗ' και επιλέξτε 'ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ'.");
+                                return;
+                            }
+
                             // ✅ FIX: Στα iPhone το Double Tap δυσκολεύει, οπότε το κάνουμε Single Tap
                             if (isIos()) {
                                 const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
@@ -872,7 +963,7 @@ window.App = {
         // ✅ FIX: Αποθήκευση κατάστασης (Τραπέζι/Delivery) πριν την πληρωμή
         if (isDineIn) {
             localStorage.setItem('bellgo_return_mode', 'dinein');
-            localStorage.setItem('bellgo_return_table', tableNumber);
+            localStorage.setItem('bellgo_return_table', window.tableNumber);
         } else {
             localStorage.setItem('bellgo_return_mode', 'delivery');
         }
@@ -903,7 +994,7 @@ window.App = {
         if (isDineIn) {
             // ✅ Μορφή για Τραπέζι
             const payIcon = method.includes('ΚΑΡΤΑ') ? '💳' : '💵';
-            const header = `[ΤΡ: ${tableNumber} | AT: ${customerDetails.covers} | ${payIcon}]`;
+            const header = `[ΤΡ: ${window.tableNumber} | AT: ${customerDetails.covers} | ${payIcon}]`;
             fullText = `${header}\n👤 ${customerDetails.name}\n${method}\n---\n${items}`;
         } else if (customerDetails && customerDetails.type === 'pickup') {
             // ✅ Μορφή για Pickup
@@ -1057,6 +1148,135 @@ window.App = {
             icon.style.transform = 'rotate(180deg)';
             icon.innerText = '▲';
         }
+    },
+
+    // ✅ NEW: Εμφάνιση του Λογαριασμού Πελάτη
+    openMyBill: () => {
+        const list = document.getElementById('myBillList');
+        const totalEl = document.getElementById('myBillTotal');
+        if (!list || !totalEl) return;
+        
+        list.innerHTML = '';
+        let grandTotal = 0;
+        let hasItems = false;
+
+        if (!activeOrders || activeOrders.length === 0) {
+            list.innerHTML = `<div style="text-align:center; color:#aaa; padding:20px;">${t('no_orders') || 'Καμία παραγγελία'}</div>`;
+            totalEl.innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: 0.00€`;
+            document.getElementById('myBillModal').style.display = 'flex';
+            return;
+        }
+
+        activeOrders.forEach(o => {
+            const lines = o.text.split('\n');
+            let orderHtml = `<div style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #e5e7eb;">`;
+            orderHtml += `<div style="font-size:12px; color:#6b7280; margin-bottom:8px; font-weight:bold;">🕒 ${new Date(o.timestamp).toLocaleTimeString('el-GR', {hour: '2-digit', minute:'2-digit'})}</div>`;
+            
+            let orderTotal = 0;
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('[') || trimmed.startsWith('👤') || trimmed.startsWith('📍') || trimmed.startsWith('📞') || trimmed.startsWith('🏢') || trimmed.startsWith('📮') || trimmed === '---' || trimmed.includes('💵 ΜΕΤΡΗΤΑ') || trimmed.includes('💳 ΚΑΡΤΑ')) return;
+                
+                let isPaid = trimmed.includes('✅');
+                let cleanLine = trimmed.replace(/✅ 💶|✅ 💳|✅/g, '').replace('++', '').trim();
+                if (!cleanLine) return;
+
+                const match = cleanLine.match(/^(\d+)\s+(.*)/);
+                if (match) {
+                    let qty = parseInt(match[1]);
+                    let rest = match[2];
+                    if (rest.includes(':')) {
+                        const parts = rest.split(':');
+                        const price = parseFloat(parts[parts.length-1]);
+                        const name = parts.slice(0, -1).join(':').trim();
+                        if (!isNaN(price)) {
+                            orderTotal += qty * price;
+                            orderHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:15px; ${isPaid ? 'text-decoration:line-through; color:#10B981;' : 'color:#1f2937;'}"><span><b>${qty}x</b> ${name}</span><span style="font-weight:bold;">${(qty * price).toFixed(2)}€</span></div>`;
+                            hasItems = true;
+                        }
+                    } else { orderHtml += `<div style="color:#6b7280; font-size:13px; margin-left:20px;">- ${cleanLine}</div>`; }
+                } else { orderHtml += `<div style="color:#6b7280; font-size:13px; margin-left:20px;">- ${cleanLine}</div>`; }
+            });
+            orderHtml += `</div>`;
+            list.innerHTML += orderHtml;
+            grandTotal += orderTotal;
+        });
+
+        if (!hasItems && grandTotal === 0) list.innerHTML = `<div style="text-align:center; color:#aaa; padding:20px;">Δεν βρέθηκαν χρεώσιμα είδη.</div>`;
+        totalEl.innerText = `${t('total') || 'ΣΥΝΟΛΟ'}: ${grandTotal.toFixed(2)}€`;
+        document.getElementById('myBillModal').style.display = 'flex';
+    },
+
+    // ✅ NEW: Η χαμένη λειτουργία της κλήσης προστέθηκε ξανά!
+    callWaiterAdmin: () => {
+        if (!isDineIn) return;
+        if (!window.socket || !window.socket.connected) {
+            alert("⚠️ Αποσύνδεση! Η εφαρμογή προσπαθεί να επανασυνδεθεί στον Server...");
+            return;
+        }
+
+        if (confirm(t('confirm_call_waiter') || 'Θέλετε να καλέσετε τον σερβιτόρο;')) {
+            console.log("🛎️ Emitting admin-only-call for Table:", window.tableNumber);
+            let responded = false;
+            window.socket.emit('admin-only-call', { table: window.tableNumber, msg: 'Ζητάει εξυπηρέτηση' }, (res) => {
+                responded = true;
+                console.log("✅ Server Callback:", res);
+            });
+            
+            setTimeout(() => {
+                if (!responded) {
+                    console.warn("⚠️ Server uses old handler, but call was likely delivered via fallback.");
+                }
+            }, 3000);
+            alert(t('waiter_called_success') || 'Η κλήση εστάλη! Ο υπεύθυνος θα στείλει τον σερβιτόρο σας.');
+        }
+    },
+
+    // ✅ NEW: Διαχείριση αρχικής επιλογής στο Τραπέζι
+    tableAction: (action) => {
+        document.getElementById('tableChoiceModal').style.display = 'none';
+        
+        if (action === 'menu') {
+            sessionStorage.setItem('bellgo_table_choice_made', 'menu');
+            window.isMenuOnlyMode = true;
+            const panel = document.getElementById('orderPanel');
+            if (panel) panel.style.display = 'none';
+            const btnExit = document.getElementById('btnExitMenuOnly');
+            if (btnExit) btnExit.style.display = 'block';
+        } else if (action === 'order') {
+            sessionStorage.setItem('bellgo_table_choice_made', 'order');
+            window.isMenuOnlyMode = false;
+            const panel = document.getElementById('orderPanel');
+            if (panel) {
+                panel.style.display = 'flex';
+                if (panel.classList.contains('minimized')) App.toggleOrderPanel();
+            }
+            
+            // ✅ Ελέγχουμε την κατάσταση του τραπεζιού ΜΟΝΟ τώρα που το ζήτησε ο πελάτης
+            if (window.currentTableStatusData) {
+                if (window.App.ReserveTable && window.App.ReserveTable.processTableStatus) {
+                    window.App.ReserveTable.processTableStatus(window.currentTableStatusData);
+                }
+            } else if (window.socket && window.socket.connected) {
+                window.socket.emit('check-table-status', { table: window.tableNumber });
+            }
+        } else if (action === 'call') {
+            sessionStorage.setItem('bellgo_table_choice_made', 'order');
+            window.isMenuOnlyMode = false;
+            const panel = document.getElementById('orderPanel');
+            if (panel) panel.style.display = 'flex';
+            App.callWaiterAdmin();
+        }
+    },
+
+    // ✅ NEW: Έξοδος από το View-Only Menu
+    exitMenuOnly: () => {
+        window.isMenuOnlyMode = false;
+        sessionStorage.removeItem('bellgo_table_choice_made');
+        document.getElementById('btnExitMenuOnly').style.display = 'none';
+        const panel = document.getElementById('orderPanel');
+        if (panel) panel.style.display = 'flex';
+        document.getElementById('tableChoiceModal').style.display = 'flex';
     }
 };
 

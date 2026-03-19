@@ -4,6 +4,15 @@ export const ReserveTable = {
     },
 
     handleTableStatus: (data) => {
+        window.currentTableStatusData = data;
+        // ✅ FIX: Μην πετάγεσαι αν ο πελάτης δεν έχει πατήσει "ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ" ή αν βλέπει μόνο το μενού
+        const choice = sessionStorage.getItem('bellgo_table_choice_made');
+        if (choice !== 'order') return;
+        
+        ReserveTable.processTableStatus(data);
+    },
+
+    processTableStatus: (data) => {
         if (data.active) {
             window.App.existingOrderId = data.orderId;
             ReserveTable.showTableOptionsModal(data);
@@ -16,7 +25,12 @@ export const ReserveTable = {
     },
 
     showTableOptionsModal: (data) => {
-        const t = window.App.t || ((k) => k);
+        // ✅ FIX: Safe translation wrapper so inline fallbacks (|| 'Text') actually work
+        const t = (k) => {
+            if (!window.App || !window.App.t) return undefined;
+            const res = window.App.t(k);
+            return res === k ? undefined : res; // If missing, return undefined to trigger fallback
+        };
         const tableNumber = window.tableNumber;
         
         let total = 0;
@@ -46,7 +60,7 @@ export const ReserveTable = {
                 <h3 style="color:#2196F3;">${t('options') || 'Επιλογές'}</h3>
                 <button id="btnSupplement" style="width:100%; padding:15px; margin-bottom:10px; background:#10B981; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">➕ ${t('btn_supplement') || 'ΣΥΜΠΛΗΡΩΣΗ'}</button>
                 <button id="btnPayExisting" style="width:100%; padding:15px; margin-bottom:10px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(33,150,243,0.3);">💳 / 💶 ${t('btn_pay_full') || 'ΠΛΗΡΩΜΗ'}</button>
-                <button id="btnBack1" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnBack1" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">${t('back') || '🔙 ΠΙΣΩ'}</button>
             </div>
         `;
 
@@ -56,7 +70,7 @@ export const ReserveTable = {
                 <p style="color:#6b7280; font-size:12px;">${t('new_people_hint') || 'Αν ναι, συμπληρώστε τον αριθμό.'}</p>
                 <input type="number" id="inpNewPeople" placeholder="${t('placeholder_people') || 'Αρ. ατόμων (προαιρετικό)'}" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; color:#1f2937; text-align:center; font-size:16px;">
                 <button id="btnGoToMenu" style="width:100%; padding:15px; background:#2196F3; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">${t('btn_continue_menu') || 'ΣΥΝΕΧΕΙΑ ΣΤΟ MENU ▶'}</button>
-                <button id="btnBack2" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnBack2" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">${t('back') || '🔙 ΠΙΣΩ'}</button>
             </div>
         `;
 
@@ -65,7 +79,7 @@ export const ReserveTable = {
                 <h3 style="color:#10B981;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
                 <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#F59E0B; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(245,158,11,0.3);">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
                 <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
-                <button id="btnBack3" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">🔙 ${t('back') || 'ΠΙΣΩ'}</button>
+                <button id="btnBack3" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">${t('back') || '🔙 ΠΙΣΩ'}</button>
             </div>
         `;
 
@@ -84,6 +98,19 @@ export const ReserveTable = {
         };
         document.getElementById('btnNewOrder').onclick = () => {
             window.App.existingOrderId = null;
+            
+            // ✅ Διακριτικό νέας παραγγελίας (π.χ. a5/2)
+            let originalTable = window.tableNumber.split('/')[0];
+            let subCounter = parseInt(sessionStorage.getItem('bellgo_table_sub_' + originalTable) || '1') + 1;
+            sessionStorage.setItem('bellgo_table_sub_' + originalTable, subCounter);
+            window.tableNumber = `${originalTable}/${subCounter}`;
+            
+            const addressDisplay = document.getElementById('displayAddress');
+            if (addressDisplay) {
+                 let details = JSON.parse(localStorage.getItem('bellgo_customer_info') || '{}');
+                 addressDisplay.innerText = `🍽️ ${t('table') || 'Τραπέζι'} ${window.tableNumber} (${details.covers || 1} ${t('people') || 'Άτομα'})`;
+            }
+            
             modal.remove();
         };
 
@@ -113,11 +140,9 @@ export const ReserveTable = {
         };
 
         document.getElementById('btnCallWaiter').onclick = () => {
-            if (window.App.existingOrderId) {
-                window.socket.emit('add-items', { id: window.App.existingOrderId, items: "❗ ΖΗΤΑΕΙ ΛΟΓΑΡΙΑΣΜΟ (ΚΛΗΣΗ)" });
-                alert(t('waiter_notified') || "Ειδοποιήσαμε τον σερβιτόρο!");
-                modal.remove();
-            }
+            window.socket.emit('admin-only-call', { table: window.tableNumber, msg: 'Ζητάει λογαριασμό / εξυπηρέτηση' });
+            alert(t('waiter_notified') || "Η κλήση εστάλη!");
+            modal.remove();
         };
         document.getElementById('btnPayStripe').onclick = () => {
             if(!window.storeHasStripe) return alert(t('card_unavailable') || "Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
@@ -131,7 +156,12 @@ export const ReserveTable = {
     },
 
     payExistingOrder: async (orderId, amount) => {
-        const t = window.App.t || ((k) => k);
+        // ✅ FIX: Safe translation wrapper
+        const t = (k) => {
+            if (!window.App || !window.App.t) return undefined;
+            const res = window.App.t(k);
+            return res === k ? undefined : res;
+        };
         const TARGET_STORE = window.TARGET_STORE;
         
         try {

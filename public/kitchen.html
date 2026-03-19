@@ -8,6 +8,8 @@
     <link rel="manifest" id="dynamicManifest" href="/manifest.json?icon=admin">
     
     <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="admin.png"> 
     <link rel="icon" href="admin.png">
     
@@ -196,7 +198,7 @@
     <!-- Φόρτωση του KITCHEN.JS αντί για το premium.js -->
     <script type="module" src="kitchen.js?v=2"></script>
     <script src="player.js"></script>
-    <script src="keepalive.js?v=3"></script>
+    <script src="keepalive.js?v=4"></script>
     <script>
         // ✅ Inject Security Functions to App (Since kitchen.js is not in context)
         window.addEventListener('load', () => {

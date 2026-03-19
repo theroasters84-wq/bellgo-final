@@ -488,7 +488,7 @@ export const Admin = {
             const url = `${baseUrl}/trapaizei.html?store=${storeParam}&table=${encodeURIComponent(t)}`;
             const wrapper = document.createElement('div');
             wrapper.style.cssText = "display:flex; flex-direction:column; align-items:center; padding:10px; border:1px solid #ccc; page-break-inside: avoid;";
-            wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div>`;
+            wrapper.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:5px;">Τραπέζι ${t}</div><div id="qr-tbl-${t}"></div><div style="font-size:10px; margin-top:5px;">Scan to Order</div><a href="${url}" target="_blank" style="font-size:8px; margin-top:8px; word-break:break-all; text-align:center; color:#2196F3; text-decoration:none;">${url}</a>`;
             container.appendChild(wrapper);
             new QRCode(document.getElementById(`qr-tbl-${t}`), { text: url, width: 100, height: 100 });
         });

@@ -7,6 +7,8 @@
     
     <link rel="manifest" href="/manifest.json?icon=admin&id=staff_app">
     <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="icon" href="admin.png">
     
     <link rel="stylesheet" href="/style.css">
@@ -111,7 +113,7 @@
 
     <script type="module" src="dianomeas.js"></script>
     <script src="player.js"></script> <!-- ✅ Audio Engine -->
-    <script src="keepalive.js?v=3"></script>
+    <script src="keepalive.js?v=4"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js', { scope: '/staff/' })
