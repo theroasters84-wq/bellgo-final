@@ -97,6 +97,8 @@ export const Admin = {
         window.App.renderMenu();
         alert("Το μενού φορτώθηκε επιτυχώς!");
         document.getElementById('settingsModal').style.display = 'none';
+        const p = document.getElementById('presetPanel');
+        if(p) p.style.display = 'none';
     },
 
     // --- STAFF MANAGEMENT ---

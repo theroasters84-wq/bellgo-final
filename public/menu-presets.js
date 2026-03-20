@@ -16,6 +16,7 @@ export const DEFAULT_CATEGORIES = [
 ];
 
 export const PRESET_MENUS = {
+    'empty': [],
     'coffee_takeaway': [
         { order: 1, name: "ΚΑΦΕΔΕΣ", items: [
             { name: "Espresso", price: 2.20, extras: [] },

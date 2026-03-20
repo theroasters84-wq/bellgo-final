@@ -77,7 +77,7 @@
 
                 <!-- Κρυφό Μενού που ξεδιπλώνει -->
                 <div id="expandedMenu" style="display: none; flex-direction: column; align-items: center; gap: 12px;">
-                    <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" style="display:none;" title="Μενού">🏠</button>
+                    <button id="btnMenuToggle" class="btn-icon" onclick="App.toggleMenuMode()" style="display:none;" title="Μενού">📋</button>
                     <div class="btn-icon-wrapper" id="resWrapper" style="display:none;">
                         <button id="btnReservations" class="btn-icon" onclick="App.openReservationsModal()" title="Κρατήσεις">📅</button>
                         <div id="resBadge" class="chat-badge" style="display:none;"></div>
@@ -114,6 +114,7 @@
                     <div style="display:flex; gap:10px;">
                         <select id="selShopTypePanel" class="inp-settings" style="margin:0; padding:5px; font-size:14px;">
                             <option value="" disabled selected data-i18n="select_preset">Επιλέξτε...</option>
+                            <option value="empty">📝 Φτιάξε το δικό σου (Από την αρχή)</option>
                             <option value="coffee_takeaway">☕ Cafe Takeaway</option>
                             <option value="coffee_bar">🍸 Cafe Bar</option>
                             <option value="pizzeria">🍕 Pizzeria</option>
@@ -408,6 +409,7 @@
                 <!-- Hidden Select for JS to grab -->
                 <select id="selShopType" style="display:none;">
                     <option value="" disabled selected>Πρότυπο...</option>
+                    <option value="empty">📝 Φτιάξε το δικό σου (Από την αρχή)</option>
                     <option value="coffee_takeaway">☕ Cafe Takeaway</option>
                     <option value="coffee_bar">🍸 Cafe Bar</option>
                     <option value="pizzeria">🍕 Pizzeria</option>

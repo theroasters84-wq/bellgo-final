@@ -53,7 +53,7 @@ export function initKitchenSockets(App, userData) {
     
     socket.on('menu-update', (data) => {
         try {
-            if (!data || data.length === 0) {
+            if (!data) {
                 App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
             } else if (typeof data === 'string' && !data.startsWith('[')) {
                 App.menuData = [{ id: 1, order: 1, name: "ΓΕΝΙΚΑ", items: data.split('\n').filter(x=>x) }];
