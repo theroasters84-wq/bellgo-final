@@ -17,6 +17,19 @@
     <link rel="manifest" id="dynamicManifest">
     <link rel="stylesheet" href="/style.css">
 
+    <style>
+        /* ✅ Header Responsive Fix (Αποτρέπει το κόψιμο των κουμπιών στα κινητά) */
+        .store-info { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 0 5px; }
+        #storeNameHeader { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; font-size: 15px; }
+        .header-actions { flex-shrink: 0; display: flex; align-items: center; overflow-x: auto; scrollbar-width: none; }
+        .header-actions::-webkit-scrollbar { display: none; }
+        
+        @media (max-width: 450px) {
+            .header-actions .btn-header-install span[data-i18n] { display: none !important; }
+            .header-actions .btn-header-install { padding: 6px 8px !important; font-size: 18px !important; display: flex; align-items: center; justify-content: center; }
+        }
+    </style>
+
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/socket.io/socket.io.js"></script>
 
@@ -186,8 +199,8 @@
     </div>
 
     <div id="appContent" style="display:none;">
-        <div class="header" style="width: 100%; box-sizing: border-box; padding-left: max(25px, env(safe-area-inset-left)) !important; padding-right: max(25px, env(safe-area-inset-right)) !important;">
-            <div class="header-left">
+        <div class="header" style="width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding-left: max(15px, env(safe-area-inset-left)) !important; padding-right: max(15px, env(safe-area-inset-right)) !important;">
+            <div class="header-left" style="flex-shrink:0;">
                 <!-- ✅ NEW: Hamburger Menu Button -->
                 <button id="btnCustomerMenuToggle" onclick="App.showMenuOptions()" style="background:transparent; border:none; color:var(--text-main); font-size:28px; cursor:pointer; padding:0; margin-right:10px;">☰</button>
                 <button id="btnStatusMini" class="btn-status-mini" onclick="App.maximizeStatus()">
@@ -214,7 +227,7 @@
                 </div>
                 <button id="btnReview" class="btn-header-install" style="display:none; background:#FFD700; color:black; margin-right:5px;" onclick="App.openReview()">⭐ <span data-i18n="review">ΑΞΙΟΛΟΓΗΣΗ</span></button>
                 <button id="btnHeaderMyRes" class="btn-header-install" style="display:none; background:#333; color:white; margin-right:5px; align-items:center; gap:5px;" onclick="App.openMyReservations()">
-                    🍽️ <span style="font-size:10px;">ΚΡΑΤΗΣΕΙΣ</span>
+                    🍽️ <span style="font-size:10px;" data-i18n="reservations">ΚΡΑΤΗΣΕΙΣ</span>
                     <span id="resBadgeHeader" style="display:none; background:red; color:white; border-radius:50%; padding:1px 5px; font-size:10px; font-weight:bold;">0</span>
                 </button>
                 <button id="btnMyBill" class="btn-header-install" onclick="App.openMyBill()" style="display:none; background:#3897f0; color:white; margin-right:5px;">📝 <span data-i18n="my_bill">ΛΟΓΑΡΙΑΣΜΟΣ</span></button>
