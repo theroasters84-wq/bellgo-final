@@ -319,6 +319,31 @@ export const PRESET_MENUS = {
     ]
 };
 
+// ✅ NEW: ΕΤΟΙΜΕΣ ΛΙΣΤΕΣ ΓΙΑ EXTRAS (ΥΠΟΚΑΤΗΓΟΡΙΕΣ)
+export const EXTRA_PRESETS = {
+    'coffee': [
+        { name: "Σκέτο", price: 0 }, { name: "Μέτριο", price: 0 }, { name: "Γλυκό", price: 0 },
+        { name: "Γάλα", price: 0.30 }, { name: "Κανέλα", price: 0 }, { name: "Σαντιγύ", price: 0.50 }
+    ],
+    'souvlaki': [
+        { name: "Απ'όλα", price: 0 }, { name: "Χωρίς Κρεμμύδι", price: 0 }, { name: "Χωρίς Τζατζίκι", price: 0 },
+        { name: "Σως", price: 0 }, { name: "Πίτα Ολικής", price: 0.20 }
+    ],
+    'pizza': [
+        { name: "Extra Τυρί", price: 1.50 }, { name: "Bacon", price: 1.00 }, { name: "Μανιτάρια", price: 1.00 },
+        { name: "Πιπεριά", price: 0.50 }
+    ],
+    'crepe_sweet': [
+        { name: "Μπισκότο", price: 0.50 }, { name: "Μπανάνα", price: 0.80 }, { name: "Φράουλα", price: 0.80 },
+        { name: "Λευκή Σοκολάτα", price: 0.50 }, { name: "Caprice", price: 0.80 }
+    ],
+    'crepe_savory': [
+        { name: "Τυρί", price: 0.80 }, { name: "Γαλοπούλα", price: 1.00 }, { name: "Ζαμπόν", price: 1.00 },
+        { name: "Μπέικον", price: 1.00 }, { name: "Μανιτάρια", price: 0.80 }, { name: "Ομελέτα", price: 1.50 },
+        { name: "Μαγιονέζα", price: 0.50 }
+    ]
+};
+
 export const Menu = {
     handlePlusButton: function() {
         const App = window.App;
@@ -373,6 +398,8 @@ export const Menu = {
         if (App.currentCategoryIndex === null) {
             const btnBack = document.getElementById('btnBackCat');
             if (btnBack) btnBack.style.display = 'none';
+            const btnBulk = document.getElementById('btnBulkPaste');
+            if (btnBulk) btnBulk.style.display = 'none';
             App.menuData.forEach((cat, index) => {
                 const div = document.createElement('div');
                 div.className = 'category-box';
@@ -394,21 +421,17 @@ export const Menu = {
             if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
             const btnBack = document.getElementById('btnBackCat');
             if (btnBack) btnBack.style.display = 'block';
-            
-            // ✅ NEW: Κουμπί Γρήγορης Εισαγωγής (Bulk Paste)
-            const bulkBtn = document.createElement('button');
-            bulkBtn.innerText = t('bulk_paste_btn') || '📋 Γρήγορη Εισαγωγή (Paste)';
-            bulkBtn.style.cssText = 'display: block; background: #635BFF; margin-bottom: 15px; padding: 14px 15px; border-radius: 8px; cursor: pointer; color: white; border: none; font-weight: bold; width: 100%; box-shadow: 0 4px 10px rgba(99, 91, 255, 0.3); font-size: 15px;';
-            bulkBtn.onclick = () => App.openBulkPasteModal();
-            container.appendChild(bulkBtn);
-            
+            const btnBulk = document.getElementById('btnBulkPaste');
+            if (btnBulk) btnBulk.style.display = 'block';
+
             cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
         }
 
         // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Εμφανίζεται πάντα στο τέλος)
         const saveBtn = document.createElement('button');
-        saveBtn.innerText = t('save_catalog') || '💾 Αποθήκευση Καταλόγου';
-        saveBtn.style.cssText = 'margin-top: 25px; background: #10B981; color: white; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 800; cursor: pointer; border: none; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: block;';
+        saveBtn.innerText = '💾';
+        saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
+        saveBtn.style.cssText = 'position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; background: #10B981; color: white; width: 60px; height: 60px; border-radius: 50%; font-size: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6); z-index: 5000;';
         saveBtn.onclick = () => {
             // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
             App.menuData.forEach(cat => { 
@@ -506,6 +529,7 @@ export const Menu = {
         const extrasBtn = document.createElement('button');
         extrasBtn.className = 'btn-item-extras';
         extrasBtn.innerHTML = '+';
+        extrasBtn.style.cssText = 'position: relative !important; right: auto !important; top: auto !important; margin-left: 2px; flex-shrink: 0;';
         if (itemObj && itemObj.extras && itemObj.extras.length > 0) extrasBtn.classList.add('has-extras');
         extrasBtn.onclick = () => { 
             silentUpdate(); // Διασφαλίζει ότι το νέο προϊόν "γράφτηκε" στη μνήμη πριν ανοίξουν τα extras
@@ -633,6 +657,7 @@ export const Menu = {
         const title = document.getElementById('extrasModalTitle') || document.querySelector('#extrasModal h3');
         if (title) title.innerText = `EXTRAS: ${cat.items[itemIndex].name}`;
         
+        if(App.renderExtraPresetsDropdown) App.renderExtraPresetsDropdown();
         App.renderExtrasList();
         const modal = document.getElementById('extrasModal');
         if(modal) modal.style.display = 'flex';
@@ -653,6 +678,86 @@ export const Menu = {
             `;
             container.appendChild(row);
         });
+    },
+
+    // ✅ NEW: Δυναμικό Dropdown για Extras Presets (Συστήματος + Προσωπικά)
+    renderExtraPresetsDropdown: function() {
+        const App = window.App;
+        const sel = document.getElementById('selExtraPreset');
+        if (!sel) return;
+        sel.innerHTML = '<option value="" disabled selected>Επιλέξτε για προσθήκη...</option>';
+        
+        const hardcoded = [
+            {val: 'coffee', text: '☕ Καφέδες (Γλυκό, Μέτριο...)'},
+            {val: 'souvlaki', text: '🍖 Σουβλάκι (Απ\'όλα, Χωρίς...)'},
+            {val: 'pizza', text: '🍕 Πίτσα (Extra Τυρί, Μπέικον...)'},
+            {val: 'crepe_sweet', text: '🍫 Κρέπα Γλυκιά (Μπισκότο...)'},
+            {val: 'crepe_savory', text: '🧀 Κρέπα Αλμυρή (Τυρί, Γαλοπούλα...)'}
+        ];
+        
+        const group1 = document.createElement('optgroup');
+        group1.label = "ΒΑΣΙΚΑ PRESETS";
+        hardcoded.forEach(hc => {
+            const opt = document.createElement('option');
+            opt.value = `hc_${hc.val}`;
+            opt.innerText = hc.text;
+            group1.appendChild(opt);
+        });
+        sel.appendChild(group1);
+        
+        if (App.customExtraPresets && App.customExtraPresets.length > 0) {
+            const group2 = document.createElement('optgroup');
+            group2.label = "ΤΑ ΔΙΚΑ ΜΟΥ PRESETS";
+            App.customExtraPresets.forEach((cp, idx) => {
+                const opt = document.createElement('option');
+                opt.value = `custom_${idx}`;
+                opt.innerText = `⭐ ${cp.name}`;
+                group2.appendChild(opt);
+            });
+            sel.appendChild(group2);
+        }
+    },
+
+    applyExtraPreset: function(value) {
+        const App = window.App;
+        if (!value) return;
+        
+        let itemsToAdd = [];
+        if (value.startsWith('hc_')) {
+            const key = value.replace('hc_', '');
+            itemsToAdd = EXTRA_PRESETS[key] || [];
+        } else if (value.startsWith('custom_')) {
+            const idx = parseInt(value.replace('custom_', ''));
+            if (App.customExtraPresets && App.customExtraPresets[idx]) {
+                itemsToAdd = App.customExtraPresets[idx].items || [];
+            }
+        }
+        
+        itemsToAdd.forEach(nx => {
+            if (!App.tempExtras.some(e => e.name === nx.name)) {
+                App.tempExtras.push({ name: nx.name, price: nx.price });
+            }
+        });
+        App.renderExtrasList();
+    },
+
+    saveCurrentExtrasAsPreset: function() {
+        const App = window.App;
+        if (!App.tempExtras || App.tempExtras.length === 0) {
+            return alert("Η λίστα είναι κενή! Προσθέστε πρώτα επιλογές.");
+        }
+        const name = prompt("Δώστε ένα όνομα για αυτό το Preset (π.χ. 'Υλικά Burger'):");
+        if (!name || name.trim() === '') return;
+        
+        if (!App.customExtraPresets) App.customExtraPresets = [];
+        App.customExtraPresets.push({
+            name: name.trim(),
+            items: JSON.parse(JSON.stringify(App.tempExtras))
+        });
+        
+        window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+        App.renderExtraPresetsDropdown();
+        alert("Το Preset αποθηκεύτηκε επιτυχώς!");
     },
 
     addExtraRow: function() {
@@ -681,6 +786,27 @@ export const Menu = {
 
     saveExtras: function() {
         const App = window.App;
+        
+        // ✅ NEW: Αποθήκευση αν βρισκόμαστε σε λειτουργία επεξεργασίας κεντρικού Preset
+        if (App.currentExtrasCatIndex === 'preset') {
+            if (!App.customExtraPresets) App.customExtraPresets = [];
+            if (App.currentExtrasItemIndex === 'new') {
+                App.customExtraPresets.push({
+                    name: App.tempPresetName,
+                    items: JSON.parse(JSON.stringify(App.tempExtras))
+                });
+            } else {
+                App.customExtraPresets[App.currentExtrasItemIndex].items = JSON.parse(JSON.stringify(App.tempExtras));
+            }
+            window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+            
+            const modal = document.getElementById('extrasModal');
+            if (modal) modal.style.display = 'none';
+            if (App.renderExtraPresetsDropdown) App.renderExtraPresetsDropdown();
+            if (App.renderManagePresetsList) App.renderManagePresetsList();
+            return;
+        }
+
         const cat = App.menuData[App.currentExtrasCatIndex];
         if (cat && cat.items[App.currentExtrasItemIndex]) {
             cat.items[App.currentExtrasItemIndex].extras = JSON.parse(JSON.stringify(App.tempExtras));
@@ -688,6 +814,81 @@ export const Menu = {
         const modal = document.getElementById('extrasModal');
         if (modal) modal.style.display = 'none';
         App.renderMenu(); 
+    },
+
+    // --- MANAGE CUSTOM PRESETS LOGIC ---
+    openManagePresetsModal: function() {
+        const App = window.App;
+        App.renderManagePresetsList();
+        document.getElementById('managePresetsModal').style.display = 'flex';
+    },
+
+    renderManagePresetsList: function() {
+        const App = window.App;
+        const container = document.getElementById('managePresetsList');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (!App.customExtraPresets || App.customExtraPresets.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">Δεν έχετε δημιουργήσει δικά σας Presets.</div>';
+            return;
+        }
+
+        App.customExtraPresets.forEach((cp, idx) => {
+            const row = document.createElement('div');
+            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#f9fafb; padding:10px; border-radius:8px; margin-bottom:5px; border:1px solid #e5e7eb;";
+            row.innerHTML = `
+                <div>
+                    <strong style="color:#1f2937;">${cp.name}</strong>
+                    <div style="font-size:11px; color:#6b7280;">${cp.items ? cp.items.length : 0} επιλογές</div>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button onclick="App.editCustomPreset(${idx})" style="background:#2196F3; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;" title="Επεξεργασία">✏️</button>
+                    <button onclick="App.deleteCustomPreset(${idx})" style="background:#EF4444; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;" title="Διαγραφή">🗑️</button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    },
+
+    deleteCustomPreset: function(idx) {
+        const App = window.App;
+        if (confirm("Διαγραφή αυτού του Preset;")) {
+            App.customExtraPresets.splice(idx, 1);
+            window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+            App.renderManagePresetsList();
+            if (App.renderExtraPresetsDropdown) App.renderExtraPresetsDropdown();
+        }
+    },
+
+    editCustomPreset: function(idx) {
+        const App = window.App;
+        App.currentExtrasCatIndex = 'preset';
+        App.currentExtrasItemIndex = idx;
+        App.tempExtras = JSON.parse(JSON.stringify(App.customExtraPresets[idx].items || []));
+        
+        const title = document.getElementById('extrasModalTitle');
+        if (title) title.innerText = `ΕΠΕΞΕΡΓΑΣΙΑ PRESET: ${App.customExtraPresets[idx].name}`;
+        
+        App.renderExtrasList();
+        document.getElementById('extrasModal').style.display = 'flex';
+    },
+
+    createNewCustomPreset: function() {
+        const App = window.App;
+        const name = prompt("Δώστε όνομα για το νέο Preset (π.χ. Υλικά Burger):");
+        if (!name || name.trim() === '') return;
+        
+        App.currentExtrasCatIndex = 'preset';
+        App.currentExtrasItemIndex = 'new';
+        App.tempPresetName = name.trim();
+        App.tempExtras = [];
+        
+        const title = document.getElementById('extrasModalTitle');
+        if (title) title.innerText = `ΝΕΟ PRESET: ${App.tempPresetName}`;
+        
+        App.renderExtrasList();
+        document.getElementById('extrasModal').style.display = 'flex';
     },
 
     saveExtrasAndClose: function() { window.App.saveExtras(); }

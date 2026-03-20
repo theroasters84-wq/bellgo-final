@@ -75,6 +75,8 @@ export function initPremiumSockets(App, userData) {
                     window.lastFeatsStr = fStr;
                 }
             }
+            if(settings.customExtraPresets) App.customExtraPresets = settings.customExtraPresets; // ✅ Φόρτωση Custom Presets
+
             document.getElementById('switchCust').checked = settings.statusCustomer;
             document.getElementById('switchStaff').checked = settings.statusStaff;
             document.getElementById('switchStaffCharge').checked = settings.staffCharge || false; // ✅ Load Setting

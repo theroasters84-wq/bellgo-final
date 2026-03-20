@@ -65,6 +65,7 @@ window.App = {
     currentExtrasItemIndex: null,
     currentExtrasCatIndex: null,
     tempExtras: [],
+    customExtraPresets: [], // ✅ NEW: Αποθήκευση των δικών μας Custom Presets
     cachedStats: null, // ✅ Store stats for navigation
     autoPrint: false, // ✅ Auto Print State
     autoClosePrint: false, // ✅ Auto Close Window State
@@ -258,27 +259,6 @@ window.App = {
                 };
             }
 
-            // 3. Move Delivery Hours to Menu Editor (Top Right)
-            const inpHours = document.getElementById('inpHours');
-            const menuPanel = document.getElementById('menuFullPanel');
-            if(inpHours && menuPanel) {
-                if(inpHours.previousElementSibling && inpHours.previousElementSibling.tagName === 'LABEL') {
-                    inpHours.previousElementSibling.style.display = 'none';
-                }
-                const wrapper = document.createElement('div');
-                wrapper.style.cssText = "display:flex; align-items:center; gap:5px; margin-right:10px;";
-                const lbl = document.createElement('span');
-                lbl.innerText = "🕒";
-                lbl.style.cssText = "font-size:10px; color:#666; font-weight:bold;";
-                inpHours.style.cssText = "width:80px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
-                wrapper.appendChild(lbl);
-                wrapper.appendChild(inpHours);
-                
-                // ✅ FIX: Τοποθέτηση μέσα στα actions για να μην πέφτει πάνω στο κουμπί ΠΙΣΩ
-                const headerActions = menuPanel.querySelector('.menu-header > div');
-                if(headerActions) headerActions.insertBefore(wrapper, headerActions.firstChild);
-            }
-
             // ✅ NEW: Κουμπί Αυξομείωσης (Toggle) για το Textarea της παραγγελίας
             const txt = document.getElementById('sidebarOrderText');
             if (txt && txt.parentNode) {
@@ -393,6 +373,24 @@ window.App = {
                         el.style.display = 'none';
                         return;
                     }
+                    
+                    // ✅ NEW: Overrides based on Internal Store Settings (Even if they have the subscription)
+                    if (id === 'resWrapper') {
+                        const swRes = document.getElementById('switchReservations');
+                        if (swRes && !swRes.checked) {
+                            el.style.display = 'none';
+                            return;
+                        }
+                    }
+                    if (id === 'btnWallet' && !App.staffChargeMode) {
+                        el.style.display = 'none';
+                        return;
+                    }
+                    if (id === 'btnCashRegister' && !App.einvoicingEnabled) {
+                        el.style.display = 'none';
+                        return;
+                    }
+
                     // Αν είναι εικονίδιο header, συνήθως θέλει flex, αλλιώς block
                     const isIcon = el.classList.contains('btn-icon') || el.classList.contains('btn-icon-wrapper');
                     const isSwitch = el.classList.contains('switch-row'); // ✅ FIX: Keep flex for switches

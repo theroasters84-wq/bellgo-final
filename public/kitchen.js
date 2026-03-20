@@ -307,24 +307,6 @@ window.App = {
                     }
                 };
             }
-
-            // 3. Move Delivery Hours to Menu Editor (Top Right)
-            const inpHours = document.getElementById('inpHours');
-            const menuPanel = document.getElementById('menuFullPanel');
-            if(inpHours && menuPanel) {
-                if(inpHours.previousElementSibling && inpHours.previousElementSibling.tagName === 'LABEL') {
-                    inpHours.previousElementSibling.style.display = 'none';
-                }
-                const wrapper = document.createElement('div');
-                wrapper.style.cssText = "position:absolute; top:15px; right:60px; display:flex; align-items:center; gap:5px; z-index:100;";
-                const lbl = document.createElement('span');
-                lbl.innerText = "Hours:";
-                lbl.style.cssText = "font-size:10px; color:#666; font-weight:bold;";
-                inpHours.style.cssText = "width:80px; padding:2px; font-size:11px; background:#111; border:1px solid #444; color:#fff; border-radius:4px; text-align:center;";
-                wrapper.appendChild(lbl);
-                wrapper.appendChild(inpHours);
-                menuPanel.appendChild(wrapper);
-            }
         }, 500);
     },
 

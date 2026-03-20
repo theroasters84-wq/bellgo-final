@@ -62,7 +62,7 @@
 <body>
 
     <div id="mainApp">
-        <div class="header" ondblclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; App.toggleFakeLock();" onclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
+        <div class="header" onclick="if(window.disableFakeLock || event.target.tagName==='BUTTON' || event.target.closest('button') || event.target.tagName==='INPUT') return; let now = Date.now(); if(now - (this.lastTap||0) < 400) { App.toggleFakeLock(); this.lastTap=0; } else { this.lastTap=now; }">
             <div class="store-identity">
                 <span id="connDot" class="status-dot" onclick="App.forceReconnect()"></span>
                 <input type="text" id="inpStoreNameHeader" class="header-store-input" placeholder="Όνομα Καταστήματος..." onblur="App.saveStoreName()" onkeydown="if(event.key==='Enter') this.blur()">
@@ -102,7 +102,9 @@
                     <span class="menu-title" data-i18n="edit_menu">ΕΠΕΞΕΡΓΑΣΙΑ ΜΕΝΟΥ</span>
                     <div style="display:flex; gap:10px; margin-right: 60px; flex-wrap: wrap; justify-content: flex-end;">
                         <button id="btnBackCat" class="btn-back" onclick="App.goBackToCategories()" style="display:none;" data-i18n="back">🔙 ΠΙΣΩ</button>
-                        <button class="btn-back" onclick="App.togglePresetPanel()" title="Presets" style="background:#FF9800; color:black;">📋</button>
+                        <button id="btnBulkPaste" class="btn-back" onclick="App.openBulkPasteModal()" style="display:none; background:#635BFF; color:white;" title="Γρήγορη Εισαγωγή (Paste)">📋 Paste</button>
+                        <button class="btn-back" onclick="App.openManagePresetsModal()" title="Διαχείριση Extras" style="background:#9C27B0; color:white;">⚙️ Extras</button>
+                        <button class="btn-back" onclick="App.togglePresetPanel()" title="Έτοιμοι Κατάλογοι" style="background:#FF9800; color:black;">📋</button>
                         <button class="btn-add" onclick="App.handlePlusButton()" title="Προσθήκη">➕</button>
                         <button class="btn-back" onclick="App.toggleMenuMode()" title="Αρχική Οθόνη" style="background:var(--danger); color:white; padding: 8px 12px;">✕</button>
                     </div>
@@ -254,11 +256,16 @@
                 </div>
 
                 <div id="secSchedule" class="settings-section">
-                    <div class="settings-label" data-i18n="schedule">ΩΡΑΡΙΑ</div>
-                    <div style="font-size:11px; color:#aaa; text-align:left; margin-bottom:4px;" data-i18n="delivery_hours_reset">ΩΡΕΣ ΔΙΑΝΟΜΗΣ & RESET</div>
-                    <div style="display:flex; gap:10px; margin-bottom:5px;">
-                        <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
+                    <div class="settings-label" data-i18n="schedule">ΩΡΑΡΙΑ ΛΕΙΤΟΥΡΓΙΑΣ</div>
+                    
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:12px; color:#aaa; text-align:left; margin-bottom:4px; font-weight:bold;">🛵 ΩΡΑΡΙΟ DELIVERY (Εμφανίζεται στους πελάτες)</div>
                         <input type="text" id="inpHours" class="inp-settings" placeholder="π.χ. 12:00-00:00" onblur="App.autoSaveSettings()">
+                    </div>
+                    
+                    <div style="margin-bottom:5px;">
+                        <div style="font-size:12px; color:#aaa; text-align:left; margin-bottom:4px; font-weight:bold;">🏪 ΩΡΑ ΚΛΕΙΣΙΜΑΤΟΣ (Αυτόματο Reset Μενού)</div>
+                        <input type="time" id="inpResetTime" class="inp-settings" title="Reset Time" onchange="App.autoSaveSettings()">
                     </div>
                     <button class="modal-btn" style="background:#333; font-size:13px; margin-top:10px;" onclick="App.openScheduleModal()"><span data-i18n="weekly_schedule">📅 ΕΒΔΟΜΑΔΙΑΙΟ ΠΡΟΓΡΑΜΜΑ</span></button>
                 </div>
@@ -445,9 +452,30 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: MANAGE CUSTOM PRESETS MODAL -->
+    <div id="managePresetsModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" style="color:#9C27B0;">⚙️ Διαχείριση Extras Presets</h3>
+            <p style="font-size:12px; color:#6b7280; margin-bottom:10px;">Φτιάξτε έτοιμες λίστες με υλικά (π.χ. Υλικά Burger) για να τις προσθέτετε με ένα κλικ στα προϊόντα σας.</p>
+            <div id="managePresetsList" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:15px; border:1px solid #e5e7eb; border-radius:8px; padding:5px; background:#fff;"></div>
+            <button class="modal-btn" style="background:#10B981; color:white; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.createNewCustomPreset()">➕ ΝΕΟ PRESET</button>
+            <button onclick="document.getElementById('managePresetsModal').style.display='none'" style="background:none; border:none; color:#777; margin-top:10px;">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
     <div id="extrasModal" class="modal-overlay">
         <div class="modal-box">
             <h3 class="modal-title" id="extrasModalTitle" data-i18n="options">Επιλογές (Extras)</h3>
+            
+            <!-- ✅ NEW: QUICK PRESETS FOR EXTRAS -->
+            <div style="background:#f9fafb; padding:10px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:10px;">
+                <span style="font-size:12px; color:#6b7280; font-weight:bold; display:block; margin-bottom:5px;">📋 ΕΤΟΙΜΕΣ ΛΙΣΤΕΣ (PRESETS)</span>
+                <select id="selExtraPreset" class="inp-settings" style="margin:0; padding:8px; font-size:14px;" onchange="if(this.value) { App.applyExtraPreset(this.value); this.value=''; }">
+                    <option value="" disabled selected>Επιλέξτε για προσθήκη...</option>
+                </select>
+                <button class="modal-btn" style="background:#e5e7eb; color:#1f2937; margin-top:8px; margin-bottom:0; font-size:12px; padding:6px; box-shadow:none;" onclick="App.saveCurrentExtrasAsPreset()">💾 Αποθήκευση λίστας ως νέο Preset</button>
+            </div>
+
             <div id="extrasListContainer" class="extras-list"></div>
             
             <div style="border-top:1px solid #333; padding-top:15px; margin-top:10px;">
