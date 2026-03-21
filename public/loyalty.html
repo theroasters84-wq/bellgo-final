@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>BellGo Loyalty 🎁</title>
     <meta name="theme-color" content="#e1306c">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e1306c%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🎁</text></svg>">
@@ -10,6 +10,7 @@
     <link rel="manifest" href="/manifest.json?id=loyalty_app">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             background-color: #f4f6f8;
             color: #1f2937;
@@ -99,6 +100,12 @@
     <!-- 2. MERCHANT VIEW (Ανεξάρτητο Panel Καταστήματος) -->
     <div id="merchantView" style="display:none; width:100%; justify-content:center;">
         
+        <!-- Οθόνη Φόρτωσης (Καλύπτει το κενό του Firebase) -->
+        <div id="merchantLoading" style="text-align:center; padding:50px; color:#10B981; font-size:18px; font-weight:bold; display:flex; flex-direction:column; align-items:center; gap:10px;">
+            <span style="font-size:40px; animation: bounce 1.5s infinite;">🎁</span>
+            Φόρτωση...
+        </div>
+
         <!-- Οθόνη Εισόδου (Login) -->
         <div id="merchantLogin" class="card" style="display:none;">
             <button class="btnInstallApp" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:14px; margin-bottom:15px; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
@@ -309,6 +316,9 @@
             };
 
             onAuthStateChanged(auth, async (user) => {
+                const loader = document.getElementById('merchantLoading');
+                if (loader) loader.style.display = 'none';
+
                 if (user) {
                     currentUser = user;
                     document.getElementById('btnLogout').style.display = 'block';
