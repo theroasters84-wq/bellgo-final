@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QR Generator</title>
+    
+    <!-- ✅ Χρήση του δυναμικού manifest που ήδη υπάρχει στον server σου! -->
+    <link rel="manifest" href="/manifest.json?name=QR%20Generator&icon=admin">
+    <meta name="theme-color" content="#10B981">
+    <link rel="apple-touch-icon" href="/admin.png">
+    <link rel="icon" href="/admin.png">
+
+    <!-- Βιβλιοθήκη για QR Codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .header {
+            background: #10B981;
+            color: white;
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        .container {
+            flex: 1;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus { border-color: #10B981; }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+            transition: background 0.3s;
+            margin-bottom: 20px;
+        }
+        button:active { background: #0d9668; }
+        #qrcode {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: none;
+            margin-bottom: 20px;
+        }
+        #btnInstall {
+            display: none;
+            background: #2196F3;
+            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">Γεννήτρια QR 📱</div>
+
+    <div class="container">
+        <input type="text" id="inpLink" placeholder="Επικολλήστε το Link εδώ...">
+        <button onclick="generateQR()">ΔΗΜΙΟΥΡΓΙΑ QR</button>
+        
+        <div id="qrcode"></div>
+        
+        <button id="btnInstall" onclick="installApp()">⬇️ ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ (PWA)</button>
+    </div>
+
+    <script>
+        // Αυτόματη δημιουργία του QR Code κατά το άνοιγμα της σελίδας
+        window.onload = () => {
+            const initialLink = document.getElementById('inpLink').value.trim();
+            if (initialLink) generateQR();
+        };
+
+        function generateQR() {
+            const link = document.getElementById('inpLink').value.trim();
+            if (!link) return alert('Παρακαλώ εισάγετε ένα link!');
+            
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = ''; 
+            qrContainer.style.display = 'flex';
+            qrContainer.style.justifyContent = 'center';
+            
+            new QRCode(qrContainer, {
+                text: link,
+                width: 250,
+                height: 250,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        // --- PWA INSTALLATION LOGIC ---
+        if ('serviceWorker' in navigator) {
+            // Εγγράφουμε το service worker με scope μόνο σε αυτή τη σελίδα για να μην επηρεάζει τις άλλες
+            navigator.serviceWorker.register('/sw.js', { scope: '/genitria.html' })
+                .then(() => console.log('✅ QR Generator SW Registered'));
+        }
+
+        let deferredPrompt;
+        const btnInstall = document.getElementById('btnInstall');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstall.style.display = 'block';
+        });
+
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') btnInstall.style.display = 'none';
+                deferredPrompt = null;
+            } else {
+                const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+                if (isIos) {
+                    alert("Για να εγκαταστήσετε την εφαρμογή στο iPhone:\n1. Πατήστε το κουμπί 'Share' (το τετράγωνο με το βελάκι)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
+                }
+            }
+        }
+    </script>
+</body>
+</html>

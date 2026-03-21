@@ -139,7 +139,7 @@ export function initKitchenSockets(App, userData) {
             }
         
             if (settings.warnOnBackground !== undefined) {
-                const isWarnEnabled = settings.warnOnBackground !== false;
+                const isWarnEnabled = settings.warnOnBackground === true;
                 const sw = document.getElementById('switchWarnOnBackgroundKitchen');
                 if (sw) sw.checked = isWarnEnabled;
                 window.disableBackgroundWarning = !isWarnEnabled;
@@ -151,6 +151,11 @@ export function initKitchenSockets(App, userData) {
                     const sw = document.getElementById('switchWarnOnBackgroundKitchen');
                     if (sw) sw.checked = isWarnEnabled;
                     window.disableBackgroundWarning = !isWarnEnabled;
+                } else {
+                    const sw = document.getElementById('switchWarnOnBackgroundKitchen');
+                    if (sw) sw.checked = false;
+                    window.disableBackgroundWarning = true;
+                    localStorage.setItem('bellgo_keepalive', 'false');
                 }
             }
 

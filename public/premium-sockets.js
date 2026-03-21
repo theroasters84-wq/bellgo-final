@@ -181,8 +181,8 @@ export function initPremiumSockets(App, userData) {
             }
             
             if (settings.warnOnBackground !== undefined) {
-                const isWarnEnabled = settings.warnOnBackground !== false;
                 const swWarn = document.getElementById('switchWarnOnBackground');
+                const isWarnEnabled = settings.warnOnBackground === true;
                 if (swWarn) swWarn.checked = isWarnEnabled;
                 window.disableBackgroundWarning = !isWarnEnabled;
                 localStorage.setItem('bellgo_keepalive', isWarnEnabled);
@@ -193,6 +193,11 @@ export function initPremiumSockets(App, userData) {
                     const swWarn = document.getElementById('switchWarnOnBackground');
                     if (swWarn) swWarn.checked = isWarnEnabled;
                     window.disableBackgroundWarning = !isWarnEnabled;
+                } else {
+                    const swWarn = document.getElementById('switchWarnOnBackground');
+                    if (swWarn) swWarn.checked = false;
+                    window.disableBackgroundWarning = true;
+                    localStorage.setItem('bellgo_keepalive', 'false');
                 }
             }
             

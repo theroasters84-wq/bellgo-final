@@ -69,10 +69,18 @@ const KeepAlive = {
         const savedKeepAlive = localStorage.getItem('bellgo_keepalive');
         if (savedKeepAlive !== null) {
             window.disableBackgroundWarning = (savedKeepAlive === 'false');
+        } else {
+            // ✅ Default to OFF (Κλειστό) για νέους χρήστες
+            window.disableBackgroundWarning = true;
         }
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
+                // ✅ FRESH CHECK: Διαβάζουμε πάλι μήπως η ρύθμιση ήρθε μόλις τώρα από τον server
+                const freshKeepAlive = localStorage.getItem('bellgo_keepalive');
+                if (freshKeepAlive === 'false') window.disableBackgroundWarning = true;
+                if (freshKeepAlive === null) window.disableBackgroundWarning = true;
+
                 // ✅ Έλεγχος αν ο διαχειριστής έχει απενεργοποιήσει τη λειτουργία από τις ρυθμίσεις
                 if (window.disableBackgroundWarning) return;
 
@@ -150,6 +158,26 @@ const KeepAlive = {
         KeepAlive.preventBackExit();
         KeepAlive.preventTabClose();
         KeepAlive.warnOnBackground();
+
+        // ✅ NEW: Συγχρονισμός της ρύθμισης από το Server όταν έρθει το event (Fix για 1η είσοδο)
+        const syncKeepAliveSettings = () => {
+            if (window.socket && !window._keepAliveSyncDone) {
+                window._keepAliveSyncDone = true;
+                window.socket.on('store-settings-update', (settings) => {
+                    if (settings) {
+                        const isWarnEnabled = settings.warnOnBackground === true; // Default false
+                        window.disableBackgroundWarning = !isWarnEnabled; 
+                        localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                        
+                        // Ενημέρωση UI στο Admin (premium.html) αν υπάρχει
+                        const swAdmin = document.getElementById('switchWarnOnBackground');
+                        if (swAdmin) swAdmin.checked = isWarnEnabled;
+                    }
+                });
+            }
+        };
+        syncKeepAliveSettings();
+        const checkSocketInt = setInterval(() => { if (window.socket) { syncKeepAliveSettings(); clearInterval(checkSocketInt); } }, 500);
     },
 };
 

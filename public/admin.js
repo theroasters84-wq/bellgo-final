@@ -38,7 +38,7 @@ export const Admin = {
         const totalTables = document.getElementById('inpTotalTables').value;
         
         const swWarn = document.getElementById('switchWarnOnBackground');
-        const warnBg = swWarn ? swWarn.checked : true;
+        const warnBg = swWarn ? swWarn.checked : false;
         
         let rewardData = app.rewardSettings || {};
         const elReward = document.getElementById('switchRewardEnabled');
