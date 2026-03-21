@@ -83,16 +83,18 @@
         }
         #btnInstall {
             display: none;
-            position: absolute;
-            top: 16px;
-            right: 15px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
             width: auto;
-            padding: 8px 15px;
-            background: #ffffff;
-            color: #10B981;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            border-radius: 20px;
-            font-size: 12px;
+            padding: 12px 20px;
+            background: #10B981;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
             margin: 0;
         }
         #btnDownload {
@@ -194,6 +196,7 @@
         }
 
         window.addEventListener('beforeinstallprompt', (e) => {
+            if (isStandalone) return; // ✅ Κρύβει το κουμπί αν το έχουμε ήδη κατεβάσει
             e.preventDefault();
             deferredPrompt = e;
             btnInstall.style.display = 'block';
