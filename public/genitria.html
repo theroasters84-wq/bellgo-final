@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QR Generator</title>
     
-    <link rel="manifest" or" content="#10B981">
+    <link rel="manifest" href="/manifest.json?id=genitria">
+    <meta name="theme-color" content="#10B981">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔲</text></svg>">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔲</text></svg>">
 
@@ -82,8 +83,22 @@
         }
         #btnInstall {
             display: none;
-            background: #2196F3;
-            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+            position: absolute;
+            top: 16px;
+            right: 15px;
+            width: auto;
+            padding: 8px 15px;
+            background: #ffffff;
+            color: #10B981;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 0;
+        }
+        #btnDownload {
+            display: none;
+            background: #635BFF;
+            box-shadow: 0 4px 10px rgba(99, 91, 255, 0.3);
         }
     </style>
 </head>
@@ -97,15 +112,67 @@
         
         <div id="qrcode"></div>
         
-        <button id="btnInstall" onclick="installApp()">⬇️ ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ (PWA)</button>
+        <button id="btnDownload" onclick="downloadQR()">⬇️ ΛΗΨΗ QR (DOWNLOAD)</button>
+        <button id="btnInstall" onclick="installApp()">📲 INSTALL</button>
     </div>
 
     <script>
-     o er                height: 250,
+        // Αυτόματη δημιουργία του QR Code κατά το άνοιγμα της σελίδας
+        window.onload = () => {
+            const initialLink = document.getElementById('inpLink').value.trim();
+            if (initialLink) generateQR();
+        };
+
+        function generateQR() {
+            const link = document.getElementById('inpLink').value.trim();
+            if (!link) return alert('Παρακαλώ εισάγετε ένα link!');
+            
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = ''; 
+            qrContainer.style.display = 'flex';
+            qrContainer.style.justifyContent = 'center';
+            
+            new QRCode(qrContainer, {
+                text: link,
+                width: 250,
+                height: 250,
                 colorDark : "#000000",
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
+            
+            document.getElementById('btnDownload').style.display = 'block';
+        }
+
+        async function downloadQR() {
+            const canvas = document.querySelector('#qrcode canvas');
+            if (canvas) {
+                const dataUrl = canvas.toDataURL("image/png");
+                
+                // 🚀 NATIVE SHARE API: Το απόλυτο εργαλείο για PWAs (Κινητά iOS/Android)
+                if (navigator.share) {
+                    try {
+                        const response = await fetch(dataUrl);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'bellgo_qr.png', { type: 'image/png' });
+                        
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({ title: 'QR Code', files: [file] });
+                            return; // Αν πετύχει το native share, σταματάμε εδώ!
+                        }
+                    } catch (err) { console.log("Share API error:", err); }
+                }
+
+                // 💻 FALLBACK: Κανονικό κατέβασμα (για PC / παλιά Android)
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = 'bellgo_qr.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert("Δεν βρέθηκε το QR code. Παρακαλώ δοκιμάστε ξανά.");
+            }
         }
 
         // --- PWA INSTALLATION LOGIC ---
@@ -123,14 +190,14 @@
         // Εμφάνιση του κουμπιού by default στα iPhone επειδή ΔΕΝ υποστηρίζουν το beforeinstallprompt event
         if (isIos && !isStandalone) {
             btnInstall.style.display = 'block';
-            btnInstall.innerHTML = '⬇️ ΕΓΚΑΤΑΣΤΑΣΗ (IPHONE)';
+            btnInstall.innerHTML = '📲 INSTALL';
         }
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             btnInstall.style.display = 'block';
-            btnInstall.innerHTML = '⬇️ ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ (ANDROID)';
+            btnInstall.innerHTML = '📲 INSTALL';
         });
 
         async function installApp() {
