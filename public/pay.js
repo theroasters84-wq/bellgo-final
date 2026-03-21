@@ -239,7 +239,7 @@ export const PaySystem = {
     openRewardQr: (orderId) => {
         const baseUrl = window.location.origin;
         const storeParam = encodeURIComponent(window.App.userData.store);
-        const url = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${orderId}`;
+        const url = `${baseUrl}/loyalty.html?store=${storeParam}&order=${orderId}`;
         document.getElementById('qrPaymentCode').innerHTML = "";
         new QRCode(document.getElementById('qrPaymentCode'), { text: url, width: 200, height: 200 });
         const modal = document.getElementById('qrPaymentModal');

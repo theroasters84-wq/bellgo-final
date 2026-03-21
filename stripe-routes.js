@@ -183,27 +183,33 @@ module.exports = function(context) {
     });
 
     router.post('/create-checkout-session', async (req, res) => {
-        const { email, plan, priceIds, isNative } = req.body; 
+        const { email, plan, priceIds, isNative, returnUrl } = req.body; 
         let line_items = [];
 
         if (priceIds && Array.isArray(priceIds) && priceIds.length > 0) {
             priceIds.forEach(pid => line_items.push({ price: pid, quantity: 1 }));
         } else if (plan) {
-            line_items.push({ price: (plan === 'premium' ? PRICE_PREMIUM : PRICE_BASIC), quantity: 1 });
+            if (plan === 'loyalty') {
+                const loyaltyPid = Object.keys(FEATURE_PRICES).find(k => FEATURE_PRICES[k] === 'pack_loyalty');
+                if (loyaltyPid) line_items.push({ price: loyaltyPid, quantity: 1 });
+            } else {
+                line_items.push({ price: (plan === 'premium' ? PRICE_PREMIUM : PRICE_BASIC), quantity: 1 });
+            }
         }
         if (line_items.length === 0) return res.status(400).json({ error: "No packages selected." });
 
         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
         const host = req.get('host');
         let returnDomain = isNative ? `bellgoapp://${host}` : `${protocol}://${host}`;
+        const finalReturnUrl = returnUrl ? `${returnDomain}${returnUrl}` : `${returnDomain}/login.html`;
 
         try {
             const session = await stripe.checkout.sessions.create({
                 line_items: line_items, 
                 mode: 'subscription',
                 customer_email: email,
-                success_url: `${returnDomain}/login.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-                cancel_url: `${returnDomain}/login.html`,
+                success_url: `${finalReturnUrl}?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+                cancel_url: finalReturnUrl,
             });
             res.json({ url: session.url });
         } catch(e) { res.status(500).json({ error: e.message }); }

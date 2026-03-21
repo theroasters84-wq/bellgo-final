@@ -165,14 +165,19 @@ module.exports = function(context) {
         const store = await Logic.getStoreData(storeName, db, storesData);
         if (!store) return res.json({ success: false, error: "Το κατάστημα δεν βρέθηκε." });
         
-        if (!store.settings.reward || !store.settings.reward.enabled) {
-            return res.json({ success: false, error: "Το πρόγραμμα επιβράβευσης είναι ανενεργό." });
-        }
-
-        const order = store.orders.find(o => o.id == orderId);
-        const isValidId = (Date.now() - orderId) < 86400000; // 24 ώρες
+        const isManual = String(orderId).startsWith('MANUAL_');
         
-        if (!order && !isValidId) return res.json({ success: false, error: "Η παραγγελία έληξε ή δεν βρέθηκε." });
+        if (!isManual) {
+            if (!store.settings.reward || !store.settings.reward.enabled) {
+                return res.json({ success: false, error: "Το πρόγραμμα επιβράβευσης είναι ανενεργό." });
+            }
+
+            if (!store.orders) store.orders = [];
+            const order = store.orders.find(o => o.id == orderId);
+            const isValidId = (Date.now() - orderId) < 86400000; // 24 ώρες
+            
+            if (!order && !isValidId) return res.json({ success: false, error: "Η παραγγελία έληξε ή δεν βρέθηκε." });
+        }
 
         if (!store.claimedRewards) store.claimedRewards = {};
         if (store.claimedRewards[orderId]) {
@@ -185,7 +190,9 @@ module.exports = function(context) {
         if (!store.rewards[phone]) store.rewards[phone] = 0;
         store.rewards[phone]++;
 
-        const target = parseInt(store.settings.reward.target) || 5;
+        const target = (store.settings.reward && parseInt(store.settings.reward.target)) || 5;
+        const gift = (store.settings.reward && store.settings.reward.gift) || 'Καφές';
+
         if (store.rewards[phone] % target === 0) {
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Athens' }); 
@@ -205,7 +212,38 @@ module.exports = function(context) {
         
         Logic.saveStoreToFirebase(storeName, db, storesData);
 
-        res.json({ success: true, count: store.rewards[phone], target: parseInt(store.settings.reward.target), gift: store.settings.reward.gift });
+        res.json({ success: true, count: store.rewards[phone], target: target, gift: gift });
+    });
+
+    /* ---------------- LOYALTY STANDALONE ROUTES ---------------- */
+    router.post('/api/loyalty/settings', async (req, res) => {
+        const { email, name, target, gift } = req.body;
+        if (!email) return res.json({ success: false, error: 'No email' });
+        const storeName = email.toLowerCase().trim();
+        const storeData = await Logic.getStoreData(storeName, db, storesData);
+        if (!storeData.settings) storeData.settings = {};
+        if (!storeData.settings.reward) storeData.settings.reward = {};
+        storeData.settings.name = name || storeData.settings.name || storeName;
+        storeData.settings.reward.enabled = true;
+        storeData.settings.reward.target = parseInt(target) || 5;
+        storeData.settings.reward.gift = gift || 'Καφές';
+        Logic.saveStoreToFirebase(storeName, db, storesData);
+        res.json({ success: true });
+    });
+
+    router.post('/api/loyalty/get-settings', async (req, res) => {
+        const { email } = req.body;
+        if (!email) return res.json({ success: false });
+        const storeName = email.toLowerCase().trim();
+        const storeData = await Logic.getStoreData(storeName, db, storesData);
+        const settings = storeData.settings || {};
+        const reward = settings.reward || {};
+        res.json({
+            success: true,
+            name: settings.name || storeName,
+            target: reward.target || 5,
+            gift: reward.gift || 'Καφές'
+        });
     });
 
     return router;

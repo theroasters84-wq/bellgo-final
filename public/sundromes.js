@@ -9,7 +9,7 @@ export const Sundromes = {
             key: 'pack_chat', 
             name: '1. 💬 Chat & Κλήση Προσωπικού', 
             price: 4, 
-            stripeId: 'price_1Sx9PFJcEtNSGviLteieJCwj', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_BASIC', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1992,
             desc: 'Κλήση σε διανομέα ή σερβιτόρο και ομαδικό chat.',
             ui_ids: ['chatWrapper', 'staffContainer', 'btnFakeLock', 'btnSettings']
@@ -18,7 +18,7 @@ export const Sundromes = {
             key: 'pack_manager', 
             name: '2. 👨‍🍳 Manager & Παραγγελιοληψία', 
             price: 10, 
-            stripeId: 'price_1SzHTPJcEtNSGviLk7N84Irn', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_PREMIUM', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1993,
             desc: 'Παραγγελιοληψία, Έξοδα, Στατιστικά (Tζίροι/Άτομο), Εκτυπωτές.',
             ui_ids: ['desktopArea', 'btnNewOrderSidebar', 'btnExpenses', 'btnMenuToggle', 'btnSettings', 'btnWallet', 'btnFakeLock', 'rowSwitchStaff', 'rowSwitchCust', 'rowStaffCharge', 'rowPrinterEnabled', 'btnSettingsStore', 'btnSettingsPrint', 'btnSettingsBot', 'rowTotalTables'] // ✅ Staff & Charge controlled here
@@ -27,7 +27,7 @@ export const Sundromes = {
             key: 'pack_delivery', 
             name: '3. 🛵 Delivery QR & Κρατήσεις', 
             price: 15, 
-            stripeId: 'price_1T5RpbJcEtNSGviLy5zj4t2F', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_DELIVERY', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1994,
             desc: 'QR για παραγγελίες delivery και διαχείριση κρατήσεων.',
             ui_ids: ['desktopArea', 'resWrapper', 'btnShowLink', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnMenuToggle', 'btnSettingsStore', 'rowSwitchCust', 'secSchedule', 'btnSettingsPrint', 'rowPrinterEnabled', 'rowReservations', 'btnSettingsGeneral'] // ✅ Added btnSettingsGeneral for Stripe
@@ -36,7 +36,7 @@ export const Sundromes = {
             key: 'pack_tables', 
             name: '4. 🍽️ Παραγγελία Τραπεζιού', 
             price: 15, 
-            stripeId: 'price_1T5RtQJcEtNSGviLGHRhyDx9', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_TABLES', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1995,
             desc: 'Δυνατότητα παραγγελίας από τον πελάτη στο τραπέζι.',
             ui_ids: ['desktopArea', 'btnModeTable', 'btnSettings', 'btnFakeLock', 'btnSettingsQr', 'btnQrTables', 'btnMenuToggle', 'btnSettingsStore', 'btnSettingsGeneral'] // ✅ Added btnSettingsGeneral for Stripe
@@ -45,7 +45,7 @@ export const Sundromes = {
             key: 'pack_pos', 
             name: '5. 💳 POS & E-Invoicing', 
             price: 20, 
-            stripeId: 'price_1T5RvLJcEtNSGviLrYYs72aH', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_POS', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1996,
             desc: 'Ηλ. Τιμολόγηση, Σύνδεση POS και SoftPOS στο κινητό.',
             ui_ids: ['desktopArea', 'btnCashRegister', 'softPosSettingsContainer', 'physicalPosSettingsContainer', 'btnSettings', 'btnFakeLock', 'btnSettingsGeneral', 'btnSettingsEinvoicing'] // ✅ Added physicalPosSettingsContainer
@@ -54,7 +54,7 @@ export const Sundromes = {
             key: 'pack_loyalty', 
             name: '6. 🎁 Επιβράβευση (Loyalty)', 
             price: 5, 
-            stripeId: 'price_1T5RwBJcEtNSGviLq7VJ1KLi', // ✅ Hosted Here
+            stripeId: 'ΕΔΩ_ΒΑΖΕΙΣ_ΤΟ_PRICE_LOYALTY', // π.χ. price_1Qxxxxxxxxxxxxxxxxxxx
             year: 1997,
             desc: 'QR επιβράβευσης σε κάθε απόδειξη.',
             ui_ids: ['btnManualReward', 'btnSettingsLoyalty', 'btnSettings', 'btnFakeLock', 'btnSettingsPrint', 'rowPrinterEnabled']

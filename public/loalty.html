@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BellGo Loyalty 🎁</title>
+    <style>
+        body {
+            background-color: #f4f6f8;
+            color: #1f2937;
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .card {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            max-width: 100%;
+            width: 350px;
+        }
+        .icon { font-size: 60px; margin-bottom: 10px; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-15px);} 60% {transform: translateY(-7px);} }
+        h1 { color: #e1306c; margin: 0 0 10px 0; font-size: 24px; }
+        p { color: #6b7280; font-size: 14px; margin-bottom: 25px; line-height: 1.5; }
+        input {
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            background: #f9fafb;
+            color: #1f2937;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border 0.3s;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        input:focus { border-color: #e1306c; }
+        button {
+            padding: 15px;
+            background: #e1306c;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: transform 0.1s, background 0.3s;
+            box-shadow: 0 4px 15px rgba(225, 48, 108, 0.3);
+        }
+        button:active { transform: scale(0.95); }
+        button:disabled { background: #d1d5db; cursor: not-allowed; box-shadow: none; transform: none; }
+        #result { margin-top: 20px; font-weight: bold; display: none; padding: 15px; border-radius: 12px; font-size: 15px; line-height: 1.5; }
+        .success { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+        .gift-box { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 18px; font-weight: bold; animation: pop 0.5s ease-out; }
+        @keyframes pop { 0% {transform: scale(0.8); opacity: 0;} 100% {transform: scale(1); opacity: 1;} }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🎁</div>
+        <h1>Επιβράβευση!</h1>
+        <p id="descText">Συμπληρώστε το κινητό σας για να μαζέψετε πόντους από αυτή την παραγγελία.</p>
+        
+        <input type="tel" id="inpPhone" placeholder="π.χ. 6900000000" maxlength="10">
+        <button id="btnClaim" onclick="claimReward()">ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Αυτόματη συμπλήρωση από προηγούμενη χρήση
+        const savedPhone = localStorage.getItem('bellgo_loyalty_phone');
+        if (savedPhone) {
+            document.getElementById('inpPhone').value = savedPhone;
+        }
+
+        async function claimReward() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const storeName = urlParams.get('store');
+            const orderId = urlParams.get('order');
+            const phone = document.getElementById('inpPhone').value.trim();
+
+            const btn = document.getElementById('btnClaim');
+            const resultDiv = document.getElementById('result');
+            const descText = document.getElementById('descText');
+
+            if (!phone || phone.length < 10) {
+                alert("Παρακαλώ συμπληρώστε ένα έγκυρο 10-ψήφιο κινητό τηλέφωνο!");
+                return;
+            }
+            if (!storeName || !orderId) {
+                resultDiv.className = 'error';
+                resultDiv.innerText = "❌ Λείπουν στοιχεία καταστήματος ή παραγγελίας από το URL.";
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            // Αποθήκευση κινητού για την επόμενη φορά (διευκόλυνση πελάτη)
+            localStorage.setItem('bellgo_loyalty_phone', phone);
+
+            btn.disabled = true;
+            btn.innerText = "ΦΟΡΤΩΣΗ...";
+            resultDiv.style.display = 'none';
+
+            try {
+                const res = await fetch('/claim-reward', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ storeName, orderId, phone })
+                });
+                const data = await res.json();
+
+                resultDiv.style.display = 'block';
+                if (data.success) {
+                    resultDiv.className = 'success';
+                    let html = `Επιτυχία! 🎉<br><br>Έχετε <b>${data.count} / ${data.target}</b> πόντους.`;
+                    
+                    if (data.count % data.target === 0) {
+                        html += `<div class="gift-box">🌟 ΣΥΓΧΑΡΗΤΗΡΙΑ!<br>Κερδίσατε: <br><span style="color:#e1306c;">${data.gift}</span></div>`;
+                    }
+                    
+                    resultDiv.innerHTML = html;
+                    document.getElementById('inpPhone').style.display = 'none';
+                    btn.style.display = 'none';
+                    descText.style.display = 'none';
+                } else {
+                    resultDiv.className = 'error';
+                    resultDiv.innerText = "❌ " + (data.error || "Άγνωστο σφάλμα.");
+                    btn.disabled = false;
+                    btn.innerText = "ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ";
+                }
+            } catch (e) {
+                resultDiv.className = 'error';
+                resultDiv.innerText = "❌ Σφάλμα σύνδεσης. Δοκιμάστε ξανά.";
+                resultDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ";
+            }
+        }
+    </script>
+</body>
+</html>

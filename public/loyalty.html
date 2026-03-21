@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BellGo Loyalty 🎁</title>
+    <meta name="theme-color" content="#e1306c">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e1306c%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🎁</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e1306c%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🎁</text></svg>">
+    <link rel="manifest" href="/manifest.json?id=loyalty_app">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            background-color: #f4f6f8;
+            color: #1f2937;
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .card {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+            max-width: 100%;
+            width: 350px;
+        }
+        .icon { font-size: 60px; margin-bottom: 10px; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-15px);} 60% {transform: translateY(-7px);} }
+        h1 { color: #e1306c; margin: 0 0 10px 0; font-size: 24px; }
+        p { color: #6b7280; font-size: 14px; margin-bottom: 25px; line-height: 1.5; }
+        input {
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #d1d5db;
+            background: #f9fafb;
+            color: #1f2937;
+            width: 100%;
+            text-align: center;
+            font-size: 18px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border 0.3s;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        input:focus { border-color: #e1306c; }
+        button {
+            padding: 15px;
+            background: #e1306c;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: transform 0.1s, background 0.3s;
+            box-shadow: 0 4px 15px rgba(225, 48, 108, 0.3);
+        }
+        button:active { transform: scale(0.95); }
+        button:disabled { background: #d1d5db; cursor: not-allowed; box-shadow: none; transform: none; }
+        #result { margin-top: 20px; font-weight: bold; display: none; padding: 15px; border-radius: 12px; font-size: 15px; line-height: 1.5; }
+        .success { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .error { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+        .gift-box { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 18px; font-weight: bold; animation: pop 0.5s ease-out; }
+        @keyframes pop { 0% {transform: scale(0.8); opacity: 0;} 100% {transform: scale(1); opacity: 1;} }
+    </style>
+</head>
+<body>
+
+    <!-- Top Right Controls -->
+    <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 1000;">
+        <button id="btnGlobalInstall" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:8px 15px; border-radius:20px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ</button>
+        <button id="btnLogout" style="display:none; background:#fee2e2; color:#991b1b; border:1px solid #f87171; padding:8px 15px; border-radius:20px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.05);">🚪 Έξοδος</button>
+    </div>
+
+    <!-- 1. CUSTOMER VIEW (Σάρωση QR από Πελάτη) -->
+    <div id="customerView" style="display:none; width:100%; justify-content:center;">
+        <div class="card">
+            <div class="icon">🎁</div>
+            <h1>Επιβράβευση!</h1>
+            <p id="descText">Συμπληρώστε το κινητό σας για να μαζέψετε πόντους από αυτή την παραγγελία.</p>
+            <input type="tel" id="inpPhone" placeholder="π.χ. 6900000000" maxlength="10">
+            <button id="btnClaim" onclick="claimReward()">ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ</button>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <!-- 2. MERCHANT VIEW (Ανεξάρτητο Panel Καταστήματος) -->
+    <div id="merchantView" style="display:none; width:100%; justify-content:center;">
+        
+        <!-- Οθόνη Εισόδου (Login) -->
+        <div id="merchantLogin" class="card" style="display:none;">
+            <div class="icon">🏪</div>
+            <h1>Διαχείριση Loyalty</h1>
+            <p>Συνδεθείτε για να διαχειριστείτε τους πελάτες σας.</p>
+            
+            <button id="btnGoogleLogin" style="background:#4285F4; margin-bottom:15px;"><b style="font-size:18px; margin-right:5px;">G</b> Είσοδος με Google</button>
+            
+            <div style="font-size:12px; color:#aaa; margin-bottom:15px; border-bottom:1px solid #e5e7eb; line-height:0.1em; text-align:center;"><span style="background:#fff; padding:0 10px;">Ή με Email</span></div>
+            
+            <input type="email" id="inpLoginEmail" placeholder="Email" style="font-size:14px; padding:12px;">
+            <input type="password" id="inpLoginPwd" placeholder="Κωδικός" style="font-size:14px; padding:12px;">
+            <button id="btnEmailLogin" style="background:#1f2937;">Είσοδος</button>
+            
+            <p style="font-size:12px; margin-top:15px;"><a href="#" id="linkToReg" style="color:#e1306c;">Δεν έχετε λογαριασμό; Εγγραφή</a></p>
+        </div>
+
+        <!-- Οθόνη Εγγραφής (Register) -->
+        <div id="merchantRegister" class="card" style="display:none;">
+            <div class="icon">📝</div>
+            <h1>Νέος Λογαριασμός</h1>
+            <p>Δημιουργήστε λογαριασμό για να ξεκινήσετε.</p>
+            
+            <input type="email" id="inpRegEmail" placeholder="Email" style="font-size:14px; padding:12px;">
+            <input type="password" id="inpRegPwd" placeholder="Κωδικός" style="font-size:14px; padding:12px;">
+            <input type="password" id="inpRegPwd2" placeholder="Επιβεβαίωση Κωδικού" style="font-size:14px; padding:12px;">
+            
+            <button id="btnEmailRegister" style="background:#10B981;">ΕΓΓΡΑΦΗ & ΣΥΝΔΡΟΜΗ</button>
+            
+            <p style="font-size:12px; margin-top:15px;"><a href="#" id="linkToLogin" style="color:#10B981;">Έχετε ήδη λογαριασμό; Είσοδος</a></p>
+        </div>
+
+        <!-- Οθόνη Αγοράς Συνδρομής -->
+        <div id="merchantSub" class="card" style="display:none;">
+            <div class="icon">💳</div>
+            <h1>Συνδρομή Loyalty</h1>
+            <p>Η υπηρεσία "Loyalty" είναι ανενεργή.</p>
+            <button id="btnBuySub" style="background:#10B981; margin-top:10px;">ΑΓΟΡΑ (5€/μήνα)</button>
+            <button id="btnLogoutSub" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; margin-top:10px;">Αποσύνδεση</button>
+        </div>
+
+        <!-- Πίνακας Ελέγχου Loyalty -->
+        <div id="merchantDash" style="display:none; width:100%; max-width:400px; flex-direction:column; gap:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:15px; border-radius:15px; border:1px solid #e5e7eb; box-shadow:0 5px 15px rgba(0,0,0,0.05);">
+                <div style="text-align:left;">
+                    <h1 style="color:#10B981; margin:0; font-size:20px;">Loyalty Panel</h1>
+                    <p id="merchantEmailText" style="color:#6b7280; font-size:12px; margin-top:2px; margin-bottom:0; font-weight:bold;"></p>
+                </div>
+            </div>
+
+            <!-- Card 1: Ρυθμίσεις -->
+            <div class="card" style="padding: 20px;">
+                <div class="icon" style="font-size: 40px; margin-bottom: 5px;">⚙️</div>
+                <h2 style="color:#10B981; margin: 0 0 15px 0; font-size:18px;">Ρυθμίσεις</h2>
+                <input type="text" id="inpStoreName" placeholder="Όνομα Καταστήματος" style="font-size:14px; padding:12px;" oninput="document.getElementById('btnSaveSettings').innerText='ΑΠΟΘΗΚΕΥΣΗ'">
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <input type="number" id="inpTarget" placeholder="Στόχος (π.χ. 5)" style="font-size:14px; padding:12px; margin-bottom:0; flex:1;" oninput="document.getElementById('btnSaveSettings').innerText='ΑΠΟΘΗΚΕΥΣΗ'">
+                    <input type="text" id="inpGift" placeholder="Δώρο (π.χ. Καφές)" style="font-size:14px; padding:12px; margin-bottom:0; flex:2;" oninput="document.getElementById('btnSaveSettings').innerText='ΑΠΟΘΗΚΕΥΣΗ'">
+                </div>
+                <button id="btnSaveSettings" style="background:#10B981; padding:12px;">ΑΠΟΘΗΚΕΥΣΗ</button>
+            </div>
+
+            <!-- Card 2: Χειροκίνητη Προσθήκη -->
+            <div class="card" style="padding: 20px;">
+                <div class="icon" style="font-size: 40px; margin-bottom: 5px;">✍️</div>
+                <h2 style="color:#e1306c; margin: 0 0 10px 0; font-size:18px;">Χειροκίνητη Εγγραφή</h2>
+                <p style="font-size:12px; margin-top:0; margin-bottom:15px; color:#6b7280;">Προσθήκη πόντου απευθείας στο κινητό.</p>
+                <input type="tel" id="inpManualPhone" placeholder="π.χ. 6900000000" maxlength="10" style="font-size:14px; padding:12px;">
+                <button id="btnManualAdd" style="background:#e1306c; padding:12px;">ΠΡΟΣΘΗΚΗ ΠΟΝΤΟΥ</button>
+                <div id="manualResult" style="margin-top:15px; font-weight:bold; font-size:14px; text-align:center;"></div>
+            </div>
+
+            <!-- Card 3: QR Πελάτη -->
+            <div class="card" style="padding: 20px;">
+                <div class="icon" style="font-size: 40px; margin-bottom: 5px;">📱</div>
+                <h2 style="color:#2196F3; margin: 0 0 15px 0; font-size:18px;">QR Πελάτη</h2>
+                <button id="btnGenQr" style="background:#2196F3; padding:12px;">🔲 ΕΜΦΑΝΙΣΗ QR</button>
+                <div id="qrAdminCode" style="margin-top:20px; display:flex; justify-content:center; background:white; padding:10px; border-radius:10px; display:none;"></div>
+                <p id="qrHelpText" style="font-size:14px; font-weight:bold; color:#10B981; display:none; margin-top:10px;">Δείξτε το στον πελάτη!</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { firebaseConfig } from './config.js';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const storeName = urlParams.get('store');
+        const orderId = urlParams.get('order');
+
+        if (storeName && orderId) {
+            document.getElementById('customerView').style.display = 'flex';
+            initCustomerApp(storeName, orderId);
+        } else {
+            document.getElementById('merchantView').style.display = 'flex';
+            initMerchantApp();
+        }
+
+        // --- CUSTOMER LOGIC ---
+        function initCustomerApp(storeName, orderId) {
+            const savedPhone = localStorage.getItem('bellgo_loyalty_phone');
+            if (savedPhone) {
+                document.getElementById('inpPhone').value = savedPhone;
+            }
+
+            window.claimReward = async function() {
+                const phone = document.getElementById('inpPhone').value.trim();
+                const btn = document.getElementById('btnClaim');
+                const resultDiv = document.getElementById('result');
+                const descText = document.getElementById('descText');
+
+                if (!phone || phone.length < 10) {
+                    alert("Παρακαλώ συμπληρώστε ένα έγκυρο 10-ψήφιο κινητό τηλέφωνο!");
+                    return;
+                }
+
+                localStorage.setItem('bellgo_loyalty_phone', phone);
+                btn.disabled = true;
+                btn.innerText = "ΦΟΡΤΩΣΗ...";
+                resultDiv.style.display = 'none';
+
+                try {
+                    const res = await fetch('/claim-reward', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ storeName, orderId, phone })
+                    });
+                    const data = await res.json();
+
+                    resultDiv.style.display = 'block';
+                    if (data.success) {
+                        resultDiv.className = 'success';
+                        let html = `Επιτυχία! 🎉<br><br>Έχετε <b>${data.count} / ${data.target}</b> πόντους.`;
+                        
+                        if (data.count % data.target === 0) {
+                            html += `<div class="gift-box">🌟 ΣΥΓΧΑΡΗΤΗΡΙΑ!<br>Κερδίσατε: <br><span style="color:#e1306c;">${data.gift}</span></div>`;
+                        }
+                        
+                        resultDiv.innerHTML = html;
+                        document.getElementById('inpPhone').style.display = 'none';
+                        btn.style.display = 'none';
+                        descText.style.display = 'none';
+                    } else {
+                        resultDiv.className = 'error';
+                        resultDiv.innerText = "❌ " + (data.error || "Άγνωστο σφάλμα.");
+                        btn.disabled = false;
+                        btn.innerText = "ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ";
+                    }
+                } catch (e) {
+                    resultDiv.className = 'error';
+                    resultDiv.innerText = "❌ Σφάλμα σύνδεσης. Δοκιμάστε ξανά.";
+                    resultDiv.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerText = "ΣΥΛΛΟΓΗ ΠΟΝΤΩΝ";
+                }
+            }
+        }
+
+        // --- MERCHANT LOGIC (STANDALONE) ---
+        let currentUser = null;
+        function initMerchantApp() {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const provider = new GoogleAuthProvider();
+
+            document.getElementById('btnGoogleLogin').onclick = () => signInWithPopup(auth, provider);
+            document.getElementById('btnLogout').onclick = () => signOut(auth);
+            document.getElementById('btnLogoutSub').onclick = () => signOut(auth);
+
+            // Εναλλαγή μεταξύ Login και Register
+            document.getElementById('linkToReg').onclick = (e) => {
+                e.preventDefault();
+                document.getElementById('merchantLogin').style.display = 'none';
+                document.getElementById('merchantRegister').style.display = 'block';
+            };
+            document.getElementById('linkToLogin').onclick = (e) => {
+                e.preventDefault();
+                document.getElementById('merchantRegister').style.display = 'none';
+                document.getElementById('merchantLogin').style.display = 'block';
+            };
+
+            // Λογική Εισόδου με Email
+            document.getElementById('btnEmailLogin').onclick = async () => {
+                const email = document.getElementById('inpLoginEmail').value.trim();
+                const pwd = document.getElementById('inpLoginPwd').value;
+                if (!email || !pwd) return alert("Παρακαλώ συμπληρώστε Email και Κωδικό.");
+                document.getElementById('btnEmailLogin').innerText = "ΑΝΑΜΟΝΗ...";
+                try { await signInWithEmailAndPassword(auth, email, pwd); } 
+                catch (e) { alert("Λάθος στοιχεία. Προσπαθήστε ξανά."); document.getElementById('btnEmailLogin').innerText = "Είσοδος"; }
+            };
+
+            // Λογική Εγγραφής
+            document.getElementById('btnEmailRegister').onclick = async () => {
+                const email = document.getElementById('inpRegEmail').value.trim();
+                const pwd1 = document.getElementById('inpRegPwd').value;
+                const pwd2 = document.getElementById('inpRegPwd2').value;
+                if (!email || !pwd1 || !pwd2) return alert("Συμπληρώστε όλα τα πεδία.");
+                if (pwd1 !== pwd2) return alert("Οι κωδικοί δεν ταιριάζουν!");
+                if (pwd1.length < 6) return alert("Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.");
+                
+                document.getElementById('btnEmailRegister').innerText = "ΕΓΓΡΑΦΗ...";
+                try { await createUserWithEmailAndPassword(auth, email, pwd1); } 
+                catch (e) { alert("Σφάλμα Εγγραφής: Το email μπορεί να υπάρχει ήδη."); document.getElementById('btnEmailRegister').innerText = "ΕΓΓΡΑΦΗ & ΣΥΝΔΡΟΜΗ"; }
+            };
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('btnLogout').style.display = 'block';
+                    document.getElementById('merchantLogin').style.display = 'none';
+                    document.getElementById('merchantRegister').style.display = 'none';
+                    document.getElementById('merchantEmailText').innerText = user.email;
+                    document.getElementById('merchantSub').style.display = 'none';
+                    document.getElementById('merchantDash').style.display = 'none';
+
+                    try {
+                        const res = await fetch('/check-subscription', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: user.email })
+                        });
+                        const data = await res.json();
+                        
+                        if (data.active && (data.features['pack_loyalty'] || data.plan === 'premium')) {
+                            document.getElementById('merchantDash').style.display = 'flex';
+                            
+                            // Φόρτωση Ρυθμίσεων
+                            try {
+                                const setRes = await fetch('/api/loyalty/get-settings', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email })
+                                });
+                                const setData = await setRes.json();
+                                if (setData.success) {
+                                    document.getElementById('inpStoreName').value = setData.name || '';
+                                    document.getElementById('inpTarget').value = setData.target || 5;
+                                    document.getElementById('inpGift').value = setData.gift || '';
+                                }
+                            } catch(e) {}
+                        } else {
+                            document.getElementById('merchantSub').style.display = 'block';
+                        }
+                    } catch (e) {
+                        alert("Σφάλμα ελέγχου συνδρομής.");
+                    }
+                } else {
+                    currentUser = null;
+                    document.getElementById('btnLogout').style.display = 'none';
+                    document.getElementById('merchantLogin').style.display = 'block';
+                    document.getElementById('merchantRegister').style.display = 'none';
+                    document.getElementById('merchantSub').style.display = 'none';
+                    document.getElementById('merchantDash').style.display = 'none';
+                }
+            });
+
+            document.getElementById('btnBuySub').onclick = async () => {
+                if (!currentUser) return;
+                document.getElementById('btnBuySub').innerText = "ΑΝΑΜΟΝΗ...";
+                try {
+                    const res = await fetch('/create-checkout-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            email: currentUser.email, 
+                            plan: 'loyalty',
+                            returnUrl: '/loyalty.html'
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.url) window.location.href = data.url;
+                    else {
+                        alert("Σφάλμα Stripe: " + data.error);
+                        document.getElementById('btnBuySub').innerText = "ΑΓΟΡΑ (5€/μήνα)";
+                    }
+                } catch (e) {
+                    alert("Σφάλμα σύνδεσης.");
+                    document.getElementById('btnBuySub').innerText = "ΑΓΟΡΑ (5€/μήνα)";
+                }
+            };
+
+            // Αποθήκευση Ρυθμίσεων
+            document.getElementById('btnSaveSettings').onclick = async () => {
+                const btn = document.getElementById('btnSaveSettings');
+                btn.innerText = "ΑΠΟΘΗΚΕΥΣΗ...";
+                try {
+                    await fetch('/api/loyalty/settings', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: currentUser.email,
+                            name: document.getElementById('inpStoreName').value.trim(),
+                            target: document.getElementById('inpTarget').value,
+                            gift: document.getElementById('inpGift').value.trim()
+                        })
+                    });
+                btn.innerText = "✅ ΑΠΟΘΗΚΕΥΤΗΚΑΝ";
+                } catch(e) {
+                    alert('Σφάλμα αποθήκευσης.');
+                    btn.innerText = "ΑΠΟΘΗΚΕΥΣΗ";
+                }
+            };
+
+            // Χειροκίνητη Προσθήκη Πόντου
+            document.getElementById('btnManualAdd').onclick = async () => {
+                if (!currentUser) return;
+                const phone = document.getElementById('inpManualPhone').value.trim();
+                const resDiv = document.getElementById('manualResult');
+                if (!phone || phone.length < 10) {
+                    resDiv.innerText = "❌ Μη έγκυρο κινητό.";
+                    resDiv.style.color = "red";
+                    return;
+                }
+                const btn = document.getElementById('btnManualAdd');
+                btn.disabled = true;
+                btn.innerText = "ΑΝΑΜΟΝΗ...";
+                try {
+                    const res = await fetch('/claim-reward', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ storeName: currentUser.email, orderId: 'MANUAL_' + Date.now(), phone: phone })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        resDiv.style.color = "#10B981";
+                        if (data.count % data.target === 0) resDiv.innerText = `🎉 ΣΥΓΧΑΡΗΤΗΡΙΑ! Ο πελάτης κέρδισε:\n${data.gift}!`;
+                        else resDiv.innerText = `✅ Πόντος προστέθηκε!\nΈχει ${data.count} / ${data.target}`;
+                        document.getElementById('inpManualPhone').value = '';
+                    } else { resDiv.style.color = "red"; resDiv.innerText = "❌ " + (data.error || "Σφάλμα."); }
+                } catch(e) { resDiv.style.color = "red"; resDiv.innerText = "❌ Σφάλμα σύνδεσης."; }
+                btn.disabled = false;
+                btn.innerText = "ΠΡΟΣΘΗΚΗ ΠΟΝΤΟΥ";
+            };
+
+            document.getElementById('btnGenQr').onclick = () => {
+                if (!currentUser) return;
+                const newOrderId = 'MANUAL_' + Date.now();
+                const qrUrl = window.location.origin + '/loyalty.html?store=' + encodeURIComponent(currentUser.email) + '&order=' + newOrderId;
+                
+                const qrContainer = document.getElementById('qrAdminCode');
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, { text: qrUrl, width: 200, height: 200 });
+                qrContainer.style.display = 'flex';
+                document.getElementById('qrHelpText').style.display = 'block';
+            };
+        }
+
+        // --- PWA INSTALLATION LOGIC ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js', { scope: '/loyalty.html' })
+                .then(() => console.log('✅ Loyalty SW Registered'))
+                .catch(e => console.log('❌ SW Error', e));
+        }
+
+        let deferredPrompt;
+        const btnInstall = document.getElementById('btnGlobalInstall');
+        const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+        if (isIos && !isStandalone) {
+            btnInstall.style.display = 'block';
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            if (isStandalone) return;
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstall.style.display = 'block';
+        });
+
+        window.installApp = async function() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') btnInstall.style.display = 'none';
+                deferredPrompt = null;
+            } else if (isIos) {
+                alert("Για να εγκαταστήσετε την εφαρμογή στο iPhone:\n1. Πατήστε το κουμπί 'Share' (το τετράγωνο με το βελάκι)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
+            }
+        };
+    </script>
+</body>
+</html>

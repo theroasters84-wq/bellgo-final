@@ -48,7 +48,7 @@ export const PrintSystem = {
         if (App.rewardSettings && App.rewardSettings.enabled) {
              const baseUrl = window.location.origin;
              const storeParam = encodeURIComponent(App.userData.store);
-             const rewardUrl = `${baseUrl}/epivraveush.html?store=${storeParam}&order=${order.id}`;
+             const rewardUrl = `${baseUrl}/loyalty.html?store=${storeParam}&order=${order.id}`;
              const divReward = document.createElement('div');
              new QRCode(divReward, { text: rewardUrl, width: 100, height: 100, correctLevel: QRCode.CorrectLevel.L });
              const imgR = divReward.querySelector('img');

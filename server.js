@@ -15,25 +15,30 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// ✅ STRIPE SETUP (ΠΡΟΣΟΧΗ: Σε παραγωγή χρησιμοποιούμε .env)
-const stripe = require('stripe')('sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx');
-const STRIPE_CLIENT_ID = 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
+// ✅ STRIPE SETUP (Χρήση μεταβλητών περιβάλλοντος για τα Live κλειδιά)
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_51SwnsPJcEtNSGviLf1RB1NTLaHJ3LTmqqy9LM52J3Qc7DpgbODtfhYK47nHAy1965eNxwVwh9gA4PTuizOxhMPil00dIoebxMx';
+const stripe = require('stripe')(STRIPE_SECRET_KEY);
+const STRIPE_CLIENT_ID = process.env.STRIPE_CLIENT_ID || 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''; // ✅ Add your Webhook Secret here
-const YOUR_DOMAIN = 'https://bellgo-final.onrender.com'; 
+const YOUR_DOMAIN = process.env.YOUR_DOMAIN || 'https://bellgo-final.onrender.com'; 
 
-// ✅ PRICE LIST
-const PRICE_BASIC = 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
-const PRICE_PREMIUM = 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
+// ✅ PRICE LIST (LIVE PRICE IDs)
+const PRICE_BASIC = process.env.PRICE_BASIC || 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
+const PRICE_PREMIUM = process.env.PRICE_PREMIUM || 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
+const PRICE_DELIVERY = process.env.PRICE_DELIVERY || 'price_1T5RpbJcEtNSGviLy5zj4t2F';
+const PRICE_TABLES = process.env.PRICE_TABLES || 'price_1T5RtQJcEtNSGviLGHRhyDx9';
+const PRICE_POS = process.env.PRICE_POS || 'price_1T5RvLJcEtNSGviLrYYs72aH';
+const PRICE_LOYALTY = process.env.PRICE_LOYALTY || 'price_1T5RwBJcEtNSGviLq7VJ1KLi';
 
 // ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
 // ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
 const FEATURE_PRICES = {
-    'price_1Sx9PFJcEtNSGviLteieJCwj': 'pack_chat', // ✅ BellGo Basic (4€) -> Pack 1
-    'price_1SzHTPJcEtNSGviLk7N84Irn': 'pack_manager', // ✅ Premium (10€) -> Pack 2
-    'price_1T5RpbJcEtNSGviLy5zj4t2F': 'pack_delivery',
-    'price_1T5RtQJcEtNSGviLGHRhyDx9': 'pack_tables',
-    'price_1T5RvLJcEtNSGviLrYYs72aH': 'pack_pos',
-    'price_1T5RwBJcEtNSGviLq7VJ1KLi': 'pack_loyalty'
+    [PRICE_BASIC]: 'pack_chat', // ✅ BellGo Basic (4€) -> Pack 1
+    [PRICE_PREMIUM]: 'pack_manager', // ✅ Premium (10€) -> Pack 2
+    [PRICE_DELIVERY]: 'pack_delivery',
+    [PRICE_TABLES]: 'pack_tables',
+    [PRICE_POS]: 'pack_pos',
+    [PRICE_LOYALTY]: 'pack_loyalty'
 };
 
 /* ---------------- FIREBASE ADMIN SETUP ---------------- */
@@ -70,12 +75,13 @@ const stripeRoutes = require('./stripe-routes')({
 });
 app.use('/', stripeRoutes);
 
+// ✅ Global Body Parsers (Πρέπει να μπουν ΕΔΩ, μετά το Stripe και ΠΡΙΝ το API)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true })); 
+
 // ✅ API ROUTES (PIN Resets, Rewards, etc.)
 const apiRoutes = require('./api-routes')({ db, storesData });
 app.use('/', apiRoutes);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
 
 // ✅ NEW: Redirect Root to Login (Admin PWA)
 app.get('/', (req, res) => {
@@ -178,6 +184,23 @@ app.get('/manifest.json', async (req, res) => {
             "theme_color": "#10B981",
             "icons": [{
                 "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2310B981%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🔲</text></svg>",
+                "sizes": "192x192 512x512",
+                "type": "image/svg+xml",
+                "purpose": "any maskable"
+            }]
+        });
+    } else if (req.query.id === 'loyalty_app') {
+        return res.json({
+            "id": "bellgo_loyalty_admin",
+            "name": "Loyalty Admin",
+            "short_name": "Loyalty",
+            "start_url": "/loyalty.html",
+            "scope": "/loyalty.html",
+            "display": "standalone",
+            "background_color": "#f4f6f8",
+            "theme_color": "#e1306c",
+            "icons": [{
+                "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23e1306c%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🎁</text></svg>",
                 "sizes": "192x192 512x512",
                 "type": "image/svg+xml",
                 "purpose": "any maskable"
