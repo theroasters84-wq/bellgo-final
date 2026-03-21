@@ -165,6 +165,24 @@ app.get('/manifest.json', async (req, res) => {
         iconFile = "admin.png";
         startUrl = `/staff/app?store=${encodeURIComponent(storeParam)}`;
         scopeUrl = "/staff/";
+    } else if (req.query.id === 'genitria') {
+        // ✅ NEW: QR Generator App Isolation (No Blob URL Hack needed)
+        return res.json({
+            "id": "bellgo_genitria",
+            "name": "QR Generator",
+            "short_name": "QR Gen",
+            "start_url": "/genitria.html",
+            "scope": "/genitria.html",
+            "display": "standalone",
+            "background_color": "#f4f6f8",
+            "theme_color": "#10B981",
+            "icons": [{
+                "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%2310B981%22 rx=%2220%22/><text y=%2275%22 x=%2212%22 font-size=%2270%22>🔲</text></svg>",
+                "sizes": "192x192 512x512",
+                "type": "image/svg+xml",
+                "purpose": "any maskable"
+            }]
+        });
     } else {
         iconFile = "admin.png";
         startUrl = `/manage/login.html`; // ✅ Αλλαγή Start URL
