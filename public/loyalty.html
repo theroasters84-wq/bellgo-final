@@ -80,7 +80,7 @@
 
     <!-- Top Right Controls -->
     <div style="position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 1000;">
-        <button id="btnGlobalInstall" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:8px 15px; border-radius:20px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ</button>
+        <button class="btnInstallApp" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:8px 15px; border-radius:20px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ</button>
         <button id="btnLogout" style="display:none; background:#fee2e2; color:#991b1b; border:1px solid #f87171; padding:8px 15px; border-radius:20px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.05);">🚪 Έξοδος</button>
     </div>
 
@@ -101,6 +101,7 @@
         
         <!-- Οθόνη Εισόδου (Login) -->
         <div id="merchantLogin" class="card" style="display:none;">
+            <button class="btnInstallApp" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:14px; margin-bottom:15px; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
             <div class="icon">🏪</div>
             <h1>Διαχείριση Loyalty</h1>
             <p>Συνδεθείτε για να διαχειριστείτε τους πελάτες σας.</p>
@@ -118,6 +119,7 @@
 
         <!-- Οθόνη Εγγραφής (Register) -->
         <div id="merchantRegister" class="card" style="display:none;">
+            <button class="btnInstallApp" onclick="installApp()" style="display:none; background:#10B981; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:14px; margin-bottom:15px; width:100%; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📲 ΕΓΚΑΤΑΣΤΑΣΗ ΕΦΑΡΜΟΓΗΣ</button>
             <div class="icon">📝</div>
             <h1>Νέος Λογαριασμός</h1>
             <p>Δημιουργήστε λογαριασμό για να ξεκινήσετε.</p>
@@ -452,26 +454,26 @@
         }
 
         let deferredPrompt;
-        const btnInstall = document.getElementById('btnGlobalInstall');
+        const installBtns = document.querySelectorAll('.btnInstallApp');
         const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
         if (isIos && !isStandalone) {
-            btnInstall.style.display = 'block';
+            installBtns.forEach(btn => btn.style.display = 'block');
         }
 
         window.addEventListener('beforeinstallprompt', (e) => {
             if (isStandalone) return;
             e.preventDefault();
             deferredPrompt = e;
-            btnInstall.style.display = 'block';
+            installBtns.forEach(btn => btn.style.display = 'block');
         });
 
         window.installApp = async function() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') btnInstall.style.display = 'none';
+                if (outcome === 'accepted') installBtns.forEach(btn => btn.style.display = 'none');
                 deferredPrompt = null;
             } else if (isIos) {
                 alert("Για να εγκαταστήσετε την εφαρμογή στο iPhone:\n1. Πατήστε το κουμπί 'Share' (το τετράγωνο με το βελάκι)\n2. Επιλέξτε 'Προσθήκη στην Οθόνη Αφετηρίας'");
