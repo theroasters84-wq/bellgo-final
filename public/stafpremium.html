@@ -294,6 +294,15 @@
             </div>
         </div>
 
+        <!-- ✅ NEW: PRODUCT INFO MODAL (STAFF) -->
+        <div id="productInfoModal" class="overlay-screen" onclick="this.style.display='none'" style="z-index: 26000; display:none;">
+            <div class="action-box" onclick="event.stopPropagation()" style="text-align:center;">
+                <h3 style="color:#2196F3; margin:0 0 10px 0;">ℹ️ Πληροφορίες</h3>
+                <p id="productInfoText" style="color:#1f2937; font-size:16px; margin: 15px 0; white-space: pre-wrap;"></p>
+                <button class="btn-act" style="background:#555; color:white;" onclick="document.getElementById('productInfoModal').style.display='none'" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -608,6 +617,16 @@
                     listDiv.appendChild(div);
                 });
                 modal.style.display = 'flex';
+            },
+
+            // ✅ NEW: Όμορφο παράθυρο αντί για system alert
+            showProductInfo: (desc) => {
+                const modal = document.getElementById('productInfoModal');
+                const text = document.getElementById('productInfoText');
+                if (modal && text) {
+                    text.innerText = desc;
+                    modal.style.display = 'flex';
+                }
             },
 
             init: () => {
@@ -971,7 +990,7 @@
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
                             cat.items.forEach(item => {
-                                let itemName = "", itemPrice = 0, itemExtras = [];
+                                let itemName = "", itemPrice = 0, itemExtras = [], itemDesc = "";
                                 if (typeof item === 'string') {
                                     const parts = item.split(':');
                                     itemName = parts[0].trim();
@@ -980,13 +999,15 @@
                                     itemName = item.name;
                                     itemPrice = item.price;
                                     itemExtras = item.extras || [];
+                                    itemDesc = item.desc || "";
                                 }
 
                                 if(itemName) {
                                     let displayItemName = tMenu(itemName); // ✅ Translated Item
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
-                                    box.innerHTML = `<span class="item-name">${displayItemName}</span>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
+                                    let descHtml = itemDesc ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${itemDesc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
+                                    box.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><span class="item-name">${displayItemName}</span>${descHtml}</div>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
                                     
                                     let lastTap = 0;
                                     box.addEventListener('click', (e) => {
@@ -1112,8 +1133,41 @@
                     div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px; border:1px solid #d1d5db; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
                     
                     const textSpan = document.createElement('span');
-                    textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600;";
+                    textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600; cursor:pointer; padding:4px; transition:background 0.2s; border-radius:4px;";
                     textSpan.innerText = line;
+                    textSpan.title = "Πατήστε για επεξεργασία";
+
+                    textSpan.onmouseover = () => textSpan.style.background = "#f3f4f6";
+                    textSpan.onmouseout = () => textSpan.style.background = "transparent";
+
+                    textSpan.onclick = (e) => {
+                        e.preventDefault();
+                        const currentLines = txt.value.split('\n');
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = currentLines[idx];
+                        input.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600; padding:4px; border:1px solid #2196F3; border-radius:4px; outline:none; background:#e0f2fe;";
+                        
+                        input.onblur = () => {
+                            const newVal = input.value;
+                            if (newVal !== null && newVal.trim() !== '') {
+                                currentLines[idx] = newVal;
+                            } else {
+                                currentLines.splice(idx, 1);
+                            }
+                            txt.value = currentLines.join('\n');
+                            if (window.App && window.App.handleInput) window.App.handleInput(); 
+                        };
+                        
+                        input.onkeydown = (ev) => {
+                            if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+                        };
+
+                        div.replaceChild(input, textSpan);
+                        input.focus();
+                        input.selectionStart = input.selectionEnd = input.value.length;
+                    };
 
                     const btnX = document.createElement('button');
                     btnX.innerText = "✖";

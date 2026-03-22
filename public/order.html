@@ -198,6 +198,15 @@
         </div>
     </div>
 
+    <!-- ✅ NEW: PRODUCT INFO MODAL (Όμορφο παράθυρο πληροφοριών) -->
+    <div id="productInfoModal" class="overlay-screen" style="z-index: 15500; display:none;" onclick="this.style.display='none'">
+        <div class="details-box" style="background:#ffffff; color:#1f2937; text-align:center;" onclick="event.stopPropagation()">
+            <h3 style="color:#2196F3; margin:0 0 10px 0;">ℹ️ Πληροφορίες</h3>
+            <p id="productInfoText" style="font-size:16px; line-height:1.5; margin-bottom:20px; white-space:pre-wrap;"></p>
+            <button onclick="document.getElementById('productInfoModal').style.display='none'" style="background:#f3f4f6; border:1px solid #d1d5db; color:#1f2937; cursor:pointer; width:100%; font-weight:bold; padding:12px; border-radius:8px;" data-i18n="close">ΚΛΕΙΣΙΜΟ</button>
+        </div>
+    </div>
+
     <div id="appContent" style="display:none;">
         <div class="header" style="width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding-left: max(15px, env(safe-area-inset-left)) !important; padding-right: max(15px, env(safe-area-inset-right)) !important;">
             <div class="header-left" style="flex-shrink:0;">

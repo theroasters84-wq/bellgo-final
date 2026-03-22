@@ -394,8 +394,45 @@ export const Menu = {
         const container = document.getElementById('menuInputContainer');
         if (!container) return; // ✅ Αποτρέπει το error αν δεν υπάρχει το HTML element (π.χ. στην Κουζίνα)
         container.innerHTML = '';
+
+        // ✅ Καθαρισμός του παλιού κουμπιού επάνω (αν υπάρχει ακόμα στη μνήμη)
+        const oldBtn = document.getElementById('btnSaveCatalogTop');
+        if (oldBtn) oldBtn.remove();
+
+        // ✅ NEW: Έξυπνο FAB Κουμπί Αποθήκευσης (Κάτω Δεξιά)
+        let saveBtn = document.getElementById('btnSaveCatalogFab');
+        if (!saveBtn) {
+            saveBtn = document.createElement('button');
+            saveBtn.id = 'btnSaveCatalogFab';
+            saveBtn.innerHTML = '💾';
+            saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
+            saveBtn.style.cssText = 'position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; background: #10B981; color: white; width: 60px; height: 60px; border-radius: 50%; font-size: 28px; display: none; align-items: center; justify-content: center; cursor: pointer; border: none; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6); z-index: 10500; transition: transform 0.2s;';
+            saveBtn.onclick = () => {
+                App.menuData.forEach(cat => { 
+                    if (cat.items) {
+                        cat.items = cat.items.filter(i => {
+                            if(typeof i === 'string') return i.trim() !== '';
+                            return i.name && i.name.trim() !== '';
+                        }); 
+                    }
+                });
+                window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
+                const successOverlay = document.createElement('div');
+                successOverlay.className = 'modal-overlay';
+                successOverlay.style.display = 'flex';
+                successOverlay.style.zIndex = '15000';
+                successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Ο κατάλογος αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+                document.body.appendChild(successOverlay);
+            };
+            
+            const menuPanel = document.getElementById('menuFullPanel');
+            if (menuPanel) menuPanel.appendChild(saveBtn);
+            else document.body.appendChild(saveBtn);
+        }
+
         App.menuData.sort((a,b) => a.order - b.order);
         if (App.currentCategoryIndex === null) {
+            if (saveBtn) saveBtn.style.display = 'flex'; // ✅ Το εμφανίζουμε ΠΑΝΤΑ, ώστε να αποθηκεύονται νέες κατηγορίες
             const btnBack = document.getElementById('btnBackCat');
             if (btnBack) btnBack.style.display = 'none';
             const btnBulk = document.getElementById('btnBulkPaste');
@@ -403,7 +440,44 @@ export const Menu = {
             App.menuData.forEach((cat, index) => {
                 const div = document.createElement('div');
                 div.className = 'category-box';
-                div.innerHTML = `<span class="category-order">${cat.order}</span>${cat.name}`;
+                div.draggable = true;
+                div.innerHTML = `
+                    <div style="position:absolute; left:10px; top:50%; transform:translateY(-50%); display:flex; align-items:center;">
+                        <span style="cursor:grab; padding-right:10px; font-size:20px; color:#aaa;" onclick="event.stopPropagation()" title="Σύρετε για αλλαγή σειράς">☰</span>
+                        <div style="display:flex; flex-direction:column; gap:2px;" onclick="event.stopPropagation()">
+                            <button onclick="App.moveCategoryUp(${index}); event.stopPropagation();" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${index === 0 ? 'opacity:0.3; cursor:default;' : ''}">▲</button>
+                            <button onclick="App.moveCategoryDown(${index}); event.stopPropagation();" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${index === App.menuData.length - 1 ? 'opacity:0.3; cursor:default;' : ''}">▼</button>
+                        </div>
+                    </div>
+                    <span class="category-order">${cat.order}</span>${cat.name}
+                `;
+
+                // Drag & Drop Events (Κατηγορίες)
+                div.addEventListener('dragstart', (e) => {
+                    App.draggedCatIdx = index;
+                    e.dataTransfer.effectAllowed = 'move';
+                    setTimeout(() => div.style.opacity = '0.5', 0);
+                });
+                div.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    div.style.borderTop = '3px dashed #2196F3';
+                });
+                div.addEventListener('dragleave', () => { div.style.borderTop = ''; });
+                div.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    div.style.borderTop = '';
+                    const draggedIdx = App.draggedCatIdx;
+                    if (draggedIdx !== undefined && draggedIdx !== index) {
+                        const item = App.menuData.splice(draggedIdx, 1)[0];
+                        App.menuData.splice(index, 0, item);
+                        App.menuData.forEach((c, i) => c.order = i + 1); // Ενημέρωση αρίθμησης
+                        App.renderMenu();
+                    }
+                });
+                div.addEventListener('dragend', () => {
+                    div.style.opacity = '1';
+                    document.querySelectorAll('.category-box').forEach(r => r.style.borderTop = '');
+                });
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-delete-cat';
                 delBtn.innerText = 'X';
@@ -417,36 +491,63 @@ export const Menu = {
                 container.appendChild(div);
             });
         } else {
+            if (saveBtn) saveBtn.style.display = 'flex'; // ✅ Εμφανίζουμε το 💾 ΜΟΝΟ όταν είμαστε μέσα σε προϊόντα
+            
             const cat = App.menuData[App.currentCategoryIndex];
             if(!cat) { App.currentCategoryIndex = null; App.renderMenu(); return; }
             const btnBack = document.getElementById('btnBackCat');
-            if (btnBack) btnBack.style.display = 'block';
+            if (btnBack) {
+                btnBack.style.display = 'block';
+                btnBack.style.left = ''; // ✅ Επαναφορά στην αρχική του θέση (Αριστερά)
+            }
             const btnBulk = document.getElementById('btnBulkPaste');
             if (btnBulk) btnBulk.style.display = 'block';
 
-            cat.items.forEach((item, itemIdx) => { App.addItemInput(item, itemIdx); });
-        }
-
-        // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Εμφανίζεται πάντα στο τέλος)
-        const saveBtn = document.createElement('button');
-        saveBtn.innerText = '💾';
-        saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
-        saveBtn.style.cssText = 'position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; background: #10B981; color: white; width: 60px; height: 60px; border-radius: 50%; font-size: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6); z-index: 5000;';
-        saveBtn.onclick = () => {
-            // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
-            App.menuData.forEach(cat => { 
-                if (cat.items) {
-                    cat.items = cat.items.filter(i => {
-                        if(typeof i === 'string') return i.trim() !== '';
-                        return i.name && i.name.trim() !== '';
-                    }); 
-                }
+            cat.items.forEach((item, idx) => {
+                App.addItemInput(item, idx);
             });
-            // Αποστολή μόνιμης αποθήκευσης στον server
-            window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
-            alert('Ο κατάλογος αποθηκεύτηκε επιτυχώς!');
-        };
-        container.appendChild(saveBtn);
+            App.addItemInput(''); // Κενό πεδίο για νέο
+
+            // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Τοποθετημένο στο πάνω μέρος - Header)
+            let saveBtn = document.getElementById('btnSaveCatalogTop');
+            if (!saveBtn) {
+                saveBtn = document.createElement('button');
+                saveBtn.id = 'btnSaveCatalogTop';
+                saveBtn.innerHTML = '💾';
+                saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
+                saveBtn.style.cssText = 'position: absolute; top: 15px; right: 60px; background: #10B981; color: white; width: 40px; height: 40px; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 0;';
+                saveBtn.onclick = () => {
+                // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
+                App.menuData.forEach(cat => { 
+                    if (cat.items) {
+                        cat.items = cat.items.filter(i => {
+                            if(typeof i === 'string') return i.trim() !== '';
+                            return i.name && i.name.trim() !== '';
+                        }); 
+                    }
+                });
+                // Αiw.socket.emit('save-menu', { menu: App.menuData, 
+                // Αποστολή μόνιμης αποθήκευσης στον server
+                window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
+                
+                const successOverlay = document.createElement('div');
+                successOverlay.className = 'modal-overlay';
+                successOverlay.style.display = 'flex';
+                successOverlay.style.zIndex = '15000';
+                successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Ο κατάλογος αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+                document.body.appendChild(successOverlay);
+            };
+            
+            const menuPanel = document.getElementById('menuFullPanel');
+            if (menuPanel) {
+                menuPanel.appendChild(saveBtn);
+            } else {
+                container.appendChild(saveBtn);
+            }
+        } else if (!document.getElementById('menuFullPanel') || !document.getElementById('menuFullPanel').contains(saveBtn)) {
+            container.appendChild(saveBtn);
+        }
+        }
     },
 
     addItemInput: function(val, index = null) {
@@ -458,11 +559,13 @@ export const Menu = {
         let itemName = "";
         let itemPrice = "";
         let itemObj = null;
+        let itemDesc = "";
 
         if (typeof val === 'object' && val !== null) {
             itemObj = val;
             itemName = itemObj.name || "";
             itemPrice = itemObj.price !== undefined ? itemObj.price : "";
+            itemDesc = itemObj.desc || "";
         } else if (typeof val === 'string' && val.trim() !== "") {
             const parts = val.split(':');
             if (parts.length > 1) {
@@ -476,10 +579,17 @@ export const Menu = {
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.className = 'menu-input-box';
-        nameInput.style.flex = '2';
+        nameInput.style.flex = '1.5';
         nameInput.style.paddingRight = '10px'; // Override default CSS 40px
         nameInput.value = itemName;
         nameInput.placeholder = "Όνομα Προϊόντος"; 
+
+        const descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.className = 'menu-input-box';
+        descInput.style.flex = '1.5';
+        descInput.value = itemDesc;
+        descInput.placeholder = "Περιγραφή/Αλλεργιογόνα";
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -500,6 +610,7 @@ export const Menu = {
         
         const silentUpdate = () => {
             const newName = nameInput.value.trim();
+            const newDesc = descInput.value.trim();
             const newPrice = parseFloat(priceInput.value) || 0;
             const newVat = parseInt(vatInput.value) || 24;
             
@@ -513,9 +624,9 @@ export const Menu = {
             let newItem;
 
             if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat };
+                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc };
             } else {
-                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras };
+                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc };
             }
 
             if (index === null) {
@@ -525,6 +636,50 @@ export const Menu = {
                 cat.items[index] = newItem;
             }
         };
+
+        // Προσθήκη Drag & Drop Handle στα Προϊόντα
+        let handleDiv = null;
+        if (index !== null) {
+            wrapper.draggable = true;
+            const cat = App.menuData[App.currentCategoryIndex];
+            
+            handleDiv = document.createElement('div');
+            handleDiv.style.cssText = "display:flex; align-items:center; margin-right:5px;";
+            handleDiv.innerHTML = `
+                <span style="cursor:grab; padding-right:5px; font-size:20px; color:#aaa; user-select:none;" title="Σύρετε για αλλαγή σειράς">☰</span>
+                <div style="display:flex; flex-direction:column; gap:2px; margin-right:5px;">
+                    <button onclick="App.moveItemUp(${index})" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${index === 0 ? 'opacity:0.3; cursor:default;' : ''}">▲</button>
+                    <button onclick="App.moveItemDown(${index})" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${index === cat.items.length - 1 ? 'opacity:0.3; cursor:default;' : ''}">▼</button>
+                </div>
+            `;
+            
+            wrapper.addEventListener('dragstart', (e) => {
+                App.draggedItemIdx = index;
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => wrapper.style.opacity = '0.5', 0);
+                if (App.showCategoryDropZones) App.showCategoryDropZones();
+            });
+            wrapper.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                wrapper.style.borderTop = '2px dashed #2196F3';
+            });
+            wrapper.addEventListener('dragleave', () => { wrapper.style.borderTop = ''; });
+            wrapper.addEventListener('drop', (e) => {
+                e.preventDefault();
+                wrapper.style.borderTop = '';
+                const draggedIdx = App.draggedItemIdx;
+                if (draggedIdx !== undefined && draggedIdx !== index) {
+                    const item = cat.items.splice(draggedIdx, 1)[0];
+                    cat.items.splice(index, 0, item);
+                    App.renderMenu();
+                }
+            });
+            wrapper.addEventListener('dragend', () => {
+                wrapper.style.opacity = '1';
+                document.querySelectorAll('.item-wrapper').forEach(r => r.style.borderTop = '');
+                if (App.hideCategoryDropZones) App.hideCategoryDropZones();
+            });
+        }
         
         const extrasBtn = document.createElement('button');
         extrasBtn.className = 'btn-item-extras';
@@ -548,10 +703,13 @@ export const Menu = {
         };
         
         nameInput.addEventListener('input', silentUpdate);
+        descInput.addEventListener('input', silentUpdate);
         priceInput.addEventListener('input', silentUpdate);
         vatInput.addEventListener('input', silentUpdate);
         
+        if (handleDiv) wrapper.appendChild(handleDiv);
         wrapper.appendChild(nameInput);
+        wrapper.appendChild(descInput);
         wrapper.appendChild(priceInput);
         wrapper.appendChild(vatInput);
         wrapper.appendChild(extrasBtn);
@@ -672,12 +830,73 @@ export const Menu = {
         App.tempExtras.forEach((ex, idx) => {
             const row = document.createElement('div');
             row.className = 'extra-item-row';
+            row.draggable = true;
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            
             row.innerHTML = `
-                <span>${ex.name} ${ex.price > 0 ? `(+${ex.price}€)` : ''}</span>
+                <span style="cursor:grab; padding-right:10px; font-size:20px; color:#aaa; user-select:none;" title="Σύρετε για αλλαγή σειράς">☰</span>
+                <div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;">
+                    <button onclick="App.moveExtraUp(${idx})" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${idx === 0 ? 'opacity:0.3; cursor:default;' : ''}">▲</button>
+                    <button onclick="App.moveExtraDown(${idx})" style="background:none; border:none; padding:0; cursor:pointer; color:#6b7280; font-size:12px; ${idx === App.tempExtras.length - 1 ? 'opacity:0.3; cursor:default;' : ''}">▼</button>
+                </div>
+                <span style="flex:1; cursor:pointer; display:flex; align-items:center;" onclick="App.editExtra(${idx})" title="Πατήστε για επεξεργασία">✏️ ${ex.name} ${ex.price > 0 ? `(+${ex.price}€)` : ''}</span>
                 <button onclick="App.removeExtra(${idx})" style="background:#EF4444; color:white; border:none; padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.3);">X</button>
             `;
+            
+            // Drag & Drop Events (Για υπολογιστή / ποντίκι)
+            row.addEventListener('dragstart', (e) => {
+                App.draggedExtraIdx = idx;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', row.innerHTML);
+                setTimeout(() => row.style.opacity = '0.5', 0);
+            });
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                row.style.borderTop = '2px dashed #2196F3';
+            });
+            row.addEventListener('dragleave', () => {
+                row.style.borderTop = '';
+            });
+            row.addEventListener('drop', (e) => {
+                e.preventDefault();
+                row.style.borderTop = '';
+                const draggedIdx = App.draggedExtraIdx;
+                if (draggedIdx !== undefined && draggedIdx !== idx) {
+                    const item = App.tempExtras.splice(draggedIdx, 1)[0];
+                    App.tempExtras.splice(idx, 0, item);
+                    App.renderExtrasList();
+                }
+            });
+            row.addEventListener('dragend', () => {
+                row.style.opacity = '1';
+                const rows = container.querySelectorAll('.extra-item-row');
+                rows.forEach(r => r.style.borderTop = '');
+            });
+
             container.appendChild(row);
         });
+    },
+
+    moveExtraUp: function(idx) {
+        const App = window.App;
+        if (idx > 0) {
+            const temp = App.tempExtras[idx];
+            App.tempExtras[idx] = App.tempExtras[idx - 1];
+            App.tempExtras[idx - 1] = temp;
+            App.renderExtrasList();
+        }
+    },
+
+    moveExtraDown: function(idx) {
+        const App = window.App;
+        if (idx < App.tempExtras.length - 1) {
+            const temp = App.tempExtras[idx];
+            App.tempExtras[idx] = App.tempExtras[idx + 1];
+            App.tempExtras[idx + 1] = temp;
+            App.renderExtrasList();
+        }
     },
 
     // ✅ NEW: Δυναμικό Dropdown για Extras Presets (Συστήματος + Προσωπικά)
@@ -744,20 +963,54 @@ export const Menu = {
     saveCurrentExtrasAsPreset: function() {
         const App = window.App;
         if (!App.tempExtras || App.tempExtras.length === 0) {
-            return alert("Η λίστα είναι κενή! Προσθέστε πρώτα επιλογές.");
+            const errOverlay = document.createElement('div');
+            errOverlay.className = 'modal-overlay';
+            errOverlay.style.display = 'flex';
+            errOverlay.style.zIndex = '15000';
+            errOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">⚠️</div><h3 style="color:#EF4444; margin:0 0 10px 0;">Άδεια Λίστα</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Η λίστα είναι κενή! Προσθέστε πρώτα επιλογές (extras).</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+            document.body.appendChild(errOverlay);
+            return;
         }
-        const name = prompt("Δώστε ένα όνομα για αυτό το Preset (π.χ. 'Υλικά Burger'):");
-        if (!name || name.trim() === '') return;
         
-        if (!App.customExtraPresets) App.customExtraPresets = [];
-        App.customExtraPresets.push({
-            name: name.trim(),
-            items: JSON.parse(JSON.stringify(App.tempExtras))
-        });
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '15000';
         
-        window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
-        App.renderExtraPresetsDropdown();
-        alert("Το Preset αποθηκεύτηκε επιτυχώς!");
+        overlay.innerHTML = `
+            <div class="modal-box" style="width:90%; max-width:350px; text-align:center;">
+                <h3 style="color:#10B981; margin-top:0;">Όνομα Preset</h3>
+                <p style="font-size:13px; color:#6b7280; margin-bottom:15px;">Δώστε ένα όνομα για αυτό το Preset (π.χ. 'Υλικά Burger'):</p>
+                <input type="text" id="inpPresetNameSave" class="inp-settings" placeholder="Όνομα Preset..." style="text-align:center; font-weight:bold; margin-bottom:15px;">
+                <button id="btnSavePresetName" class="modal-btn" style="background:#10B981; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΑΠΟΘΗΚΕΥΣΗ</button>
+                <button id="btnCancelPresetSave" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold; margin-top:10px;">ΑΚΥΡΩΣΗ</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('inpPresetNameSave').focus();
+        
+        document.getElementById('btnSavePresetName').onclick = () => {
+            const name = document.getElementById('inpPresetNameSave').value;
+            if (!name || name.trim() === '') return;
+            
+            if (!App.customExtraPresets) App.customExtraPresets = [];
+            App.customExtraPresets.push({
+                name: name.trim(),
+                items: JSON.parse(JSON.stringify(App.tempExtras))
+            });
+            
+            window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+            App.renderExtraPresetsDropdown();
+            overlay.remove();
+            
+            const successOverlay = document.createElement('div');
+            successOverlay.className = 'modal-overlay';
+            successOverlay.style.display = 'flex';
+            successOverlay.style.zIndex = '15000';
+            successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Το Preset αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+            document.body.appendChild(successOverlay);
+        };
+        document.getElementById('btnCancelPresetSave').onclick = () => overlay.remove();
     },
 
     addExtraRow: function() {
@@ -767,7 +1020,15 @@ export const Menu = {
         const name = nameInp ? nameInp.value.trim() : '';
         const price = priceInp ? parseFloat(priceInp.value) || 0 : 0;
 
-        if (!name) return alert("Παρακαλώ εισάγετε όνομα extra!");
+        if (!name) {
+            const errOverlay = document.createElement('div');
+            errOverlay.className = 'modal-overlay';
+            errOverlay.style.display = 'flex';
+            errOverlay.style.zIndex = '15000';
+            errOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">⚠️</div><h3 style="color:#EF4444; margin:0 0 10px 0;">Προσοχή</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Παρακαλώ εισάγετε όνομα extra!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+            document.body.appendChild(errOverlay);
+            return;
+        }
 
         App.tempExtras.push({ name: name, price: price });
         
@@ -782,6 +1043,23 @@ export const Menu = {
     removeExtra: function(idx) {
         window.App.tempExtras.splice(idx, 1);
         window.App.renderExtrasList();
+    },
+
+    editExtra: function(idx) {
+        const App = window.App;
+        const ex = App.tempExtras[idx];
+        if (!ex) return;
+        
+        const nameInp = document.getElementById('inpExtraName');
+        const priceInp = document.getElementById('inpExtraPrice');
+        
+        if (nameInp) nameInp.value = ex.name;
+        if (priceInp) priceInp.value = ex.price;
+        
+        App.tempExtras.splice(idx, 1);
+        App.renderExtrasList();
+        
+        if (nameInp) nameInp.focus();
     },
 
     saveExtras: function() {
@@ -839,11 +1117,11 @@ export const Menu = {
             row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#f9fafb; padding:10px; border-radius:8px; margin-bottom:5px; border:1px solid #e5e7eb;";
             row.innerHTML = `
                 <div>
-                    <strong style="color:#1f2937;">${cp.name}</strong>
-                    <div style="font-size:11px; color:#6b7280;">${cp.items ? cp.items.length : 0} επιλογές</div>
+                    <strong style="color:#1f2937; cursor:pointer; display:flex; align-items:center; gap:5px;" onclick="App.renameCustomPreset(${idx})" title="Πατήστε για μετονομασία">✏️ ${cp.name}</strong>
+                    <div style="font-size:11px; color:#6b7280; margin-top:3px;">${cp.items ? cp.items.length : 0} επιλογές</div>
                 </div>
                 <div style="display:flex; gap:5px;">
-                    <button onclick="App.editCustomPreset(${idx})" style="background:#2196F3; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;" title="Επεξεργασία">✏️</button>
+                    <button onclick="App.editCustomPreset(${idx})" style="background:#2196F3; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;" title="Επεξεργασία Υλικών">📋</button>
                     <button onclick="App.deleteCustomPreset(${idx})" style="background:#EF4444; color:white; border:none; padding:6px 12px; border-radius:5px; cursor:pointer;" title="Διαγραφή">🗑️</button>
                 </div>
             `;
@@ -851,14 +1129,67 @@ export const Menu = {
         });
     },
 
+    renameCustomPreset: function(idx) {
+        const App = window.App;
+        const cp = App.customExtraPresets[idx];
+        if (!cp) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '15000';
+
+        overlay.innerHTML = `
+            <div class="modal-box" style="width:90%; max-width:350px; text-align:center;">
+                <h3 style="color:#2196F3; margin-top:0;">Μετονομασία Preset</h3>
+                <input type="text" id="inpRenamePreset" class="inp-settings" value="${cp.name}" style="text-align:center; font-weight:bold; margin-bottom:15px;">
+                <button id="btnSaveRename" class="modal-btn" style="background:#2196F3; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(33,150,243,0.3);">ΑΠΟΘΗΚΕΥΣΗ</button>
+                <button id="btnCancelRename" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold; margin-top:10px;">ΑΚΥΡΩΣΗ</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('inpRenamePreset').focus();
+
+        document.getElementById('btnSaveRename').onclick = () => {
+            const newName = document.getElementById('inpRenamePreset').value.trim();
+            if (newName) {
+                App.customExtraPresets[idx].name = newName;
+                window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+                App.renderManagePresetsList();
+                if (App.renderExtraPresetsDropdown) App.renderExtraPresetsDropdown();
+            }
+            overlay.remove();
+        };
+        document.getElementById('btnCancelRename').onclick = () => overlay.remove();
+    },
+
     deleteCustomPreset: function(idx) {
         const App = window.App;
-        if (confirm("Διαγραφή αυτού του Preset;")) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '15000';
+        
+        overlay.innerHTML = `
+            <div class="modal-box" style="width:90%; max-width:320px; text-align:center;">
+                <div style="font-size:40px; margin-bottom:10px;">🗑️</div>
+                <h3 style="color:#EF4444; margin:0 0 10px 0;">Διαγραφή</h3>
+                <p style="color:#1f2937; font-size:14px; margin-bottom:20px;">Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το Preset;</p>
+                <button id="btnConfirmDelete" class="modal-btn" style="background:#EF4444; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(239,68,68,0.3);">ΝΑΙ, ΔΙΑΓΡΑΦΗ</button>
+                <button id="btnCancelDelete" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold; margin-top:10px;">ΑΚΥΡΩΣΗ</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        document.getElementById('btnConfirmDelete').onclick = () => {
             App.customExtraPresets.splice(idx, 1);
             window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
             App.renderManagePresetsList();
             if (App.renderExtraPresetsDropdown) App.renderExtraPresetsDropdown();
-        }
+            overlay.remove();
+        };
+        
+        document.getElementById('btnCancelDelete').onclick = () => overlay.remove();
     },
 
     editCustomPreset: function(idx) {
@@ -876,20 +1207,145 @@ export const Menu = {
 
     createNewCustomPreset: function() {
         const App = window.App;
-        const name = prompt("Δώστε όνομα για το νέο Preset (π.χ. Υλικά Burger):");
-        if (!name || name.trim() === '') return;
         
-        App.currentExtrasCatIndex = 'preset';
-        App.currentExtrasItemIndex = 'new';
-        App.tempPresetName = name.trim();
-        App.tempExtras = [];
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '15000';
         
-        const title = document.getElementById('extrasModalTitle');
-        if (title) title.innerText = `ΝΕΟ PRESET: ${App.tempPresetName}`;
+        overlay.innerHTML = `
+            <div class="modal-box" style="width:90%; max-width:350px; text-align:center;">
+                <h3 style="color:#9C27B0; margin-top:0;">Νέο Preset</h3>
+                <p style="font-size:13px; color:#6b7280; margin-bottom:15px;">Δώστε όνομα για το νέο Preset (π.χ. Υλικά Burger):</p>
+                <input type="text" id="inpNewPresetName" class="inp-settings" placeholder="Όνομα Preset..." style="text-align:center; font-weight:bold; margin-bottom:15px;">
+                <button id="btnCreateNewPreset" class="modal-btn" style="background:#9C27B0; color:white; font-weight:bold; box-shadow:0 4px 10px rgba(156,39,176,0.3);">ΔΗΜΙΟΥΡΓΙΑ</button>
+                <button id="btnCancelNewPreset" class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold; margin-top:10px;">ΑΚΥΡΩΣΗ</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('inpNewPresetName').focus();
+
+        document.getElementById('btnCreateNewPreset').onclick = () => {
+            const name = document.getElementById('inpNewPresetName').value;
+            if (!name || name.trim() === '') return;
+            
+            App.currentExtrasCatIndex = 'preset';
+            App.currentExtrasItemIndex = 'new';
+            App.tempPresetName = name.trim();
+            App.tempExtras = [];
+            
+            const title = document.getElementById('extrasModalTitle');
+            if (title) title.innerText = `ΝΕΟ PRESET: ${App.tempPresetName}`;
+            
+            App.renderExtrasList();
+            document.getElementById('extrasModal').style.display = 'flex';
+            
+            overlay.remove();
+        };
         
-        App.renderExtrasList();
-        document.getElementById('extrasModal').style.display = 'flex';
+        document.getElementById('btnCancelNewPreset').onclick = () => overlay.remove();
     },
 
-    saveExtrasAndClose: function() { window.App.saveExtras(); }
+    saveExtrasAndClose: function() { window.App.saveExtras(); },
+
+    // --- REORDERING LOGIC ---
+    moveCategoryUp: function(idx) {
+        const App = window.App;
+        if (idx > 0) {
+            const temp = App.menuData[idx];
+            App.menuData[idx] = App.menuData[idx - 1];
+            App.menuData[idx - 1] = temp;
+            App.menuData.forEach((c, i) => c.order = i + 1);
+            App.renderMenu();
+        }
+    },
+    moveCategoryDown: function(idx) {
+        const App = window.App;
+        if (idx < App.menuData.length - 1) {
+            const temp = App.menuData[idx];
+            App.menuData[idx] = App.menuData[idx + 1];
+            App.menuData[idx + 1] = temp;
+            App.menuData.forEach((c, i) => c.order = i + 1);
+            App.renderMenu();
+        }
+    },
+    moveItemUp: function(idx) {
+        const App = window.App;
+        const cat = App.menuData[App.currentCategoryIndex];
+        if (idx > 0) {
+            const temp = cat.items[idx];
+            cat.items[idx] = cat.items[idx - 1];
+            cat.items[idx - 1] = temp;
+            App.renderMenu();
+        }
+    },
+    moveItemDown: function(idx) {
+        const App = window.App;
+        const cat = App.menuData[App.currentCategoryIndex];
+        if (idx < cat.items.length - 1) {
+            const temp = cat.items[idx];
+            cat.items[idx] = cat.items[idx + 1];
+            cat.items[idx + 1] = temp;
+            App.renderMenu();
+        }
+    },
+
+    // --- CROSS-CATEGORY D&D LOGIC ---
+    showCategoryDropZones: function() {
+        const App = window.App;
+        let dzContainer = document.getElementById('categoryDropZones');
+        if (!dzContainer) {
+            dzContainer = document.createElement('div');
+            dzContainer.id = 'categoryDropZones';
+            dzContainer.style.cssText = "position:fixed; bottom:0; left:0; width:100%; background:rgba(31, 41, 55, 0.95); padding:15px; display:flex; flex-wrap:wrap; gap:10px; z-index:10000; justify-content:center; align-items:center; box-shadow:0 -5px 20px rgba(0,0,0,0.5); backdrop-filter:blur(5px); transition:transform 0.3s ease-out; transform:translateY(100%);";
+            document.body.appendChild(dzContainer);
+        }
+        dzContainer.innerHTML = '<div style="width:100%; text-align:center; color:#FFD700; font-weight:bold; margin-bottom:5px; font-size:14px;">📂 Σύρετε εδώ για μετακίνηση σε άλλη κατηγορία:</div>';
+        
+        let hasOther = false;
+        App.menuData.forEach((cat, catIdx) => {
+            if (catIdx === App.currentCategoryIndex) return; 
+            hasOther = true;
+            const dz = document.createElement('div');
+            dz.innerText = cat.name;
+            dz.style.cssText = "background:#374151; color:white; border:2px dashed #10B981; padding:10px 15px; border-radius:8px; font-size:13px; font-weight:bold; transition:all 0.2s; cursor:default;";
+            
+            dz.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dz.style.background = '#10B981';
+                dz.style.color = 'black';
+                dz.style.transform = 'scale(1.05)';
+            });
+            dz.addEventListener('dragleave', () => {
+                dz.style.background = '#374151';
+                dz.style.color = 'white';
+                dz.style.transform = 'scale(1)';
+            });
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const itemIdx = App.draggedItemIdx;
+                if (itemIdx !== undefined && App.menuData[App.currentCategoryIndex]) {
+                    const currentCat = App.menuData[App.currentCategoryIndex];
+                    const itemToMove = currentCat.items.splice(itemIdx, 1)[0];
+                    if (!App.menuData[catIdx].items) App.menuData[catIdx].items = [];
+                    App.menuData[catIdx].items.push(itemToMove);
+                    App.hideCategoryDropZones();
+                    App.renderMenu();
+                }
+            });
+            dzContainer.appendChild(dz);
+        });
+        
+        if (!hasOther) { dzContainer.innerHTML += '<div style="color:#aaa; font-size:12px;">Δεν υπάρχουν άλλες κατηγορίες.</div>'; }
+        dzContainer.style.display = 'flex';
+        void dzContainer.offsetWidth; // Force reflow
+        dzContainer.style.transform = 'translateY(0)';
+    },
+    hideCategoryDropZones: function() {
+        const dz = document.getElementById('categoryDropZones');
+        if (dz) {
+            dz.style.transform = 'translateY(100%)';
+            setTimeout(() => dz.style.display = 'none', 300);
+        }
+    }
 };

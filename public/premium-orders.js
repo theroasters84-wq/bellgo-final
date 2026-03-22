@@ -116,15 +116,22 @@ export const OrdersUI = {
             const itemsDiv = document.createElement('div');
             itemsDiv.className = 'category-items';
             cat.items.forEach(item => {
-                let name = item, price = 0;
-                if(typeof item === 'object') { name = item.name; price = item.price; }
+                let name = item, price = 0, extras = [];
+                if(typeof item === 'object') { name = item.name; price = item.price; extras = item.extras || []; }
                 else { const p = item.split(':'); name = p[0]; if(p.length>1) price=parseFloat(p[p.length-1]); }
                 
                 let displayItemName = App.tMenu ? App.tMenu(name) : name; // ✅ Translated Item
                 const box = document.createElement('div');
                 box.className = 'item-box';
-                box.innerHTML = `<span class="item-name">${displayItemName}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
-                box.onclick = () => App.addToSidebarOrder(name, price);
+                const extrasIndicator = (extras && extras.length > 0) ? `<span style="font-size:10px; background:#2196F3; color:white; border-radius:4px; padding:2px 4px; margin-left:5px; flex-shrink:0;">+ ΕΠΙΛΟΓΕΣ</span>` : '';
+                box.innerHTML = `<span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
+                box.onclick = () => {
+                    if (extras && extras.length > 0) {
+                        App.openItemOptionsModal(name, price, extras);
+                    } else {
+                        App.addToSidebarOrder(name, price);
+                    }
+                };
                 itemsDiv.appendChild(box);
             });
             container.appendChild(title);
@@ -140,6 +147,85 @@ export const OrdersUI = {
         App.calcSidebarTotal();
     },
     
+    openItemOptionsModal: (name, basePrice, extras) => {
+        const App = window.App;
+        let modal = document.getElementById('itemOptionsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'itemOptionsModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:25000; display:flex; align-items:center; justify-content:center;";
+            document.body.appendChild(modal);
+        }
+
+        let extrasHtml = '';
+        extras.forEach((ex) => {
+            const exPrice = parseFloat(ex.price) || 0;
+            extrasHtml += `
+                <label style="display:flex; justify-content:space-between; align-items:center; background:#f9fafb; padding:12px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:8px; cursor:pointer;">
+                    <span style="font-weight:500; color:#1f2937; font-size:14px;">${ex.name}</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        ${exPrice > 0 ? `<span style="color:#10B981; font-weight:bold; font-size:14px;">+${exPrice.toFixed(2)}€</span>` : ''}
+                        <input type="checkbox" class="extra-checkbox" data-name="${ex.name}" data-price="${exPrice}" style="width:20px; height:20px; cursor:pointer;">
+                    </div>
+                </label>
+            `;
+        });
+
+        const displayItemName = App.tMenu ? App.tMenu(name) : name;
+        modal.innerHTML = `
+            <div class="modal-box" style="background:white; padding:20px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 10px 30px rgba(0,0,0,0.3); max-height:80vh; display:flex; flex-direction:column;">
+                <h3 style="margin-top:0; color:#2196F3; border-bottom:1px solid #e5e7eb; padding-bottom:10px; font-size:18px;">${displayItemName}</h3>
+                <div style="flex:1; overflow-y:auto; margin-bottom:15px; padding-right:5px;">
+                    <div style="font-size:12px; color:#6b7280; margin-bottom:10px;">Επιλέξτε μεγέθη / υλικά:</div>
+                    ${extrasHtml}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e5e7eb; padding-top:15px; margin-bottom:15px;">
+                    <span style="font-weight:bold; color:#1f2937;">Τελική Τιμή:</span>
+                    <span id="itemOptionsTotal" style="font-size:20px; font-weight:bold; color:#10B981;">${basePrice.toFixed(2)}€</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="btnConfirmItemOptions" style="flex:2; background:#10B981; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer;">ΠΡΟΣΘΗΚΗ</button>
+                    <button onclick="document.getElementById('itemOptionsModal').style.display='none'" style="flex:1; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">ΑΚΥΡΟ</button>
+                </div>
+            </div>
+        `;
+
+        const checkboxes = modal.querySelectorAll('.extra-checkbox');
+        const totalEl = document.getElementById('itemOptionsTotal');
+
+        const updateTotal = () => {
+            let currentTotal = basePrice;
+            checkboxes.forEach(cb => {
+                if (cb.checked) currentTotal += parseFloat(cb.dataset.price);
+            });
+            totalEl.innerText = `${currentTotal.toFixed(2)}€`;
+        };
+
+        checkboxes.forEach(cb => cb.addEventListener('change', updateTotal));
+
+        document.getElementById('btnConfirmItemOptions').onclick = () => {
+            let finalPrice = basePrice;
+            let selectedExtras = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    finalPrice += parseFloat(cb.dataset.price);
+                    selectedExtras.push(cb.dataset.name);
+                }
+            });
+
+            let finalName = name;
+            if (selectedExtras.length > 0) {
+                finalName += ` (+ ${selectedExtras.join(', ')})`;
+            }
+
+            App.addToSidebarOrder(finalName, finalPrice);
+            modal.style.display = 'none';
+        };
+
+        modal.style.display = 'flex';
+    },
+
     // ✅ NEW: Οπτικό Καλάθι (Visual Cart με κουμπιά διαγραφής ✖ αριστερά)
     renderVisualCart: (txtId, containerId) => {
         const txt = document.getElementById(txtId);
@@ -168,8 +254,41 @@ export const OrdersUI = {
             div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px; border:1px solid #d1d5db; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05);";
             
             const textSpan = document.createElement('span');
-            textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600;";
+            textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600; cursor:pointer; padding:4px; transition:background 0.2s; border-radius:4px;";
             textSpan.innerText = line;
+            textSpan.title = "Πατήστε για επεξεργασία";
+
+            textSpan.onmouseover = () => textSpan.style.background = "#f3f4f6";
+            textSpan.onmouseout = () => textSpan.style.background = "transparent";
+
+            textSpan.onclick = (e) => {
+                e.preventDefault();
+                const currentLines = txt.value.split('\n');
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentLines[idx];
+                input.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:600; padding:4px; border:1px solid #2196F3; border-radius:4px; outline:none; background:#e0f2fe;";
+                
+                input.onblur = () => {
+                    const newVal = input.value;
+                    if (newVal !== null && newVal.trim() !== '') {
+                        currentLines[idx] = newVal;
+                    } else {
+                        currentLines.splice(idx, 1);
+                    }
+                    txt.value = currentLines.join('\n');
+                    if (window.App && window.App.calcSidebarTotal) window.App.calcSidebarTotal(); 
+                };
+                
+                input.onkeydown = (ev) => {
+                    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+                };
+
+                div.replaceChild(input, textSpan);
+                input.focus();
+                input.selectionStart = input.selectionEnd = input.value.length;
+            };
 
             const btnX = document.createElement('button');
             btnX.innerText = "✖";

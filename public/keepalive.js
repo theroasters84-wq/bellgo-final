@@ -49,6 +49,88 @@ const KeepAlive = {
         }
         window.addEventListener('popstate', function (event) {
             window.history.pushState(null, null, window.location.href.split('#')[0] + '#locked');
+            
+            // --- Custom App Back Navigation ---
+            if (window.App) {
+                // 1. Δυναμικά Modals (π.χ. μηνύματα επιτυχίας/σφάλματος χωρίς ID)
+                const dynamicModals = document.querySelectorAll('.modal-overlay:not([id])');
+                for (let i = dynamicModals.length - 1; i >= 0; i--) {
+                    const modal = dynamicModals[i];
+                    if (modal.style.display !== 'none') {
+                        modal.remove();
+                        return;
+                    }
+                }
+
+                // 2. Συγκεκριμένα Overlays / Modals (από το πιο "μπροστινό" στο πιο "πίσω")
+                const overlays = [
+                    'dndBotOverlay', 'botOverlay', 'startScreen', 'pinUnlockModal', 'fakeLockOverlay',
+                    'productInfoModal', 'readyPickupModal', 'detailsOverlay', 'paymentOverlay',
+                    'bookingModal', 'myReservationsModal', 'myBillModal',
+                    'qrOverlay', 'qrModal', 'pinChangeModal', 'saveModeModal', 
+                    'bulkPasteModal', 'extrasModal', 'managePresetsModal', 'whitelistModal',
+                    'reservationsModal', 'cashRegisterModal', 'einvoicingModal', 
+                    'qrPaymentModal', 'pasoCheckoutModal', 'deliveryAssignModal', 'scheduleModal', 
+                    'walletModal', 'statsModal', 'settingsModal', 'choiceModal', 'tableChoiceModal'
+                ];
+                
+                for (let id of overlays) {
+                    const el = document.getElementById(id);
+                    if (el && el.style.display !== 'none' && el.style.display !== '') {
+                        // Ειδική διαχείριση για τα Στατιστικά (ώστε να πηγαίνει πίσω μήνα-μήνα)
+                        if (id === 'statsModal') {
+                            const btnBack = document.getElementById('btnStatsBack');
+                            if (btnBack && btnBack.style.display !== 'none') {
+                                btnBack.click();
+                                return;
+                            }
+                        }
+                        // Ειδική διαχείριση για Choice Modals πελατών
+                        if (id === 'choiceModal') {
+                            const btnClose = document.getElementById('btnCloseChoiceModal');
+                            if (btnClose && btnClose.style.display !== 'none') {
+                                btnClose.click();
+                                return;
+                            }
+                            return; // Μην το κλείσεις αν δεν υπάρχει κουμπί ακύρωσης (π.χ. 1η είσοδος)
+                        }
+                        // Εξαιρέσεις (Αυτά δεν πρέπει να κλείνουν τυχαία με το πίσω)
+                        if (id === 'fakeLockOverlay' || id === 'startScreen' || id === 'tableChoiceModal') return;
+                        
+                        el.style.display = 'none';
+                        return; 
+                    }
+                }
+                
+                // 3. Κλείσιμο του πιο πάνω Παραθύρου Παραγγελίας (αν υπάρχουν ανοιχτά)
+                const orderWindows = Array.from(document.querySelectorAll('.order-window')).filter(w => w.style.display === 'flex');
+                if (orderWindows.length > 0) {
+                    let topWin = orderWindows[0];
+                    let maxZ = parseInt(window.getComputedStyle(topWin).zIndex) || 0;
+                    for (let i = 1; i < orderWindows.length; i++) {
+                        let z = parseInt(window.getComputedStyle(orderWindows[i]).zIndex) || 0;
+                        if (z > maxZ) { maxZ = z; topWin = orderWindows[i]; }
+                    }
+                    if (topWin) {
+                        topWin.style.display = 'none';
+                        return;
+                    }
+                }
+
+                // 4. Επιστροφή στις κατηγορίες (Κατάλογος) αν είμαστε μέσα σε Προϊόντα
+                if (window.App.currentCategoryIndex !== null) {
+                    window.App.currentCategoryIndex = null;
+                    if (typeof window.App.renderMenu === 'function') window.App.renderMenu();
+                    return;
+                }
+                
+                // 5. Κλείσιμο Sidebar (Ταμείο)
+                const sb = document.getElementById('orderSidebar');
+                if (sb && (sb.style.left === '0px' || sb.style.left === '0%')) {
+                    if (typeof window.App.toggleOrderSidebar === 'function') window.App.toggleOrderSidebar();
+                    return;
+                }
+            }
         });
     },
 

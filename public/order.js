@@ -142,7 +142,7 @@ const PRELOADED_NAME = params.get('name');
 const parseItem = (str) => {
     // ✅ FIX: Υποστήριξη για αντικείμενα από το Premium
     if (typeof str === 'object' && str !== null) {
-        return { name: str.name, price: str.price || 0 };
+        return { name: str.name, price: str.price || 0, desc: str.desc || "", extras: str.extras || [] };
     }
     const parts = str.split(':');
     let name = parts[0];
@@ -151,7 +151,7 @@ const parseItem = (str) => {
         name = parts.slice(0, -1).join(':').trim();
         price = parseFloat(parts[parts.length - 1]);
     } else { name = str.trim(); }
-    return { name, price: isNaN(price) ? 0 : price };
+    return { name, price: isNaN(price) ? 0 : price, desc: "", extras: [] };
 };
 
 let currentUser = null;
@@ -190,6 +190,16 @@ window.App = {
     t: t, // ✅ Expose translation function
     tMenu: (text) => I18n.tMenu(text), // ✅ Expose menu translator
     existingOrderId: null, // ✅ Αποθήκευση ID για συμπλήρωση
+
+    // ✅ NEW: Όμορφο παράθυρο αντί για system alert
+    showProductInfo: (desc) => {
+        const modal = document.getElementById('productInfoModal');
+        const text = document.getElementById('productInfoText');
+        if (modal && text) {
+            text.innerText = desc;
+            modal.style.display = 'flex';
+        }
+    },
 
     installPWA: async () => {
         if (deferredPrompt) {
@@ -702,14 +712,16 @@ window.App = {
                 cat.items.forEach(item => {
                     // ✅ FIX: Έλεγχος αν είναι αντικείμενο ή κείμενο
                     if (item && (typeof item === 'object' || item.trim())) {
-                        const { name, price } = parseItem(item);
+                        const { name, price, desc } = parseItem(item);
                         const box = document.createElement('div');
                         box.className = 'item-box';
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
                         box.style.touchAction = 'manipulation';
                         box.style.cursor = 'pointer'; // ✅ Fix for iOS click registration
                         let displayItemName = I18n.tMenu(name); // ✅ Translated Item Name
-                        box.innerHTML = `<span class="item-name">${displayItemName}</span>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
+                        
+                        let descHtml = desc ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${desc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
+                        box.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><span class="item-name">${displayItemName}</span>${descHtml}</div>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
                         
                         // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ
                         let lastTap = 0;
@@ -781,6 +793,84 @@ window.App = {
         txt.value = lines.join('\n');
         txt.scrollTop = txt.scrollHeight;
         App.handleInput(); 
+    },
+
+    openItemOptionsModal: (name, basePrice, extras) => {
+        let modal = document.getElementById('itemOptionsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'itemOptionsModal';
+            modal.className = 'modal-overlay';
+            modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:25000; display:flex; align-items:center; justify-content:center;";
+            document.body.appendChild(modal);
+        }
+
+        let extrasHtml = '';
+        extras.forEach((ex) => {
+            const exPrice = parseFloat(ex.price) || 0;
+            extrasHtml += `
+                <label style="display:flex; justify-content:space-between; align-items:center; background:#f9fafb; padding:15px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:8px; cursor:pointer;">
+                    <span style="font-weight:500; color:#1f2937; font-size:15px;">${ex.name}</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        ${exPrice > 0 ? `<span style="color:#10B981; font-weight:bold; font-size:15px;">+${exPrice.toFixed(2)}€</span>` : ''}
+                        <input type="checkbox" class="extra-checkbox" data-name="${ex.name}" data-price="${exPrice}" style="width:24px; height:24px; cursor:pointer;">
+                    </div>
+                </label>
+            `;
+        });
+
+        const displayItemName = I18n.tMenu(name);
+        modal.innerHTML = `
+            <div class="modal-box" style="background:white; padding:20px; border-radius:15px; width:90%; max-width:400px; box-shadow:0 10px 30px rgba(0,0,0,0.3); max-height:85vh; display:flex; flex-direction:column;">
+                <h3 style="margin-top:0; color:#2196F3; border-bottom:1px solid #e5e7eb; padding-bottom:10px; font-size:20px; text-align:center;">${displayItemName}</h3>
+                <div style="flex:1; overflow-y:auto; margin-bottom:15px; padding-right:5px;">
+                    <div style="font-size:13px; color:#6b7280; margin-bottom:10px; text-align:center;">Επιλέξτε μεγέθη / υλικά:</div>
+                    ${extrasHtml}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e5e7eb; padding-top:15px; margin-bottom:15px;">
+                    <span style="font-weight:bold; color:#1f2937; font-size:16px;">Σύνολο:</span>
+                    <span id="itemOptionsTotal" style="font-size:24px; font-weight:bold; color:#10B981;">${basePrice.toFixed(2)}€</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="btnConfirmItemOptions" style="flex:2; background:#10B981; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">ΠΡΟΣΘΗΚΗ</button>
+                    <button onclick="document.getElementById('itemOptionsModal').style.display='none'" style="flex:1; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; padding:15px; border-radius:10px; font-weight:bold; font-size:14px; cursor:pointer;">ΑΚΥΡΟ</button>
+                </div>
+            </div>
+        `;
+
+        const checkboxes = modal.querySelectorAll('.extra-checkbox');
+        const totalEl = document.getElementById('itemOptionsTotal');
+
+        const updateTotal = () => {
+            let currentTotal = basePrice;
+            checkboxes.forEach(cb => {
+                if (cb.checked) currentTotal += parseFloat(cb.dataset.price);
+            });
+            totalEl.innerText = `${currentTotal.toFixed(2)}€`;
+        };
+
+        checkboxes.forEach(cb => cb.addEventListener('change', updateTotal));
+
+        document.getElementById('btnConfirmItemOptions').onclick = () => {
+            let finalPrice = basePrice;
+            let selectedExtras = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    finalPrice += parseFloat(cb.dataset.price);
+                    selectedExtras.push(cb.dataset.name);
+                }
+            });
+
+            let finalName = name;
+            if (selectedExtras.length > 0) {
+                finalName += ` (+ ${selectedExtras.join(', ')})`;
+            }
+
+            App.addToOrder(`${finalName}:${finalPrice}`);
+            modal.style.display = 'none';
+        };
+
+        modal.style.display = 'flex';
     },
 
     handleInput: () => {
