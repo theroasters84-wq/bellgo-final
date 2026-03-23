@@ -1033,6 +1033,24 @@ window.App = {
         if (!items) return alert(t('empty_cart') || 'Το καλάθι είναι άδειο!');
         App.handleInput();
         document.getElementById('paymentOverlay').style.display = 'flex';
+        
+        // ✅ NEW: Δυναμική προσθήκη επιλογής "POS" για τον πελάτη (Delivery/Takeaway)
+        const overlay = document.getElementById('paymentOverlay');
+        const box = overlay.querySelector('.modal-box') || overlay.firstElementChild;
+        if (box && !document.getElementById('btnPayWithPosDyn')) {
+             const btnPos = document.createElement('button');
+             btnPos.id = 'btnPayWithPosDyn';
+             btnPos.style.cssText = "background:#10B981; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; font-size:16px; width:100%; margin-bottom:10px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);";
+             btnPos.innerText = "📱 " + (t('pay_with_pos') || "ΚΑΡΤΑ / POS (ΣΤΟΝ ΧΩΡΟ)");
+             btnPos.onclick = () => { App.confirmPayment('💳 ΚΑΡΤΑ (POS)'); };
+             
+             const cancelBtn = Array.from(box.children).find(el => (el.innerText || '').includes('ΑΚΥΡΟ') || (el.innerText || '').includes('CANCEL'));
+             if (cancelBtn) {
+                 box.insertBefore(btnPos, cancelBtn);
+             } else {
+                 box.appendChild(btnPos);
+             }
+        }
     },
 
     confirmPayment: (method) => {
@@ -1061,7 +1079,11 @@ window.App = {
         localStorage.setItem('bellgo_temp_card_order', JSON.stringify({ items: items, amount: totalAmount }));
         const isNative = !!window.Capacitor || /Android.*wv/.test(window.navigator.userAgent); // ✅ Detect Native
         try {
-            const res = await fetch('/create-order-payment', {
+            const forceLive = localStorage.getItem('use_live_backend') === 'true';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+            const res = await fetch(`${baseUrl}/create-order-payment`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ amount: totalAmount, storeName: TARGET_STORE })

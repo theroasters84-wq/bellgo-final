@@ -162,6 +162,10 @@ export const Apodiksh = {
         Apodiksh.updateCashRegUI();
         Apodiksh.renderCashRegButtonsUI();
         document.getElementById('cashRegisterModal').style.display = 'flex';
+
+        const isSoftPos = window.App && window.App.softPosSettings && window.App.softPosSettings.enabled;
+        const btnSP = document.getElementById('btnCashRegSoftPos');
+        if (btnSP) btnSP.style.display = isSoftPos ? 'block' : 'none';
     },
 
     cashRegInput: (val) => {
@@ -219,8 +223,7 @@ export const Apodiksh = {
         let total = Apodiksh.cashRegItems.reduce((sum, item) => sum + item.price, 0);
         if (total === 0) return alert("⚠️ Πρέπει να επιλέξετε Τμήμα/ΦΠΑ!");
 
-        if (method === 'card' && window.PaySystem) {
-             // Use PaySystem for SoftPOS
+        if (method === 'softpos' && window.PaySystem) {
              if (window.App && window.App.softPosSettings && window.App.softPosSettings.enabled) {
                  window.PaySystem.triggerSoftPosPayment(total, 'cashreg');
                  return;
@@ -244,18 +247,18 @@ export const Apodiksh = {
         if(confirm("Έκδοση απόδειξης (myDATA);")) { window.socket.emit('issue-receipt', id); }
     },
 
-    showReceiptDialog: (id) => {
+    showReceiptDialog: (id, method = 'cash') => {
         const div = document.createElement('div');
         div.className = 'modal-overlay';
         div.style.display = 'flex'; div.style.zIndex = '10000';
-        div.innerHTML = `<div class="modal-box" style="text-align:center; max-width:350px;"><h3 style="color:#FFD700;">Κλείσιμο Παραγγελίας</h3><p style="color:#ccc;">Δεν έχει εκδοθεί απόδειξη. Τι θέλετε να κάνετε;</p><button class="modal-btn" style="background:#00E676; color:black;" onclick="Apodiksh.issueAndClose(${id}, this)">🧾 ΕΚΔΟΣΗ & ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.forceCompleteOrder(${id}); this.closest('.modal-overlay').remove();">🚪 ΜΟΝΟ ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#555;" onclick="this.closest('.modal-overlay').remove()">ΑΚΥΡΟ</button></div>`;
+        div.innerHTML = `<div class="modal-box" style="text-align:center; max-width:350px;"><h3 style="color:#FFD700;">Κλείσιμο Παραγγελίας</h3><p style="color:#ccc;">Δεν έχει εκδοθεί απόδειξη. Τι θέλετε να κάνετε;</p><button class="modal-btn" style="background:#00E676; color:black;" onclick="Apodiksh.issueAndClose(${id}, '${method}', this)">🧾 ΕΚΔΟΣΗ & ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#2196F3; color:white;" onclick="App.forceCompleteOrder(${id}, '${method}'); this.closest('.modal-overlay').remove();">🚪 ΜΟΝΟ ΚΛΕΙΣΙΜΟ</button><button class="modal-btn" style="background:#555;" onclick="this.closest('.modal-overlay').remove()">ΑΚΥΡΟ</button></div>`;
         document.body.appendChild(div);
     },
 
-    issueAndClose: (id, btn) => {
+    issueAndClose: (id, method, btn) => {
         window.socket.emit('issue-receipt', id);
         btn.innerText = "⏳ ΕΚΔΟΣΗ...";
-        setTimeout(() => { window.App.forceCompleteOrder(id); btn.closest('.modal-overlay').remove(); }, 1000);
+        setTimeout(() => { window.App.forceCompleteOrder(id, method); btn.closest('.modal-overlay').remove(); }, 1000);
     },
 };
 

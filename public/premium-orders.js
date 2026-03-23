@@ -561,7 +561,10 @@ export const OrdersUI = {
                 }
                 if (App.hasFeature('pack_pos')) actions = `<button class="btn-win-action" style="background:#833ab4; color:white; margin-bottom:10px; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.openQrPayment('${order.id}')">💳 QR CARD (ΠΕΛΑΤΗΣ)</button>` + actions;
                 
-                actions += `<button class="btn-win-action" style="background:#3897f0; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; width:100%; cursor:pointer;" onclick="App.completeOrder(${order.id})">💰 ΕΞΟΦΛΗΣΗ / ΚΛΕΙΣΙΜΟ</button>`;
+                actions += `<div style="display:flex; gap:10px;">
+                                <button class="btn-win-action" style="background:#00E676; color:black; border-radius:8px; padding:12px; font-weight:600; border:none; flex:1; cursor:pointer; box-shadow:0 4px 10px rgba(0,230,118,0.2);" onclick="App.completeOrder(${order.id}, 'cash')">💵 ΜΕΤΡΗΤΑ</button>
+                                <button class="btn-win-action" style="background:#3897f0; color:white; border-radius:8px; padding:12px; font-weight:600; border:none; flex:1; cursor:pointer; box-shadow:0 4px 10px rgba(56,151,240,0.3);" onclick="App.completeOrder(${order.id}, 'card')">💳 POS</button>
+                            </div>`;
             }
         }
         // ✅ Preserve positions/transforms during updates by avoiding cssText overwrite

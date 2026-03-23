@@ -396,7 +396,11 @@ window.Admin = {
         const email = document.getElementById('adminEmailInp').value.trim();
         if(!email) return alert("Βάλτε το email σας στο πεδίο από πάνω!");
 
-        const res = await fetch('/create-checkout-session', {
+        const forceLive = localStorage.getItem('use_live_backend') === 'true';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+        const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+        const res = await fetch(`${baseUrl}/create-checkout-session`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ email: email, plan: plan })

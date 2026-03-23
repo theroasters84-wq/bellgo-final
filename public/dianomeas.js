@@ -268,25 +268,28 @@ window.App = {
 
     // ✅ FIX: Complete Order now charges the staff wallet
     completeOrder: (id) => { 
-        // ✅ NEW: SoftPOS Choice
-        if (App.softPosSettings && App.softPosSettings.enabled) {
-            const choice = prompt(App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (SoftPOS)", "1");
-            if (choice === '2') {
-                const order = App.activeOrders.find(o => o.id == id);
-                const total = App.calculateTotal(order.text);
-                App.triggerSoftPosPayment(total, id);
-                return;
-            } else if (choice !== '1') {
-                return; // Cancel
-            }
-        }
-
-        if(confirm(App.t('order_delivered_prompt') || "Η παραγγελία παραδόθηκε και εισπράχθηκε;")) {
+        const hasSoftPos = App.softPosSettings && App.softPosSettings.enabled;
+        const promptTxt = hasSoftPos 
+            ? (App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 📱 ΚΑΡΤΑ (SoftPOS)\n3. 💳 ΚΑΡΤΑ (Απλό Τερματικό)\n\n*(Για Stripe QR πατήστε Άκυρο)*") 
+            : (App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (Τερματικό)");
+            
+        const choice = prompt(promptTxt, "1");
+        
+        if (choice === null) return;
+        
+        if (hasSoftPos && choice === '2') {
             const order = App.activeOrders.find(o => o.id == id);
             const total = App.calculateTotal(order.text);
-            // Χρέωση στο πορτοφόλι του διανομέα και κλείσιμο
-            window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: total, method: 'cash' });
+            App.triggerSoftPosPayment(total, id);
+            return;
         }
+
+        const order = App.activeOrders.find(o => o.id == id);
+        const total = App.calculateTotal(order.text);
+        const method = (choice === '2' || choice === '3') ? 'card' : 'cash';
+        
+        // Χρέωση στο πορτοφόλι του διανομέα και κλείσιμο
+        window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: total, method: method });
     },
     
     logout: () => { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },

@@ -166,6 +166,13 @@ export const PaySystem = {
         const divSimple = document.getElementById('pasoSimpleOptions');
         const btnClose = document.getElementById('btnPasoClosePrint');
         if(btnClose) { btnClose.innerText = window.App.printerEnabled ? "💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ" : "💵 ΚΛΕΙΣΙΜΟ"; }
+        
+        const isSoftPos = window.App.softPosSettings && window.App.softPosSettings.enabled;
+        const btnSEinv = document.getElementById('btnPasoSoftPosEinv');
+        const btnSSimple = document.getElementById('btnPasoSoftPosSimple');
+        if (btnSEinv) btnSEinv.style.display = isSoftPos ? 'block' : 'none';
+        if (btnSSimple) btnSSimple.style.display = isSoftPos ? 'block' : 'none';
+
         if (window.App.einvoicingEnabled) { divEinv.style.display = 'grid'; divSimple.style.display = 'none'; } 
         else { divEinv.style.display = 'none'; divSimple.style.display = 'flex'; }
         document.getElementById('pasoCheckoutModal').style.display = 'flex';
@@ -174,7 +181,7 @@ export const PaySystem = {
     processPasoOrder: (method, type) => { 
         const text = window.App.tempPasoText;
         const total = calculateTotal(text);
-        if (method === 'card' && window.App.softPosSettings && window.App.softPosSettings.enabled) {
+        if (method === 'softpos') {
             PaySystem.triggerSoftPosPayment(total, 'paso');
             return;
         }
@@ -218,7 +225,11 @@ export const PaySystem = {
         else { const order = window.App.activeOrders.find(o => o.id == id); if(!order) return; total = calculateTotal(order.text); }
         if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
         try {
-            const res = await fetch('/create-qr-payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: total, storeName: window.App.userData.store, orderId: id }) });
+            const forceLive = localStorage.getItem('use_live_backend') === 'true';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+            const res = await fetch(`${baseUrl}/create-qr-payment`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: total, storeName: window.App.userData.store, orderId: id }) });
             const data = await res.json();
             if(data.url) {
                 document.getElementById('qrPaymentCode').innerHTML = "";
@@ -248,15 +259,15 @@ export const PaySystem = {
     },
     openManualRewardQr: () => { PaySystem.openRewardQr(Date.now()); },
 
-    completeOrder: (id) => {
+    completeOrder: (id, method = 'cash') => {
         const order = window.App.activeOrders.find(o => o.id == id);
-        if (window.App.einvoicingEnabled && order && !order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) { window.App.showReceiptDialog(id); return; }
-        PaySystem.forceCompleteOrder(id);
+        if (window.App.einvoicingEnabled && order && !order.text.includes('[🧾 ΑΠΟΔΕΙΞΗ]')) { window.App.showReceiptDialog(id, method); return; }
+        PaySystem.forceCompleteOrder(id, method);
     },
-    forceCompleteOrder: (id) => {
+    forceCompleteOrder: (id, method = 'cash') => {
         const order = window.App.activeOrders.find(o => o.id == id);
         const isDelivery = order && order.text.includes('[DELIVERY');
-        window.socket.emit('pay-order', id); 
+        window.socket.emit('pay-order', { id: id, method: method }); 
         const win = document.getElementById(`win-${id}`);
         if(win) win.remove();
         if (window.App.rewardSettings && window.App.rewardSettings.enabled) {

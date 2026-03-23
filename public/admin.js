@@ -82,6 +82,8 @@ export const Admin = {
                     apiKey: safeVal('inpSoftPosApiKey') || '',
                     enabled: softPosEnabled
                 };
+                // ✅ OPTIMISTIC UPDATE: Άμεση αποθήκευση τοπικά για να δουλεύουν τα κουμπιά ακόμα κι αν αργήσει ο server
+                app.softPosSettings = payload.softPos; 
             }
             
             const posMode = safeVal('selPosMode'); if (posMode !== undefined) payload.posMode = posMode;

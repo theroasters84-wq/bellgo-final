@@ -78,7 +78,8 @@ export const ReserveTable = {
             <div id="step4" style="display:none; background:#ffffff; padding:25px; border-radius:15px; width:100%; max-width:350px; text-align:center; border:1px solid #e5e7eb; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
                 <h3 style="color:#10B981;">${t('payment_method') || 'Τρόπος Πληρωμής'}</h3>
                 <button id="btnCallWaiter" style="width:100%; padding:15px; margin-bottom:10px; background:#F59E0B; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(245,158,11,0.3);">🛎️ ${t('btn_call_waiter') || 'ΚΛΗΣΗ ΣΕΡΒΙΤΟΡΟΥ'}</button>
-                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold;">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
+                <button id="btnPayPosAtTable" style="width:100%; padding:15px; margin-bottom:10px; background:#10B981; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📱 ΠΛΗΡΩΜΗ ΣΤΟ ΤΡΑΠΕΖΙ (POS)</button>
+                <button id="btnPayStripe" style="width:100%; padding:15px; margin-bottom:10px; background:#635BFF; color:white; border:none; border-radius:8px; font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(99,91,255,0.3);">💳 ${t('btn_pay_stripe') || 'ONLINE (Stripe)'}</button>
                 <button id="btnBack3" style="background:none; border:none; color:#6b7280; font-weight:bold; margin-top:10px; cursor:pointer;">${t('back') || '🔙 ΠΙΣΩ'}</button>
             </div>
         `;
@@ -144,6 +145,11 @@ export const ReserveTable = {
             alert(t('waiter_notified') || "Η κλήση εστάλη!");
             modal.remove();
         };
+        document.getElementById('btnPayPosAtTable').onclick = () => {
+            window.socket.emit('admin-only-call', { table: window.tableNumber, msg: 'Ζητάει λογαριασμό (Θα πληρώσει με POS)' });
+            alert(t('waiter_notified') || "Ειδοποιήσαμε τον σερβιτόρο να φέρει το POS!");
+            modal.remove();
+        };
         document.getElementById('btnPayStripe').onclick = () => {
             if(!window.storeHasStripe) return alert(t('card_unavailable') || "Η πληρωμή με κάρτα δεν είναι διαθέσιμη.");
             ReserveTable.payExistingOrder(data.orderId, total);
@@ -165,7 +171,11 @@ export const ReserveTable = {
         const TARGET_STORE = window.TARGET_STORE;
         
         try {
-            const res = await fetch('/create-qr-payment', { 
+            const forceLive = localStorage.getItem('use_live_backend') === 'true';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+            const res = await fetch(`${baseUrl}/create-qr-payment`, { 
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ amount: amount, storeName: TARGET_STORE, orderId: orderId })
             });

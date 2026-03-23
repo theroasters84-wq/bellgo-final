@@ -213,7 +213,11 @@ export const Sundromes = {
         
         // 3. Redirect to Stripe
         try {
-            const res = await fetch('/create-checkout-session', {
+            const forceLive = localStorage.getItem('use_live_backend') === 'true';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+            const res = await fetch(`${baseUrl}/create-checkout-session`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email: email, priceIds: selectedPriceIds, isNative: !!window.Capacitor })
@@ -230,7 +234,11 @@ export const Sundromes = {
     checkLogin: async (email) => {
         if (!email) { alert(I18n.t('enter_email_alert') || "Παρακαλώ εισάγετε Email."); return null; }
         try {
-            const res = await fetch('/check-subscription', {
+            const forceLive = localStorage.getItem('use_live_backend') === 'true';
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+            const res = await fetch(`${baseUrl}/check-subscription`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ email: email })

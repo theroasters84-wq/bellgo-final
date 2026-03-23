@@ -148,11 +148,12 @@ export function initPremiumSockets(App, userData) {
             // ✅ NEW: Load SoftPOS Settings
             if(settings.softPos) {
                 App.softPosSettings = settings.softPos;
-                document.getElementById('selSoftPosProvider').value = settings.softPos.provider || '';
-                document.getElementById('inpSoftPosMerchantId').value = settings.softPos.merchantId || '';
-                document.getElementById('inpSoftPosApiKey').value = settings.softPos.apiKey || '';
-                document.getElementById('switchSoftPosEnabled').checked = settings.softPos.enabled || false;
-                // ✅ REMOVED to prevent infinite loop with cached pay.js
+                const pEl = document.getElementById('selSoftPosProvider'); if(pEl) pEl.value = settings.softPos.provider || '';
+                const mEl = document.getElementById('inpSoftPosMerchantId'); if(mEl) mEl.value = settings.softPos.merchantId || '';
+                const aEl = document.getElementById('inpSoftPosApiKey'); if(aEl) aEl.value = settings.softPos.apiKey || '';
+                const swEl = document.getElementById('switchSoftPosEnabled'); if(swEl) swEl.checked = settings.softPos.enabled || false;
+                
+                if (window.PaySystem && window.PaySystem.updateSoftPosUI) window.PaySystem.updateSoftPosUI();
             }
             if(settings.posMode) {
                 App.posMode = settings.posMode;
