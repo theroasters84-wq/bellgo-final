@@ -137,6 +137,8 @@ module.exports = function(socket, context, getMyStore) {
             if (data.totalTables !== undefined) store.settings.totalTables = data.totalTables;
             if (data.einvoicing) store.settings.einvoicing = data.einvoicing;
             if (data.pos) store.settings.pos = data.pos;
+            if (data.softPos) store.settings.softPos = data.softPos;
+            if (data.posMode) store.settings.posMode = data.posMode;
             if (data.cashRegButtons) store.settings.cashRegButtons = data.cashRegButtons;
             if (data.reward) store.settings.reward = data.reward;
             if (data.features) store.settings.features = { ...store.settings.features, ...data.features };

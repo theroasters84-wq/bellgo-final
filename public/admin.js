@@ -26,16 +26,19 @@ export const Admin = {
 
     autoSaveSettings: () => {
         const app = window.App;
-        const time = document.getElementById('inpResetTime').value;
-        const hours = document.getElementById('inpHours').value;
-        const cp = document.getElementById('inpCoverPrice').value;
-        const gmaps = document.getElementById('inpGoogleMaps').value.trim();
-        const ap = document.getElementById('selAutoPrint').value === 'true';
-        const acp = document.getElementById('switchAutoClosePrint').checked;
-        const pe = document.getElementById('switchPrinterEnabled').checked;
-        const sc = document.getElementById('switchStaffCharge').checked;
-        const resEnabled = document.getElementById('switchReservations').checked;
-        const totalTables = document.getElementById('inpTotalTables').value;
+        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+        const getCheck = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+
+        const time = getVal('inpResetTime');
+        const hours = getVal('inpHours');
+        const cp = getVal('inpCoverPrice');
+        const gmaps = getVal('inpGoogleMaps').trim();
+        const ap = getVal('selAutoPrint') === 'true';
+        const acp = getCheck('switchAutoClosePrint');
+        const pe = getCheck('switchPrinterEnabled');
+        const sc = getCheck('switchStaffCharge');
+        const resEnabled = getCheck('switchReservations');
+        const totalTables = getVal('inpTotalTables');
         
         const swWarn = document.getElementById('switchWarnOnBackground');
         const warnBg = swWarn ? swWarn.checked : false;
@@ -45,24 +48,24 @@ export const Admin = {
         if (elReward) {
             rewardData = {
                 enabled: elReward.checked,
-                gift: document.getElementById('inpRewardGift').value,
-                target: parseInt(document.getElementById('inpRewardTarget').value) || 5,
-                mode: document.getElementById('selRewardMode').value
+                gift: getVal('inpRewardGift'),
+                target: parseInt(getVal('inpRewardTarget')) || 5,
+                mode: getVal('selRewardMode') || 'manual'
             };
         }
 
         const softPosData = {
-            provider: document.getElementById('selSoftPosProvider').value,
-            merchantId: document.getElementById('inpSoftPosMerchantId').value,
-            apiKey: document.getElementById('inpSoftPosApiKey').value,
-            enabled: document.getElementById('switchSoftPosEnabled').checked
+            provider: getVal('selSoftPosProvider'),
+            merchantId: getVal('inpSoftPosMerchantId'),
+            apiKey: getVal('inpSoftPosApiKey'),
+            enabled: getCheck('switchSoftPosEnabled')
         };
-        const posMode = document.getElementById('selPosMode').value;
+        const posMode = getVal('selPosMode') || 'auto';
 
         const posData = {
-            provider: document.getElementById('inpPosProvider').value,
-            id: document.getElementById('inpPosId').value,
-            key: document.getElementById('inpPosKey').value
+            provider: getVal('inpPosProvider'),
+            id: getVal('inpPosId'),
+            key: getVal('inpPosKey')
         };
 
         window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: app.features, warnOnBackground: warnBg });

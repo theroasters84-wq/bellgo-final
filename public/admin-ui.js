@@ -87,6 +87,22 @@ export const AdminUI = {
                 settingsMain.appendChild(logoutBtn);
             }
         }
+
+        // ✅ NEW: Αυτόματη αποθήκευση αμέσως μόλις πληκτρολογείς στις ρυθμίσεις
+        const sModal = document.getElementById('settingsModal');
+        if (sModal && !sModal.dataset.autosaveAttached) {
+            sModal.dataset.autosaveAttached = "true";
+            sModal.addEventListener('change', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                }
+            });
+            sModal.addEventListener('focusout', (e) => {
+                if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'number')) {
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                }
+            });
+        }
     },
 
     unlockSettings: () => {
@@ -201,6 +217,7 @@ export const AdminUI = {
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
         const main = document.getElementById('settingsMain');
         if(main) main.style.display = 'block';
+        if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
     },
 
     openScheduleModal: () => {

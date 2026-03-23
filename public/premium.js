@@ -215,7 +215,10 @@ window.App = {
         const settingsModal = document.getElementById('settingsModal');
         if (settingsModal) {
             settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) settingsModal.style.display = 'none';
+                if (e.target === settingsModal) {
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                    settingsModal.style.display = 'none';
+                }
             });
             const box = settingsModal.querySelector('.modal-box') || settingsModal.firstElementChild;
             if (box) {
@@ -223,7 +226,10 @@ window.App = {
                 const closeBtn = document.createElement('button');
                 closeBtn.innerHTML = '✕';
                 closeBtn.style.cssText = "position:absolute; top:15px; right:15px; background:transparent; border:none; color:#aaa; font-size:20px; font-weight:bold; cursor:pointer; z-index:10;";
-                closeBtn.onclick = () => settingsModal.style.display = 'none';
+                closeBtn.onclick = () => {
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                    settingsModal.style.display = 'none';
+                };
                 box.appendChild(closeBtn);
             }
         }

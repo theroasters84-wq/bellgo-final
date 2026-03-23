@@ -241,7 +241,10 @@ window.App = {
         const settingsModal = document.getElementById('settingsModal');
         if (settingsModal) {
             settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) settingsModal.style.display = 'none';
+                if (e.target === settingsModal) {
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                    settingsModal.style.display = 'none';
+                }
             });
             const box = settingsModal.querySelector('.modal-box') || settingsModal.firstElementChild;
             if (box) {
