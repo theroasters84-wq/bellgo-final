@@ -133,10 +133,33 @@ export const PaySystem = {
         const s = window.App ? window.App.softPosSettings : null;
         if (!s || !s.enabled) return alert("Το SoftPOS δεν είναι ενεργοποιημένο.");
         const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
-        let scheme = "intent://pay";
-        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
-        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
-        window.location.href = scheme + params;
+        
+        const amountCents = (amount * 100).toFixed(0);
+        let intentUrl = "";
+
+        // ✅ NEW: Επίσημη Δομή Android Intent (Δεν μπλοκάρεται από τον Chrome)
+        if (s.provider === 'viva') {
+            let params = `?action=sale&clientTransactionId=${context}_${Date.now()}&amount=${amountCents}&callback=${encodeURIComponent(returnUrl)}`;
+            if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
+            if (s.apiKey) params += `&appId=${s.apiKey}`;
+            intentUrl = `intent://pay/v1${params}#Intent;scheme=vivapay;package=com.vivawallet.terminal;end;`;
+        } else {
+            let params = `?amount=${amountCents}`;
+            if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
+            if (s.apiKey) params += `&merchantKey=${s.apiKey}`;
+            params += `&callback=${encodeURIComponent(returnUrl)}`;
+            
+            if (s.provider === 'alpha') intentUrl = `intent://pay${params}#Intent;scheme=nexi;package=gr.alpha.nexi.softpos;end;`;
+            else if (s.provider === 'eurobank') intentUrl = `intent://pay${params}#Intent;scheme=smartpos;package=com.worldline.smartpos;end;`;
+            else if (s.provider === 'piraeus') intentUrl = `intent://pay${params}#Intent;scheme=epay;package=gr.epay.softpos;end;`;
+            else intentUrl = `intent://pay${params}#Intent;scheme=softpos;end;`;
+        }
+        
+        // ✅ Bypasses KeepAlive protection temporarily to allow external app launch
+        window.allowSoftPosExit = true;
+        setTimeout(() => { window.allowSoftPosExit = false; }, 3000);
+
+        window.location.href = intentUrl;
     },
 
     checkSoftPosReturn: () => {
@@ -168,10 +191,23 @@ export const PaySystem = {
         if(btnClose) { btnClose.innerText = window.App.printerEnabled ? "💵 ΚΛΕΙΣΙΜΟ & ΕΚΤΥΠΩΣΗ" : "💵 ΚΛΕΙΣΙΜΟ"; }
         
         const isSoftPos = window.App.softPosSettings && window.App.softPosSettings.enabled;
+        const hasPhysicalPos = window.App.posSettings && window.App.posSettings.provider && window.App.posSettings.id;
+        
         const btnSEinv = document.getElementById('btnPasoSoftPosEinv');
         const btnSSimple = document.getElementById('btnPasoSoftPosSimple');
         if (btnSEinv) btnSEinv.style.display = isSoftPos ? 'block' : 'none';
         if (btnSSimple) btnSSimple.style.display = isSoftPos ? 'block' : 'none';
+        
+        const btnPhys = document.getElementById('btnPasoPhysicalPos');
+        const btnCardEinv = document.getElementById('btnPasoCardEinv');
+        if (btnPhys) {
+            if (hasPhysicalPos) { btnPhys.style.display = 'block'; btnPhys.innerText = '💳 POS (ΣΥΝΔΕΔΕΜΕΝΟ)'; }
+            else if (!isSoftPos) { btnPhys.style.display = 'block'; btnPhys.innerText = '💳 ΚΑΡΤΑ (ΑΠΛΟ)'; }
+            else { btnPhys.style.display = 'none'; } // Ήδη έχει το SoftPOS, κρύψτο
+        }
+        if (btnCardEinv) {
+            btnCardEinv.style.display = (hasPhysicalPos || !isSoftPos) ? 'block' : 'none';
+        }
 
         if (window.App.einvoicingEnabled) { divEinv.style.display = 'grid'; divSimple.style.display = 'none'; } 
         else { divEinv.style.display = 'none'; divSimple.style.display = 'flex'; }

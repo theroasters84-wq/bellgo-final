@@ -137,6 +137,7 @@ const KeepAlive = {
     // 3. CONFIRM CLOSE: Ρωτάει πριν κλείσει το Tab
     preventTabClose: () => {
         window.addEventListener('beforeunload', function (e) {
+            if (window.allowSoftPosExit) return; // ✅ NEW: Bypasses prompt when opening SoftPOS
             const lang = document.documentElement.lang || 'el';
             const msg = lang === 'en' ? 'Are you sure you want to close the application?' : 'Είστε σίγουροι ότι θέλετε να κλείσετε την εφαρμογή;';
             e.preventDefault();

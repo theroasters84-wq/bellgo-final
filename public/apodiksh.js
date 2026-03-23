@@ -164,8 +164,16 @@ export const Apodiksh = {
         document.getElementById('cashRegisterModal').style.display = 'flex';
 
         const isSoftPos = window.App && window.App.softPosSettings && window.App.softPosSettings.enabled;
+        const hasPhysicalPos = window.App && window.App.posSettings && window.App.posSettings.provider && window.App.posSettings.id;
         const btnSP = document.getElementById('btnCashRegSoftPos');
         if (btnSP) btnSP.style.display = isSoftPos ? 'block' : 'none';
+        
+        const btnRegPos = document.getElementById('btnCashRegPos');
+        if (btnRegPos) {
+            if (hasPhysicalPos) { btnRegPos.style.display = 'block'; btnRegPos.innerText = '💳 POS'; }
+            else if (!isSoftPos) { btnRegPos.style.display = 'block'; btnRegPos.innerText = '💳 ΚΑΡΤΑ'; }
+            else { btnRegPos.style.display = 'none'; }
+        }
     },
 
     cashRegInput: (val) => {

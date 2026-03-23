@@ -333,7 +333,7 @@ window.Admin = {
 
         // ✅ HACK: Παράκαμψη Stripe για Demo Emails (που τελειώνουν σε 1992+)
         // Αν το email έχει έτος >= 1992, το θεωρούμε Premium και μπαίνουμε.
-        const match = email.match(/(\d{4})$/);
+        const match = email.match(/(\d{4})(?:@|$)/);
         if (match) {
             const year = parseInt(match[1]);
             if (year >= 1992) {
@@ -371,6 +371,19 @@ window.Admin = {
         signInWithPopup(auth, provider).then(async (result) => {
             const email = result.user.email;
             
+            // ✅ HACK: Παράκαμψη Stripe για Demo Emails (Google Login)
+            const match = email.match(/(\d{4})(?:@|$)/);
+            if (match) {
+                const year = parseInt(match[1]);
+                if (year >= 1992) {
+                    adminUser = result.user;
+                    adminUser.features = {};
+                    adminPlan = 'premium';
+                    socket.emit('check-pin-status', { email: email });
+                    return;
+                }
+            }
+
             // ✅ FIX: Αυστηρός έλεγχος και για Google Login
             const data = await Sundromes.checkLogin(email);
 
@@ -479,6 +492,20 @@ socket.on('pin-verified', (res) => {
                 alert(t('wrong_pin') || "❌ Λάθος PIN!");
             }
             if (currentPinMode === 'enter') {
+                PIN.clear();
+            } else {
+                document.getElementById('adminPinInp').value = '';
+                document.getElementById('adminPinInp').focus();
+            }
+        }
+    }
+});
+
+onAuthStateChanged(auth, async (user) => {
+    if (user && !localStorage.getItem('bellgo_session')) {
+        document.getElementById('adminEmailInp').value = user.email;
+    }
+});         if (currentPinMode === 'enter') {
                 PIN.clear();
             } else {
                 document.getElementById('adminPinInp').value = '';

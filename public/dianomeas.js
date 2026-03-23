@@ -269,9 +269,16 @@ window.App = {
     // ✅ FIX: Complete Order now charges the staff wallet
     completeOrder: (id) => { 
         const hasSoftPos = App.softPosSettings && App.softPosSettings.enabled;
-        const promptTxt = hasSoftPos 
-            ? (App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 📱 ΚΑΡΤΑ (SoftPOS)\n3. 💳 ΚΑΡΤΑ (Απλό Τερματικό)\n\n*(Για Stripe QR πατήστε Άκυρο)*") 
-            : (App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (Τερματικό)");
+        const hasPhysicalPos = App.posSettings && App.posSettings.provider && App.posSettings.id;
+        
+        let promptTxt = "";
+        if (hasSoftPos && hasPhysicalPos) {
+            promptTxt = App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 📱 ΚΑΡΤΑ (SoftPOS)\n3. 💳 ΚΑΡΤΑ (Απλό Τερματικό)\n\n*(Για Stripe QR πατήστε Άκυρο)*";
+        } else if (hasSoftPos) {
+            promptTxt = App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 📱 ΚΑΡΤΑ (SoftPOS)\n\n*(Για Stripe QR πατήστε Άκυρο)*";
+        } else {
+            promptTxt = App.t('pay_method_prompt') || "Τρόπος Πληρωμής:\n1. 💵 ΜΕΤΡΗΤΑ\n2. 💳 ΚΑΡΤΑ (Απλό)";
+        }
             
         const choice = prompt(promptTxt, "1");
         
@@ -362,12 +369,32 @@ window.App = {
 
         const returnUrl = window.location.origin + window.location.pathname + `?softpos_status=success&amount=${amount}&context=${context}`;
         
-        let scheme = "intent://pay";
-        if (s.provider === 'viva') scheme = "viva.smartcheckout://checkout";
+        const amountCents = (amount * 100).toFixed(0);
+        let intentUrl = "";
+
+        // ✅ NEW: Επίσημη Δομή Android Intent
+        if (s.provider === 'viva') {
+            let params = `?action=sale&clientTransactionId=${context}_${Date.now()}&amount=${amountCents}&callback=${encodeURIComponent(returnUrl)}`;
+            if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
+            if (s.apiKey) params += `&appId=${s.apiKey}`;
+            intentUrl = `intent://pay/v1${params}#Intent;scheme=vivapay;package=com.vivawallet.terminal;end;`;
+        } else {
+            let params = `?amount=${amountCents}`;
+            if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
+            if (s.apiKey) params += `&merchantKey=${s.apiKey}`;
+            params += `&callback=${encodeURIComponent(returnUrl)}`;
+            
+            if (s.provider === 'alpha') intentUrl = `intent://pay${params}#Intent;scheme=nexi;package=gr.alpha.nexi.softpos;end;`;
+            else if (s.provider === 'eurobank') intentUrl = `intent://pay${params}#Intent;scheme=smartpos;package=com.worldline.smartpos;end;`;
+            else if (s.provider === 'piraeus') intentUrl = `intent://pay${params}#Intent;scheme=epay;package=gr.epay.softpos;end;`;
+            else intentUrl = `intent://pay${params}#Intent;scheme=softpos;end;`;
+        }
         
-        const params = `?amount=${(amount * 100).toFixed(0)}&currency=978&merchantKey=${s.apiKey || ''}&sourceCode=${s.merchantId || ''}&callback=${encodeURIComponent(returnUrl)}`;
-        
-        window.location.href = scheme + params;
+        // ✅ Bypasses KeepAlive protection temporarily to allow external app launch
+        window.allowSoftPosExit = true;
+        setTimeout(() => { window.allowSoftPosExit = false; }, 3000);
+
+        window.location.href = intentUrl;
     },
 
     // ✅ NEW: Check Return from SoftPOS
