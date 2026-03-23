@@ -505,18 +505,4 @@ onAuthStateChanged(auth, async (user) => {
     if (user && !localStorage.getItem('bellgo_session')) {
         document.getElementById('adminEmailInp').value = user.email;
     }
-});         if (currentPinMode === 'enter') {
-                PIN.clear();
-            } else {
-                document.getElementById('adminPinInp').value = '';
-                document.getElementById('adminPinInp').focus();
-            }
-        }
-    }
-});
-
-onAuthStateChanged(auth, async (user) => {
-    if (user && !localStorage.getItem('bellgo_session')) {
-        document.getElementById('adminEmailInp').value = user.email;
-    }
 });
