@@ -1,6 +1,13 @@
 import { PRESET_MENUS } from './menu-presets.js';
 const calculateTotal = (text) => { let t=0; if(!text)return 0; text.split('\n').forEach(l=>{ const m=l.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/); if(m) t+=(parseInt(m[1]||'1')*parseFloat(m[3])); }); return t; };
 
+// ✅ SILVER BULLET: Συγχρονισμός όλων των διπλών διακοπτών (Mobile/Desktop views)
+document.addEventListener('change', (e) => {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'checkbox' && e.target.id) {
+        document.querySelectorAll(`[id="${e.target.id}"]`).forEach(el => el.checked = e.target.checked);
+    }
+});
+
 export const Admin = {
     // --- STORE SETTINGS ---
     saveStoreName: () => {
@@ -25,50 +32,74 @@ export const Admin = {
     },
 
     autoSaveSettings: () => {
-        const app = window.App;
-        const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
-        const getCheck = (id) => { const el = document.getElementById(id); return el ? el.checked : false; };
+        try {
+            const app = window.App;
 
-        const time = getVal('inpResetTime');
-        const hours = getVal('inpHours');
-        const cp = getVal('inpCoverPrice');
-        const gmaps = getVal('inpGoogleMaps').trim();
-        const ap = getVal('selAutoPrint') === 'true';
-        const acp = getCheck('switchAutoClosePrint');
-        const pe = getCheck('switchPrinterEnabled');
-        const sc = getCheck('switchStaffCharge');
-        const resEnabled = getCheck('switchReservations');
-        const totalTables = getVal('inpTotalTables');
-        
-        const swWarn = document.getElementById('switchWarnOnBackground');
-        const warnBg = swWarn ? swWarn.checked : false;
-        
-        let rewardData = app.rewardSettings || {};
-        const elReward = document.getElementById('switchRewardEnabled');
-        if (elReward) {
-            rewardData = {
-                enabled: elReward.checked,
-                gift: getVal('inpRewardGift'),
-                target: parseInt(getVal('inpRewardTarget')) || 5,
-                mode: getVal('selRewardMode') || 'manual'
-            };
+            const payload = {};
+            
+            // Helper functions to safely read directly from DOM without complex CSS checks
+            const safeVal = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
+            const safeCheck = (id) => { const el = document.getElementById(id); return el ? el.checked : undefined; };
+
+            const time = safeVal('inpResetTime'); if (time !== undefined) payload.resetTime = time;
+            const hours = safeVal('inpHours'); if (hours !== undefined) payload.hours = hours;
+            const cp = safeVal('inpCoverPrice'); if (cp !== undefined) payload.coverPrice = cp;
+            
+            const gmapEl = safeVal('inpGoogleMaps');
+            if (gmapEl !== undefined) payload.googleMapsUrl = gmapEl.trim();
+            
+            const apVal = safeVal('selAutoPrint');
+            if (apVal !== undefined) payload.autoPrint = (apVal === 'true');
+            
+            const acp = safeCheck('switchAutoClosePrint'); if (acp !== undefined) payload.autoClosePrint = acp;
+            const pe = safeCheck('switchPrinterEnabled'); if (pe !== undefined) payload.printerEnabled = pe;
+            const sc = safeCheck('switchStaffCharge'); if (sc !== undefined) payload.staffCharge = sc;
+            const resEnabled = safeCheck('switchReservations'); if (resEnabled !== undefined) payload.reservationsEnabled = resEnabled;
+            const totalTables = safeVal('inpTotalTables'); if (totalTables !== undefined) payload.totalTables = totalTables;
+            
+            // Εφόσον συγχρονίζονται πλέον αυτόματα, απλά διαβάζουμε το πρώτο που βρίσκουμε!
+            const warnBgVal = safeCheck('switchWarnOnBackground') ?? safeCheck('switchWarnOnBackgroundKitchen') ?? safeCheck('switchWarnOnBackgroundDriver');
+            if (warnBgVal !== undefined) payload.warnOnBackground = warnBgVal;
+
+            const fakeLockVal = safeCheck('switchFakeLockEnabled') ?? safeCheck('switchFakeLockKitchen') ?? safeCheck('switchFakeLockDriver');
+            if (fakeLockVal !== undefined) payload.fakeLockEnabled = fakeLockVal;
+            
+            const rwEnabled = safeCheck('switchRewardEnabled');
+            if (rwEnabled !== undefined) {
+                payload.reward = {
+                    enabled: rwEnabled,
+                    gift: safeVal('inpRewardGift') || '',
+                    target: parseInt(safeVal('inpRewardTarget')) || 5,
+                    mode: safeVal('selRewardMode') || 'manual'
+                };
+            }
+
+            const softPosEnabled = safeCheck('switchSoftPosEnabled');
+            if (softPosEnabled !== undefined) {
+                payload.softPos = {
+                    provider: safeVal('selSoftPosProvider') || '',
+                    merchantId: safeVal('inpSoftPosMerchantId') || '',
+                    apiKey: safeVal('inpSoftPosApiKey') || '',
+                    enabled: softPosEnabled
+                };
+            }
+            
+            const posMode = safeVal('selPosMode'); if (posMode !== undefined) payload.posMode = posMode;
+
+            const posProvider = safeVal('inpPosProvider');
+            if (posProvider !== undefined) {
+                payload.pos = {
+                    provider: posProvider || '',
+                    id: safeVal('inpPosId') || '',
+                    key: safeVal('inpPosKey') || ''
+                };
+            }
+
+            payload.features = app.features;
+            window.socket.emit('save-store-settings', payload);
+        } catch(e) {
+            console.error("AutoSave Settings Error:", e);
         }
-
-        const softPosData = {
-            provider: getVal('selSoftPosProvider'),
-            merchantId: getVal('inpSoftPosMerchantId'),
-            apiKey: getVal('inpSoftPosApiKey'),
-            enabled: getCheck('switchSoftPosEnabled')
-        };
-        const posMode = getVal('selPosMode') || 'auto';
-
-        const posData = {
-            provider: getVal('inpPosProvider'),
-            id: getVal('inpPosId'),
-            key: getVal('inpPosKey')
-        };
-
-        window.socket.emit('save-store-settings', { resetTime: time, hours: hours, coverPrice: cp, googleMapsUrl: gmaps, autoPrint: ap, autoClosePrint: acp, printerEnabled: pe, staffCharge: sc, reservationsEnabled: resEnabled, totalTables: totalTables, softPos: softPosData, posMode: posMode, pos: posData, reward: rewardData, features: app.features, warnOnBackground: warnBg });
     },
     
     saveSettings: () => {

@@ -140,40 +140,32 @@ export function initKitchenSockets(App, userData) {
         
             if (settings.warnOnBackground !== undefined) {
                 const isWarnEnabled = settings.warnOnBackground === true;
-                const sw = document.getElementById('switchWarnOnBackgroundKitchen');
-                if (sw) sw.checked = isWarnEnabled;
+                document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = isWarnEnabled);
                 window.disableBackgroundWarning = !isWarnEnabled;
                 localStorage.setItem('bellgo_keepalive', isWarnEnabled);
             } else {
                 const saved = localStorage.getItem('bellgo_keepalive');
                 if (saved !== null) {
                     const isWarnEnabled = saved === 'true';
-                    const sw = document.getElementById('switchWarnOnBackgroundKitchen');
-                    if (sw) sw.checked = isWarnEnabled;
+                    document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = isWarnEnabled);
                     window.disableBackgroundWarning = !isWarnEnabled;
-                } else {
-                    const sw = document.getElementById('switchWarnOnBackgroundKitchen');
-                    if (sw) sw.checked = false;
-                    window.disableBackgroundWarning = true;
-                    localStorage.setItem('bellgo_keepalive', 'false');
                 }
             }
 
             if (settings.fakeLockEnabled !== undefined) {
                 const isFakeLockEnabled = settings.fakeLockEnabled !== false;
-                const swF = document.getElementById('switchFakeLockKitchen');
-                if (swF) swF.checked = isFakeLockEnabled;
+                document.querySelectorAll('[id="switchFakeLockKitchen"]').forEach(el => el.checked = isFakeLockEnabled);
                 window.disableFakeLock = !isFakeLockEnabled;
                 localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
             } else {
                 const saved = localStorage.getItem('bellgo_fakelock');
                 if (saved !== null) {
                     const isFakeLockEnabled = saved === 'true';
-                    const swF = document.getElementById('switchFakeLockKitchen');
-                    if (swF) swF.checked = isFakeLockEnabled;
+                    document.querySelectorAll('[id="switchFakeLockKitchen"]').forEach(el => el.checked = isFakeLockEnabled);
                     window.disableFakeLock = !isFakeLockEnabled;
                 }
             }
+            
             const btnFakeLock = document.getElementById('btnFakeLock');
             if (btnFakeLock) btnFakeLock.style.display = window.disableFakeLock ? 'none' : 'flex';
         }

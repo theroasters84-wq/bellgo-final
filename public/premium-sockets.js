@@ -181,41 +181,33 @@ export function initPremiumSockets(App, userData) {
             }
             
             if (settings.warnOnBackground !== undefined) {
-                const swWarn = document.getElementById('switchWarnOnBackground');
                 const isWarnEnabled = settings.warnOnBackground === true;
-                if (swWarn) swWarn.checked = isWarnEnabled;
+                document.querySelectorAll('[id="switchWarnOnBackground"]').forEach(el => el.checked = isWarnEnabled);
                 window.disableBackgroundWarning = !isWarnEnabled;
                 localStorage.setItem('bellgo_keepalive', isWarnEnabled);
             } else {
                 const saved = localStorage.getItem('bellgo_keepalive');
                 if (saved !== null) {
                     const isWarnEnabled = saved === 'true';
-                    const swWarn = document.getElementById('switchWarnOnBackground');
-                    if (swWarn) swWarn.checked = isWarnEnabled;
+                    document.querySelectorAll('[id="switchWarnOnBackground"]').forEach(el => el.checked = isWarnEnabled);
                     window.disableBackgroundWarning = !isWarnEnabled;
-                } else {
-                    const swWarn = document.getElementById('switchWarnOnBackground');
-                    if (swWarn) swWarn.checked = false;
-                    window.disableBackgroundWarning = true;
-                    localStorage.setItem('bellgo_keepalive', 'false');
                 }
             }
             
             if (settings.fakeLockEnabled !== undefined) {
                 const isFakeLockEnabled = settings.fakeLockEnabled !== false;
-                const swFake = document.getElementById('switchFakeLockEnabled');
-                if (swFake) swFake.checked = isFakeLockEnabled;
+                document.querySelectorAll('[id="switchFakeLockEnabled"]').forEach(el => el.checked = isFakeLockEnabled);
                 window.disableFakeLock = !isFakeLockEnabled;
                 localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
             } else {
                 const saved = localStorage.getItem('bellgo_fakelock');
                 if (saved !== null) {
                     const isFakeLockEnabled = saved === 'true';
-                    const swFake = document.getElementById('switchFakeLockEnabled');
-                    if (swFake) swFake.checked = isFakeLockEnabled;
+                    document.querySelectorAll('[id="switchFakeLockEnabled"]').forEach(el => el.checked = isFakeLockEnabled);
                     window.disableFakeLock = !isFakeLockEnabled;
                 }
             }
+
             if (window.App && window.App.applyFeatureVisibility) window.App.applyFeatureVisibility();
         }
     });

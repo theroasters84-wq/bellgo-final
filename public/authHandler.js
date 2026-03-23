@@ -148,6 +148,7 @@ module.exports = function(socket, context, getMyStore) {
             if (data.warnOnBackground !== undefined) store.settings.warnOnBackground = data.warnOnBackground;
             if (data.fakeLockEnabled !== undefined) store.settings.fakeLockEnabled = data.fakeLockEnabled;
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            if (Logic.saveStoreToFirebase) Logic.saveStoreToFirebase(socket.store, db, storesData);
         }
     });
 };

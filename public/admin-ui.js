@@ -171,7 +171,33 @@ export const AdminUI = {
         document.getElementById('settingsMain').style.display = 'none';
         document.querySelectorAll('.settings-sub').forEach(el => el.style.display = 'none');
         const target = document.getElementById(id);
-        if(target) target.style.display = 'block';
+        if(target) {
+            target.style.display = 'block';
+            
+            // ✅ NEW: Προσθήκη Κουμπιού ΑΠΟΘΗΚΕΥΣΗΣ μέσα στις Γενικές Ρυθμίσεις (όπου είναι το SoftPOS)
+            if (id === 'subGeneral' && !document.getElementById('btnSaveSubGeneralDynamic')) {
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'btnSaveSubGeneralDynamic';
+                saveBtn.innerHTML = '💾 ΑΠΟΘΗΚΕΥΣΗ ΡΥΘΜΙΣΕΩΝ';
+                saveBtn.style.cssText = 'width:100%; padding:15px; margin-top:20px; margin-bottom:10px; background:#10B981; color:white; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3); display:block !important;';
+                saveBtn.onclick = () => { 
+                    if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+                    alert("✅ Όλες οι ρυθμίσεις αποθηκεύτηκαν επιτυχώς!");
+                };
+                
+                // ✅ ΑΠΟΛΥΤΗ ΠΡΟΣΤΑΣΙΑ ΕΜΦΑΝΙΣΗΣ ΚΟΥΜΠΙΟΥ ΑΠΟΘΗΚΕΥΣΗΣ (Όπου κι αν είναι το κουμπί ΠΙΣΩ)
+                let backBtn = target.querySelector('[data-i18n="back"]');
+                if (!backBtn) {
+                    backBtn = Array.from(target.getElementsByTagName('button')).find(b => (b.innerText || '').includes('ΠΙΣΩ'));
+                }
+                
+                if (backBtn && backBtn.parentNode) {
+                    backBtn.parentNode.insertBefore(saveBtn, backBtn);
+                } else {
+                    target.appendChild(saveBtn);
+                }
+            }
+        }
     },
 
     submitAdminUnlock: () => {

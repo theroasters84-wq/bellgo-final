@@ -246,14 +246,11 @@ const KeepAlive = {
             if (window.socket && !window._keepAliveSyncDone) {
                 window._keepAliveSyncDone = true;
                 window.socket.on('store-settings-update', (settings) => {
-                    if (settings) {
-                        const isWarnEnabled = settings.warnOnBackground === true; // Default false
+                    // ✅ FIX: Ενημερώνει τη μνήμη ΜΟΝΟ αν ο server στείλει ξεκάθαρη απάντηση, αλλιώς δεν πειράζει τίποτα!
+                    if (settings && settings.warnOnBackground !== undefined) {
+                        const isWarnEnabled = settings.warnOnBackground === true;
                         window.disableBackgroundWarning = !isWarnEnabled; 
                         localStorage.setItem('bellgo_keepalive', isWarnEnabled);
-                        
-                        // Ενημέρωση UI στο Admin (premium.html) αν υπάρχει
-                        const swAdmin = document.getElementById('switchWarnOnBackground');
-                        if (swAdmin) swAdmin.checked = isWarnEnabled;
                     }
                 });
             }
