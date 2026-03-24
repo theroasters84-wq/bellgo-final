@@ -390,9 +390,12 @@ window.App = {
             else { alert("Άγνωστος πάροχος."); return; }
 
             let fallback = encodeURIComponent(`https://play.google.com/store/apps/details?id=${pkg}`);
-            intentUrl = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${fallback};end;`;
+            // ✅ FIX: Το σωστό Android Chrome URL Scheme
+            intentUrl = `intent://main#Intent;package=${pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end;`;
 
             try { navigator.clipboard.writeText(amount.toString()); } catch(e){}
+            
+            // Δοκιμάζουμε αυτόματο άνοιγμα
             window.location.href = intentUrl;
 
             setTimeout(() => {
@@ -403,7 +406,11 @@ window.App = {
                     <div class="modal-box" style="background:#fff; padding:20px; border-radius:12px; text-align:center; max-width:320px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
                         <div style="font-size:40px; margin-bottom:10px;">📱</div>
                         <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS</h3>
-                        <p style="color:#1f2937; font-size:16px; margin-bottom:20px;">Ποσό: <b style="font-size:20px;">${amount}€</b><br><br><span style="font-size:13px; color:#6b7280;">Η εφαρμογή πληρωμής άνοιξε.<br>Όταν ολοκληρωθεί η συναλλαγή, πατήστε <b>ΕΠΙΒΕΒΑΙΩΣΗ</b>.</span></p>
+                        <p style="color:#1f2937; font-size:16px; margin-bottom:15px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
+                        
+                        <a href="${intentUrl}" style="display:block; background:#0095f6; color:white; text-decoration:none; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,149,246,0.3);">👉 ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ POS 👈</a>
+                        
+                        <span style="font-size:13px; color:#6b7280; display:block; margin-bottom:10px;">Αφού χτυπήσετε την κάρτα, επιστρέψτε εδώ και πατήστε:</span>
                         <button onclick="window.location.href='${returnUrl}'" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer;">✅ ΕΠΙΒΕΒΑΙΩΣΗ ΠΛΗΡΩΜΗΣ</button>
                         <button onclick="this.parentElement.parentElement.remove()" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
                     </div>
