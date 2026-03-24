@@ -77,9 +77,9 @@ export const Admin = {
             const softPosEnabled = safeCheck('switchSoftPosEnabled');
             if (softPosEnabled !== undefined) {
                 payload.softPos = {
-                    provider: safeVal('selSoftPosProvider') || '',
-                    merchantId: safeVal('inpSoftPosMerchantId') || '',
-                    apiKey: safeVal('inpSoftPosApiKey') || '',
+                    provider: (safeVal('selSoftPosProvider') || '').trim(),
+                    merchantId: (safeVal('inpSoftPosMerchantId') || '').trim(),
+                    apiKey: (safeVal('inpSoftPosApiKey') || '').trim(),
                     enabled: softPosEnabled
                 };
                 // ✅ OPTIMISTIC UPDATE: Άμεση αποθήκευση τοπικά για να δουλεύουν τα κουμπιά ακόμα κι αν αργήσει ο server
@@ -97,7 +97,15 @@ export const Admin = {
                 };
             }
 
-            payload.features = app.features;
+            payload.features = app.features || {};
+            
+            // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Αποθηκεύουμε τα POS ΜΕΣΑ στα features για να τα σώσει σίγουρα ο "παλιός" server!
+            if (payload.softPos) payload.features.softPosConfig = payload.softPos;
+            if (payload.pos) payload.features.posConfig = payload.pos;
+            if (payload.posMode) payload.features.posModeConfig = payload.posMode;
+            
+            console.log("🚀 ΣΤΕΛΝΩ SOFTPOS ΣΤΟΝ SERVER:", JSON.stringify(payload.softPos));
+            console.log("🚀 ΣΤΕΛΝΩ POS ΣΤΟΝ SERVER:", JSON.stringify(payload.pos));
             window.socket.emit('save-store-settings', payload);
         } catch(e) {
             console.error("AutoSave Settings Error:", e);

@@ -61,6 +61,7 @@ export function initPremiumSockets(App, userData) {
     });
     
     socket.on('store-settings-update', (settings) => {
+        console.log("📥 [store-settings-update] - Λήψη νέων ρυθμίσεων από Server:", settings);
         if(settings) {
             const inpHeader = document.getElementById('inpStoreNameHeader');
             if(settings.name) {
@@ -74,6 +75,11 @@ export function initPremiumSockets(App, userData) {
                     App.applyFeatureVisibility(); // ✅ Update UI based on features
                     window.lastFeatsStr = fStr;
                 }
+                
+                // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Ανάκτηση από τα features (αν ο server το ξέχασε)
+                if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
+                if (settings.features.posConfig) settings.pos = settings.features.posConfig;
+                if (settings.features.posModeConfig) settings.posMode = settings.features.posModeConfig;
             }
             if(settings.customExtraPresets) App.customExtraPresets = settings.customExtraPresets; // ✅ Φόρτωση Custom Presets
 

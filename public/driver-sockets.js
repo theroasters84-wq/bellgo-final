@@ -66,6 +66,9 @@ export function initDriverSockets(App, userData) {
                     App.applyFeatureVisibility();
                     window.lastFeatsStr = fStr;
                 }
+                
+                // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Ανάκτηση από τα features
+                if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
             }
             
             if (settings.warnOnBackground !== undefined) {

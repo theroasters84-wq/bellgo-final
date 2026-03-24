@@ -120,6 +120,11 @@ module.exports = function(socket, context, getMyStore) {
     socket.on('save-store-settings', (data) => {
         const store = getMyStore();
         if (store) {
+            // 🚀 LOG ΓΙΑ ΝΑ ΤΟ ΒΛΕΠΕΙΣ ΣΤΟ ΤΕΡΜΑΤΙΚΟ ΤΟΥ SERVER
+            console.log(`\n--- 💾 SERVER: Λήψη Ρυθμίσεων από ${socket.username} ---`);
+            if (data.softPos) console.log("✅ SERVER: Το softPos παραλήφθηκε κανονικά!", data.softPos);
+            else console.log("❌ SERVER: Προσοχή, δεν ήρθε softPos!");
+
             if (data.resetTime) store.settings.resetTime = data.resetTime;
             if (data.stripeConnectId) store.settings.stripeConnectId = data.stripeConnectId;
             if (data.schedule) store.settings.schedule = data.schedule;

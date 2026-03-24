@@ -82,6 +82,11 @@ export function initKitchenSockets(App, userData) {
                     App.applyFeatureVisibility(); // ✅ Update UI based on features
                     window.lastFeatsStr = fStr;
                 }
+                
+                // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Ανάκτηση από τα features (αν ο server το ξέχασε)
+                if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
+                if (settings.features.posConfig) settings.pos = settings.features.posConfig;
+                if (settings.features.posModeConfig) settings.posMode = settings.features.posModeConfig;
             }
             
             // ✅ FIX: Ασφαλείς αναθέσεις (γιατί στην κουζίνα λείπουν αυτά τα κουμπιά)
