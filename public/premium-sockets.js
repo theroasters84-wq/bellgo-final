@@ -157,14 +157,15 @@ export function initPremiumSockets(App, userData) {
             }
             if(settings.posMode) {
                 App.posMode = settings.posMode;
-                document.getElementById('selPosMode').value = App.posMode;
+                const pmEl = document.getElementById('selPosMode');
+                if (pmEl) pmEl.value = App.posMode;
             }
             // ✅ NEW: Load Physical POS Settings
             if(settings.pos) {
                 App.posSettings = settings.pos;
-                document.getElementById('inpPosProvider').value = settings.pos.provider || '';
-                document.getElementById('inpPosId').value = settings.pos.id || '';
-                document.getElementById('inpPosKey').value = settings.pos.key || '';
+                const pEl = document.getElementById('inpPosProvider'); if(pEl) pEl.value = settings.pos.provider || '';
+                const iEl = document.getElementById('inpPosId'); if(iEl) iEl.value = settings.pos.id || '';
+                const kEl = document.getElementById('inpPosKey'); if(kEl) kEl.value = settings.pos.key || '';
             }
             
             const statusEl = document.getElementById('stripeStatus');

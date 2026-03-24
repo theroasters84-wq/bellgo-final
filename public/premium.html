@@ -380,6 +380,8 @@
                             <option value="ask" data-i18n="ask_confirm">❓ Ερώτηση Επιβεβαίωσης</option>
                         </select>
                     </div>
+                    
+                    <button class="modal-btn" style="background:#10B981; color:white; width:100%; margin-top:10px; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.autoSaveSettings(); alert('Οι ρυθμίσεις SoftPOS αποθηκεύτηκαν!');">💾 ΑΠΟΘΗΚΕΥΣΗ SoftPOS</button>
                 </div>
 
                 <!-- ✅ NEW: PHYSICAL POS SETTINGS -->
@@ -388,6 +390,8 @@
                     <select id="inpPosProvider" class="inp-settings" onchange="App.autoSaveSettings()"><option value="" data-i18n="no_connection">Χωρίς Σύνδεση</option><option value="viva">Viva Wallet (Cloud)</option><option value="cardlink">Cardlink (Cloud)</option><option value="generic">Generic (TCP/IP)</option></select>
                     <input type="text" id="inpPosId" class="inp-settings" placeholder="Αναγνωριστικό Τερματικού / IP" onblur="App.autoSaveSettings()" data-i18n-placeholder="terminal_ip">
                     <input type="text" id="inpPosKey" class="inp-settings" placeholder="Κλειδί API / Θύρα" onblur="App.autoSaveSettings()" data-i18n-placeholder="terminal_port">
+                    
+                    <button class="modal-btn" style="background:#10B981; color:white; width:100%; margin-top:10px; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.autoSaveSettings(); alert('Οι ρυθμίσεις POS αποθηκεύτηκαν!');">💾 ΑΠΟΘΗΚΕΥΣΗ POS</button>
                 </div>
 
                 <!-- ✅ NEW: STRIPE CONNECT -->
@@ -423,6 +427,7 @@
                     <option value="souvlaki">🍖 Souvlaki / Grill</option>
                 </select>
 
+                <button class="modal-btn" style="background:#10B981; color:white; margin-top:15px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.3);" onclick="App.autoSaveSettings(); alert('Οι γενικές ρυθμίσεις αποθηκεύτηκαν!');">💾 ΑΠΟΘΗΚΕΥΣΗ ΟΛΩΝ</button>
                 <button class="modal-btn" style="background:#555; margin-top:10px;" onclick="App.closeSettingsSub()" data-i18n="back">🔙 ΠΙΣΩ</button>
             </div>
 
