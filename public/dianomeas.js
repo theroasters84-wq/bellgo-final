@@ -372,29 +372,45 @@ window.App = {
         const amountCents = (amount * 100).toFixed(0);
         let intentUrl = "";
 
-        // ✅ NEW: Επίσημη Δομή Android Intent
+        // ✅ Bypasses KeepAlive protection temporarily to allow external app launch
+        window.allowSoftPosExit = true;
+        setTimeout(() => { window.allowSoftPosExit = false; }, 3000);
+
         if (s.provider === 'viva') {
             let params = `?action=sale&clientTransactionId=${context}_${Date.now()}&amount=${amountCents}&callback=${encodeURIComponent(returnUrl)}`;
             if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
             if (s.apiKey) params += `&appId=${s.apiKey}`;
             intentUrl = `intent://pay/v1${params}#Intent;scheme=vivapay;package=com.vivawallet.terminal;end;`;
+            window.location.href = intentUrl;
         } else {
-            let params = `?amount=${amountCents}`;
-            if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
-            if (s.apiKey) params += `&merchantKey=${s.apiKey}`;
-            params += `&callback=${encodeURIComponent(returnUrl)}`;
-            
-            if (s.provider === 'alpha') intentUrl = `intent://pay${params}#Intent;scheme=nexi;package=gr.alpha.nexi.softpos;end;`;
-            else if (s.provider === 'eurobank') intentUrl = `intent://pay${params}#Intent;scheme=smartpos;package=com.worldline.smartpos;end;`;
-            else if (s.provider === 'piraeus') intentUrl = `intent://pay${params}#Intent;scheme=epay;package=gr.epay.softpos;end;`;
-            else intentUrl = `intent://pay${params}#Intent;scheme=softpos;end;`;
-        }
-        
-        // ✅ Bypasses KeepAlive protection temporarily to allow external app launch
-        window.allowSoftPosExit = true;
-        setTimeout(() => { window.allowSoftPosExit = false; }, 3000);
+            let pkg = "";
+            if (s.provider === 'alpha') pkg = "gr.alpha.nexi.softpos";
+            else if (s.provider === 'eurobank') pkg = "com.worldline.smartpos";
+            else if (s.provider === 'piraeus') pkg = "gr.epay.softpos";
+            else { alert("Άγνωστος πάροχος."); return; }
 
-        window.location.href = intentUrl;
+            let fallback = encodeURIComponent(`https://play.google.com/store/apps/details?id=${pkg}`);
+            intentUrl = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${fallback};end;`;
+
+            try { navigator.clipboard.writeText(amount.toString()); } catch(e){}
+            window.location.href = intentUrl;
+
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = 'modal-overlay';
+                div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:99999; display:flex; align-items:center; justify-content:center;";
+                div.innerHTML = `
+                    <div class="modal-box" style="background:#fff; padding:20px; border-radius:12px; text-align:center; max-width:320px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                        <div style="font-size:40px; margin-bottom:10px;">📱</div>
+                        <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS</h3>
+                        <p style="color:#1f2937; font-size:16px; margin-bottom:20px;">Ποσό: <b style="font-size:20px;">${amount}€</b><br><br><span style="font-size:13px; color:#6b7280;">Η εφαρμογή πληρωμής άνοιξε.<br>Όταν ολοκληρωθεί η συναλλαγή, πατήστε <b>ΕΠΙΒΕΒΑΙΩΣΗ</b>.</span></p>
+                        <button onclick="window.location.href='${returnUrl}'" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer;">✅ ΕΠΙΒΕΒΑΙΩΣΗ ΠΛΗΡΩΜΗΣ</button>
+                        <button onclick="this.parentElement.parentElement.remove()" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;">ΑΚΥΡΩΣΗ</button>
+                    </div>
+                `;
+                document.body.appendChild(div);
+            }, 1000);
+        }
     },
 
     // ✅ NEW: Check Return from SoftPOS
