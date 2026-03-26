@@ -286,7 +286,7 @@ export const PaySystem = {
         if(total <= 0) return alert("Το ποσό είναι μηδενικό.");
         try {
             const forceLive = localStorage.getItem('use_live_backend') === 'true';
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
             const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
 
             const res = await fetch(`${baseUrl}/create-qr-payment`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ amount: total, storeName: window.App.userData.store, orderId: id }) });

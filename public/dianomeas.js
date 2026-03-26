@@ -389,14 +389,17 @@ window.App = {
             else if (s.provider === 'piraeus') pkg = "gr.epay.softpos";
             else { alert("Άγνωστος πάροχος."); return; }
 
-            let fallback = encodeURIComponent(`https://play.google.com/store/apps/details?id=${pkg}`);
-            // ✅ FIX: Το σωστό Android Chrome URL Scheme
-            intentUrl = `intent://main#Intent;package=${pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end;`;
+            let playStoreUrl = `https://play.google.com/store/apps/details?id=${pkg}`;
+            let intentUrl = `intent://#Intent;package=${pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end;`;
 
             try { navigator.clipboard.writeText(amount.toString()); } catch(e){}
             
-            // Δοκιμάζουμε αυτόματο άνοιγμα
-            window.location.href = intentUrl;
+            // Δοκιμάζουμε το intent σε iframe για να μην "σκάσει" η σελίδα αν αποτύχει (Silent Fail)
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = intentUrl;
+            document.body.appendChild(iframe);
+            setTimeout(() => iframe.remove(), 2000);
 
             setTimeout(() => {
                 const div = document.createElement('div');
@@ -408,7 +411,7 @@ window.App = {
                         <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS</h3>
                         <p style="color:#1f2937; font-size:16px; margin-bottom:15px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
                         
-                        <a href="${intentUrl}" style="display:block; background:#0095f6; color:white; text-decoration:none; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,149,246,0.3);">👉 ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ POS 👈</a>
+                        <button onclick="window.location.href='${playStoreUrl}'" style="display:block; width:100%; background:#0095f6; color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:15px; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,149,246,0.3); cursor:pointer;">👉 ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ POS 👈</button>
                         
                         <span style="font-size:13px; color:#6b7280; display:block; margin-bottom:10px;">Αφού χτυπήσετε την κάρτα, επιστρέψτε εδώ και πατήστε:</span>
                         <button onclick="window.location.href='${returnUrl}'" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer;">✅ ΕΠΙΒΕΒΑΙΩΣΗ ΠΛΗΡΩΜΗΣ</button>
@@ -416,7 +419,7 @@ window.App = {
                     </div>
                 `;
                 document.body.appendChild(div);
-            }, 1000);
+            }, 500);
         }
     },
 

@@ -80,6 +80,9 @@ export const Sundromes = {
             // ✅ 1998: Όλα ενεργά (Full Package)
             if (year === 1998) return true;
 
+            // ✅ 1999: Όλα ενεργά ΕΚΤΟΣ από το POS (Πακέτο 5)
+            if (year === 1999) return key !== 'pack_pos';
+
             const pkg = Sundromes.packages.find(p => p.key === key);
             // ✅ Strict Matching: Μόνο το πακέτο του έτους (Ανεξάρτητη λειτουργία)
             if (pkg && year === pkg.year) return true;
@@ -235,7 +238,7 @@ export const Sundromes = {
         if (!email) { alert(I18n.t('enter_email_alert') || "Παρακαλώ εισάγετε Email."); return null; }
         try {
             const forceLive = localStorage.getItem('use_live_backend') === 'true';
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+            const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
             const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
 
             const res = await fetch(`${baseUrl}/check-subscription`, {

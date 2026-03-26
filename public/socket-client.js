@@ -1,7 +1,7 @@
 export function initSockets(App, ctx) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+        const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
         const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
         console.log("🔌 Πελάτης συνδέεται στο:", serverUrl || "Local Network", "| Live Forced:", forceLive);
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
