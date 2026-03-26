@@ -32,6 +32,14 @@ export function initPremiumSockets(App, userData) {
         // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
         socket.once('menu-update', () => {
             
+            // ✅ Έλεγχος επιστροφής από Stripe
+            const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
+            if (pendingStripe) {
+                socket.emit('save-store-settings', { stripeConnectId: pendingStripe });
+                localStorage.removeItem('temp_stripe_connect_id');
+                alert((window.App && window.App.t ? window.App.t('stripe_connected') : null) || "Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
+            }
+
             // ✅ NEW: Ζητάμε τις κρατήσεις μόλις συνδεθούμε (αφού μπούμε στο δωμάτιο)
             socket.emit('get-reservations');
         });

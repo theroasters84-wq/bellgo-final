@@ -59,6 +59,18 @@ export const AdminUI = {
         const lock = document.getElementById('settingsLockOverlay');
         if(lock) lock.style.display = 'none';
 
+        // ✅ Οριστική απόκρυψη του E-Invoicing αν λείπει το πακέτο 5 (POS)
+        if (window.App && window.App.hasFeature && !window.App.hasFeature('pack_pos')) {
+            const sModal = document.getElementById('settingsModal');
+            if (sModal) {
+                sModal.querySelectorAll('button').forEach(b => {
+                    if (b.innerText.includes('E-INVOICING') || b.innerText.includes('myDATA')) {
+                        b.style.display = 'none';
+                    }
+                });
+            }
+        }
+
         // ✅ ΕΞΟΔΟΣ μέσα στις ρυθμίσεις (προσθήκη στο κεντρικό μενού για να το βλέπουν οι σερβιτόροι)
         let settingsMain = document.getElementById('settingsMain');
         if (!settingsMain) {
@@ -161,7 +173,8 @@ export const AdminUI = {
     },
 
     openSettingsSub: (id) => {
-        if (id === 'subGeneral' && !window.App.settingsUnlocked && window.App.hasFeature('pack_pos')) {
+            const requiresLock = window.App.hasFeature('pack_pos') || window.App.hasFeature('pack_manager') || window.App.hasFeature('pack_delivery') || window.App.hasFeature('pack_tables');
+            if (id === 'subGeneral' && !window.App.settingsUnlocked && requiresLock) {
             document.getElementById('adminUnlockModal').style.display = 'flex';
             document.getElementById('inpAdminUnlockPin').value = '';
             document.getElementById('inpAdminUnlockPin').focus();
@@ -173,6 +186,15 @@ export const AdminUI = {
         const target = document.getElementById(id);
         if(target) {
             target.style.display = 'block';
+            
+            // ✅ Εξαφάνιση του παλιού διπλού κουμπιού "ΑΠΟΘΗΚΕΥΣΗ ΟΛΩΝ"
+            if (id === 'subGeneral') {
+                Array.from(target.getElementsByTagName('button')).forEach(b => {
+                    if (b.id !== 'btnSaveSubGeneralDynamic' && (b.innerText || '').includes('ΑΠΟΘΗΚΕΥΣΗ ΟΛΩΝ')) {
+                        b.style.display = 'none';
+                    }
+                });
+            }
             
             // ✅ NEW: Προσθήκη Κουμπιού ΑΠΟΘΗΚΕΥΣΗΣ μέσα στις Γενικές Ρυθμίσεις (όπου είναι το SoftPOS)
             if (id === 'subGeneral' && !document.getElementById('btnSaveSubGeneralDynamic')) {

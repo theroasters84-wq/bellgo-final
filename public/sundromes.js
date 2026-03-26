@@ -73,7 +73,7 @@ export const Sundromes = {
 
         // 2. Hack (Έτος στο Email)
         const storeEmail = user.store || user.email || "";
-        const match = storeEmail.match(/(\d{4})$/);
+        const match = storeEmail.match(/(\d{4})(?:@|$)/);
         if (match) {
             const year = parseInt(match[1]);
             
@@ -153,14 +153,16 @@ export const Sundromes = {
         window.App.tempFeatures = { ...window.App.features };
         Sundromes.packages.forEach((feat) => {
             const isActive = window.App.tempFeatures[feat.key];
-            const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px; background:#f9fafb; margin-bottom:10px; border-radius:8px; border:1px solid #e5e7eb;";
-            row.innerHTML = `<div><div style="color:#1f2937; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#6b7280; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked; Sundromes.calcTotal();"><span class="slider round"></span></label>`;
+            const isDisabled = feat.key === 'pack_pos'; // ✅ Απενεργοποίηση Πακέτου 5
+            const row = document.createElement('div');            
+            row.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:15px; background:${isDisabled ? '#e5e7eb' : '#f9fafb'}; margin-bottom:10px; border-radius:8px; border:1px solid #d1d5db; opacity:${isDisabled ? '0.5' : '1'}; cursor:${isDisabled ? 'not-allowed' : 'default'};`;
+            row.innerHTML = `<div><div style="color:#1f2937; font-weight:bold; font-size:16px;">${feat.name}</div><div style="color:#6b7280; font-size:12px;">${feat.desc}</div></div><label class="switch"><input type="checkbox" ${isActive ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="window.App.tempFeatures['${feat.key}'] = this.checked; Sundromes.calcTotal();" ${isDisabled ? 'title="Coming Soon"' : ''}><span class="slider round"></span></label>`;
             list.appendChild(row);
         });
         Sundromes.calcTotal(); // ✅ Calculate initial total
         modal.style.display = 'flex';
     },
+
     calcTotal: () => {
         let total = 0;
         Sundromes.packages.forEach(p => {
