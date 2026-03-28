@@ -148,24 +148,18 @@ const KeepAlive = {
 
     // 4. BACKGROUND WARNING: Προειδοποιεί αν κλειδώσουν την οθόνη ή βγουν από το app
     warnOnBackground: () => {
-        // ✅ Διαβάζουμε ΑΜΕΣΑ την τοπική ρύθμιση για να μην χτυπάει στο 1ο κατέβασμα της οθόνης
-        const savedKeepAlive = localStorage.getItem('bellgo_keepalive');
-        if (savedKeepAlive !== null) {
-            window.disableBackgroundWarning = (savedKeepAlive === 'false');
-        } else {
-            // ✅ Default to OFF (Κλειστό) για νέους χρήστες
-            window.disableBackgroundWarning = true;
-        }
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
-                // ✅ FRESH CHECK: Διαβάζουμε πάλι μήπως η ρύθμιση ήρθε μόλις τώρα από τον server
-                const freshKeepAlive = localStorage.getItem('bellgo_keepalive');
-                if (freshKeepAlive === 'false') window.disableBackgroundWarning = true;
-                if (freshKeepAlive === null) window.disableBackgroundWarning = true;
-
-                // ✅ Έλεγχος αν ο διαχειριστής έχει απενεργοποιήσει τη λειτουργία από τις ρυθμίσεις
-                if (window.disableBackgroundWarning) return;
+                // ✅ FRESH CHECK: Διαβάζουμε ΠΑΝΤΑ ζωντανά την τοπική μνήμη
+                const keepAliveState = localStorage.getItem('bellgo_keepalive');
+                console.log("🕵️‍♂️ [KeepAlive] App hidden! keepAliveState =", keepAliveState);
+                
+                // ✅ FIX: Αν ο διακόπτης είναι κλειστός ('false') Ή δεν έχει φορτώσει ακόμα (null), ΔΕΝ χτυπάμε
+                if (keepAliveState === 'false' || keepAliveState === null) {
+                    console.log("🕵️‍♂️ [KeepAlive] 🛑 Aborting alarm (Switch is OFF or Loading)");
+                    return;
+                }
 
                 // Έλεγχος αν ο χρήστης έχει ήδη ανοιχτό το Fake Lock
                 const fakeLock = document.getElementById('fakeLockOverlay');
@@ -173,39 +167,47 @@ const KeepAlive = {
                     return; // Είναι ήδη στο Fake Lock, άρα έκανε το σωστό! Δεν τον ενοχλούμε.
                 }
 
-                // ✅ Ήχος προειδοποίησης (Σαν κλήση) μέσω AudioEngine
+                // ✅ Ήχος προειδοποίησης (Σαν κλήση)
                 if (window.AudioEngine && window.AudioEngine.triggerAlarm) {
+                    window.AudioEngine.isRinging = false; // ✅ FORCE reset to ensure it plays (ξεκολλάει τυχόν παλιά κλήση)
                     window.AudioEngine.triggerAlarm();
-                    
-                    const lang = document.documentElement.lang || 'el';
-                    const wrongLockTxt = lang === 'en' ? "🔔 WRONG LOCK" : "🔔 ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ";
-                    const stopSoundTxt = lang === 'en' ? "🔔 STOP SOUND (WRONG LOCK)" : "🔔 ΣΤΑΜΑΤΗΣΤΕ ΤΟΝ ΗΧΟ (ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ)";
+                } else {
+                    new Audio('/alert.mp3').play().catch(e => console.log("Fallback audio error", e));
+                }
+                
+                const lang = document.documentElement.lang || 'el';
+                const wrongLockTxt = lang === 'en' ? "🔔 WRONG LOCK" : "🔔 ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ";
+                const stopSoundTxt = lang === 'en' ? "🔔 STOP SOUND (WRONG LOCK)" : "🔔 ΣΤΑΜΑΤΗΣΤΕ ΤΟΝ ΗΧΟ (ΛΑΘΟΣ ΚΛΕΙΔΩΜΑ)";
 
-                    // Εμφάνιση του κουμπιού αποδοχής για να μπορέσει να το σταματήσει όταν επιστρέψει
-                    const staffBell = document.getElementById('staffBellBtn');
-                    const driverBell = document.getElementById('driverBellBtn');
-                    
-                    if (staffBell) { 
-                        staffBell.style.display = 'flex'; 
-                        staffBell.innerText = wrongLockTxt; 
-                        staffBell.classList.add('ringing'); 
-                    } else if (driverBell) { 
-                        driverBell.style.display = 'flex'; 
-                        driverBell.innerText = wrongLockTxt; 
-                        driverBell.classList.add('ringing'); 
-                    } else {
-                        let warnBtn = document.getElementById('warningStopBtn');
-                        if (!warnBtn) {
-                            warnBtn = document.createElement('button');
-                            warnBtn.id = 'warningStopBtn';
-                            warnBtn.innerHTML = stopSoundTxt;
-                            warnBtn.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#EF4444; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:14px; z-index:40000; box-shadow:0 10px 30px rgba(239,68,68,0.5); cursor:pointer; animation:pulse 1s infinite alternate;";
-                            warnBtn.onclick = () => { if (window.AudioEngine) window.AudioEngine.stopAlarm(); warnBtn.style.display = 'none'; };
-                            document.body.appendChild(warnBtn);
-                        }
+                // Εμφάνιση του κουμπιού αποδοχής για να μπορέσει να το σταματήσει όταν επιστρέψει
+                const staffBell = document.getElementById('staffBellBtn');
+                const driverBell = document.getElementById('driverBellBtn');
+                const adminBell = document.getElementById('adminBellBtn');
+                
+                if (staffBell) { 
+                    staffBell.style.display = 'flex'; 
+                    staffBell.innerText = wrongLockTxt; 
+                    staffBell.classList.add('ringing'); 
+                } else if (driverBell) { 
+                    driverBell.style.display = 'flex'; 
+                    driverBell.innerText = wrongLockTxt; 
+                    driverBell.classList.add('ringing'); 
+                } else if (adminBell) {
+                    adminBell.style.display = 'flex'; 
+                    adminBell.innerText = wrongLockTxt; 
+                    adminBell.classList.add('ringing'); 
+                } else {
+                    let warnBtn = document.getElementById('warningStopBtn');
+                    if (!warnBtn) {
+                        warnBtn = document.createElement('button');
+                        warnBtn.id = 'warningStopBtn';
                         warnBtn.innerHTML = stopSoundTxt;
-                        warnBtn.style.display = 'block';
+                        warnBtn.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#EF4444; color:white; border:none; padding:15px 30px; border-radius:30px; font-weight:bold; font-size:14px; z-index:40000; box-shadow:0 10px 30px rgba(239,68,68,0.5); cursor:pointer; animation:pulse 1s infinite alternate;";
+                        warnBtn.onclick = () => { if (window.AudioEngine) window.AudioEngine.stopAlarm(); warnBtn.style.display = 'none'; };
+                        document.body.appendChild(warnBtn);
                     }
+                    warnBtn.innerHTML = stopSoundTxt;
+                    warnBtn.style.display = 'block';
                 }
 
                 // Αν ΔΕΝ έχει Fake Lock και βγει / κλειδώσει την οθόνη
@@ -236,28 +238,52 @@ const KeepAlive = {
     },
 
     init: () => {
+        if (window._keepAliveInitialized) return;
+        window._keepAliveInitialized = true;
+
         console.log("🛡️ Initializing KeepAlive Shields...");
         KeepAlive.enableWakeLock();
         KeepAlive.preventBackExit();
         KeepAlive.preventTabClose();
         KeepAlive.warnOnBackground();
 
-        // ✅ NEW: Συγχρονισμός της ρύθμισης από το Server όταν έρθει το event (Fix για 1η είσοδο)
+        // ✅ GLOBAL INTERCEPTOR: Διασφαλίζει ότι το KeepAlive λαμβάνει τις ρυθμίσεις
+        // Ακόμα και αν η σελίδα του Σερβιτόρου έχει παλιό κώδικα (inline scripts)!
         const syncKeepAliveSettings = () => {
             if (window.socket && !window._keepAliveSyncDone) {
                 window._keepAliveSyncDone = true;
                 window.socket.on('store-settings-update', (settings) => {
-                    // ✅ FIX: Ενημερώνει τη μνήμη ΜΟΝΟ αν ο server στείλει ξεκάθαρη απάντηση, αλλιώς δεν πειράζει τίποτα!
-                    if (settings && settings.warnOnBackground !== undefined) {
-                        const isWarnEnabled = settings.warnOnBackground === true;
-                        window.disableBackgroundWarning = !isWarnEnabled; 
-                        localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                    window._keepAliveSettingsArrived = true;
+                    if (!settings) return;
+                    
+                    let warnVal = settings.warnOnBackground;
+                    if (warnVal === undefined && settings.features && settings.features.warnOnBackground !== undefined) {
+                        warnVal = settings.features.warnOnBackground;
+                    }
+                    
+                    if (warnVal !== undefined) {
+                        const isWarnEnabled = warnVal === true;
+                        localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
+                        console.log("🕵️‍♂️ [KeepAlive Global] Synced from Server:", isWarnEnabled);
                     }
                 });
+
+                const fetchGlobal = () => {
+                    if (window._keepAliveSettingsArrived) return;
+                    if (window.socket && window.socket.connected) {
+                        const userData = JSON.parse(localStorage.getItem('bellgo_session') || '{}');
+                        if (userData.store) window.socket.emit('get-store-settings', { storeName: userData.store });
+                    }
+                    setTimeout(fetchGlobal, 2000);
+                };
+                fetchGlobal();
             }
         };
+        
         syncKeepAliveSettings();
-        const checkSocketInt = setInterval(() => { if (window.socket) { syncKeepAliveSettings(); clearInterval(checkSocketInt); } }, 500);
+        const checkSocketInt = setInterval(() => { 
+            if (window.socket) { syncKeepAliveSettings(); clearInterval(checkSocketInt); } 
+        }, 500);
     },
 };
 

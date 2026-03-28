@@ -5,10 +5,23 @@ const calculateTotal = (text) => { let t=0; if(!text)return 0; text.split('\n').
 document.addEventListener('change', (e) => {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'checkbox' && e.target.id) {
         document.querySelectorAll(`[id="${e.target.id}"]`).forEach(el => el.checked = e.target.checked);
+        
+        // ✅ FORCED AUTO-SAVE: Διασφαλίζουμε ότι οι κρίσιμοι διακόπτες στέλνουν αμέσως την αλλαγή στον Server
+        const triggers = ['switchWarnOnBackground', 'switchWarnOnBackgroundKitchen', 'switchWarnOnBackgroundDriver', 'switchFakeLockEnabled', 'switchFakeLockKitchen', 'switchFakeLockDriver'];
+        if (triggers.includes(e.target.id)) {
+            setTimeout(() => {
+                if (window.App && window.App.autoSaveSettings) window.App.autoSaveSettings();
+            }, 100);
+        }
     }
 });
 
 export const Admin = {
+    // ✅ BACKWARD COMPATIBILITY: Αν το HTML έχει παλιά functions, τα απορροφάμε για να μη βγάλει error
+    toggleKeepAlive: () => { if(window.App && window.App.autoSaveSettings) window.App.autoSaveSettings(); },
+    toggleKeepAliveKitchen: () => { if(window.App && window.App.autoSaveSettings) window.App.autoSaveSettings(); },
+    toggleKeepAliveDriver: () => { if(window.App && window.App.autoSaveSettings) window.App.autoSaveSettings(); },
+
     // --- STORE SETTINGS ---
     saveStoreName: () => {
         const newName = document.getElementById('inpStoreNameHeader').value.trim();
@@ -59,7 +72,10 @@ export const Admin = {
             
             // Εφόσον συγχρονίζονται πλέον αυτόματα, απλά διαβάζουμε το πρώτο που βρίσκουμε!
             const warnBgVal = safeCheck('switchWarnOnBackground') ?? safeCheck('switchWarnOnBackgroundKitchen') ?? safeCheck('switchWarnOnBackgroundDriver');
-            if (warnBgVal !== undefined) payload.warnOnBackground = warnBgVal;
+            if (warnBgVal !== undefined) {
+                payload.warnOnBackground = warnBgVal;
+                localStorage.setItem('bellgo_keepalive', warnBgVal ? 'true' : 'false'); // ✅ OPTIMISTIC UPDATE: Άμεση αποθήκευση για να δουλεύει 100%
+            }
 
             const fakeLockVal = safeCheck('switchFakeLockEnabled') ?? safeCheck('switchFakeLockKitchen') ?? safeCheck('switchFakeLockDriver');
             if (fakeLockVal !== undefined) payload.fakeLockEnabled = fakeLockVal;
@@ -103,9 +119,12 @@ export const Admin = {
             if (payload.softPos) payload.features.softPosConfig = payload.softPos;
             if (payload.pos) payload.features.posConfig = payload.pos;
             if (payload.posMode) payload.features.posModeConfig = payload.posMode;
+            if (payload.warnOnBackground !== undefined) payload.features.warnOnBackground = payload.warnOnBackground;
+            if (payload.fakeLockEnabled !== undefined) payload.features.fakeLockEnabled = payload.fakeLockEnabled;
             
             console.log("🚀 ΣΤΕΛΝΩ SOFTPOS ΣΤΟΝ SERVER:", JSON.stringify(payload.softPos));
             console.log("🚀 ΣΤΕΛΝΩ POS ΣΤΟΝ SERVER:", JSON.stringify(payload.pos));
+            console.log("🚀 ΣΤΕΛΝΩ KEEP ALIVE ΣΤΟΝ SERVER:", payload.warnOnBackground);
             window.socket.emit('save-store-settings', payload);
         } catch(e) {
             console.error("AutoSave Settings Error:", e);

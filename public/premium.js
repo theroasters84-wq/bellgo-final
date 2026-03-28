@@ -148,9 +148,6 @@ window.App = {
             `;
             document.body.appendChild(div);
         }
-        document.body.addEventListener('click', () => { 
-            if(window.AudioEngine) window.AudioEngine.init();
-        }, {once:true});
         
         // ✅ UI SETUP BASED ON MODE
         // ✅ FIX: Άμεση εμφάνιση ονόματος (για να μην φαίνεται κενό μέχρι να συνδεθεί)
@@ -192,9 +189,19 @@ window.App = {
             if(sb) { sb.style.display = 'flex'; sb.style.left = '-100%'; }
         }
 
-        // ✅ FIX: Απόκρυψη StartScreen αν υπάρχει (για να μην μπλοκάρει τα κλικ)
+        // ✅ ΕΜΦΑΝΙΣΗ StartScreen για απαιτούμενη αλληλεπίδραση (ξεκλείδωμα ήχου & keepalive)
         const startScreen = document.getElementById('startScreen');
-        if(startScreen) startScreen.style.display = 'none';
+        if (startScreen) {
+            startScreen.style.display = 'flex';
+            startScreen.onclick = () => {
+                if (window.AudioEngine) window.AudioEngine.init();
+                startScreen.style.display = 'none';
+            };
+        } else {
+            document.body.addEventListener('click', () => { 
+                if (window.AudioEngine) window.AudioEngine.init();
+            }, {once:true});
+        }
 
         App.startHeartbeat();
         // App.requestNotifyPermission(); 

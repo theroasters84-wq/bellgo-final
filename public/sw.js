@@ -9,7 +9,7 @@ let notificationInterval;
 /* -----------------------------------------------------------
    2. CONFIGURATION & CACHE (V79)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v79'; // ✅ Fake Order persistence
+const CACHE_NAME = 'bellgo-v91';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

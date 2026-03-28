@@ -3,9 +3,10 @@ const Logic = require('../logic');
 module.exports = function(socket, context, getMyStore) {
     const { io, storesData, activeUsers, db, transporter, YOUR_DOMAIN } = context;
 
-    socket.on('get-store-settings', async () => {
-        if (!socket.store) return;
-        const store = await Logic.getStoreData(socket.store, db, storesData);
+    socket.on('get-store-settings', async (data) => {
+        const targetStore = (data && data.storeName) ? data.storeName : socket.store;
+        if (!targetStore) return;
+        const store = await Logic.getStoreData(targetStore, db, storesData);
         if (store) socket.emit('store-settings-update', store.settings);
     });
 

@@ -815,7 +815,10 @@
             },
 
             connectSocket: () => {
-                const serverUrl = window.location.hostname.includes('onrender.com') ? "" : "https://bellgo-final.onrender.com";
+                const forceLive = localStorage.getItem('use_live_backend') === 'true';
+                const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
+                const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+                console.log("🔌 Σερβιτόρος συνδέεται στο:", serverUrl || "Local Network", "| Live Forced:", forceLive);
                 window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
                 const socket = window.socket;
 
@@ -831,6 +834,16 @@
                         token: localStorage.getItem('fcm_token'), 
                         isNative: !!window.Capacitor
                     });
+
+                    // ✅ ROBUST FETCH: Επαναλαμβανόμενο αίτημα ρυθμίσεων μέχρι να απαντήσει ο Server
+                    const fetchSettings = () => {
+                        if (window._settingsArrivedStaff) return;
+                        if (window.socket && window.socket.connected) {
+                            window.socket.emit('get-store-settings', { storeName: userData.store });
+                        }
+                        setTimeout(fetchSettings, 2000);
+                    };
+                    fetchSettings();
                 });
 
                 socket.on('reservations-update', (data) => {
@@ -897,6 +910,7 @@
                 });
 
                 socket.on('store-settings-update', (settings) => {
+                    window._settingsArrivedStaff = true; // ✅ Σταματάει το loop
                     if(settings) {
                         if (settings.name) {
                             document.getElementById('headerName').innerText = settings.name;
@@ -913,6 +927,9 @@
                                 App.applyFeatureVisibility(); // ✅ Update UI dynamically
                                 window.lastFeatsStr = fStr;
                             }
+                            // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Ανάκτηση από τα features (Αποκρυπτογράφηση!)
+                            if (settings.features.warnOnBackground !== undefined) settings.warnOnBackground = settings.features.warnOnBackground;
+                            if (settings.features.fakeLockEnabled !== undefined) settings.fakeLockEnabled = settings.features.fakeLockEnabled;
                         }
                         const closedOverlay = document.getElementById('closedOverlay');
                         const btnSend = document.getElementById('btnSendOrder');
@@ -925,33 +942,24 @@
                         }
                         
                         if (settings.warnOnBackground !== undefined) {
-                            const isWarnEnabled = settings.warnOnBackground !== false;
-                            const sw = document.getElementById('switchWarnOnBackgroundStaff');
-                            if (sw) sw.checked = isWarnEnabled;
+                            const isWarnEnabled = settings.warnOnBackground === true;
+                            console.log("🕵️‍♂️ [Staff-Socket] KeepAlive Setting arrived:", settings.warnOnBackground, "-> Saving as:", String(isWarnEnabled));
                             window.disableBackgroundWarning = !isWarnEnabled;
-                            localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                            localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
                         } else {
-                            const saved = localStorage.getItem('bellgo_keepalive');
-                            if (saved !== null) {
-                                const isWarnEnabled = saved === 'true';
-                                const sw = document.getElementById('switchWarnOnBackgroundStaff');
-                                if (sw) sw.checked = isWarnEnabled;
-                                window.disableBackgroundWarning = !isWarnEnabled;
-                            }
+                            console.log("🕵️‍♂️ [Staff-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
+                            window.disableBackgroundWarning = false;
+                            localStorage.setItem('bellgo_keepalive', 'true');
                         }
 
                         if (settings.fakeLockEnabled !== undefined) {
                             const isFakeLockEnabled = settings.fakeLockEnabled !== false;
-                            const swF = document.getElementById('switchFakeLockStaff');
-                            if (swF) swF.checked = isFakeLockEnabled;
                             window.disableFakeLock = !isFakeLockEnabled;
-                            localStorage.setItem('bellgo_fakelock', isFakeLockEnabled);
+                            localStorage.setItem('bellgo_fakelock', isFakeLockEnabled ? 'true' : 'false');
                         } else {
                             const saved = localStorage.getItem('bellgo_fakelock');
                             if (saved !== null) {
                                 const isFakeLockEnabled = saved === 'true';
-                                const swF = document.getElementById('switchFakeLockStaff');
-                                if (swF) swF.checked = isFakeLockEnabled;
                                 window.disableFakeLock = !isFakeLockEnabled;
                             }
                         }

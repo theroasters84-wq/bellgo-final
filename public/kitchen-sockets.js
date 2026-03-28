@@ -33,7 +33,14 @@ export function initKitchenSockets(App, userData) {
             App.pendingSoftPosCompletion = null;
         }
 
-        // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
+        // ✅ ROBUST FETCH: Επαναλαμβανόμενο αίτημα ρυθμίσεων μέχρι να μας απαντήσει ο Server
+        const fetchSettings = () => {
+            if (window._settingsArrivedKitchen) return;
+            if (socket.connected) socket.emit('get-store-settings', { storeName: userData.store });
+            setTimeout(fetchSettings, 2000);
+        };
+        fetchSettings();
+
         socket.once('menu-update', () => {
             const pendingStripe = localStorage.getItem('temp_stripe_connect_id');
             if (pendingStripe) {
@@ -47,6 +54,7 @@ export function initKitchenSockets(App, userData) {
     // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
     if(socket.connected) {
         socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+        socket.emit('get-store-settings', { storeName: userData.store });
     }
 
     socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
@@ -69,6 +77,7 @@ export function initKitchenSockets(App, userData) {
     });
     
     socket.on('store-settings-update', (settings) => {
+        window._settingsArrivedKitchen = true; // ✅ Σταματάει το loop
         if(settings) {
             const inpHeader = document.getElementById('inpStoreNameHeader');
             if(settings.name && inpHeader) {
@@ -87,6 +96,8 @@ export function initKitchenSockets(App, userData) {
                 if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
                 if (settings.features.posConfig) settings.pos = settings.features.posConfig;
                 if (settings.features.posModeConfig) settings.posMode = settings.features.posModeConfig;
+                if (settings.features.warnOnBackground !== undefined) settings.warnOnBackground = settings.features.warnOnBackground;
+                if (settings.features.fakeLockEnabled !== undefined) settings.fakeLockEnabled = settings.features.fakeLockEnabled;
             }
             
             // ✅ FIX: Ασφαλείς αναθέσεις (γιατί στην κουζίνα λείπουν αυτά τα κουμπιά)
@@ -145,16 +156,14 @@ export function initKitchenSockets(App, userData) {
         
             if (settings.warnOnBackground !== undefined) {
                 const isWarnEnabled = settings.warnOnBackground === true;
+                console.log("🕵️‍♂️ [Kitchen-Socket] KeepAlive Setting arrived:", settings.warnOnBackground, "-> Saving as:", String(isWarnEnabled));
                 document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = isWarnEnabled);
-                window.disableBackgroundWarning = !isWarnEnabled;
-                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
             } else {
-                const saved = localStorage.getItem('bellgo_keepalive');
-                if (saved !== null) {
-                    const isWarnEnabled = saved === 'true';
-                    document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = isWarnEnabled);
-                    window.disableBackgroundWarning = !isWarnEnabled;
-                }
+                // ✅ FIX: Αν ο Server ΔΕΝ έχει τη ρύθμιση, ΥΠΟΘΕΤΟΥΜΕ ΟΤΙ ΕΙΝΑΙ ΑΝΟΙΧΤΟ (true) για ασφάλεια!
+                console.log("🕵️‍♂️ [Kitchen-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
+                document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = true);
+                localStorage.setItem('bellgo_keepalive', 'true');
             }
 
             if (settings.fakeLockEnabled !== undefined) {

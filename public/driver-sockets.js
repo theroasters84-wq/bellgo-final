@@ -29,7 +29,20 @@ export function initDriverSockets(App, userData) {
             window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: parseFloat(amount), method: 'card' });
             App.pendingSoftPosCompletion = null;
         }
+        
+        // ✅ ROBUST FETCH: Επαναλαμβανόμενο αίτημα ρυθμίσεων μέχρι να μας απαντήσει ο Server
+        const fetchSettings = () => {
+            if (window._settingsArrivedDriver) return;
+            if (socket.connected) socket.emit('get-store-settings', { storeName: userData.store });
+            setTimeout(fetchSettings, 2000);
+        };
+        fetchSettings();
     });
+
+    if (socket.connected) {
+        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: 'driver', token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+        socket.emit('get-store-settings', { storeName: userData.store });
+    }
 
     socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
@@ -51,6 +64,7 @@ export function initDriverSockets(App, userData) {
 
     // ✅ NEW: Listen for Settings (Name & SoftPOS)
     socket.on('store-settings-update', (settings) => {
+        window._settingsArrivedDriver = true; // ✅ Σταματάει το loop
         if(settings) {
             if(settings.name) {
                 document.getElementById('storeNameHeader').innerText = settings.name + " 🛵";
@@ -69,20 +83,20 @@ export function initDriverSockets(App, userData) {
                 
                 // ✅ ΕΞΥΠΝΟ ΤΡΙΚ: Ανάκτηση από τα features
                 if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
+                if (settings.features.warnOnBackground !== undefined) settings.warnOnBackground = settings.features.warnOnBackground;
+                if (settings.features.fakeLockEnabled !== undefined) settings.fakeLockEnabled = settings.features.fakeLockEnabled;
             }
             
             if (settings.warnOnBackground !== undefined) {
                 const isWarnEnabled = settings.warnOnBackground === true;
+                console.log("🕵️‍♂️ [Driver-Socket] KeepAlive Setting arrived:", settings.warnOnBackground, "-> Saving as:", String(isWarnEnabled));
                 document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = isWarnEnabled);
-                window.disableBackgroundWarning = !isWarnEnabled;
-                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
             } else {
-                const saved = localStorage.getItem('bellgo_keepalive');
-                if (saved !== null) {
-                    const isWarnEnabled = saved === 'true';
-                    document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = isWarnEnabled);
-                    window.disableBackgroundWarning = !isWarnEnabled;
-                }
+                // ✅ FIX: Αν ο Server ΔΕΝ έχει τη ρύθμιση, ΥΠΟΘΕΤΟΥΜΕ ΟΤΙ ΕΙΝΑΙ ΑΝΟΙΧΤΟ (true)!
+                console.log("🕵️‍♂️ [Driver-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
+                document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = true);
+                localStorage.setItem('bellgo_keepalive', 'true');
             }
 
             if (settings.fakeLockEnabled !== undefined) {

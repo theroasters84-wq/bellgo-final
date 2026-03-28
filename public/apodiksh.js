@@ -69,22 +69,25 @@ export const Apodiksh = {
 
     // ✅ NEW: Εμφάνιση κουμπιού εγγραφής ανάλογα με την επιλογή
     updateProviderInfo: () => {
-        const provider = document.getElementById('inpEinvProvider').value;
+        const inpProv = document.getElementById('inpEinvProvider');
+        if (!inpProv) return; // ✅ Safe exit
+        
+        const provider = inpProv.value;
         const btn = document.getElementById('btnProviderRegister');
         const inpDomain = document.getElementById('inpEinvDomain'); // ✅ Get domain input
         
         if (provider && Apodiksh.providerUrls[provider]) {
-            btn.style.display = 'block';
+            if (btn) btn.style.display = 'block';
             
             // ✅ NEW: Auto-hint for Domain based on provider
-            if (provider === 'epsilon') {
+            if (provider === 'epsilon' && inpDomain) {
                 inpDomain.placeholder = "Π.χ. https://api.epsilonnet.gr (Κενό για Default)";
-            } else if (provider === 'softone') {
+            } else if (provider === 'softone' && inpDomain) {
                 inpDomain.placeholder = "Π.χ. https://s1.cloud.gr/s1services";
             }
         } else {
-            btn.style.display = 'none';
-            inpDomain.placeholder = "Domain / URL (Optional)";
+            if (btn) btn.style.display = 'none';
+            if (inpDomain) inpDomain.placeholder = "Domain / URL (Optional)";
         }
     },
 

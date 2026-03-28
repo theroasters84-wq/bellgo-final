@@ -28,8 +28,17 @@ export function initPremiumSockets(App, userData) {
             isAndroid: /android/i.test(navigator.userAgent)
         });
 
-        // ✅ FIX: Περιμένουμε να ολοκληρωθεί η σύνδεση (join-store) πριν στείλουμε το Stripe ID
-        // Χρησιμοποιούμε το 'menu-update' ως ένδειξη ότι ο server μας έβαλε στο δωμάτιο.
+        // ✅ ROBUST FETCH: Επαναλαμβανόμενο αίτημα ρυθμίσεων μέχρι να μας απαντήσει ο Server
+        const fetchSettings = () => {
+            if (window._settingsArrivedPremium) return;
+            if (socket.connected) { 
+                socket.emit('get-store-settings', { storeName: userData.store });
+                socket.emit('get-reservations');
+            }
+            setTimeout(fetchSettings, 2000);
+        };
+        fetchSettings();
+
         socket.once('menu-update', () => {
             
             // ✅ Έλεγχος επιστροφής από Stripe
@@ -39,15 +48,14 @@ export function initPremiumSockets(App, userData) {
                 localStorage.removeItem('temp_stripe_connect_id');
                 alert((window.App && window.App.t ? window.App.t('stripe_connected') : null) || "Ο λογαριασμός Stripe συνδέθηκε επιτυχώς!");
             }
-
-            // ✅ NEW: Ζητάμε τις κρατήσεις μόλις συνδεθούμε (αφού μπούμε στο δωμάτιο)
-            socket.emit('get-reservations');
         });
     });
 
     // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
     if(socket.connected) {
         socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, isAndroid: /android/i.test(navigator.userAgent) });
+        socket.emit('get-store-settings', { storeName: userData.store });
+        socket.emit('get-reservations');
     }
 
     socket.on('disconnect', () => { 
@@ -70,6 +78,7 @@ export function initPremiumSockets(App, userData) {
     
     socket.on('store-settings-update', (settings) => {
         console.log("📥 [store-settings-update] - Λήψη νέων ρυθμίσεων από Server:", settings);
+        window._settingsArrivedPremium = true; // ✅ Σταματάει το loop
         if(settings) {
             const inpHeader = document.getElementById('inpStoreNameHeader');
             if(settings.name) {
@@ -88,34 +97,40 @@ export function initPremiumSockets(App, userData) {
                 if (settings.features.softPosConfig) settings.softPos = settings.features.softPosConfig;
                 if (settings.features.posConfig) settings.pos = settings.features.posConfig;
                 if (settings.features.posModeConfig) settings.posMode = settings.features.posModeConfig;
+                if (settings.features.warnOnBackground !== undefined) settings.warnOnBackground = settings.features.warnOnBackground;
+                if (settings.features.fakeLockEnabled !== undefined) settings.fakeLockEnabled = settings.features.fakeLockEnabled;
             }
             if(settings.customExtraPresets) App.customExtraPresets = settings.customExtraPresets; // ✅ Φόρτωση Custom Presets
 
-            document.getElementById('switchCust').checked = settings.statusCustomer;
-            document.getElementById('switchStaff').checked = settings.statusStaff;
-            document.getElementById('switchStaffCharge').checked = settings.staffCharge || false; // ✅ Load Setting
-            if(settings.resetTime) document.getElementById('inpResetTime').value = settings.resetTime;
-            if(settings.hours) document.getElementById('inpHours').value = settings.hours;
+            // ✅ FIX: Ασφαλής ανάθεση τιμών στο DOM για αποφυγή crash στους Σερβιτόρους
+            const setChecked = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+
+            setChecked('switchCust', settings.statusCustomer);
+            setChecked('switchStaff', settings.statusStaff);
+            setChecked('switchStaffCharge', settings.staffCharge || false);
+            setChecked('switchStaffChargeWallet', settings.staffCharge || false);
+            
+            if(settings.resetTime) setVal('inpResetTime', settings.resetTime);
+            if(settings.hours) setVal('inpHours', settings.hours);
             if(settings.schedule) App.scheduleData = settings.schedule;
             // ✅ FIX: Να δέχεται και το 0 ως τιμή
             if(settings.coverPrice !== undefined) { 
                 App.coverPrice = parseFloat(settings.coverPrice); 
-                document.getElementById('inpCoverPrice').value = App.coverPrice; 
+                setVal('inpCoverPrice', App.coverPrice); 
             }
-            if(settings.googleMapsUrl !== undefined) document.getElementById('inpGoogleMaps').value = settings.googleMapsUrl;
+            if(settings.googleMapsUrl !== undefined) setVal('inpGoogleMaps', settings.googleMapsUrl);
             if(settings.autoPrint !== undefined) {
                 App.autoPrint = settings.autoPrint;
-                document.getElementById('selAutoPrint').value = App.autoPrint.toString();
+                setVal('selAutoPrint', App.autoPrint.toString());
             }
             if(settings.printerEnabled !== undefined) {
                 App.printerEnabled = settings.printerEnabled;
-                const swP = document.getElementById('switchPrinterEnabled');
-                if(swP) swP.checked = App.printerEnabled;
+                setChecked('switchPrinterEnabled', App.printerEnabled);
             }
             if(settings.autoClosePrint !== undefined) {
                 App.autoClosePrint = settings.autoClosePrint;
-                const sw = document.getElementById('switchAutoClosePrint');
-                if(sw) sw.checked = App.autoClosePrint;
+                setChecked('switchAutoClosePrint', App.autoClosePrint);
             }
             if(settings.expensePresets) App.expensePresets = settings.expensePresets;
             if(settings.fixedExpenses) App.fixedExpenses = settings.fixedExpenses; // ✅ Load Fixed Expenses
@@ -148,16 +163,14 @@ export function initPremiumSockets(App, userData) {
 
             // ✅ SYNC STAFF CHARGE SWITCHES (Settings & Wallet)
             App.staffChargeMode = settings.staffCharge || false;
-            const sw1 = document.getElementById('switchStaffCharge'); if(sw1) sw1.checked = App.staffChargeMode;
-            const sw2 = document.getElementById('switchStaffChargeWallet'); if(sw2) sw2.checked = App.staffChargeMode;
             
             // ✅ NEW: Reservations Settings
             if(settings.reservationsEnabled !== undefined) {
-                document.getElementById('switchReservations').checked = settings.reservationsEnabled;
+                setChecked('switchReservations', settings.reservationsEnabled);
                 const resWrapper = document.getElementById('resWrapper');
                 if(resWrapper) resWrapper.style.display = settings.reservationsEnabled ? 'block' : 'none';
             }
-            if(settings.totalTables !== undefined) document.getElementById('inpTotalTables').value = settings.totalTables;
+            if(settings.totalTables !== undefined) setVal('inpTotalTables', settings.totalTables);
             
             // ✅ NEW: Load SoftPOS Settings
             if(settings.softPos) {
@@ -198,16 +211,14 @@ export function initPremiumSockets(App, userData) {
             
             if (settings.warnOnBackground !== undefined) {
                 const isWarnEnabled = settings.warnOnBackground === true;
+                console.log("🕵️‍♂️ [Premium-Socket] KeepAlive Setting arrived:", settings.warnOnBackground, "-> Saving as:", String(isWarnEnabled));
                 document.querySelectorAll('[id="switchWarnOnBackground"]').forEach(el => el.checked = isWarnEnabled);
-                window.disableBackgroundWarning = !isWarnEnabled;
-                localStorage.setItem('bellgo_keepalive', isWarnEnabled);
+                localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
             } else {
-                const saved = localStorage.getItem('bellgo_keepalive');
-                if (saved !== null) {
-                    const isWarnEnabled = saved === 'true';
-                    document.querySelectorAll('[id="switchWarnOnBackground"]').forEach(el => el.checked = isWarnEnabled);
-                    window.disableBackgroundWarning = !isWarnEnabled;
-                }
+                // ✅ FIX: Αν ο Server ΔΕΝ έχει τη ρύθμιση, ΥΠΟΘΕΤΟΥΜΕ ΟΤΙ ΕΙΝΑΙ ΑΝΟΙΧΤΟ (true) για ασφάλεια!
+                console.log("🕵️‍♂️ [Premium-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
+                document.querySelectorAll('[id="switchWarnOnBackground"]').forEach(el => el.checked = true);
+                localStorage.setItem('bellgo_keepalive', 'true');
             }
             
             if (settings.fakeLockEnabled !== undefined) {

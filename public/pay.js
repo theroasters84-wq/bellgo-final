@@ -94,13 +94,18 @@ export const PaySystem = {
 
     // ✅ NEW: SoftPOS Logic (Moved from premium.js)
     updateSoftPosUI: () => {
-        const provider = document.getElementById('selSoftPosProvider').value;
+        const selProv = document.getElementById('selSoftPosProvider');
+        if (!selProv) return; // ✅ FIX: Ασφαλής έξοδος αν δεν υπάρχει το UI (π.χ. στους σερβιτόρους)
+        
+        const provider = selProv.value;
         const linkDiv = document.getElementById('softPosLinks');
         const linkA = document.getElementById('linkSoftPosReg');
         const setupBanner = document.getElementById('softPosSetupBanner');
         const downloadBanner = document.getElementById('softPosDownloadBanner');
-        const merchantId = document.getElementById('inpSoftPosMerchantId').value;
-        const isEnabled = document.getElementById('switchSoftPosEnabled').checked;
+        const inpMerchant = document.getElementById('inpSoftPosMerchantId');
+        const merchantId = inpMerchant ? inpMerchant.value : '';
+        const switchEnabled = document.getElementById('switchSoftPosEnabled');
+        const isEnabled = switchEnabled ? switchEnabled.checked : false;
 
         const urls = {
             'viva': 'https://www.vivawallet.com/gr_el',
@@ -109,14 +114,16 @@ export const PaySystem = {
             'piraeus': 'https://www.piraeusbank.gr/el/epixeiriseis/eisprakseis-pliromes/eisprakseis/epay-pos/softpos'
         };
 
-        if (provider && urls[provider]) {
+        if (provider && urls[provider] && linkDiv && linkA) {
             linkDiv.style.display = 'block';
             linkA.href = urls[provider];
-        } else { linkDiv.style.display = 'none'; }
+        } else if (linkDiv) { linkDiv.style.display = 'none'; }
 
-        if (isEnabled && !merchantId) { setupBanner.style.display = 'block'; downloadBanner.style.display = 'none'; }
-        else if (isEnabled && merchantId) { setupBanner.style.display = 'none'; downloadBanner.style.display = 'block'; }
-        else { setupBanner.style.display = 'none'; downloadBanner.style.display = 'none'; }
+        if (setupBanner && downloadBanner) {
+            if (isEnabled && !merchantId) { setupBanner.style.display = 'block'; downloadBanner.style.display = 'none'; }
+            else if (isEnabled && merchantId) { setupBanner.style.display = 'none'; downloadBanner.style.display = 'block'; }
+            else { setupBanner.style.display = 'none'; downloadBanner.style.display = 'none'; }
+        }
     },
 
     openSoftPosDownload: () => {
