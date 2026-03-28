@@ -4,6 +4,72 @@
    ΠΡΟΣΟΧΗ: Μην σβήσεις τα άγκιστρα { } και τις αγκύλες [ ].
 */
 
+// ✅ BELLGO PREMIUM MOBILE UI FIX (MENU EDITOR)
+if (typeof document !== 'undefined' && !document.getElementById('bellgoMenuEditorMobileFix')) {
+    const style = document.createElement('style');
+    style.id = 'bellgoMenuEditorMobileFix';
+    style.innerHTML = `
+        @media (max-width: 768px) {
+            /* Container του Header */
+            #menuFullPanel > div:first-child {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                    gap: 6px !important;
+                    padding: 10px !important;
+                background: #1f2937 !important;
+                border-bottom: 1px solid #374151 !important;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+                z-index: 10;
+                    position: relative !important;
+            }
+            /* Ο τίτλος στο κέντρο */
+            #menuFullPanel > div:first-child h2, 
+            #menuFullPanel > div:first-child h3 {
+                flex: 1 1 100% !important;
+                text-align: center !important;
+                    margin: 0 0 5px 0 !important;
+                color: #10B981 !important;
+                    font-size: 16px !important;
+            }
+            /* Τακτοποίηση των Κουμπιών σε Πλέγμα */
+            #menuFullPanel > div:first-child button {
+                position: static !important;
+                    flex: 1 1 calc(50% - 6px) !important;
+                margin: 0 !important;
+                    height: 36px !important;
+                    font-size: 11px !important;
+                font-weight: 800 !important;
+                border-radius: 10px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-transform: uppercase !important;
+                border: none !important;
+                color: #ffffff !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+                transition: transform 0.1s !important;
+            }
+            #menuFullPanel > div:first-child button:active { transform: scale(0.95) !important; }
+            
+            /* Ειδικά Χρώματα ανά Κουμπί */
+            #menuFullPanel > div:first-child button[onclick*="toggleMenuMode"] {
+                flex: 1 1 100% !important; /* Το 'Κλείσιμο' πιάνει όλο το πλάτος κάτω */
+                background: linear-gradient(135deg, #EF4444, #B91C1C) !important;
+                    height: 40px !important;
+                    font-size: 12px !important;
+            }
+            #btnBackCat { background: #4b5563 !important; }
+            #btnBulkPaste { background: linear-gradient(135deg, #10B981, #059669) !important; }
+            
+            /* Extras και όποιο άλλο κουμπί υπάρχει */
+            #menuFullPanel > div:first-child button:not([id="btnBackCat"]):not([id="btnBulkPaste"]):not([onclick*="toggleMenuMode"]) {
+                background: linear-gradient(135deg, #3B82F6, #2563EB) !important; 
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 export const DEFAULT_CATEGORIES = [
     { order: 1, name: "ΚΑΦΕΔΕΣ", items: [] },
     { order: 2, name: "SANDWICH", items: [] },
@@ -484,21 +550,8 @@ export const Menu = {
                     e.stopPropagation();
                     return;
                 }
-                App.menuData.forEach(cat => { 
-                    if (cat.items) {
-                        cat.items = cat.items.filter(i => {
-                            if(typeof i === 'string') return i.trim() !== '';
-                            return i.name && i.name.trim() !== '';
-                        }); 
-                    }
-                });
-                window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
-                const successOverlay = document.createElement('div');
-                successOverlay.className = 'modal-overlay';
-                successOverlay.style.display = 'flex';
-                successOverlay.style.zIndex = '15000';
-                successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Ο κατάλογος αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
-                document.body.appendChild(successOverlay);
+                // ✅ FIX: Καλεί το παράθυρο επιλογής αντί να αποθηκεύει απευθείας
+                App.openSaveModal();
             };
             
             const menuPanel = document.getElementById('menuFullPanel');
@@ -768,7 +821,16 @@ export const Menu = {
         });
         window.socket.emit('save-menu', { menu: App.menuData, mode: mode });
         document.getElementById('saveModeModal').style.display = 'none';
-        App.renderMenu(); 
+
+        // ✅ NEW: Εμφάνιση μηνύματος επιτυχίας μετά την αποθήκευση
+        const successOverlay = document.createElement('div');
+        successOverlay.className = 'modal-overlay';
+        successOverlay.style.display = 'flex';
+        successOverlay.style.zIndex = '15000';
+        successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Ο κατάλογος αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
+        document.body.appendChild(successOverlay);
+
+        App.renderMenu();
     },
 
     // --- BULK PASTE LOGIC ---
