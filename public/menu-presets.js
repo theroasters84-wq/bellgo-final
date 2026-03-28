@@ -345,6 +345,23 @@ export const EXTRA_PRESETS = {
 };
 
 export const Menu = {
+    // ✅ NEW: Μεταφέρει τα έτοιμα (hardcoded) presets στη μνήμη του χρήστη για να είναι επεξεργάσιμα
+    ensurePresetsSeeded: function() {
+        const App = window.App;
+        if (!App.customExtraPresets || App.customExtraPresets.length === 0) {
+            App.customExtraPresets = [
+                { name: "☕ Καφέδες", items: JSON.parse(JSON.stringify(EXTRA_PRESETS['coffee'])) },
+                { name: "🍖 Σουβλάκι", items: JSON.parse(JSON.stringify(EXTRA_PRESETS['souvlaki'])) },
+                { name: "🍕 Πίτσα", items: JSON.parse(JSON.stringify(EXTRA_PRESETS['pizza'])) },
+                { name: "🍫 Κρέπα Γλυκιά", items: JSON.parse(JSON.stringify(EXTRA_PRESETS['crepe_sweet'])) },
+                { name: "🧀 Κρέπα Αλμυρή", items: JSON.parse(JSON.stringify(EXTRA_PRESETS['crepe_savory'])) }
+            ];
+            if (window.socket && window.socket.connected) {
+                window.socket.emit('save-store-settings', { customExtraPresets: App.customExtraPresets });
+            }
+        }
+    },
+
     handlePlusButton: function() {
         const App = window.App;
         if (App.currentCategoryIndex === null) {
@@ -394,10 +411,6 @@ export const Menu = {
         const container = document.getElementById('menuInputContainer');
         if (!container) return; // ✅ Αποτρέπει το error αν δεν υπάρχει το HTML element (π.χ. στην Κουζίνα)
         container.innerHTML = '';
-
-        // ✅ Καθαρισμός του παλιού κουμπιού επάνω (αν υπάρχει ακόμα στη μνήμη)
-        const oldBtn = document.getElementById('btnSaveCatalogTop');
-        if (oldBtn) oldBtn.remove();
 
         // ✅ NEW: Έξυπνο FAB Κουμπί Αποθήκευσης (Κάτω Δεξιά)
         let saveBtn = document.getElementById('btnSaveCatalogFab');
@@ -507,45 +520,6 @@ export const Menu = {
                 App.addItemInput(item, idx);
             });
             App.addItemInput(''); // Κενό πεδίο για νέο
-
-            // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Τοποθετημένο στο πάνω μέρος - Header)
-            let saveBtnTop = document.getElementById('btnSaveCatalogTop');
-            if (!saveBtnTop) {
-                saveBtnTop = document.createElement('button');
-                saveBtnTop.id = 'btnSaveCatalogTop';
-                saveBtnTop.innerHTML = '💾';
-                saveBtnTop.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
-                saveBtnTop.style.cssText = 'position: absolute; top: 15px; right: 60px; background: #10B981; color: white; width: 40px; height: 40px; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 0;';
-                saveBtnTop.onclick = () => {
-                // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
-                App.menuData.forEach(cat => { 
-                    if (cat.items) {
-                        cat.items = cat.items.filter(i => {
-                            if(typeof i === 'string') return i.trim() !== '';
-                            return i.name && i.name.trim() !== '';
-                        }); 
-                    }
-                });
-                // Αποστολή μόνιμης αποθήκευσης στον server
-                window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
-                
-                const successOverlay = document.createElement('div');
-                successOverlay.className = 'modal-overlay';
-                successOverlay.style.display = 'flex';
-                successOverlay.style.zIndex = '15000';
-                successOverlay.innerHTML = `<div class="modal-box" style="text-align:center; max-width:300px;"><div style="font-size:40px; margin-bottom:10px;">✅</div><h3 style="color:#10B981; margin:0 0 15px 0;">Επιτυχία!</h3><p style="color:#1f2937; font-size:14px; margin-bottom:15px;">Ο κατάλογος αποθηκεύτηκε επιτυχώς!</p><button class="modal-btn" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; font-weight:bold;" onclick="this.parentElement.parentElement.remove()">ΚΛΕΙΣΙΜΟ</button></div>`;
-                document.body.appendChild(successOverlay);
-            };
-            
-            const menuPanel = document.getElementById('menuFullPanel');
-            if (menuPanel) {
-                menuPanel.appendChild(saveBtnTop);
-            } else {
-                container.appendChild(saveBtnTop);
-            }
-        } else if (!document.getElementById('menuFullPanel') || !document.getElementById('menuFullPanel').contains(saveBtnTop)) {
-            container.appendChild(saveBtnTop);
-        }
         }
     },
 
@@ -1096,6 +1070,7 @@ export const Menu = {
     // --- MANAGE CUSTOM PRESETS LOGIC ---
     openManagePresetsModal: function() {
         const App = window.App;
+        if (typeof App.ensurePresetsSeeded === 'function') App.ensurePresetsSeeded();
         App.renderManagePresetsList();
         document.getElementById('managePresetsModal').style.display = 'flex';
     },
