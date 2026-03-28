@@ -10,6 +10,7 @@ let notificationInterval;
    2. CONFIGURATION & CACHE (V79)
 ----------------------------------------------------------- */
 const CACHE_NAME = 'bellgo-v9
+  '/',
   '/index.html',
   '/login.html',
   '/order.html',

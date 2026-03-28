@@ -420,7 +420,70 @@ export const Menu = {
             saveBtn.innerHTML = '💾';
             saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
             saveBtn.style.cssText = 'position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 30px; background: #10B981; color: white; width: 60px; height: 60px; border-radius: 50%; font-size: 28px; display: none; align-items: center; justify-content: center; cursor: pointer; border: none; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6); z-index: 10500; transition: transform 0.2s;';
-            saveBtn.onclick = () => {
+            
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+
+            const startDrag = (e) => {
+                isDragging = false;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX;
+                startY = clientY;
+                const rect = saveBtn.getBoundingClientRect();
+                initialX = rect.left;
+                initialY = rect.top;
+                saveBtn.style.transition = 'none';
+
+                document.addEventListener('mousemove', onDrag, { passive: false });
+                document.addEventListener('mouseup', endDrag);
+                document.addEventListener('touchmove', onDrag, { passive: false });
+                document.addEventListener('touchend', endDrag);
+            };
+
+            const onDrag = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isDragging = true;
+
+                if (isDragging) {
+                    e.preventDefault();
+                    saveBtn.style.right = 'auto';
+                    saveBtn.style.bottom = 'auto';
+                    let newX = initialX + dx;
+                    let newY = initialY + dy;
+                    
+                    // Αποτροπή να βγει έξω από την οθόνη
+                    if (newX < 0) newX = 0;
+                    if (newY < 0) newY = 0;
+                    if (newX > window.innerWidth - 60) newX = window.innerWidth - 60;
+                    if (newY > window.innerHeight - 60) newY = window.innerHeight - 60;
+                    
+                    saveBtn.style.left = newX + 'px';
+                    saveBtn.style.top = newY + 'px';
+                }
+            };
+
+            const endDrag = (e) => {
+                saveBtn.style.transition = 'transform 0.2s';
+                document.removeEventListener('mousemove', onDrag);
+                document.removeEventListener('mouseup', endDrag);
+                document.removeEventListener('touchmove', onDrag);
+                document.removeEventListener('touchend', endDrag);
+            };
+
+            saveBtn.addEventListener('mousedown', startDrag);
+            saveBtn.addEventListener('touchstart', startDrag, { passive: false });
+
+            saveBtn.onclick = (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 App.menuData.forEach(cat => { 
                     if (cat.items) {
                         cat.items = cat.items.filter(i => {
