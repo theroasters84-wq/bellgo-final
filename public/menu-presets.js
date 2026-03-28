@@ -509,14 +509,14 @@ export const Menu = {
             App.addItemInput(''); // Κενό πεδίο για νέο
 
             // ✅ NEW: Κουμπί Μαζικής Αποθήκευσης (Τοποθετημένο στο πάνω μέρος - Header)
-            let saveBtn = document.getElementById('btnSaveCatalogTop');
-            if (!saveBtn) {
-                saveBtn = document.createElement('button');
-                saveBtn.id = 'btnSaveCatalogTop';
-                saveBtn.innerHTML = '💾';
-                saveBtn.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
-                saveBtn.style.cssText = 'position: absolute; top: 15px; right: 60px; background: #10B981; color: white; width: 40px; height: 40px; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 0;';
-                saveBtn.onclick = () => {
+            let saveBtnTop = document.getElementById('btnSaveCatalogTop');
+            if (!saveBtnTop) {
+                saveBtnTop = document.createElement('button');
+                saveBtnTop.id = 'btnSaveCatalogTop';
+                saveBtnTop.innerHTML = '💾';
+                saveBtnTop.title = t('save_catalog') || 'Αποθήκευση Καταλόγου';
+                saveBtnTop.style.cssText = 'position: absolute; top: 15px; right: 60px; background: #10B981; color: white; width: 40px; height: 40px; border-radius: 8px; font-size: 20px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 0;';
+                saveBtnTop.onclick = () => {
                 // Καθαρισμός κενών προϊόντων πριν την αποθήκευση
                 App.menuData.forEach(cat => { 
                     if (cat.items) {
@@ -526,7 +526,6 @@ export const Menu = {
                         }); 
                     }
                 });
-                // Αiw.socket.emit('save-menu', { menu: App.menuData, 
                 // Αποστολή μόνιμης αποθήκευσης στον server
                 window.socket.emit('save-menu', { menu: App.menuData, mode: 'permanent' });
                 
@@ -540,12 +539,12 @@ export const Menu = {
             
             const menuPanel = document.getElementById('menuFullPanel');
             if (menuPanel) {
-                menuPanel.appendChild(saveBtn);
+                menuPanel.appendChild(saveBtnTop);
             } else {
-                container.appendChild(saveBtn);
+                container.appendChild(saveBtnTop);
             }
-        } else if (!document.getElementById('menuFullPanel') || !document.getElementById('menuFullPanel').contains(saveBtn)) {
-            container.appendChild(saveBtn);
+        } else if (!document.getElementById('menuFullPanel') || !document.getElementById('menuFullPanel').contains(saveBtnTop)) {
+            container.appendChild(saveBtnTop);
         }
         }
     },
