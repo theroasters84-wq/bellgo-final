@@ -607,6 +607,23 @@ export const Menu = {
                     div.style.opacity = '1';
                     document.querySelectorAll('.category-box').forEach(r => r.style.borderTop = '');
                 });
+                
+                // ✅ NEW: Κουμπί Επεξεργασίας Ονόματος Κατηγορίας
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '✏️';
+                editBtn.title = 'Επεξεργασία Ονόματος';
+                editBtn.style.cssText = 'position:absolute; right:55px; top:50%; transform:translateY(-50%); background:transparent; border:none; cursor:pointer; font-size:18px; padding:5px; z-index:5;';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const newName = prompt("📝 Νέο όνομα κατηγορίας:", cat.name);
+                    if (newName && newName.trim() !== "" && newName.trim() !== cat.name) {
+                        cat.name = newName.trim().toUpperCase();
+                        App.renderMenu();
+                        App.openSaveModal();
+                    }
+                };
+                div.appendChild(editBtn);
+
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn-delete-cat';
                 delBtn.innerText = 'X';
@@ -649,12 +666,14 @@ export const Menu = {
         let itemPrice = "";
         let itemObj = null;
         let itemDesc = "";
+        let itemAllergens = "";
 
         if (typeof val === 'object' && val !== null) {
             itemObj = val;
             itemName = itemObj.name || "";
             itemPrice = itemObj.price !== undefined ? itemObj.price : "";
             itemDesc = itemObj.desc || "";
+            itemAllergens = itemObj.allergens || "";
         } else if (typeof val === 'string' && val.trim() !== "") {
             const parts = val.split(':');
             if (parts.length > 1) {
@@ -678,7 +697,14 @@ export const Menu = {
         descInput.className = 'menu-input-box';
         descInput.style.flex = '1.5';
         descInput.value = itemDesc;
-        descInput.placeholder = "Περιγραφή/Αλλεργιογόνα";
+        descInput.placeholder = "Περιγραφή";
+
+        const allergensInput = document.createElement('input');
+        allergensInput.type = 'text';
+        allergensInput.className = 'menu-input-box';
+        allergensInput.style.flex = '1.5';
+        allergensInput.value = itemAllergens;
+        allergensInput.placeholder = "Αλλεργιογόνα (για ℹ️)";
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -700,6 +726,7 @@ export const Menu = {
         const silentUpdate = () => {
             const newName = nameInput.value.trim();
             const newDesc = descInput.value.trim();
+            const newAllergens = allergensInput.value.trim();
             const newPrice = parseFloat(priceInput.value) || 0;
             const newVat = parseInt(vatInput.value) || 24;
             
@@ -713,9 +740,9 @@ export const Menu = {
             let newItem;
 
             if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc };
+                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc, allergens: newAllergens };
             } else {
-                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc };
+                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc, allergens: newAllergens };
             }
 
             if (index === null) {
@@ -799,6 +826,7 @@ export const Menu = {
         if (handleDiv) wrapper.appendChild(handleDiv);
         wrapper.appendChild(nameInput);
         wrapper.appendChild(descInput);
+        wrapper.appendChild(allergensInput);
         wrapper.appendChild(priceInput);
         wrapper.appendChild(vatInput);
         wrapper.appendChild(extrasBtn);

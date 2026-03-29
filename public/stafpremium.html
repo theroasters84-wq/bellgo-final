@@ -998,7 +998,7 @@
                             const itemsDiv = document.createElement('div');
                             itemsDiv.className = 'category-items';
                             cat.items.forEach(item => {
-                                let itemName = "", itemPrice = 0, itemExtras = [], itemDesc = "";
+                                let itemName = "", itemPrice = 0, itemExtras = [], itemDesc = "", itemAllergens = "";
                                 if (typeof item === 'string') {
                                     const parts = item.split(':');
                                     itemName = parts[0].trim();
@@ -1008,14 +1008,15 @@
                                     itemPrice = item.price;
                                     itemExtras = item.extras || [];
                                     itemDesc = item.desc || "";
+                                    itemAllergens = item.allergens || "";
                                 }
 
                                 if(itemName) {
                                     let displayItemName = tMenu(itemName); // ✅ Translated Item
                                     const box = document.createElement('div');
                                     box.className = 'item-box';
-                                    let descHtml = itemDesc ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${itemDesc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
-                                    box.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><span class="item-name">${displayItemName}</span>${descHtml}</div>${itemPrice > 0 ? `<span class="item-price">${itemPrice}€</span>` : ''}`;
+                                    let descHtml = itemDesc ? `<div style="font-size:11px; color:#6b7280; margin-top:4px; line-height:1.2; font-weight:normal; white-space:normal;">${itemDesc}</div>` : '';
+                                    let allergensHtml = itemAllergens ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${itemAllergens.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
                                     
                                     let lastTap = 0;
                                     box.addEventListener('click', (e) => {
@@ -1040,6 +1041,16 @@
                                             lastTap = currentTime;
                                         }
                                     });
+                                    box.innerHTML = `
+                                        <div style="display:flex; flex-direction:column; flex:1; justify-content:center; padding-right:10px;">
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <span class="item-name">${displayItemName}</span>
+                                                ${allergensHtml}
+                                            </div>
+                                            ${descHtml}
+                                        </div>
+                                        ${itemPrice > 0 ? `<span class="item-price" style="flex-shrink:0;">${itemPrice}€</span>` : ''}
+                                    `;
                                     itemsDiv.appendChild(box);
                                 }
                             });

@@ -116,15 +116,32 @@ export const OrdersUI = {
             const itemsDiv = document.createElement('div');
             itemsDiv.className = 'category-items';
             cat.items.forEach(item => {
-                let name = item, price = 0, extras = [];
-                if(typeof item === 'object') { name = item.name; price = item.price; extras = item.extras || []; }
+                let name = item, price = 0, extras = [], itemDesc = "", itemAllergens = "";
+                if(typeof item === 'object') { 
+                    name = item.name; 
+                    price = item.price; 
+                    extras = item.extras || []; 
+                    itemDesc = item.desc || "";
+                    itemAllergens = item.allergens || "";
+                }
                 else { const p = item.split(':'); name = p[0]; if(p.length>1) price=parseFloat(p[p.length-1]); }
                 
                 let displayItemName = App.tMenu ? App.tMenu(name) : name; // ✅ Translated Item
                 const box = document.createElement('div');
                 box.className = 'item-box';
+                let descHtml = itemDesc ? `<div style="font-size:10px; color:#888; margin-top:4px; font-weight:normal; white-space:normal; line-height:1.2;">${itemDesc}</div>` : '';
+                let allergensHtml = itemAllergens ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${itemAllergens.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
                 const extrasIndicator = (extras && extras.length > 0) ? `<span style="font-size:10px; background:#2196F3; color:white; border-radius:4px; padding:2px 4px; margin-left:5px; flex-shrink:0;">+ ΕΠΙΛΟΓΕΣ</span>` : '';
-                box.innerHTML = `<span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}</span>${price>0?`<span class="item-price">${price}€</span>`:''}`;
+                box.innerHTML = `
+                    <div style="display:flex; flex-direction:column; flex:1; justify-content:center; padding-right:10px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}</span>
+                            ${allergensHtml}
+                        </div>
+                        ${descHtml}
+                    </div>
+                    ${price>0?`<span class="item-price" style="flex-shrink:0;">${price}€</span>`:''}
+                `;
                 box.onclick = () => {
                     if (extras && extras.length > 0) {
                         App.openItemOptionsModal(name, price, extras);

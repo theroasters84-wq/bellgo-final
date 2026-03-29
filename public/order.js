@@ -142,7 +142,7 @@ const PRELOADED_NAME = params.get('name');
 const parseItem = (str) => {
     // ✅ FIX: Υποστήριξη για αντικείμενα από το Premium
     if (typeof str === 'object' && str !== null) {
-        return { name: str.name, price: str.price || 0, desc: str.desc || "", extras: str.extras || [] };
+        return { name: str.name, price: str.price || 0, desc: str.desc || "", allergens: str.allergens || "", extras: str.extras || [] };
     }
     const parts = str.split(':');
     let name = parts[0];
@@ -151,7 +151,7 @@ const parseItem = (str) => {
         name = parts.slice(0, -1).join(':').trim();
         price = parseFloat(parts[parts.length - 1]);
     } else { name = str.trim(); }
-    return { name, price: isNaN(price) ? 0 : price, desc: "", extras: [] };
+    return { name, price: isNaN(price) ? 0 : price, desc: "", allergens: "", extras: [] };
 };
 
 let currentUser = null;
@@ -712,7 +712,7 @@ window.App = {
                 cat.items.forEach(item => {
                     // ✅ FIX: Έλεγχος αν είναι αντικείμενο ή κείμενο
                     if (item && (typeof item === 'object' || item.trim())) {
-                        const { name, price, desc } = parseItem(item);
+                        const { name, price, desc, allergens } = parseItem(item);
                         const box = document.createElement('div');
                         box.className = 'item-box';
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
@@ -720,8 +720,18 @@ window.App = {
                         box.style.cursor = 'pointer'; // ✅ Fix for iOS click registration
                         let displayItemName = I18n.tMenu(name); // ✅ Translated Item Name
                         
-                        let descHtml = desc ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${desc.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
-                        box.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><span class="item-name">${displayItemName}</span>${descHtml}</div>${price > 0 ? `<span class="item-price">${price}€</span>` : ''}`;
+                        let descHtml = desc ? `<div style="font-size:12px; color:#6b7280; margin-top:4px; line-height:1.3; font-weight:normal; white-space:normal;">${desc}</div>` : '';
+                        let allergensHtml = allergens ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${allergens.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
+                        box.innerHTML = `
+                            <div style="display:flex; flex-direction:column; flex:1; justify-content:center; padding-right:10px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="item-name">${displayItemName}</span>
+                                    ${allergensHtml}
+                                </div>
+                                ${descHtml}
+                            </div>
+                            ${price > 0 ? `<span class="item-price" style="flex-shrink:0;">${price}€</span>` : ''}
+                        `;
                         
                         // ✅ CUSTOM DOUBLE TAP: Λειτουργεί παντού (και iPhone) και προστατεύει από τυχαία κλικ
                         let lastTap = 0;
