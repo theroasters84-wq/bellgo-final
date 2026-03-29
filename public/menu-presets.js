@@ -759,14 +759,17 @@ export const Menu = {
         // --- Main Wrapper ---
         const wrapper = document.createElement('div');
         wrapper.className = 'item-wrapper';
+        wrapper.style.cssText = "display:flex; flex-direction:column; align-items:stretch; padding:0; border:1px solid #444; border-radius:12px; background:#2a2a2a; margin-bottom:10px; overflow:hidden; width:100%; box-sizing:border-box;";
 
         // --- 1. Summary Row (Always Visible) ---
         const summaryRow = document.createElement('div');
         summaryRow.className = 'item-summary';
+        summaryRow.style.cssText = "display:flex; align-items:center; padding:15px; cursor:pointer; transition:background 0.2s;";
 
         const toggleIcon = document.createElement('span');
         toggleIcon.className = 'accordion-toggle-icon';
         toggleIcon.innerHTML = '▶';
+        toggleIcon.style.cssText = "color:#aaa; font-size:16px; transition:transform 0.2s; margin-right:10px; min-width:15px;";
 
         let itemName = "";
         let itemPrice = "";
@@ -797,18 +800,22 @@ export const Menu = {
         const summaryName = document.createElement('span');
         summaryName.className = 'item-summary-name';
         summaryName.innerText = itemName || 'Νέο Προϊόν';
+        summaryName.style.cssText = "flex:1; font-weight:bold; color:#ffffff; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
 
         const summaryPrice = document.createElement('span');
         summaryPrice.className = 'item-summary-price';
         summaryPrice.innerText = itemPrice ? `${parseFloat(itemPrice).toFixed(2)}€` : '';
+        summaryPrice.style.cssText = "font-weight:bold; color:#10B981; font-size:16px; margin-left:10px; margin-right:15px;";
         
 
         // --- 2. Details Panel (Collapsible) ---
         const detailsPanel = document.createElement('div');
         detailsPanel.className = 'item-details';
+        detailsPanel.style.cssText = "padding:15px; background:#1f2937; border-top:1px solid #444; display:none; flex-direction:column; gap:10px;";
 
         const priceVatContainer = document.createElement('div');
         priceVatContainer.className = 'price-vat-container';
+        priceVatContainer.style.cssText = "display:flex; gap:10px; width:100%;";
 
         // --- 3. Create all inputs and controls ---
         const nameInput = document.createElement('input');
@@ -816,18 +823,21 @@ export const Menu = {
         nameInput.className = 'menu-input-box';
         nameInput.value = itemName;
         nameInput.placeholder = "Όνομα Προϊόντος"; 
+        nameInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
 
         const descInput = document.createElement('input');
         descInput.type = 'text';
         descInput.className = 'menu-input-box';
         descInput.value = itemDesc;
         descInput.placeholder = "Περιγραφή";
+        descInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
 
         const allergensInput = document.createElement('input');
         allergensInput.type = 'text';
         allergensInput.className = 'menu-input-box';
         allergensInput.value = itemAllergens;
         allergensInput.placeholder = "Αλλεργιογόνα (για ℹ️)";
+        allergensInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -835,11 +845,13 @@ export const Menu = {
         priceInput.className = 'menu-input-box';
         priceInput.value = itemPrice;
         priceInput.placeholder = "Τιμή"; 
+        priceInput.style.cssText = "flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
 
         const vatInput = document.createElement('input');
         vatInput.type = 'number';
         vatInput.placeholder = 'ΦΠΑ';
         vatInput.style.cssText = `width:60px; padding:12px; margin-left:5px; background:#ffffff; border:1px solid #d1d5db; color:#1f2937; border-radius:12px; text-align:center; font-size:15px; display:${App.einvoicingEnabled ? 'inline-block' : 'none'}; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);`;
+        vatInput.style.cssText = `flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px; text-align:center; display:${App.einvoicingEnabled ? 'block' : 'none'};`;
         vatInput.value = itemVat;
         
         const silentUpdate = () => {
@@ -883,6 +895,7 @@ export const Menu = {
             handleDiv = document.createElement('div');
             handleDiv.className = 'drag-handle-container';
             handleDiv.style.cssText = "display:flex; align-items:center; margin-right:5px;";
+            handleDiv.style.cssText = "display:flex; align-items:center; margin-right:10px; z-index:5;";
             handleDiv.innerHTML = `
                 <span style="cursor:grab; padding-right:5px; font-size:20px; color:#aaa; user-select:none;" title="Σύρετε για αλλαγή σειράς">☰</span>
                 <div style="display:flex; flex-direction:column; gap:2px; margin-right:5px;">
@@ -923,6 +936,9 @@ export const Menu = {
         extrasBtn.className = 'btn-item-extras';
         extrasBtn.innerHTML = '+';
         if (itemExtras.length > 0) extrasBtn.classList.add('has-extras');
+        extrasBtn.style.cssText = "padding:12px; background:#3B82F6; color:white; border:none; border-radius:8px; font-weight:bold; width:100%; cursor:pointer; margin-top:5px;";
+        if (itemExtras.length > 0) extrasBtn.innerHTML = `ΕΠΙΛΟΓΕΣ / ΥΛΙΚΑ (${itemExtras.length})`;
+        else extrasBtn.innerHTML = `+ ΠΡΟΣΘΗΚΗ ΕΠΙΛΟΓΩΝ (EXTRAS)`;
         extrasBtn.onclick = () => { 
             silentUpdate(); // Διασφαλίζει ότι το νέο προϊόν "γράφτηκε" στη μνήμη πριν ανοίξουν τα extras
             App.openExtrasModal(App.currentCategoryIndex, index); 
@@ -931,6 +947,7 @@ export const Menu = {
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-item-del';
         delBtn.innerText = 'X';
+        delBtn.style.cssText = "background:#EF4444; color:white; border:none; border-radius:8px; width:35px; height:35px; font-weight:bold; font-size:16px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:10px;";
         delBtn.onclick = () => {
             const cat = App.menuData[App.currentCategoryIndex];
             if (index !== null && cat && cat.items) {
@@ -950,6 +967,9 @@ export const Menu = {
         
         // Add controls to summary
         if (handleDiv) summaryRow.appendChild(handleDiv);
+        summaryRow.appendChild(summaryName);
+        summaryRow.appendChild(summaryPrice);
+        summaryRow.appendChild(toggleIcon);
         if (index !== null) summaryRow.appendChild(delBtn);
 
         // Add inputs to details panel
@@ -968,9 +988,11 @@ export const Menu = {
         // Toggle logic
         summaryRow.onclick = (e) => {
             if (e.target.closest('button') || e.target.closest('.drag-handle-container')) return;
-            const isVisible = detailsPanel.style.display === 'block';
-            detailsPanel.style.display = isVisible ? 'none' : 'block';
+            const isVisible = detailsPanel.style.display === 'flex';
+            detailsPanel.style.display = isVisible ? 'none' : 'flex';
             wrapper.classList.toggle('is-open', !isVisible);
+            toggleIcon.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(90deg)';
+            summaryRow.style.background = isVisible ? 'transparent' : '#374151';
         };
 
         if(index === null) nameInput.focus();
