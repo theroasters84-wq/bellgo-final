@@ -328,7 +328,9 @@ export function initPremiumSockets(App, userData) {
                         if (f.dataset.orderId == o.id) { // ✅ FIX: Εντοπισμός βάσει dataset
                             f.classList.add('is-calling');
                             if (!f.querySelector('.folder-bell')) {
-                                f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:20px; animation:shake 0.5s infinite; background:white; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">🛎️</div>`);
+                                const tm = o.text ? o.text.match(/\[ΤΡ:\s*([^|\]]+)/) : null;
+                                const tNum = tm ? tm[1].trim() : '';
+                                f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:${tNum ? '16px' : '20px'}; font-weight:bold; color:#EF4444; animation:shake 0.5s infinite; background:white; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">${tNum ? tNum : '🛎️'}</div>`);
                                 f.style.boxShadow = "0 0 15px #EF4444";
                                 f.style.border = "2px solid #EF4444";
                             }
@@ -427,7 +429,9 @@ export function initPremiumSockets(App, userData) {
                             if (f.dataset.orderId == o.id) {
                                 f.classList.add('is-calling');
                                 if (!f.querySelector('.folder-bell')) {
-                                    f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:20px; animation:shake 0.5s infinite; background:white; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">🛎️</div>`);
+                                const tm = o.text ? o.text.match(/\[ΤΡ:\s*([^|\]]+)/) : null;
+                                const tNum = tm ? tm[1].trim() : '';
+                                f.insertAdjacentHTML('beforeend', `<div class="folder-bell" style="position:absolute; top:-12px; right:-12px; font-size:${tNum ? '16px' : '20px'}; font-weight:bold; color:#EF4444; animation:shake 0.5s infinite; background:white; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3); z-index:10; border:2px solid #EF4444;">${tNum ? tNum : '🛎️'}</div>`);
                                     f.style.boxShadow = "0 0 15px #EF4444";
                                     f.style.border = "2px solid #EF4444";
                                 }

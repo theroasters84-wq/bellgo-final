@@ -449,9 +449,11 @@ export const OrdersUI = {
             const isPaid = order.text.includes('PAID');
             
             let displayLabel = order.from;
+            let tableNum = null;
             const tableMatch = order.text.match(/\[ΤΡ:\s*([^|\]]+)/);
             if (tableMatch) {
-                displayLabel = `Τραπέζι ${tableMatch[1]}`;
+                tableNum = tableMatch[1].trim();
+                displayLabel = `Τραπέζι ${tableNum}`;
             } else if (order.text.includes('[PICKUP')) {
                 displayLabel = `🛍️ PICKUP: ${order.from}`;
             } else if (order.text.includes('[DELIVERY')) {
@@ -466,7 +468,21 @@ export const OrdersUI = {
             // ✅ Apply Paid style
             if (isPaid) icon.style.border = "2px solid #00E676";
             
-            icon.innerHTML = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div><div class="folder-label">${displayLabel}</div><div class="folder-time">${time}</div>`;
+            // ✅ NEW: Γράφουμε τον αριθμό του τραπεζιού ΠΑΝΩ στο εικονίδιο του φακέλου ή του καμπανακιού!
+            let folderIconHtml = `<div class="folder-icon">${isPaid ? '✅' : '📂'}</div>`;
+            if (order.isFakeCall && tableNum) {
+                folderIconHtml = `<div class="folder-icon" style="position:relative; display:flex; align-items:center; justify-content:center;">
+                    🛎️
+                    <div style="position:absolute; top:65%; left:50%; transform:translate(-50%, -50%); font-size:16px; font-weight:900; color:#EF4444; background:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3); pointer-events:none;">${tableNum}</div>
+                </div>`;
+            } else if (tableNum) {
+                folderIconHtml = `<div class="folder-icon" style="position:relative; display:flex; align-items:center; justify-content:center;">
+                    ${isPaid ? '✅' : '📂'}
+                    <div style="position:absolute; top:55%; left:50%; transform:translate(-50%, -50%); font-size:15px; font-weight:900; color:#fff; text-shadow:0 1px 4px #000, 0 0 2px #000; pointer-events:none;">${tableNum}</div>
+                </div>`;
+            }
+
+            icon.innerHTML = `${folderIconHtml}<div class="folder-label">${displayLabel}</div><div class="folder-time">${time}</div>`;
             icon.onclick = () => App.openOrderWindow(order);
             desktop.appendChild(icon);
         });
