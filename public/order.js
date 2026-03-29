@@ -744,6 +744,14 @@ window.App = {
                                 return;
                             }
 
+                        const handleItemSelect = () => {
+                            if (extras && extras.length > 0) {
+                                App.openItemOptionsModal(name, price, extras);
+                            } else {
+                                App.addToOrder(`${name}:${price}`);
+                            }
+                        };
+
                             // ✅ FIX: Στα iPhone το Double Tap δυσκολεύει, οπότε το κάνουμε Single Tap
                             if (isIos()) {
                                 handleItemSelect();
