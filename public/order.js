@@ -712,7 +712,7 @@ window.App = {
                 cat.items.forEach(item => {
                     // ✅ FIX: Έλεγχος αν είναι αντικείμενο ή κείμενο
                     if (item && (typeof item === 'object' || item.trim())) {
-                        const { name, price, desc, allergens } = parseItem(item);
+                        const { name, price, desc, allergens, extras } = parseItem(item);
                         const box = document.createElement('div');
                         box.className = 'item-box';
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
@@ -722,10 +722,11 @@ window.App = {
                         
                         let descHtml = desc ? `<div style="font-size:12px; color:#6b7280; margin-top:4px; line-height:1.3; font-weight:normal; white-space:normal;">${desc}</div>` : '';
                         let allergensHtml = allergens ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${allergens.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
+                        const extrasIndicator = (extras && extras.length > 0) ? `<span style="font-size:10px; background:#2196F3; color:white; border-radius:4px; padding:2px 4px; margin-left:5px; flex-shrink:0;">+ ${I18n.t('options') || 'ΕΠΙΛΟΓΕΣ'}</span>` : '';
                         box.innerHTML = `
                             <div style="display:flex; flex-direction:column; flex:1; justify-content:center; padding-right:10px;">
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span class="item-name">${displayItemName}</span>
+                                    <span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}</span>
                                     ${allergensHtml}
                                 </div>
                                 ${descHtml}
@@ -745,22 +746,15 @@ window.App = {
 
                             // ✅ FIX: Στα iPhone το Double Tap δυσκολεύει, οπότε το κάνουμε Single Tap
                             if (isIos()) {
-                                const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
-                                App.addToOrder(val);
-                                box.style.opacity = '0.5';
-                                setTimeout(() => box.style.opacity = '1', 100);
+                                handleItemSelect();
                                 return;
                             }
 
                             const currentTime = new Date().getTime();
                             const tapLength = currentTime - lastTap;
                             if (tapLength < 500 && tapLength > 0) { 
-                                const val = (typeof item === 'object') ? `${item.name}:${item.price}` : item.trim();
-                                App.addToOrder(val); 
+                                handleItemSelect();
                                 lastTap = 0;
-                                // ✅ Visual Feedback
-                                box.style.opacity = '0.5';
-                                setTimeout(() => box.style.opacity = '1', 100);
                             } else {
                                 lastTap = currentTime;
                             }

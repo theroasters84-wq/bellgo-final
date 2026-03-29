@@ -65,6 +65,102 @@ if (typeof document !== 'undefined' && !document.getElementById('bellgoMenuEdito
             #menuFullPanel > div:first-child button:not([id="btnBackCat"]):not([id="btnBulkPaste"]):not([onclick*="toggleMenuMode"]) {
                 background: linear-gradient(135deg, #3B82F6, #2563EB) !important; 
             }
+
+            /* ✅ NEW: Accordion Style for Product Items on Mobile */
+            .item-wrapper {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 0 !important; /* No padding on main wrapper */
+                border: 1px solid #444 !important;
+                border-radius: 12px !important;
+                background: #2a2a2a !important;
+                margin-bottom: 10px !important;
+                position: relative !important;
+                overflow: hidden; /* Keeps rounded corners */
+            }
+
+            .item-summary {
+                display: flex !important;
+                align-items: center !important;
+                padding: 12px 15px !important;
+                cursor: pointer;
+                transition: background 0.2s;
+                position: relative;
+            }
+            .item-wrapper.is-open .item-summary {
+                background: #374151; /* Darker when open */
+            }
+
+            .item-summary-name {
+                flex: 1;
+                font-weight: 600;
+                color: #f3f4f6;
+                font-size: 15px;
+                padding-left: 35px; /* Space for drag handle */
+            }
+            .item-summary-price {
+                font-weight: bold;
+                color: #10B981;
+                margin-left: 10px;
+                margin-right: 40px; /* Space for delete button */
+            }
+
+            .item-details {
+                padding: 15px;
+                background: #1f2937;
+                border-top: 1px solid #444;
+                display: none; /* Hidden by default */
+            }
+
+            .item-wrapper.is-open .item-details {
+                display: block;
+            }
+
+            .item-wrapper .menu-input-box,
+            .item-wrapper input[type="number"] {
+                flex: 1 1 100% !important;
+                width: 100% !important;
+                margin: 0 0 10px 0 !important;
+                font-size: 15px !important;
+                padding: 14px !important;
+            }
+
+            .price-vat-container {
+                display: flex;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .item-summary .drag-handle-container {
+                display: flex;
+                align-items: center;
+                margin-right: 0;
+                margin: 0 !important;
+                z-index: 5;
+            }
+            .item-summary .drag-handle-container > span { /* The ☰ handle */
+                display: none !important;
+            }
+
+            .accordion-toggle-icon {
+                color: #999;
+                font-size: 12px;
+                transition: transform 0.2s;
+                padding: 5px;
+            }
+            .item-wrapper.is-open .accordion-toggle-icon {
+                transform: rotate(90deg);
+            }
+
+            .item-wrapper .btn-item-del {
+                position: static !important;
+                transform: none !important;
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 12px !important;
+                margin-left: 10px !important;
+                flex-shrink: 0;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -659,14 +755,26 @@ export const Menu = {
     addItemInput: function(val, index = null) {
         const App = window.App;
         const container = document.getElementById('menuInputContainer');
+        
+        // --- Main Wrapper ---
         const wrapper = document.createElement('div');
         wrapper.className = 'item-wrapper';
-        
+
+        // --- 1. Summary Row (Always Visible) ---
+        const summaryRow = document.createElement('div');
+        summaryRow.className = 'item-summary';
+
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'accordion-toggle-icon';
+        toggleIcon.innerHTML = '▶';
+
         let itemName = "";
         let itemPrice = "";
         let itemObj = null;
         let itemDesc = "";
         let itemAllergens = "";
+        let itemVat = 24;
+        let itemExtras = [];
 
         if (typeof val === 'object' && val !== null) {
             itemObj = val;
@@ -674,6 +782,8 @@ export const Menu = {
             itemPrice = itemObj.price !== undefined ? itemObj.price : "";
             itemDesc = itemObj.desc || "";
             itemAllergens = itemObj.allergens || "";
+            itemVat = itemObj.vat !== undefined ? itemObj.vat : 24;
+            itemExtras = itemObj.extras || [];
         } else if (typeof val === 'string' && val.trim() !== "") {
             const parts = val.split(':');
             if (parts.length > 1) {
@@ -684,25 +794,38 @@ export const Menu = {
             }
         }
 
+        const summaryName = document.createElement('span');
+        summaryName.className = 'item-summary-name';
+        summaryName.innerText = itemName || 'Νέο Προϊόν';
+
+        const summaryPrice = document.createElement('span');
+        summaryPrice.className = 'item-summary-price';
+        summaryPrice.innerText = itemPrice ? `${parseFloat(itemPrice).toFixed(2)}€` : '';
+        
+
+        // --- 2. Details Panel (Collapsible) ---
+        const detailsPanel = document.createElement('div');
+        detailsPanel.className = 'item-details';
+
+        const priceVatContainer = document.createElement('div');
+        priceVatContainer.className = 'price-vat-container';
+
+        // --- 3. Create all inputs and controls ---
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.className = 'menu-input-box';
-        nameInput.style.flex = '1.5';
-        nameInput.style.paddingRight = '10px'; // Override default CSS 40px
         nameInput.value = itemName;
         nameInput.placeholder = "Όνομα Προϊόντος"; 
 
         const descInput = document.createElement('input');
         descInput.type = 'text';
         descInput.className = 'menu-input-box';
-        descInput.style.flex = '1.5';
         descInput.value = itemDesc;
         descInput.placeholder = "Περιγραφή";
 
         const allergensInput = document.createElement('input');
         allergensInput.type = 'text';
         allergensInput.className = 'menu-input-box';
-        allergensInput.style.flex = '1.5';
         allergensInput.value = itemAllergens;
         allergensInput.placeholder = "Αλλεργιογόνα (για ℹ️)";
 
@@ -710,18 +833,14 @@ export const Menu = {
         priceInput.type = 'number';
         priceInput.step = '0.01';
         priceInput.className = 'menu-input-box';
-        priceInput.style.flex = '1';
         priceInput.value = itemPrice;
         priceInput.placeholder = "Τιμή"; 
 
         const vatInput = document.createElement('input');
         vatInput.type = 'number';
         vatInput.placeholder = 'ΦΠΑ';
-        const vatDisplay = App.einvoicingEnabled ? 'inline-block' : 'none';
-        vatInput.style.cssText = `width:60px; padding:12px; margin-left:5px; background:#ffffff; border:1px solid #d1d5db; color:#1f2937; border-radius:12px; text-align:center; font-size:15px; display:${vatDisplay}; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);`;
-        
-        if (itemObj && itemObj.vat !== undefined) vatInput.value = itemObj.vat;
-        else vatInput.value = 24;
+        vatInput.style.cssText = `width:60px; padding:12px; margin-left:5px; background:#ffffff; border:1px solid #d1d5db; color:#1f2937; border-radius:12px; text-align:center; font-size:15px; display:${App.einvoicingEnabled ? 'inline-block' : 'none'}; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);`;
+        vatInput.value = itemVat;
         
         const silentUpdate = () => {
             const newName = nameInput.value.trim();
@@ -733,10 +852,7 @@ export const Menu = {
             const cat = App.menuData[App.currentCategoryIndex];
             if (!cat) return;
 
-            let existingExtras = (itemObj && itemObj.extras) ? itemObj.extras : [];
-            if (index !== null && typeof cat.items[index] === 'object' && cat.items[index].extras) {
-                existingExtras = cat.items[index].extras;
-            }
+            let existingExtras = itemExtras;
             let newItem;
 
             if (index !== null && typeof cat.items[index] === 'object') {
@@ -751,6 +867,11 @@ export const Menu = {
             } else {
                 cat.items[index] = newItem;
             }
+
+            // Real-time update for summary view
+            summaryName.innerText = newName || 'Νέο Προϊόν';
+            const price = parseFloat(newPrice);
+            summaryPrice.innerText = !isNaN(price) && price > 0 ? `${price.toFixed(2)}€` : '';
         };
 
         // Προσθήκη Drag & Drop Handle στα Προϊόντα
@@ -760,6 +881,7 @@ export const Menu = {
             const cat = App.menuData[App.currentCategoryIndex];
             
             handleDiv = document.createElement('div');
+            handleDiv.className = 'drag-handle-container';
             handleDiv.style.cssText = "display:flex; align-items:center; margin-right:5px;";
             handleDiv.innerHTML = `
                 <span style="cursor:grab; padding-right:5px; font-size:20px; color:#aaa; user-select:none;" title="Σύρετε για αλλαγή σειράς">☰</span>
@@ -800,8 +922,7 @@ export const Menu = {
         const extrasBtn = document.createElement('button');
         extrasBtn.className = 'btn-item-extras';
         extrasBtn.innerHTML = '+';
-        extrasBtn.style.cssText = 'position: relative !important; right: auto !important; top: auto !important; margin-left: 2px; flex-shrink: 0;';
-        if (itemObj && itemObj.extras && itemObj.extras.length > 0) extrasBtn.classList.add('has-extras');
+        if (itemExtras.length > 0) extrasBtn.classList.add('has-extras');
         extrasBtn.onclick = () => { 
             silentUpdate(); // Διασφαλίζει ότι το νέο προϊόν "γράφτηκε" στη μνήμη πριν ανοίξουν τα extras
             App.openExtrasModal(App.currentCategoryIndex, index); 
@@ -811,27 +932,47 @@ export const Menu = {
         delBtn.className = 'btn-item-del';
         delBtn.innerText = 'X';
         delBtn.onclick = () => {
-            wrapper.remove();
             const cat = App.menuData[App.currentCategoryIndex];
             if (index !== null && cat && cat.items) {
-                cat.items[index] = { name: '' };
+                App.pendingAction = () => { cat.items.splice(index, 1); };
+                App.openSaveModal();
+            } else {
+                wrapper.remove();
             }
         };
         
+        // --- 4. Assemble & Add Listeners ---
         nameInput.addEventListener('input', silentUpdate);
         descInput.addEventListener('input', silentUpdate);
+        allergensInput.addEventListener('input', silentUpdate);
         priceInput.addEventListener('input', silentUpdate);
         vatInput.addEventListener('input', silentUpdate);
         
-        if (handleDiv) wrapper.appendChild(handleDiv);
-        wrapper.appendChild(nameInput);
-        wrapper.appendChild(descInput);
-        wrapper.appendChild(allergensInput);
-        wrapper.appendChild(priceInput);
-        wrapper.appendChild(vatInput);
-        wrapper.appendChild(extrasBtn);
-        if (index !== null) wrapper.appendChild(delBtn); 
+        // Add controls to summary
+        if (handleDiv) summaryRow.appendChild(handleDiv);
+        if (index !== null) summaryRow.appendChild(delBtn);
+
+        // Add inputs to details panel
+        detailsPanel.appendChild(nameInput);
+        detailsPanel.appendChild(descInput);
+        detailsPanel.appendChild(allergensInput);
+        priceVatContainer.appendChild(priceInput);
+        priceVatContainer.appendChild(vatInput);
+        detailsPanel.appendChild(priceVatContainer);
+        detailsPanel.appendChild(extrasBtn);
+
+        wrapper.appendChild(summaryRow);
+        wrapper.appendChild(detailsPanel);
         container.appendChild(wrapper);
+
+        // Toggle logic
+        summaryRow.onclick = (e) => {
+            if (e.target.closest('button') || e.target.closest('.drag-handle-container')) return;
+            const isVisible = detailsPanel.style.display === 'block';
+            detailsPanel.style.display = isVisible ? 'none' : 'block';
+            wrapper.classList.toggle('is-open', !isVisible);
+        };
+
         if(index === null) nameInput.focus();
     },
     
