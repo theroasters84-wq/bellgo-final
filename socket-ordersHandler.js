@@ -200,8 +200,23 @@ module.exports = function(socket, context, getMyStore) {
             tempOrder.text += '\n[🧾 ΑΠΟΔΕΙΞΗ]';
             tempOrder.aadeQr = "https://www1.aade.gr/tarl/myDATA/timologio/qrcode?mark=mock";
         }
+        
+        // ✅ STAFF CHARGE LOGIC (PASO)
+        if (store.settings && store.settings.staffCharge) {
+            console.log(`[STAFF CHARGE] PASO: Staff charge is ON for ${socket.store}`);
+            if (!store.wallets) store.wallets = {};
+            const targetWallet = data.method === 'card' ? 'BANK_CARD' : (socket.username || 'Admin');
+            if (!store.wallets[targetWallet]) store.wallets[targetWallet] = 0;
+            const amount = parseFloat(data.total || 0);
+            store.wallets[targetWallet] += amount;
+            console.log(`[STAFF CHARGE] PASO: Charged ${amount.toFixed(2)}€ to ${targetWallet}. New balance: ${store.wallets[targetWallet].toFixed(2)}€`);
+        } else {
+            console.log(`[STAFF CHARGE] PASO: Staff charge is OFF for ${socket.store}`);
+        }
+
         Logic.updateStoreStats(store, tempOrder);
-        Logic.saveStoreToFirebase(socket.store, db, storesData);
+        // ✅ FIX: Use updateStoreClients to broadcast wallet changes immediately
+        Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         socket.emit('print-quick-order', { text: tempOrder.text, id: tempOrder.id, signature: null });
     });
 
@@ -314,6 +329,8 @@ module.exports = function(socket, context, getMyStore) {
     });
     
     socket.on('pay-order', async (data) => { 
+        console.log(`[STAFF CHARGE] Received 'pay-order' event for orderId: ${data.id} with method: ${data.method}`);
+
         const store = getMyStore(); 
         if(store) { 
             const orderId = typeof data === 'object' ? data.id : data;
