@@ -190,7 +190,7 @@ module.exports = function(socket, context, getMyStore) {
                 console.error("❌ Stripe verification failed:", e.message);
             }
         }
-        const tempOrder = { id: data.id || Date.now(), text: data.text, from: data.source || 'Admin (Paso)', status: 'completed' };
+        const tempOrder = { id: data.id || Date.now(), text: data.text, from: socket.username || 'Admin (Paso)', status: 'completed' };
         if (data.method === 'card') {
             tempOrder.text += '\n💳 PAID';
         } else {
