@@ -200,8 +200,7 @@ window.App = {
             if (assignedDriver !== userData.name) return;
 
             const isReady = order.status === 'ready';
-            const isPaid = order.text.includes('PAID');
-            const card = document.createElement('div');
+            const isPaid = cument.createElement('div');
             card.className = 'order-card';
             card.style.cssText = `background:#ffffff; border:2px solid ${isPaid ? '#10B981' : (isReady ? '#F59E0B' : '#e5e7eb')}; border-radius:12px; padding:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 15px rgba(0,0,0,0.05); color:#1f2937;`;
             
@@ -285,14 +284,10 @@ window.App = {
         if (choice === null) return;
         
         if (hasSoftPos && choice === '2') {
-            const order = App.activeOrders.find(o => o.id == id);
-            const total = App.calculateTotal(order.text);
             App.triggerSoftPosPayment(total, id);
             return;
         }
 
-        const order = App.activeOrders.find(o => o.id == id);
-        const total = App.calculateTotal(order.text);
         const method = (choice === '2' || choice === '3') ? 'card' : 'cash';
         
         // Χρέωση στο πορτοφόλι του διανομέα και κλείσιμο

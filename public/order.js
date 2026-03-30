@@ -644,7 +644,7 @@ window.App = {
 
             if (itemsToSend) {
                 // ✅ SEND ORDER ONLY IF SOCKET IS CONNECTED
-                App.sendOrder(itemsToSend, '💳 ΚΑΡΤΑ [ΠΛΗΡΩΘΗΚΕ ✅]');
+                App.sendOrder(itemsToSend, '💳 ΚΑΡΤΑ (PAID) ✅');
                 localStorage.removeItem('bellgo_temp_card_order');
                 
                 alert(t('payment_success_msg') || "Η πληρωμή ολοκληρώθηκε και η παραγγελία εστάλη!\nΜπορείτε να επιστρέψετε στην εφαρμογή.");

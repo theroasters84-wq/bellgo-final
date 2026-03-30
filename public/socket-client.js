@@ -190,10 +190,14 @@ export function initSockets(App, ctx) {
 
                 // ✅ FIX: Alarm ONLY for Pickup (Not for Dine-In/Table)
                 if (order.text && order.text.includes('[PICKUP')) {
-                    const audio = new Audio('/alert.mp3');
+                    if (window.pickupAudio) {
+                        window.pickupAudio.pause();
+                        window.pickupAudio.currentTime = 0;
+                    }
+                    window.pickupAudio = new Audio('/alert.mp3');
                     const playAlert = () => {
-                        audio.currentTime = 0;
-                        audio.play().catch(e => console.log("Audio play error:", e));
+                        window.pickupAudio.currentTime = 0;
+                        window.pickupAudio.play().catch(e => console.log("Audio play error:", e));
                         if (navigator.vibrate) navigator.vibrate([1000, 500, 1000]);
                     };
                     playAlert();
@@ -205,24 +209,34 @@ export function initSockets(App, ctx) {
                             modal = document.createElement('div');
                             modal.id = 'readyPickupModal';
                             modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;";
-                            modal.innerHTML = `
-                                <div style="background:#ffffff; color:#1f2937; border-radius:20px; padding:30px; text-align:center; width:100%; max-width:350px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-                                    <div style="font-size:70px; margin-bottom:15px;">🛍️</div>
-                                    <h2 style="color:#10B981; margin:0 0 15px 0; font-size:24px;">ΕΤΟΙΜΟ!</h2>
-                                    <p style="color:#6b7280; margin-bottom:25px; font-size:16px;">Η παραγγελία σας είναι έτοιμη για παραλαβή από το κατάστημα.</p>
-                                    <button id="btnAcceptPickup" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:30px; font-weight:bold; font-size:18px; cursor:pointer; box-shadow:0 4px 15px rgba(16,185,129,0.4);">✅ ΤΟ ΕΙΔΑ</button>
-                                </div>
-                            `;
                             document.body.appendChild(modal);
                         }
+                        
+                        // Πάντα ανανεώνουμε το περιεχόμενο για να είμαστε 100% σίγουροι ότι υπάρχει το κουμπί
+                        modal.innerHTML = `
+                            <div style="background:#ffffff; color:#1f2937; border-radius:20px; padding:30px; text-align:center; width:100%; max-width:350px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                                <div style="font-size:70px; margin-bottom:15px;">🛍️</div>
+                                <h2 style="color:#10B981; margin:0 0 15px 0; font-size:24px;">ΕΤΟΙΜΟ!</h2>
+                                <p style="color:#6b7280; margin-bottom:25px; font-size:16px;">Η παραγγελία σας είναι έτοιμη για παραλαβή από το κατάστημα.</p>
+                                <button id="btnAcceptPickup" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:30px; font-weight:bold; font-size:18px; cursor:pointer; box-shadow:0 4px 15px rgba(16,185,129,0.4);">✅ ΤΟ ΕΙΔΑ</button>
+                            </div>
+                        `;
                         modal.style.display = 'flex';
-                        document.getElementById('btnAcceptPickup').onclick = () => {
-                            clearInterval(window.pickupInterval);
-                            window.pickupInterval = null;
-                            audio.pause();
-                            audio.currentTime = 0;
-                            modal.style.display = 'none';
-                        };
+                        
+                        const acceptBtn = modal.querySelector('#btnAcceptPickup');
+                        if (acceptBtn) {
+                            acceptBtn.onclick = () => {
+                                if (window.pickupInterval) {
+                                    clearInterval(window.pickupInterval);
+                                    window.pickupInterval = null;
+                                }
+                                if (window.pickupAudio) {
+                                    window.pickupAudio.pause();
+                                    window.pickupAudio.currentTime = 0;
+                                }
+                                modal.style.display = 'none';
+                            };
+                        }
                 }
             }
 
