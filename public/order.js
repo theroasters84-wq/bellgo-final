@@ -885,6 +885,61 @@ window.App = {
         modal.style.display = 'flex';
     },
 
+    // ✅ NEW: Visual Cart for Customer
+    renderVisualCart: () => {
+        const txt = document.getElementById('orderText');
+        if (!txt) return;
+        let container = document.getElementById('visualCartContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'visualCartContainer';
+                const p = document.getElementById('orderPanel');
+                const isExpanded = p && !p.classList.contains('minimized');
+                const maxH = isExpanded ? '60dvh' : '20dvh';
+                container.style.cssText = `display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; max-height: ${maxH}; overflow-y: auto; padding: 5px; width: 100%;`;
+            txt.parentNode.insertBefore(container, txt);
+        }
+
+        container.innerHTML = '';
+        const lines = txt.value.split('\n');
+        let hasItems = false;
+        
+        lines.forEach((line, idx) => {
+            if (!line.trim()) return;
+            hasItems = true;
+            const div = document.createElement('div');
+            div.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:8px; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05);";
+            
+            const textSpan = document.createElement('span');
+            textSpan.style.cssText = "flex:1; font-size:14px; color:#1f2937; font-weight:500; word-break: break-word;";
+            textSpan.innerText = line;
+
+            const btnX = document.createElement('button');
+            btnX.innerText = "✖";
+            btnX.title = "Διαγραφή";
+            btnX.style.cssText = "background:#EF4444; color:white; border:none; border-radius:8px; width:30px; height:30px; cursor:pointer; margin-left:10px; font-size:14px; font-weight:bold; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(239,68,68,0.3); transition:0.2s; flex-shrink:0;";
+            btnX.onclick = (e) => {
+                e.preventDefault();
+                const currentLines = txt.value.split('\n');
+                currentLines.splice(idx, 1);
+                txt.value = currentLines.join('\n');
+                App.handleInput();
+            };
+
+            div.appendChild(textSpan);
+            div.appendChild(btnX);
+            container.appendChild(div);
+        });
+        
+        if (hasItems) {
+            container.style.display = 'flex';
+            txt.placeholder = App.t('add_note') || '+ Προσθήκη Σημείωσης...';
+        } else {
+            container.style.display = 'none'; // Hide container if empty
+            txt.placeholder = App.t('products') || 'Προϊόντα...';
+        }
+    },
+
     handleInput: () => {
         const text = document.getElementById('orderText').value.trim();
         const lines = text.split('\n');
@@ -933,6 +988,10 @@ window.App = {
                 btnCard.innerHTML = t('card_unavailable') || '💳 ΜΗ ΔΙΑΘΕΣΙΜΗ';
             }
         }
+
+        // ✅ NEW: Render visual cart
+        if (App.renderVisualCart) App.renderVisualCart();
+
         return total;
     },
     
@@ -1267,10 +1326,16 @@ window.App = {
             p.classList.remove('minimized');
             icon.style.transform = 'rotate(0deg)';
             icon.innerText = '▼';
+            p.style.height = 'calc(100dvh - 70px)';
+            const cart = document.getElementById('visualCartContainer');
+            if (cart) cart.style.maxHeight = '60dvh';
         } else {
             p.classList.add('minimized');
             icon.style.transform = 'rotate(180deg)';
             icon.innerText = '▲';
+            p.style.height = '';
+            const cart = document.getElementById('visualCartContainer');
+            if (cart) cart.style.maxHeight = '20dvh';
         }
     },
 
