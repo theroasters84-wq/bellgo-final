@@ -190,7 +190,9 @@ module.exports = function(socket, context, getMyStore) {
                 console.error("❌ Stripe verification failed:", e.message);
             }
         }
-        const tempOrder = { id: data.id || Date.now(), text: data.text, from: socket.username || 'Admin (Paso)', status: 'completed' };
+        // ✅ FIX: Ensure (Paso) is always appended for quick orders
+        const fromUser = socket.username || 'Admin';
+        const tempOrder = { id: data.id || Date.now(), text: data.text, from: `${fromUser} (Paso)`, status: 'completed' };
         if (data.method === 'card') {
             tempOrder.text += '\n💳 PAID';
         } else {
