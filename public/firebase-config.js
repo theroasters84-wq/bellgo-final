@@ -9,7 +9,8 @@ import {
 import { 
   getMessaging, 
   getToken, 
-  onMessage 
+  onMessage,
+  isSupported
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
 /* ---------------- FIREBASE CONFIG ---------------- */
@@ -27,7 +28,24 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
-const messaging = getMessaging(app);
+let messaging = null;
+
+/* ---------------- FOREGROUND PUSH (Safe Init) ---------------- */
+isSupported().then((supported) => {
+  if (supported) {
+    messaging = getMessaging(app);
+    onMessage(messaging, payload => {
+      console.log("🔔 Foreground FCM:", payload);
+      const alarmId = payload.data?.alarmId;
+      
+      if (navigator.vibrate) {
+        navigator.vibrate([1000, 500, 1000, 500, 2000]);
+      }
+      
+      if (alarmId) window.currentAlarmId = alarmId;
+    });
+  }
+});
 
 /* ---------------- HELPERS ---------------- */
 function sanitizeEmail(email) {
@@ -37,6 +55,8 @@ function sanitizeEmail(email) {
 
 /* ---------------- FCM INIT ---------------- */
 async function initFCM(socket) {
+  if (!messaging) return null; // Σταματάει εδώ αν δεν υποστηρίζεται
+  
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
@@ -58,23 +78,6 @@ async function initFCM(socket) {
   }
   return null;
 }
-
-/* ---------------- FOREGROUND PUSH ---------------- */
-onMessage(messaging, payload => {
-  console.log("🔔 Foreground FCM:", payload);
-
-  const alarmId = payload.data?.alarmId;
-
-  // ΔΟΝΗΣΗ (όπου επιτρέπεται)
-  if (navigator.vibrate) {
-    navigator.vibrate([1000, 500, 1000, 500, 2000]);
-  }
-
-  // Κρατάμε το alarmId για ACK
-  if (alarmId) {
-    window.currentAlarmId = alarmId;
-  }
-});
 
 /* ---------------- EXPORTS ---------------- */
 export { 

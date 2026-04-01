@@ -73,7 +73,16 @@ export function initPremiumSockets(App, userData) {
                 App.menuData = typeof data === 'string' ? JSON.parse(data) : data;
             }
         } catch(e) { App.menuData = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)); }
-        App.renderMenu();
+        
+        // ✅ FIX: Ανανέωση του κεντρικού editor (αν είναι ανοιχτός)
+        if (typeof App.renderMenu === 'function' && document.getElementById('menuInputContainer')) {
+            App.renderMenu();
+        }
+        
+        // ✅ FIX: Δυναμική ανανέωση της πλαϊνής μπάρας του ταμείου για να βλέπουμε το απόθεμα (stock) να μειώνεται ζωντανά!
+        if (typeof App.renderSidebarMenu === 'function') {
+            App.renderSidebarMenu();
+        }
     });
     
     socket.on('store-settings-update', (settings) => {

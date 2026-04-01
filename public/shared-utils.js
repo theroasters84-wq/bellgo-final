@@ -1,3 +1,60 @@
+/* -----------------------------------------------------------
+   0. ON-SCREEN DEBUGGER (FOR MOBILE TESTING)
+----------------------------------------------------------- */
+if (window.location.search.includes('debug=true') || localStorage.getItem('bellgo_debug') === 'true') {
+    localStorage.setItem('bellgo_debug', 'true');
+    
+    const logContainer = document.createElement('div');
+    logContainer.id = "bellgo-debug-console";
+    logContainer.style.cssText = "position:fixed; bottom:0; left:0; width:100%; height:40vh; background:rgba(0,0,0,0.95); color:#fff; font-family:monospace; font-size:12px; overflow-y:auto; z-index:999998; padding:10px; display:none; flex-direction:column; gap:4px; box-sizing:border-box;";
+    
+    const toggleBtn = document.createElement('button');
+    toggleBtn.id = "bellgo-debug-btn";
+    toggleBtn.innerHTML = '🐞';
+    toggleBtn.style.cssText = "position:fixed; bottom:15px; right:15px; z-index:999999; background:#333; border:2px solid #0f0; border-radius:50%; width:45px; height:45px; font-size:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.5);";
+    
+    toggleBtn.onclick = () => {
+        const isVisible = logContainer.style.display === 'flex';
+        logContainer.style.display = isVisible ? 'none' : 'flex';
+    };
+
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '🗑️ Κλείσιμο Debugger';
+    closeBtn.style.cssText = "background:#EF4444; color:#fff; padding:8px; margin-bottom:5px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; flex-shrink:0;";
+    closeBtn.onclick = () => { 
+        localStorage.removeItem('bellgo_debug'); 
+        logContainer.remove(); toggleBtn.remove();
+    };
+    logContainer.appendChild(closeBtn);
+
+    function attachDebugger() {
+        if (!document.body) { setTimeout(attachDebugger, 100); return; }
+        if (!document.getElementById('bellgo-debug-btn')) {
+            document.body.appendChild(logContainer);
+            document.body.appendChild(toggleBtn);
+        }
+    }
+    attachDebugger();
+
+    const origLog = console.log; const origErr = console.error; const origWarn = console.warn;
+    function logToScreen(msgArgs, color) {
+        const line = document.createElement('div');
+        line.style.cssText = `color:${color}; border-bottom:1px solid #333; padding-bottom:4px; word-break:break-word;`;
+        try {
+            line.innerText = msgArgs.map(m => (m instanceof Error) ? m.message + "\\n" + m.stack : (typeof m === 'object' ? JSON.stringify(m) : String(m))).join(' ');
+        } catch(e) { line.innerText = String(msgArgs); }
+        logContainer.appendChild(line);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    console.log = function(...args) { origLog(...args); logToScreen(args, '#00E676'); };
+    console.error = function(...args) { origErr(...args); logToScreen(args, '#FF5252'); };
+    console.warn = function(...args) { origWarn(...args); logToScreen(args, '#FFD700'); };
+    window.addEventListener('error', e => logToScreen(['[ERR]', e.message, 'at', e.filename, ':', e.lineno], '#FF5252'));
+    window.addEventListener('unhandledrejection', e => logToScreen(['[PROMISE REJECTED]', e.reason], '#FF5252'));
+    console.log("🐞 Debugger Attached!");
+}
+
 import { getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { vapidKey } from './config.js';
 
@@ -733,6 +790,11 @@ export const I18n = {
 export const PushNotifications = {
     requestPermission: async (messaging, onTokenReceived) => {
         try {
+            // Πρόληψη κρασαρίσματος σε Insecure Contexts (π.χ. τοπική IP μέσω HTTP)
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                console.warn("Οι ειδοποιήσεις δεν υποστηρίζονται σε αυτό το περιβάλλον (απαιτείται HTTPS).");
+                return;
+            }
             if (Notification.permission === 'default') {
                 const result = await Notification.requestPermission();
                 if (result !== 'granted') {
@@ -756,6 +818,11 @@ export const PushNotifications = {
     },
 
     checkPermission: (messaging, onTokenReceived, isCustomer = false) => {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+            console.warn("Δεν υποστηρίζονται Push Notifications (Insecure context).");
+            return;
+        }
+        
         if (!isCustomer) {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (!isMobile) return;

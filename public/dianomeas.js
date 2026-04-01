@@ -19,7 +19,10 @@ if (userData.role !== 'driver' && userData.role !== 'admin') {
 }
 
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+let messaging = null;
+try {
+    messaging = getMessaging(app);
+} catch(e) { console.warn("Firebase Messaging not supported (needs HTTPS):", e); }
 
 const t = (key) => I18n.t(key) || key;
 
@@ -376,25 +379,21 @@ window.App = {
             if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
             if (s.apiKey) params += `&appId=${s.apiKey}`;
             intentUrl = `intent://pay/v1${params}#Intent;scheme=vivapay;package=com.vivawallet.terminal;end;`;
-            window.location.href = intentUrl;
+            
+            const link = document.createElement('a');
+            link.href = intentUrl;
+            link.target = '_top';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         } else {
-            let pkg = "";
-            if (s.provider === 'alpha') pkg = "gr.alpha.nexi.softpos";
-            else if (s.provider === 'eurobank') pkg = "com.worldline.smartpos";
-            else if (s.provider === 'piraeus') pkg = "gr.epay.softpos";
+            let appName = "";
+            if (s.provider === 'alpha') { appName = "Nexi SoftPOS"; }
+            else if (s.provider === 'eurobank') { appName = "Worldline Smart POS"; }
+            else if (s.provider === 'piraeus') { pkg = "gr.epay.softpos"; appName = "epay SoftPOS"; }
             else { alert("Άγνωστος πάροχος."); return; }
 
-            let playStoreUrl = `https://play.google.com/store/apps/details?id=${pkg}`;
-            let intentUrl = `intent://#Intent;package=${pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end;`;
-
             try { navigator.clipboard.writeText(amount.toString()); } catch(e){}
-            
-            // Δοκιμάζουμε το intent σε iframe για να μην "σκάσει" η σελίδα αν αποτύχει (Silent Fail)
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = intentUrl;
-            document.body.appendChild(iframe);
-            setTimeout(() => iframe.remove(), 2000);
 
             setTimeout(() => {
                 const div = document.createElement('div');
@@ -403,10 +402,9 @@ window.App = {
                 div.innerHTML = `
                     <div class="modal-box" style="background:#fff; padding:20px; border-radius:12px; text-align:center; max-width:320px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
                         <div style="font-size:40px; margin-bottom:10px;">📱</div>
-                        <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS</h3>
-                        <p style="color:#1f2937; font-size:16px; margin-bottom:15px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
-                        
-                        <button onclick="window.location.href='${playStoreUrl}'" style="display:block; width:100%; background:#0095f6; color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:15px; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,149,246,0.3); cursor:pointer;">👉 ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ POS 👈</button>
+                        <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS (${appName})</h3>
+                        <p style="color:#1f2937; font-size:16px; margin-bottom:5px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
+                        <p style="color:#EF4444; font-size:13px; font-weight:bold; margin-bottom:15px; border: 1px dashed #EF4444; padding:5px;">⚠️ Το ποσό αντιγράφηκε!<br><br>👉 Βγείτε για λίγο από το BellGo, ανοίξτε το <b>${appName}</b> από το κινητό σας και κάντε Επικόλληση (Paste).</p>
                         
                         <span style="font-size:13px; color:#6b7280; display:block; margin-bottom:10px;">Αφού χτυπήσετε την κάρτα, επιστρέψτε εδώ και πατήστε:</span>
                         <button onclick="window.location.href='${returnUrl}'" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer;">✅ ΕΠΙΒΕΒΑΙΩΣΗ ΠΛΗΡΩΜΗΣ</button>
@@ -414,7 +412,7 @@ window.App = {
                     </div>
                 `;
                 document.body.appendChild(div);
-            }, 500);
+            }, 100);
         }
     },
 

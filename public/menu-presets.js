@@ -123,6 +123,7 @@ if (typeof document !== 'undefined' && !document.getElementById('bellgoMenuEdito
                 margin: 0 0 10px 0 !important;
                 font-size: 15px !important;
                 padding: 14px !important;
+                color: white !important; /* ✅ FIX: Ensure text is white */
             }
 
             .price-vat-container {
@@ -778,6 +779,9 @@ export const Menu = {
         let itemAllergens = "";
         let itemVat = 24;
         let itemExtras = [];
+        
+        let itemUseStock = false;
+        let itemStock = "";
 
         if (typeof val === 'object' && val !== null) {
             itemObj = val;
@@ -787,6 +791,8 @@ export const Menu = {
             itemAllergens = itemObj.allergens || "";
             itemVat = itemObj.vat !== undefined ? itemObj.vat : 24;
             itemExtras = itemObj.extras || [];
+            itemUseStock = !!itemObj.useStock;
+            itemStock = itemObj.stock !== undefined ? itemObj.stock : "";
         } else if (typeof val === 'string' && val.trim() !== "") {
             const parts = val.split(':');
             if (parts.length > 1) {
@@ -797,10 +803,15 @@ export const Menu = {
             }
         }
 
-        const summaryName = document.createElement('span');
+        const summaryName = document.createElement('div');
         summaryName.className = 'item-summary-name';
-        summaryName.innerText = itemName || 'Νέο Προϊόν';
-        summaryName.style.cssText = "flex:1; font-weight:bold; color:#ffffff; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
+        summaryName.style.cssText = "flex:1; display:flex; align-items:center; min-width:0;";
+
+        const nameText = document.createElement('span');
+        nameText.innerText = itemName || 'Νέο Προϊόν';
+        nameText.style.cssText = "font-weight:bold; color:#ffffff; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;";
+        nameText.style.cssText = "font-weight:bold; color:#ffffff; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; flex: 0 1 auto;";
+        summaryName.appendChild(nameText);
 
         const summaryPrice = document.createElement('span');
         summaryPrice.className = 'item-summary-price';
@@ -823,21 +834,21 @@ export const Menu = {
         nameInput.className = 'menu-input-box';
         nameInput.value = itemName;
         nameInput.placeholder = "Όνομα Προϊόντος"; 
-        nameInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
+        nameInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white !important; font-size:15px;";
 
         const descInput = document.createElement('input');
         descInput.type = 'text';
         descInput.className = 'menu-input-box';
         descInput.value = itemDesc;
         descInput.placeholder = "Περιγραφή";
-        descInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
+        descInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white !important; font-size:15px;";
 
         const allergensInput = document.createElement('input');
         allergensInput.type = 'text';
         allergensInput.className = 'menu-input-box';
         allergensInput.value = itemAllergens;
         allergensInput.placeholder = "Αλλεργιογόνα (για ℹ️)";
-        allergensInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
+        allergensInput.style.cssText = "width:100%; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white !important; font-size:15px;";
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -845,14 +856,42 @@ export const Menu = {
         priceInput.className = 'menu-input-box';
         priceInput.value = itemPrice;
         priceInput.placeholder = "Τιμή"; 
-        priceInput.style.cssText = "flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px;";
+        priceInput.style.cssText = "flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white !important; font-size:15px;";
 
         const vatInput = document.createElement('input');
         vatInput.type = 'number';
         vatInput.placeholder = 'ΦΠΑ';
         vatInput.style.cssText = `width:60px; padding:12px; margin-left:5px; background:#ffffff; border:1px solid #d1d5db; color:#1f2937; border-radius:12px; text-align:center; font-size:15px; display:${App.einvoicingEnabled ? 'inline-block' : 'none'}; box-shadow:inset 0 1px 2px rgba(0,0,0,0.05);`;
-        vatInput.style.cssText = `flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white; font-size:15px; text-align:center; display:${App.einvoicingEnabled ? 'block' : 'none'};`;
+        vatInput.style.cssText = `flex:1; box-sizing:border-box; padding:12px; border-radius:8px; border:1px solid #444; background:#374151; color:white !important; font-size:15px; text-align:center; display:${App.einvoicingEnabled ? 'block' : 'none'};`;
         vatInput.value = itemVat;
+        
+        // ✅ ADDED: Container και Inputs για το Περιορισμένο Απόθεμα
+        const stockContainer = document.createElement('div');
+        stockContainer.style.cssText = "display:flex; align-items:center; gap:10px; width:100%; margin-top:5px; padding: 10px; background: #374151; border-radius: 8px; border: 1px solid #444; box-sizing: border-box;";
+        
+        const useStockCheck = document.createElement('input');
+        useStockCheck.type = 'checkbox';
+        useStockCheck.checked = itemUseStock;
+        useStockCheck.style.cssText = "width: 18px; height: 18px; cursor: pointer;";
+        
+        const useStockLabel = document.createElement('span');
+        useStockLabel.innerText = "Περιορισμένο Απόθεμα";
+        useStockLabel.style.cssText = "color: #aaa; font-size: 14px; flex: 1;";
+
+        const stockInput = document.createElement('input');
+        stockInput.type = 'number';
+        stockInput.placeholder = 'Τεμάχια';
+        stockInput.value = itemStock;
+        stockInput.disabled = !itemUseStock;
+        stockInput.style.cssText = "width: 80px; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #374151; color: white !important; text-align: center; font-size: 15px;";
+        if (!itemUseStock) stockInput.style.opacity = '0.5';
+
+        useStockCheck.onchange = () => {
+            stockInput.disabled = !useStockCheck.checked;
+            stockInput.style.opacity = useStockCheck.checked ? '1' : '0.5';
+            if (useStockCheck.checked && stockInput.value === "") stockInput.value = "10";
+            silentUpdate();
+        };
         
         const silentUpdate = () => {
             const newName = nameInput.value.trim();
@@ -860,6 +899,9 @@ export const Menu = {
             const newAllergens = allergensInput.value.trim();
             const newPrice = parseFloat(priceInput.value) || 0;
             const newVat = parseInt(vatInput.value) || 24;
+            const newUseStock = useStockCheck.checked;
+            const newStock = newUseStock ? (parseInt(stockInput.value) || 0) : 0;
+            const newEnabled = newUseStock && newStock <= 0 ? false : true; // ✅ FIX: Επαναφορά εμφάνισης αν υπάρχει απόθεμα
             
             const cat = App.menuData[App.currentCategoryIndex];
             if (!cat) return;
@@ -868,9 +910,11 @@ export const Menu = {
             let newItem;
 
             if (index !== null && typeof cat.items[index] === 'object') {
-                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc, allergens: newAllergens };
+                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc, allergens: newAllergens, useStock: newUseStock, stock: newStock };
+                newItem = { ...cat.items[index], name: newName, price: newPrice, vat: newVat, desc: newDesc, allergens: newAllergens, useStock: newUseStock, stock: newStock, enabled: newEnabled };
             } else {
-                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc, allergens: newAllergens };
+                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc, allergens: newAllergens, useStock: newUseStock, stock: newStock };
+                newItem = { name: newName, price: newPrice, vat: newVat, extras: existingExtras, desc: newDesc, allergens: newAllergens, useStock: newUseStock, stock: newStock, enabled: newEnabled };
             }
 
             if (index === null) {
@@ -881,10 +925,12 @@ export const Menu = {
             }
 
             // Real-time update for summary view
-            summaryName.innerText = newName || 'Νέο Προϊόν';
+            nameText.innerText = newName || 'Νέο Προϊόν';
             const price = parseFloat(newPrice);
             summaryPrice.innerText = !isNaN(price) && price > 0 ? `${price.toFixed(2)}€` : '';
         };
+
+        stockInput.addEventListener('input', silentUpdate);
 
         // Προσθήκη Drag & Drop Handle στα Προϊόντα
         let handleDiv = null;
@@ -934,15 +980,17 @@ export const Menu = {
         
         const extrasBtn = document.createElement('button');
         extrasBtn.className = 'btn-item-extras';
-        extrasBtn.innerHTML = '+';
         if (itemExtras.length > 0) extrasBtn.classList.add('has-extras');
-        extrasBtn.style.cssText = "padding:12px; background:#3B82F6; color:white; border:none; border-radius:8px; font-weight:bold; width:100%; cursor:pointer; margin-top:5px;";
-        if (itemExtras.length > 0) extrasBtn.innerHTML = `ΕΠΙΛΟΓΕΣ / ΥΛΙΚΑ (${itemExtras.length})`;
-        else extrasBtn.innerHTML = `+ ΠΡΟΣΘΗΚΗ ΕΠΙΛΟΓΩΝ (EXTRAS)`;
-        extrasBtn.onclick = () => { 
+        extrasBtn.style.cssText = "background:#3B82F6; color:white; border:none; border-radius:8px; width:30px; height:30px; font-weight:bold; font-size:14px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;";
+        extrasBtn.style.cssText = "position:static !important; transform:none !important; background:#3B82F6; color:white; border:none; border-radius:8px; width:30px; height:30px; font-weight:bold; font-size:14px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-left:8px;";
+        if (itemExtras.length > 0) extrasBtn.innerHTML = `⚙️<span style="font-size:10px; margin-left:2px;">${itemExtras.length}</span>`;
+        else extrasBtn.innerHTML = `⚙️`;
+        extrasBtn.onclick = (e) => { 
+            e.stopPropagation(); // Αποτροπή ανοίγματος του accordion όταν πατάμε τα extras
             silentUpdate(); // Διασφαλίζει ότι το νέο προϊόν "γράφτηκε" στη μνήμη πριν ανοίξουν τα extras
             App.openExtrasModal(App.currentCategoryIndex, index); 
         };
+        summaryName.appendChild(extrasBtn); // Τοποθέτηση ακριβώς δίπλα στο όνομα
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-item-del';
@@ -979,7 +1027,11 @@ export const Menu = {
         priceVatContainer.appendChild(priceInput);
         priceVatContainer.appendChild(vatInput);
         detailsPanel.appendChild(priceVatContainer);
-        detailsPanel.appendChild(extrasBtn);
+        
+        stockContainer.appendChild(useStockCheck);
+        stockContainer.appendChild(useStockLabel);
+        stockContainer.appendChild(stockInput);
+        detailsPanel.appendChild(stockContainer);
 
         wrapper.appendChild(summaryRow);
         wrapper.appendChild(detailsPanel);

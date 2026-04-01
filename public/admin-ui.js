@@ -176,8 +176,11 @@ export const AdminUI = {
             const requiresLock = window.App.hasFeature('pack_pos') || window.App.hasFeature('pack_manager') || window.App.hasFeature('pack_delivery') || window.App.hasFeature('pack_tables');
             if (id === 'subGeneral' && !window.App.settingsUnlocked && requiresLock) {
             document.getElementById('adminUnlockModal').style.display = 'flex';
-            document.getElementById('inpAdminUnlockPin').value = '';
-            document.getElementById('inpAdminUnlockPin').focus();
+            const pinInp = document.getElementById('inpAdminUnlockPin');
+            if (pinInp) {
+                pinInp.value = '';
+                setTimeout(() => pinInp.focus(), 100);
+            }
             return;
         }
 

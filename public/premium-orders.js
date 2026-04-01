@@ -116,26 +116,38 @@ export const OrdersUI = {
             const itemsDiv = document.createElement('div');
             itemsDiv.className = 'category-items';
             cat.items.forEach(item => {
-                let name = item, price = 0, extras = [], itemDesc = "", itemAllergens = "";
+                let name = item, price = 0, extras = [], itemDesc = "", itemAllergens = "", useStock = false, stock = 0, enabled = true;
                 if(typeof item === 'object') { 
                     name = item.name; 
                     price = item.price; 
                     extras = item.extras || []; 
                     itemDesc = item.desc || "";
                     itemAllergens = item.allergens || "";
+                    useStock = item.useStock || false;
+                    stock = item.stock || 0;
+                    enabled = item.enabled !== false;
                 }
                 else { const p = item.split(':'); name = p[0]; if(p.length>1) price=parseFloat(p[p.length-1]); }
                 
+                const isOutOfStock = useStock && stock <= 0;
+                const outOfStockBadge = (isOutOfStock || !enabled) ? `<span style="color:#EF4444; font-size:10px; font-weight:bold; margin-left:5px;">(ΕΞΑΝΤΛΗΘΗΚΕ)</span>` : '';
+                const stockBadge = (useStock && stock > 0) ? `<span style="color:#F59E0B; font-size:10px; font-weight:bold; margin-left:5px;">(${stock} τμχ)</span>` : '';
+
                 let displayItemName = App.tMenu ? App.tMenu(name) : name; // ✅ Translated Item
                 const box = document.createElement('div');
                 box.className = 'item-box';
+
+                if (isOutOfStock || !enabled) {
+                    box.style.display = 'none'; // ✅ Πλήρης εξαφάνιση του προϊόντος
+                }
+
                 let descHtml = itemDesc ? `<div style="font-size:10px; color:#888; margin-top:4px; font-weight:normal; white-space:normal; line-height:1.2;">${itemDesc}</div>` : '';
                 let allergensHtml = itemAllergens ? `<span class="item-info-icon" onclick="event.stopPropagation(); App.showProductInfo('${itemAllergens.replace(/'/g, "\\'").replace(/"/g, "&quot;")}');" title="Πληροφορίες / Αλλεργιογόνα">ℹ️</span>` : '';
                 const extrasIndicator = (extras && extras.length > 0) ? `<span style="font-size:10px; background:#2196F3; color:white; border-radius:4px; padding:2px 4px; margin-left:5px; flex-shrink:0;">+ ΕΠΙΛΟΓΕΣ</span>` : '';
                 box.innerHTML = `
                     <div style="display:flex; flex-direction:column; flex:1; justify-content:center; padding-right:10px;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}</span>
+                            <span class="item-name" style="display:flex; align-items:center; flex-wrap:wrap;">${displayItemName}${extrasIndicator}${stockBadge}${outOfStockBadge}</span>
                             ${allergensHtml}
                         </div>
                         ${descHtml}
@@ -143,6 +155,24 @@ export const OrdersUI = {
                     ${price>0?`<span class="item-price" style="flex-shrink:0;">${price}€</span>`:''}
                 `;
                 box.onclick = () => {
+                    if (isOutOfStock || !enabled) return;
+                    
+                    if (useStock) {
+                        const txt = document.getElementById('sidebarOrderText');
+                        const lines = txt.value.split('\n');
+                        let inCart = 0;
+                        for (let l of lines) {
+                            if (l.includes(name)) {
+                                const m = l.match(/^(\d+)?\s*(.+)$/);
+                                if (m && m[2].includes(name)) inCart += parseInt(m[1] || '1');
+                            }
+                        }
+                        if (inCart >= stock) {
+                            alert(`Μέγιστο διαθέσιμο απόθεμα: ${stock} τεμάχια!`);
+                            return;
+                        }
+                    }
+
                     if (extras && extras.length > 0) {
                         App.openItemOptionsModal(name, price, extras);
                     } else {

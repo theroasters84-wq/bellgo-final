@@ -23,7 +23,10 @@ try { userData = JSON.parse(savedSession || '{}'); } catch(e) {
 if (userData.role !== 'admin' && userData.role !== 'kitchen' && userData.role !== 'waiter') { alert("Access Denied"); window.location.replace("login.html"); }
 
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+let messaging = null;
+try {
+    messaging = getMessaging(app);
+} catch(e) { console.warn("Firebase Messaging not supported (needs HTTPS):", e); }
 
 // --- I18N LOGIC (FIX FOR TRANSLATIONS) ---
 const t = (key) => I18n.t(key) || key;

@@ -3,6 +3,70 @@ const Logic = require('./logic');
 module.exports = function(socket, context, getMyStore) {
     const { io, storesData, activeUsers, db, admin, stripe, YOUR_DOMAIN } = context;
 
+    // ✅ ΝΕΟΣ ΚΕΝΤΡΙΚΟΣ ΜΗΧΑΝΙΣΜΟΣ ΜΕΙΩΣΗΣ ΑΠΟΘΕΜΑΤΟΣ
+    const reduceStock = (store, text, actionName) => {
+        if (!store || !store.menu || !Array.isArray(store.menu)) return false;
+        let menuChanged = false;
+        const cleanStr = (s) => s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9α-ωΑ-Ω]/g, "").toLowerCase() : "";
+        console.log(`\n[STOCK DEBUG] === CHECKING STOCK FOR ${actionName} ===`);
+        
+        const lines = text.split('\n');
+        lines.forEach(line => {
+            let cleanLine = line.replace(/✅/g, '').replace(/💶/g, '').replace(/💳/g, '').replace(/\+\+/g, '').replace(/PAID/gi, '').replace(/[\r\n\t]/g, '').trim();
+            if (!cleanLine || cleanLine.startsWith('[') || cleanLine === '---') return;
+
+            let qty = 1;
+            let restLine = cleanLine;
+            const qtyMatch = cleanLine.match(/^(\d+)(?:x|X)?\s+(.*)$/);
+            if (qtyMatch) { qty = parseInt(qtyMatch[1], 10); restLine = qtyMatch[2].trim(); }
+
+            let itemName = restLine;
+            const lastColonIdx = restLine.lastIndexOf(':');
+            if (lastColonIdx !== -1) {
+                const possiblePrice = restLine.substring(lastColonIdx + 1).trim();
+                if (/^[\d.,]+$/.test(possiblePrice)) { itemName = restLine.substring(0, lastColonIdx).trim(); }
+            }
+
+            let baseName = itemName.replace(/\s*\(\+.*?\)$/, '').trim();
+            let safeItemName = cleanStr(itemName);
+            let safeBaseName = cleanStr(baseName);
+            
+            console.log(`[STOCK DEBUG] Line: "${cleanLine}" | Qty: ${qty} | Item: "${itemName}"`);
+
+            let itemFound = false;
+            for (let cat of store.menu) {
+                if (!cat.items || !Array.isArray(cat.items)) continue;
+                let item = cat.items.find(i => {
+                    if (typeof i !== 'object' || !i.name) return false;
+                    let dbName = cleanStr(i.name);
+                    return dbName === safeItemName || dbName === safeBaseName;
+                });
+                if (item) {
+                    itemFound = true;
+                    if (item.useStock) {
+                        console.log(`[STOCK DEBUG] MATCH: "${item.name}" (Stock: ${item.stock}) - Reducing by ${qty}`);
+                        item.stock = (parseInt(item.stock) || 0) - qty;
+                        if (item.stock <= 0) {
+                            item.stock = 0;
+                            item.enabled = false;
+                            console.log(`[STOCK DEBUG] 🚫 OUT OF STOCK! Disabled "${item.name}"`);
+                        }
+                        menuChanged = true;
+                    }
+                }
+            }
+            if (!itemFound) console.log(`[STOCK DEBUG] ⚠️ NOT FOUND in DB!`);
+        });
+        
+        if (menuChanged) {
+            console.log(`[STOCK DEBUG] Saving menu changes to DB...`);
+            if (Logic.saveStoreToFirebase) Logic.saveStoreToFirebase(socket.store, db, storesData);
+            io.to(socket.store).emit('menu-update', store.menu);
+        }
+        console.log(`[STOCK DEBUG] === END STOCK CHECK ===\n`);
+        return menuChanged;
+    };
+
     socket.on('new-order', (data) => {
       try {
         const store = getMyStore();
@@ -55,6 +119,8 @@ module.exports = function(socket, context, getMyStore) {
             if (startTime) newOrder.startTime = startTime;
             store.orders.push(newOrder);
             
+            reduceStock(store, orderText, 'NEW-ORDER');
+
             let locationInfo = "";
             const addrMatch = orderText.match(/📍\s*(.+)/);
             if (addrMatch) locationInfo = addrMatch[1].trim();
@@ -77,6 +143,9 @@ module.exports = function(socket, context, getMyStore) {
             const markedLines = lines.map(l => `++ ${l}`).join('\n');
             existingOrder.text += `\n${markedLines}`;
             existingOrder.status = 'pending';
+
+            reduceStock(store, items, 'ADD-ITEMS');
+
             // ✅ Αφαιρέθηκε η ειδοποίηση "ΠΡΟΣΘΗΚΗ ΠΡΟΪΟΝΤΩΝ +" (ώστε να μην πετάγεται το καμπανάκι στον Admin)
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         }
@@ -217,6 +286,9 @@ module.exports = function(socket, context, getMyStore) {
         }
 
         Logic.updateStoreStats(store, tempOrder);
+
+        reduceStock(store, tempOrder.text, 'QUICK-ORDER');
+
         // ✅ FIX: Use updateStoreClients to broadcast wallet changes immediately
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         socket.emit('print-quick-order', { text: tempOrder.text, id: tempOrder.id, signature: null });

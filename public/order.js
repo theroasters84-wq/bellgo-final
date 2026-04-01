@@ -61,7 +61,10 @@ if (isIos() && !window.navigator.standalone) {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
-const messaging = getMessaging(app);
+let messaging = null;
+try {
+    messaging = getMessaging(app);
+} catch(e) { console.warn("Firebase Messaging not supported (needs HTTPS):", e); }
 
 // URL PARAMS
 const params = new URLSearchParams(window.location.search);
@@ -142,7 +145,10 @@ const PRELOADED_NAME = params.get('name');
 const parseItem = (str) => {
     // ✅ FIX: Υποστήριξη για αντικείμενα από το Premium
     if (typeof str === 'object' && str !== null) {
-        return { name: str.name, price: str.price || 0, desc: str.desc || "", allergens: str.allergens || "", extras: str.extras || [] };
+        return { 
+            name: str.name, price: str.price || 0, desc: str.desc || "", allergens: str.allergens || "", extras: str.extras || [],
+            useStock: str.useStock || false, stock: str.stock || 0, enabled: str.enabled !== false
+        };
     }
     const parts = str.split(':');
     let name = parts[0];
@@ -151,7 +157,7 @@ const parseItem = (str) => {
         name = parts.slice(0, -1).join(':').trim();
         price = parseFloat(parts[parts.length - 1]);
     } else { name = str.trim(); }
-    return { name, price: isNaN(price) ? 0 : price, desc: "", allergens: "", extras: [] };
+    return { name, price: isNaN(price) ? 0 : price, desc: "", allergens: "", extras: [], useStock: false, stock: 0, enabled: true };
 };
 
 let currentUser = null;
@@ -745,6 +751,24 @@ window.App = {
                             }
 
                         const handleItemSelect = () => {
+                            if (isOutOfStock || !enabled) return;
+                            
+                            if (useStock) {
+                                const txt = document.getElementById('orderText');
+                                const lines = txt.value.split('\n');
+                                let inCart = 0;
+                                for (let l of lines) {
+                                    if (l.includes(name)) {
+                                        const m = l.match(/^(\d+)?\s*(.+)$/);
+                                        if (m && m[2].includes(name)) inCart += parseInt(m[1] || '1');
+                                    }
+                                }
+                                if (inCart >= stock) {
+                                    alert(I18n.t('stock_limit_reached') || `Έχετε ήδη προσθέσει το μέγιστο διαθέσιμο απόθεμα (${stock} τμχ) για αυτό το προϊόν!`);
+                                    return;
+                                }
+                            }
+
                             if (extras && extras.length > 0) {
                                 App.openItemOptionsModal(name, price, extras);
                             } else {

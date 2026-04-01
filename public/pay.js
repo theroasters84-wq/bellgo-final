@@ -92,6 +92,29 @@ export const PaySystem = {
         }
     },
 
+    addManualCharge: () => {
+        const name = document.getElementById('inpManualWalletName').value.trim();
+        const amount = parseFloat(document.getElementById('inpManualWalletAmount').value);
+        
+        if (!name || isNaN(amount) || amount === 0) {
+            return alert("Παρακαλώ συμπληρώστε σωστό όνομα και ποσό (θετικό για χρέωση, αρνητικό για αφαίρεση).");
+        }
+        
+        window.socket.emit('charge-order-to-staff', {
+            orderId: Date.now(), // Fake order ID ώστε να μην επηρεάσει υπάρχουσα παραγγελία
+            staffName: name,
+            amount: amount,
+            method: 'cash' // Always cash for manual debt
+        });
+        
+        document.getElementById('inpManualWalletName').value = '';
+        document.getElementById('inpManualWalletAmount').value = '';
+        
+        const form = document.getElementById('manualChargeForm');
+        const btn = document.getElementById('btnShowManualCharge');
+        if (form && btn) { form.style.display = 'none'; btn.style.display = 'block'; }
+    },
+
     // ✅ NEW: SoftPOS Logic (Moved from premium.js)
     updateSoftPosUI: () => {
         const selProv = document.getElementById('selSoftPosProvider');
@@ -130,9 +153,9 @@ export const PaySystem = {
         const provider = document.getElementById('selSoftPosProvider').value;
         let url = "https://play.google.com/store/search?q=softpos&c=apps";
         if (provider === 'viva') url = "https://play.google.com/store/apps/details?id=com.vivawallet.terminal";
-        else if (provider === 'alpha') url = "https://play.google.com/store/apps/details?id=gr.alpha.nexi.softpos";
-        else if (provider === 'eurobank') url = "https://play.google.com/store/apps/details?id=com.worldline.smartpos";
-        else if (provider === 'piraeus') url = "https://play.google.com/store/apps/details?id=gr.epay.softpos";
+        else if (provider === 'alpha') url = "https://play.google.com/store/search?q=Nexi+SoftPOS&c=apps";
+        else if (provider === 'eurobank') url = "https://play.google.com/store/search?q=Worldline+Smart+POS&c=apps";
+        else if (provider === 'piraeus') url = "https://play.google.com/store/search?q=epay+SoftPOS&c=apps";
         window.open(url, '_blank');
     },
     
@@ -153,24 +176,24 @@ export const PaySystem = {
             if (s.merchantId) params += `&sourceCode=${s.merchantId}`;
             if (s.apiKey) params += `&appId=${s.apiKey}`;
             intentUrl = `intent://pay/v1${params}#Intent;scheme=vivapay;package=com.vivawallet.terminal;end;`;
-            window.location.href = intentUrl;
+            
+            const link = document.createElement('a');
+            link.href = intentUrl;
+            link.target = '_top';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         } else {
-            let pkg = "";
-            if (s.provider === 'alpha') pkg = "gr.alpha.nexi.softpos";
-            else if (s.provider === 'eurobank') pkg = "com.worldline.smartpos";
-            else if (s.provider === 'piraeus') pkg = "gr.epay.softpos";
+            let appName = "";
+            if (s.provider === 'alpha') { appName = "Nexi SoftPOS"; }
+            else if (s.provider === 'eurobank') { appName = "Worldline Smart POS"; }
+            else if (s.provider === 'piraeus') { appName = "epay SoftPOS"; }
             else { alert("Άγνωστος πάροχος."); return; }
-
-            let fallback = encodeURIComponent(`https://play.google.com/store/apps/details?id=${pkg}`);
-            // ✅ FIX: Το σωστό Android Chrome URL Scheme
-            intentUrl = `intent://main#Intent;package=${pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${fallback};end;`;
 
             try { navigator.clipboard.writeText(amount.toString()); } catch(e){}
             
-            // Δοκιμάζουμε αυτόματο άνοιγμα
-            window.location.href = intentUrl;
 
-            // ✅ Εμφάνιση παραθύρου επιβεβαίωσης με κουμπί fallback (Link)
+            // ✅ Εμφάνιση παραθύρου επιβεβαίωσης
             setTimeout(() => {
                 const div = document.createElement('div');
                 div.className = 'modal-overlay';
@@ -178,10 +201,9 @@ export const PaySystem = {
                 div.innerHTML = `
                     <div class="modal-box" style="background:#fff; padding:20px; border-radius:12px; text-align:center; max-width:320px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
                         <div style="font-size:40px; margin-bottom:10px;">📱</div>
-                        <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS</h3>
-                        <p style="color:#1f2937; font-size:16px; margin-bottom:15px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
-                        
-                        <a href="${intentUrl}" style="display:block; background:#0095f6; color:white; text-decoration:none; padding:12px; border-radius:8px; font-weight:bold; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,149,246,0.3);">👉 ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ POS 👈</a>
+                        <h3 style="color:#10B981; margin:0 0 10px 0;">SoftPOS (${appName})</h3>
+                        <p style="color:#1f2937; font-size:16px; margin-bottom:5px;">Ποσό: <b style="font-size:20px;">${amount}€</b></p>
+                        <p style="color:#EF4444; font-size:13px; font-weight:bold; margin-bottom:15px; border: 1px dashed #EF4444; padding:5px;">⚠️ Το ποσό αντιγράφηκε!<br><br>👉 Βγείτε για λίγο από το BellGo, ανοίξτε το <b>${appName}</b> από το κινητό σας και κάντε Επικόλληση (Paste).</p>
                         
                         <span style="font-size:13px; color:#6b7280; display:block; margin-bottom:10px;">Αφού χτυπήσετε την κάρτα, επιστρέψτε εδώ και πατήστε:</span>
                         <button onclick="window.location.href='${returnUrl}'" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer;">✅ ΕΠΙΒΕΒΑΙΩΣΗ ΠΛΗΡΩΜΗΣ</button>
@@ -189,7 +211,7 @@ export const PaySystem = {
                     </div>
                 `;
                 document.body.appendChild(div);
-            }, 1000);
+            }, 100);
         }
     },
 
