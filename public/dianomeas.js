@@ -321,6 +321,17 @@ window.App = {
         const order = App.activeOrders.find(o => o.id == id);
         if (!order) return;
         const total = App.calculateTotal(order.text);
+        const isPaid = order.text.includes('PAID') || order.text.includes('✅');
+
+        // ✅ NEW: If order is already paid, just confirm delivery and close.
+        if (isPaid) {
+            if (confirm(App.t('order_delivered_prompt') || 'Η παραγγελία παραδόθηκε;')) {
+                // Use the existing event but with 0 amount to just remove the order.
+                // The server will update the wallets with +0, and then remove the order from the list.
+                window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: 0, method: 'paid' });
+            }
+            return;
+        }
 
         const hasSoftPos = App.softPosSettings && App.softPosSettings.enabled;
         const hasPhysicalPos = App.posSettings && App.posSettings.provider && App.posSettings.id;
