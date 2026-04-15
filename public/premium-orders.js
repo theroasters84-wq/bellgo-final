@@ -485,9 +485,20 @@ export const OrdersUI = {
                 tableNum = tableMatch[1].trim();
                 displayLabel = `Τραπέζι ${tableNum}`;
             } else if (order.text.includes('[PICKUP')) {
-                displayLabel = `🛍️ PICKUP: ${order.from}`;
+                let pName = order.from;
+                const nMatch = order.text.match(/👤\s*([^\n]+)/);
+                if (nMatch && nMatch[1].trim()) pName = nMatch[1].trim();
+                displayLabel = `🛍️ PICKUP: ${pName}`;
             } else if (order.text.includes('[DELIVERY')) {
-                displayLabel = `🛵 ${order.from}`;
+                let dName = order.from;
+                const aMatch = order.text.match(/📍\s*([^\n]+)/);
+                if (aMatch && aMatch[1].trim()) {
+                    dName = aMatch[1].trim();
+                } else {
+                    const nMatch = order.text.match(/👤\s*([^\n]+)/);
+                    if (nMatch && nMatch[1].trim()) dName = nMatch[1].trim();
+                }
+                displayLabel = `🛵 ${dName}`;
             }
 
             const icon = document.createElement('div');
@@ -715,9 +726,9 @@ export const OrdersUI = {
     markReady: (id) => {
         const App = window.App;
         const order = App.activeOrders.find(o => o.id == id);
-        const isPickup = order && order.text.includes('[PICKUP');
+        const isDelivery = order && order.text.includes('[DELIVERY');
 
-        if (App.staffChargeMode && !isPickup) { 
+        if (isDelivery) { 
             App.openDeliveryAssignModal(id);
         } else {
             window.socket.emit('ready-order', id); 
@@ -736,34 +747,65 @@ export const OrdersUI = {
             return;
         }
 
-        const modal = document.getElementById('deliveryAssignModal');
+        let modal = document.getElementById('deliveryAssignModal');
+        if (modal) {
+            modal.remove(); // Force recreate to clear any old elements
+        }
+
+        modal = document.createElement('div');
+        modal.id = 'deliveryAssignModal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:25000; display:flex; align-items:center; justify-content:center;';
+        
+        const box = document.createElement('div');
+        box.className = 'modal-box';
+        box.style.cssText = 'background:white; padding:20px; border-radius:12px; width:90%; max-width:350px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.3);';
+        
+        box.innerHTML = `
+            <div style="font-size:40px; margin-bottom:10px;">🛵</div>
+            <h3 style="color:#1f2937; margin-top:0;">Ανάθεση Διανομής</h3>
+            <p style="font-size:13px; color:#6b7280; margin-bottom:15px;">Επιλέξτε διανομέα για να του αναθέσετε την παραγγελία:</p>
+            <div id="driverAssignList" style="display:flex; flex-direction:column; gap:8px;"></div>
+            <button onclick="document.getElementById('deliveryAssignModal').style.display='none'" style="width:100%; padding:12px; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-weight:bold; cursor:pointer; margin-top:15px;">ΑΚΥΡΟ</button>
+        `;
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+        
         const list = document.getElementById('driverAssignList');
         list.innerHTML = '';
+        
         const btnAll = document.createElement('button');
         btnAll.className = 'modal-btn';
-        btnAll.style.background = '#FFD700';
-        btnAll.style.color = 'black';
-        btnAll.innerHTML = '🔊 ΟΛΟΙ (Broadcast)';
-        btnAll.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: 'ALL' }); modal.style.display = 'none'; App.minimizeOrder(orderId); };
+        btnAll.style.cssText = 'background:#F59E0B; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin:0; box-shadow:0 4px 10px rgba(245,158,11,0.3);';
+        btnAll.innerHTML = '📣 ΟΛΟΙ (Broadcast)';
+        btnAll.onclick = () => { window.socket.emit('ready-order', orderId, true); window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: 'ALL' }); modal.style.display = 'none'; App.minimizeOrder(orderId); };
         list.appendChild(btnAll);
         
-        App.lastStaffList.forEach(u => {
-            if (u.role === 'driver') {
+        const drivers = (App.lastStaffList || []).filter(u => u.role === 'driver');
+        if (drivers.length > 0) {
+            drivers.forEach(u => {
+                const isOnline = u.status === 'online';
                 const btn = document.createElement('button');
                 btn.className = 'modal-btn';
-                btn.style.cssText = 'background:#f9fafb; color:#1f2937; border:1px solid #e5e7eb; border-radius:8px; font-weight:600; padding:12px;';
-                btn.innerHTML = `🛵 ${u.username}`;
-                btn.onclick = () => { window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username }); modal.style.display = 'none'; App.minimizeOrder(orderId); };
+                btn.style.cssText = `background:${isOnline ? '#10B981' : '#6b7280'}; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin:0;`;
+                btn.innerHTML = `🛵 ${u.username} ${isOnline ? '(Ενεργός)' : '(Ανενεργός)'}`;
+                btn.onclick = () => { window.socket.emit('ready-order', orderId, true); window.socket.emit('assign-delivery', { orderId: orderId, targetDriver: u.username }); modal.style.display = 'none'; App.minimizeOrder(orderId); };
                 list.appendChild(btn);
-            }
-        });
+            });
+        } else {
+            const noDr = document.createElement('div');
+            noDr.style.cssText = 'color:#EF4444; font-size:14px; font-weight:bold; margin:10px 0;';
+            noDr.innerText = 'Δεν βρέθηκαν διανομείς.';
+            list.appendChild(noDr);
+        }
+        
         const btnSilent = document.createElement('button');
         btnSilent.className = 'modal-btn';
-        btnSilent.style.background = '#607D8B';
-        btnSilent.style.color = 'white';
+        btnSilent.style.cssText = 'background:#607D8B; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin:0;';
         btnSilent.innerHTML = '🔕 ΕΤΟΙΜΟ (ΧΩΡΙΣ ΚΛΗΣΗ)';
         btnSilent.onclick = () => { window.socket.emit('ready-order', orderId, true); modal.style.display = 'none'; App.minimizeOrder(orderId); };
         list.appendChild(btnSilent);
+        
         modal.style.display = 'flex';
     },
 

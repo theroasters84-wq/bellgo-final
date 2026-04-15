@@ -10,9 +10,9 @@ import { Admin } from './admin.js?v=5';
 import { AdminUI } from './admin-ui.js?v=4'; 
 import { ReserveTable } from './reserve-table.js?v=4'; 
 import { Menu, DEFAULT_CATEGORIES, PRESET_MENUS } from './menu-presets.js?v=4'; 
-import { OrdersUI } from './premium-orders.js?v=9'; 
-import { I18n, PushNotifications } from './shared-utils.js?v=4';
-import { initPremiumSockets } from './premium-sockets.js?v=12'; // ✅ Persist Fake Orders
+import { OrdersUI } from './premium-orders.js?v=11'; 
+import { I18n, PushNotifications } from './shared-utils.js?v=5';
+import { initPremiumSockets } from './premium-sockets.js?v=13'; // ✅ Persist Fake Orders
 
 const savedSession = localStorage.getItem('bellgo_session');
 if (!savedSession) window.location.replace("login.html");

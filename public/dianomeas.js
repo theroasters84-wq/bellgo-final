@@ -31,6 +31,7 @@ window.App = {
     activeOrders: [],
     currentQrOrderId: null, // ✅ NEW: Track open QR
     isChatOpen: false, // ✅ NEW: Chat State
+    unreadChatCount: 0, // ✅ NEW: Unread messages count
     softPosSettings: {}, // ✅ NEW: SoftPOS Settings
     features: {}, // ✅ NEW: Local Features
 
@@ -50,6 +51,7 @@ window.App = {
         // ✅ NEW: Enforce Subscription for Driver too
         Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features });
 
+        App.setupChatUI();
         App.applyFeatureVisibility();
 
         // ✅ FIX: Κρύβουμε την "Πόρτα" (ΕΞΟΔΟΣ) από την κεντρική οθόνη μόνιμα με CSS
@@ -124,9 +126,9 @@ window.App = {
         }
 
         // 2. Chat & Fake Lock (Chat Pack required)
-        const chatWrapper = document.getElementById('chatWrapper');
-        if (chatWrapper) {
-            chatWrapper.style.display = hasChat ? 'flex' : 'none';
+        const headerChatBtn = document.getElementById('driverHeaderChatBtn');
+        if (headerChatBtn) {
+            headerChatBtn.style.display = hasChat ? 'flex' : 'none';
         }
         
         const btnFakeLock = document.getElementById('btnFakeLock');
@@ -170,6 +172,50 @@ window.App = {
         }
     },
 
+    // ✅ NEW: Δυναμική δημιουργία του Chat για τον διανομέα
+    setupChatUI: () => {
+        let chatOverlay = document.getElementById('adminChatOverlay');
+        if (!chatOverlay) {
+            chatOverlay = document.createElement('div');
+            chatOverlay.id = 'adminChatOverlay';
+            chatOverlay.className = 'modal-overlay';
+            chatOverlay.style.cssText = 'position:fixed; bottom:90px; right:20px; width:300px; height:400px; max-height:60vh; background:#ffffff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:25000; display:none; flex-direction:column; overflow:hidden; border:1px solid #e5e7eb;';
+            chatOverlay.innerHTML = `
+                <div style="background:#10B981; color:white; padding:15px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+                    <span>💬 Ομαδικό Chat</span>
+                    <button onclick="App.toggleAdminChat()" style="background:none; border:none; color:white; font-size:18px; cursor:pointer;">✖</button>
+                </div>
+                <div id="adminChatBox" style="flex:1; padding:15px; overflow-y:auto; display:flex; flex-direction:column; background:#f9fafb;"></div>
+                <div style="padding:10px; border-top:1px solid #e5e7eb; background:white; display:flex; gap:5px;">
+                    <input type="text" id="adminChatInp" placeholder="Μήνυμα..." style="flex:1; padding:10px; border:1px solid #d1d5db; border-radius:20px; outline:none; font-size:14px;" onkeypress="if(event.key==='Enter') App.sendChat()">
+                    <button onclick="App.sendChat()" style="background:#2196F3; color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center;">➤</button>
+                </div>
+            `;
+            document.body.appendChild(chatOverlay);
+        }
+
+        let headerChatBtn = document.getElementById('driverHeaderChatBtn');
+        if (!headerChatBtn) {
+            headerChatBtn = document.createElement('button');
+            headerChatBtn.id = 'driverHeaderChatBtn';
+            headerChatBtn.title = 'Ομαδικό Chat';
+            headerChatBtn.style.cssText = 'background:transparent; border:none; color:#1f2937; font-size:22px; cursor:pointer; position:relative; display:none; align-items:center; justify-content:center; margin-right:15px; padding:5px;';
+            headerChatBtn.innerHTML = `
+                💬
+                <div id="chatBadge" style="display:none; position:absolute; top:-2px; right:-5px; background:#EF4444; color:white; font-size:10px; font-weight:bold; width:16px; height:16px; border-radius:50%; align-items:center; justify-content:center; border:2px solid white;">0</div>
+            `;
+            headerChatBtn.onclick = () => App.toggleAdminChat();
+            
+            const targetBtn = document.getElementById('btnFakeLock') || document.getElementById('btnSettings');
+            if (targetBtn && targetBtn.parentNode) {
+                targetBtn.parentNode.insertBefore(headerChatBtn, targetBtn);
+            } else {
+                document.body.appendChild(headerChatBtn);
+                headerChatBtn.style.cssText += 'position:fixed; top:15px; right:80px; z-index:20000;';
+            }
+        }
+    },
+
     connectSocket: () => {
         initDriverSockets(window.App, userData);
     },
@@ -199,13 +245,15 @@ window.App = {
             const driverMatch = order.text.match(/\[DRIVER:\s*(.+?)\]/);
             const assignedDriver = driverMatch ? driverMatch[1] : null;
 
-            // 2. Αν ΔΕΝ είναι ανατεθειμένη σε εμένα (είτε είναι σε άλλον, είτε σε κανέναν), την κρύβουμε
-            if (assignedDriver !== userData.name) return;
+            // 2. Αν είναι ανατεθειμένη σε ΑΛΛΟΝ διανομέα, την κρύβουμε. (Αν είναι κενό, τη βλέπουν όλοι για να κάνουν Ανάληψη).
+            if (assignedDriver && assignedDriver !== userData.name) return;
 
             const isReady = order.status === 'ready';
-            const isPaid = cument.createElement('div');
+            const isPaid = order.text.includes('PAID') || order.text.includes('✅');
+            
+            const card = document.createElement('div');
             card.className = 'order-card';
-            card.style.cssText = `background:#ffffff; border:2px solid ${isPaid ? '#10B981' : (isReady ? '#F59E0B' : '#e5e7eb')}; border-radius:12px; padding:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 15px rgba(0,0,0,0.05); color:#1f2937;`;
+            card.style.cssText = `background:#ffffff; border:2px solid ${isPaid ? '#10B981' : (isReady ? '#F59E0B' : '#e5e7eb')}; border-radius:12px; padding:15px; margin-bottom:15px; position:relative; opacity:${isReady ? 1 : 0.7}; box-shadow:0 4px 15px rgba(0,0,0,0.05); color:#1f2937;`;
             
             let name = App.t('customer') || "Πελάτης", address = "", phone = "", paymentMethod = "❓", floor = "", zip = "";
             const lines = order.text.split('\n');
@@ -238,13 +286,13 @@ window.App = {
                     <span style="color:#6b7280; font-size:12px;">${time}</span>
                 </div>
                 <div style="font-size:18px; font-weight:bold; color:#1f2937; margin-bottom:5px;">${name}</div>
-                <div style="font-size:20px; color:#2196F3; margin-bottom:5px; font-weight:bold; line-height:1.3;">📍 ${address}</div>
+                <div style="font-size:20px; color:#2196F3; margin-bottom:5px; font-weight:bold; line-height:1.3; cursor:pointer;" onclick="App.openMap('${address}')">📍 ${address} <span style="font-size:12px; color:#6b7280;">(Χάρτης)</span></div>
                 ${zip ? `<div style="font-size:14px; color:#6b7280; margin-bottom:2px;">📮 ${zip}</div>` : ''}
                 ${floor ? `<div style="font-size:16px; color:#1f2937; font-weight:bold; margin-bottom:5px; background:#f3f4f6; border:1px solid #d1d5db; display:inline-block; padding:2px 8px; border-radius:4px;">🏢 ${floor}</div>` : ''}
-                <div style="font-size:16px; color:#6b7280; margin-bottom:15px;">📞 <a href="tel:${phone}" style="color:#2196F3; text-decoration:none; font-weight:bold;">${phone}</a></div>
+                <div style="font-size:16px; color:#6b7280; margin-bottom:15px;">📞 <a href="tel:${phone.replace(/[^0-9+]/g, '')}" style="color:#2196F3; text-decoration:none; font-weight:bold;">${phone}</a></div>
                 <div style="background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-weight:bold; color:#1f2937; font-size:14px;">${paymentMethod}</div>
-                    <div style="font-size:22px; font-weight:bold; color:${isPaid ? '#10B981' : '#1f2937'};">${total.toFixed(2)}€ ${isPaid ? '✅' : ''}</div>
+                    <div style="font-weight:bold; color:#1f2937; font-size:14px;">Πληρωμή: ${paymentMethod}</div>
+                    <div style="font-size:22px; font-weight:bold; color:${isPaid ? '#10B981' : '#1f2937'};">${total.toFixed(2)}€ ${isPaid ? '✅ (PAID)' : ''}</div>
                 </div>
                 
                 ${assignedDriver ? `
@@ -270,6 +318,10 @@ window.App = {
 
     // ✅ FIX: Complete Order now charges the staff wallet
     completeOrder: (id) => { 
+        const order = App.activeOrders.find(o => o.id == id);
+        if (!order) return;
+        const total = App.calculateTotal(order.text);
+
         const hasSoftPos = App.softPosSettings && App.softPosSettings.enabled;
         const hasPhysicalPos = App.posSettings && App.posSettings.provider && App.posSettings.id;
         
@@ -304,8 +356,16 @@ window.App = {
         const el = document.getElementById('adminChatOverlay');
         if(!el) return;
         App.isChatOpen = (el.style.display === 'flex');
-        if (App.isChatOpen) { el.style.display = 'none'; App.isChatOpen = false; } 
-        else { el.style.display = 'flex'; App.isChatOpen = true; document.getElementById('chatBadge').style.display = 'none'; }
+        if (App.isChatOpen) { 
+            el.style.display = 'none'; 
+            App.isChatOpen = false; 
+        } else { 
+            el.style.display = 'flex'; 
+            App.isChatOpen = true; 
+            App.unreadChatCount = 0;
+            const b = document.getElementById('chatBadge'); 
+            if(b) { b.style.display = 'none'; b.innerText = '0'; }
+        }
     },
     sendChat: () => {
         const inp = document.getElementById('adminChatInp');
@@ -313,12 +373,22 @@ window.App = {
     },
     appendChat: (data) => {
         if (data.sender !== userData.name && !App.isChatOpen) { 
+            App.unreadChatCount = (App.unreadChatCount || 0) + 1;
             const badge = document.getElementById('chatBadge');
-            if(badge) badge.style.display = 'block'; 
+            if(badge) {
+                badge.style.display = 'flex'; 
+                badge.innerText = App.unreadChatCount;
+            }
         }
         const box = document.getElementById('adminChatBox');
         if(box) {
-            box.innerHTML += `<div class="chat-msg ${data.sender === userData.name ? 'me' : 'other'}"><b>${data.sender}:</b> ${data.text}</div>`;
+            const isMe = data.sender === userData.name;
+            box.innerHTML += `
+                <div style="align-self:${isMe ? 'flex-end' : 'flex-start'}; background:${isMe ? '#DCF8C6' : '#ffffff'}; border:1px solid ${isMe ? '#DCF8C6' : '#e5e7eb'}; color:#1f2937; padding:8px 12px; border-radius:12px; max-width:80%; font-size:14px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                    <b style="font-size:11px; color:#6b7280; display:block; margin-bottom:2px;">${data.sender}</b>
+                    ${data.text}
+                </div>
+            `;
             box.scrollTop = box.scrollHeight;
         }
     },

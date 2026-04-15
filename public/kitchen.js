@@ -5,7 +5,7 @@ import { StatsUI } from './premium-stats.js';
 import { Sundromes } from './sundromes.js';
 import { Admin } from './admin.js';
 import { AdminUI } from './admin-ui.js';
-import { OrdersUI } from './premium-orders.js';
+import { OrdersUI } from './premium-orders.js?v=11';
 import { PaySystem } from './pay.js';
 import { Menu } from './menu-presets.js';
 import { I18n, PushNotifications } from './shared-utils.js';

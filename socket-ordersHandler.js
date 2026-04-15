@@ -353,12 +353,6 @@ module.exports = function(socket, context, getMyStore) {
                         Logic.sendPushNotification(tUser, notifTitle, notifBody, { type: "alarm" }, YOUR_DOMAIN, admin, 3600);
                     }
                     
-                    Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
-                        u.isRinging = true;
-                        if (u.socketId) {
-                            io.to(u.socketId).emit('ring-bell', { source: "ΚΟΥΖΙΝΑ 🍳", location: "ΕΤΟΙΜΗ ΠΑΡΑΓΓΕΛΙΑ" });
-                        }
-                    });
                 }
             }
         }
@@ -371,7 +365,19 @@ module.exports = function(socket, context, getMyStore) {
         const order = store.orders.find(o => o.id == orderId);
         if(order) {
             if (targetDriver === 'ALL') {
-                io.to(socket.store).emit('delivery-offer', { orderId: orderId });
+                Object.values(activeUsers).filter(u => u.store === socket.store && u.role === 'driver').forEach(u => {
+                    u.isRinging = true;
+                    if (u.socketId) {
+                        io.to(u.socketId).emit('ring-bell', { source: "ΑΝΑΘΕΣΗ 🛵", location: "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ" });
+                    }
+                });
+                if (store.staffTokens) {
+                    Object.entries(store.staffTokens).forEach(([username, tokenData]) => {
+                        if (tokenData.role === 'driver') {
+                            Logic.sendPushNotification({ fcmToken: tokenData.token, role: 'driver', isNative: tokenData.isNative }, "ΝΕΑ ΔΙΑΝΟΜΗ 🛵", "Έτοιμη παραγγελία για διανομή!", { type: "alarm" }, YOUR_DOMAIN, admin);
+                        }
+                    });
+                }
             } else {
                 if (!order.text.includes(`[DRIVER: ${targetDriver}]`)) {
                     order.text += `\n[DRIVER: ${targetDriver}]`;
