@@ -870,3 +870,66 @@ window.toggleBackend = function() {
     alert("⚙️ Dev Switch:\n\nΤο σύστημα πλέον συνδέεται στο:\n" + (!current ? "🌍 LIVE (Onrender)" : "💻 LOCAL (Localhost)") + "\n\nΗ σελίδα θα ανανεωθεί.");
     location.reload();
 };
+
+/* -----------------------------------------------------------
+   4. NATIVE APK AUTO-UPDATER (ANDROID STAFF ONLY)
+----------------------------------------------------------- */
+setTimeout(() => {
+    if (typeof window === 'undefined') return;
+    
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    let isStaff = false;
+    try {
+        const session = JSON.parse(localStorage.getItem('bellgo_session') || '{}');
+        if (['admin', 'kitchen', 'waiter', 'driver'].includes(session.role)) isStaff = true;
+    } catch(e) {}
+    
+    // Εκτέλεση ελέγχου ΜΟΝΟ αν είναι συσκευή Android ΚΑΙ είναι συνδεδεμένο προσωπικό
+    if (isAndroid && isStaff) {
+        const lastCheck = localStorage.getItem('bellgo_apk_last_check');
+        const now = Date.now();
+        
+        // Έλεγχος το πολύ 1 φορά ανά 1 ώρα (3600000 ms) για αποφυγή rate-limit από το GitHub
+        if (lastCheck && (now - parseInt(lastCheck)) < 3600000) return;
+        
+        fetch('https://api.github.com/repos/theroasters84-wq/bellgo-final/releases/latest')
+            .then(res => {
+                if (!res.ok) throw new Error("GitHub API Error");
+                return res.json();
+            })
+            .then(data => {
+                localStorage.setItem('bellgo_apk_last_check', now.toString());
+                const latestVersion = data.tag_name;
+                if (!latestVersion) return;
+                
+                // ✅ Εκκίνηση ελέγχου από την v.0.0.1 (Αν δεν έχει καταγραφεί άλλη έκδοση)
+                const installedVersion = localStorage.getItem('bellgo_apk_version') || 'v.0.0.1';
+                
+                if (latestVersion !== installedVersion) {
+                    if (document.getElementById('apkUpdateOverlay')) return;
+
+                    const div = document.createElement('div');
+                    div.id = 'apkUpdateOverlay';
+                    div.className = 'modal-overlay';
+                    div.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:99999; display:flex; align-items:center; justify-content:center;";
+                    div.innerHTML = `
+                        <div class="modal-box" style="background:#fff; padding:20px; border-radius:12px; width:90%; max-width:320px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+                            <div style="font-size:50px; margin-bottom:10px;">🚀</div>
+                            <h3 style="color:#10B981; margin:0 0 10px 0;">Νέα Έκδοση App!</h3>
+                            <p style="color:#1f2937; font-size:15px; margin-bottom:20px;">Είναι διαθέσιμη η νέα έκδοση <b>${latestVersion}</b> (Τρέχουσα: ${installedVersion}). Παρακαλώ κατεβάστε την για τη σωστή λειτουργία του συστήματος.</p>
+                            <button id="btnDownloadApkUpdate" style="background:#10B981; color:white; border:none; padding:15px; width:100%; border-radius:8px; font-weight:bold; font-size:16px; margin-bottom:10px; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">📥 ΚΑΤΕΒΑΣΜΑ ΤΩΡΑ</button>
+                            <button onclick="this.parentElement.parentElement.remove()" style="background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; padding:10px; width:100%; border-radius:8px; font-weight:bold; cursor:pointer;">ΑΡΓΟΤΕΡΑ</button>
+                        </div>
+                    `;
+                    document.body.appendChild(div);
+
+                    document.getElementById('btnDownloadApkUpdate').onclick = () => {
+                        // Αποθήκευση της νέας έκδοσης πριν τη λήψη
+                        localStorage.setItem('bellgo_apk_version', latestVersion);
+                        window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk";
+                        div.remove();
+                    };
+                }
+            }).catch(e => console.log("APK Update Check Error", e));
+    }
+}, 3000);

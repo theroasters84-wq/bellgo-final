@@ -37,6 +37,12 @@ if (isAndroid) {
 
 window.handleInstall = async () => {
     if (isAndroid) {
+        // ✅ Καταγραφή της έκδοσης κατά την αρχική εγκατάσταση
+        fetch('https://api.github.com/repos/theroasters84-wq/bellgo-final/releases/latest')
+            .then(res => res.json())
+            .then(data => { if(data.tag_name) localStorage.setItem('bellgo_apk_version', data.tag_name); })
+            .catch(()=>{});
+            
         window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk";
     } else if (deferredPrompt) {
         deferredPrompt.prompt();
