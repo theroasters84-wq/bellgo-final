@@ -37,7 +37,7 @@ if (isAndroid) {
 
 window.handleInstall = async () => {
     if (isAndroid) {
-        window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/download/v.0.0.1/app-release.apk";
+        window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/latest/download/app-release.apk";
     } else if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
