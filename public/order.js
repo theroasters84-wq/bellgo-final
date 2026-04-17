@@ -1175,8 +1175,8 @@ window.App = {
         const isNative = !!window.Capacitor || /Android.*wv/.test(window.navigator.userAgent); // ✅ Detect Native
         try {
             const forceLive = localStorage.getItem('use_live_backend') === 'true';
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
-            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+            const isLocal = window.location.hostname !== 'bellgo.onrender.com';
+            const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
 
             const res = await fetch(`${baseUrl}/create-order-payment`, {
                 method: 'POST',

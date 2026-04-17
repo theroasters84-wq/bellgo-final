@@ -221,7 +221,7 @@ module.exports = function(context) {
         const shopStripeId = data.settings.stripeConnectId;
         if (!shopStripeId) return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει τραπεζικό λογαριασμό (Stripe ID)." }); 
         
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
         const host = req.get('host');
         let returnDomain = isNative ? `bellgoapp://${host}` : `${protocol}://${host}`;
 
@@ -251,7 +251,7 @@ module.exports = function(context) {
         const shopStripeId = data.settings.stripeConnectId;
         if (!shopStripeId) return res.status(400).json({ error: "Το κατάστημα δεν έχει συνδέσει Stripe." });
         
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
         const host = req.get('host');
         let returnDomain = isNative ? `bellgoapp://${host}` : `${protocol}://${host}`;
 

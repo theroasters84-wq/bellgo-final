@@ -3,8 +3,8 @@ import { Sundromes } from './sundromes.js';
 export function initDriverSockets(App, userData) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
-        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+        const isLocal = window.location.hostname !== 'bellgo.onrender.com';
+        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
     }
     

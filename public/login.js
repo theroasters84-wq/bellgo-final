@@ -37,7 +37,7 @@ if (isAndroid) {
 
 window.handleInstall = async () => {
     if (isAndroid) {
-        window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/download/v.1.5.0/app-release.apk";
+        window.location.href = "https://github.com/theroasters84-wq/bellgo-final/releases/download/v.0.0.1/app-release.apk";
     } else if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
@@ -51,8 +51,8 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 const forceLive = localStorage.getItem('use_live_backend') === 'true';
-const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
-const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+const isLocal = window.location.hostname !== 'bellgo.onrender.com';
+const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
 const socket = io(serverUrl, { transports: ['polling', 'websocket'] });
 window.socket = socket; // ✅ Expose for Sundromes
 
@@ -410,8 +410,8 @@ window.Admin = {
         if(!email) return alert("Βάλτε το email σας στο πεδίο από πάνω!");
 
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
-        const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+        const isLocal = window.location.hostname !== 'bellgo.onrender.com';
+        const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
 
         const res = await fetch(`${baseUrl}/create-checkout-session`, {
             method: 'POST',
