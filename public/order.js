@@ -1215,7 +1215,7 @@ window.App = {
         // ✅ LOGIC: Αν είναι συμπλήρωση, στέλνουμε add-items
         if (App.existingOrderId) {
             window.socket.emit('add-items', { id: App.existingOrderId, items: items });
-            alert(t('order_sent') || 'Η παραγγελία εστάλη!');
+            // alert(t('order_sent') || 'Η παραγγελία εστάλη!'); // ✅ Αφαιρέθηκε το popup
             App.existingOrderId = null; // Reset
             document.getElementById('orderText').value = ''; 
             document.getElementById('liveTotal').innerText = `${t('total')}: 0.00€`;

@@ -452,7 +452,7 @@ export const OrdersUI = {
         const separator = App.sidebarMode === 'delivery' ? '\n---\n' : '\n';
         window.socket.emit('new-order', `${header}${separator}${finalBody}`);
         
-        alert(App.t('alert_sent') || "Εστάλη!");
+        // alert(App.t('alert_sent') || "Εστάλη!"); // ✅ Αφαιρέθηκε το ενοχλητικό popup αποστολής
         document.getElementById('sidebarOrderText').value = '';
         if(document.getElementById('sidebarTable')) document.getElementById('sidebarTable').value = '';
         if(document.getElementById('sidebarCovers')) document.getElementById('sidebarCovers').value = '';
