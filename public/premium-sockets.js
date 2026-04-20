@@ -3,8 +3,8 @@ import { DEFAULT_CATEGORIES } from './menu-presets.js';
 export function initPremiumSockets(App, userData) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname !== 'bellgo.onrender.com';
-        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
+        const isLocal = !window.location.hostname.includes('onrender.com');
+        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
         console.log("🔌 Ταμείο συνδέεται στο:", serverUrl || "Local Network", "| Live Forced:", forceLive);
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
     }

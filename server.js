@@ -20,7 +20,7 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_51SwnsPJcEtN
 const stripe = require('stripe')(STRIPE_SECRET_KEY);
 const STRIPE_CLIENT_ID = process.env.STRIPE_CLIENT_ID || 'ca_TxCnGjK4GvUPXuJrE5CaUW9NeUdCeow6'; 
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const YOUR_DOMAIN = process.env.YOUR_DOMAIN || 'https://bellgo.onrender.com'; 
+const YOUR_DOMAIN = process.env.YOUR_DOMAIN || 'https://bellgo-final.onrender.com'; 
 
 // ✅ PRICE LIST (LIVE PRICE IDs)
 const PRICE_BASIC = process.env.PRICE_BASIC || 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€

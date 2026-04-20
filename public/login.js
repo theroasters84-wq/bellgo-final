@@ -57,8 +57,8 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 const forceLive = localStorage.getItem('use_live_backend') === 'true';
-const isLocal = window.location.hostname !== 'bellgo.onrender.com';
-const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
+const isLocal = !window.location.hostname.includes('onrender.com');
+const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
 const socket = io(serverUrl, { transports: ['polling', 'websocket'] });
 window.socket = socket; // ✅ Expose for Sundromes
 

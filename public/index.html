@@ -217,7 +217,7 @@
                         });
                         if (token) {
                             localStorage.setItem('fcm_token', token);
-                            if (window.socket && window.socket.connected) window.socket.emit('update-token', { username: userData.name, token: token });
+                            if (window.socket && window.socket.connected) window.socket.emit('update-token', { username: userData.name, token: token, role: userData.role, isNative: !!window.Capacitor });
                         }
                     }
                 } catch(e) { console.log("FCM Error:", e); }
@@ -271,7 +271,9 @@
 
             connectSocket: () => {
                 if (socket && socket.connected) return;
-                const serverUrl = window.location.hostname.includes('onrender.com') ? "" : "https://bellgo-final.onrender.com";
+                const forceLive = localStorage.getItem('use_live_backend') === 'true';
+                const isLocal = !window.location.hostname.includes('onrender.com');
+                const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
                 socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
                 window.socket = socket; 
 

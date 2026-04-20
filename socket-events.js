@@ -105,9 +105,10 @@ module.exports = function(context) {
         });
 
         socket.on('update-token', (data) => {
-            const key = `${socket.store}_${data.username}`;
-            let currentRole = 'waiter';
-            let currentIsNative = false;
+            const safeUsername = (data.username || '').trim();
+            const key = `${socket.store}_${safeUsername}`;
+            let currentRole = data.role || 'waiter';
+            let currentIsNative = data.isNative || false;
 
             if (activeUsers[key]) {
                 activeUsers[key].fcmToken = data.token;
@@ -118,12 +119,13 @@ module.exports = function(context) {
                 if (!storesData[socket.store].staffTokens) {
                     storesData[socket.store].staffTokens = {};
                 }
-                const existing = storesData[socket.store].staffTokens[data.username];
+                const existing = storesData[socket.store].staffTokens[safeUsername];
                 if (!activeUsers[key] && existing) {
                     currentRole = existing.role;
                     currentIsNative = existing.isNative;
                 }
-                storesData[socket.store].staffTokens[data.username] = {
+                if (data.role) currentRole = data.role; // ✅ Force role from client
+                storesData[socket.store].staffTokens[safeUsername] = {
                     token: data.token,
                     role: currentRole,
                     isNative: currentIsNative

@@ -172,7 +172,7 @@ export const ReserveTable = {
         
         try {
             const forceLive = localStorage.getItem('use_live_backend') === 'true';
-            const isLocal = window.location.hostname !== 'bellgo-final.onrender.com';
+            const isLocal = !window.location.hostname.includes('onrender.com');
             const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
 
             const res = await fetch(`${baseUrl}/create-qr-payment`, { 

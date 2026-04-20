@@ -3,8 +3,8 @@ import { DEFAULT_CATEGORIES } from './menu-presets.js';
 export function initKitchenSockets(App, userData) {
     if (!window.socket) {
         const forceLive = localStorage.getItem('use_live_backend') === 'true';
-        const isLocal = window.location.hostname !== 'bellgo.onrender.com';
-        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo.onrender.com";
+        const isLocal = !window.location.hostname.includes('onrender.com');
+        const serverUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
         window.socket = io(serverUrl, { transports: ['polling', 'websocket'], reconnection: true });
     }
     const socket = window.socket;

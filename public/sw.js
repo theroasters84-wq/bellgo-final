@@ -7,9 +7,9 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 let notificationInterval;
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V0.6)
+   2. CONFIGURATION & CACHE (V0.7)
 ----------------------------------------------------------- */
-const CACHE_NAME = 'bellgo-v0.6';
+const CACHE_NAME = 'bellgo-v0.7';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -17,6 +17,12 @@ const ASSETS_TO_CACHE = [
   '/order.html',
   '/premium.html',
   '/stafpremium.html',
+  '/dianomeas.html',
+  '/kitchen.html',
+  '/dianomeas.js',
+  '/kitchen.js',
+  '/driver-sockets.js',
+  '/kitchen-sockets.js',
   '/style.css',
   '/menu-presets.js',
   '/order.js',
@@ -208,6 +214,7 @@ self.addEventListener('fetch', (event) => {
         if (url.pathname.startsWith('/staff/')) {
              // Αν ζητάει την εφαρμογή, δίνουμε το cached HTML
              if (url.pathname.includes('app')) return caches.match('/stafpremium.html', { ignoreSearch: true });
+             if (url.pathname.includes('driver')) return caches.match('/dianomeas.html', { ignoreSearch: true });
              // ✅ NEW: Fallback για assets του Staff (π.χ. /staff/player.js -> /player.js)
              const relative = url.pathname.replace('/staff', '');
              return caches.match(relative, { ignoreSearch: true }).then(m => m || caches.match(event.request, { ignoreSearch: true }));

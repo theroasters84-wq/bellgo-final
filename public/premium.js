@@ -210,7 +210,7 @@ window.App = {
         // App.requestNotifyPermission(); 
         PushNotifications.checkPermission(messaging, (token) => {
             if(window.socket && window.socket.connected) {
-                window.socket.emit('update-token', { token: token, username: userData.name });
+                window.socket.emit('update-token', { token: token, username: userData.name, role: userData.role, isNative: !!window.Capacitor });
             }
         }, false);
 
