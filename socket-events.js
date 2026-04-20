@@ -106,16 +106,27 @@ module.exports = function(context) {
 
         socket.on('update-token', (data) => {
             const key = `${socket.store}_${data.username}`;
+            let currentRole = 'waiter';
+            let currentIsNative = false;
+
             if (activeUsers[key]) {
                 activeUsers[key].fcmToken = data.token;
+                currentRole = activeUsers[key].role;
+                currentIsNative = activeUsers[key].isNative;
             }
             if (storesData[socket.store]) {
                 if (!storesData[socket.store].staffTokens) {
                     storesData[socket.store].staffTokens = {};
                 }
+                const existing = storesData[socket.store].staffTokens[data.username];
+                if (!activeUsers[key] && existing) {
+                    currentRole = existing.role;
+                    currentIsNative = existing.isNative;
+                }
                 storesData[socket.store].staffTokens[data.username] = {
                     token: data.token,
-                    role: activeUsers[key].role
+                    role: currentRole,
+                    isNative: currentIsNative
                 };
                 Logic.saveStoreToFirebase(socket.store, db, storesData);
             }
@@ -222,7 +233,7 @@ module.exports = function(context) {
         socket.on('admin-stop-ringing', () => { 
             const store = getMyStore(); 
             if(store) {
-                 Object.values(activeUsers).filter(u => u.store === socket.store && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
+                 Object.values(activeUsers).filter(u => u.store === socket.store && (u.role === 'admin' || u.role === 'kitchen' || u.role === 'waiter')).forEach(u => {
                      u.isRinging = false;
                      if (u.socketId) {
                          io.to(u.socketId).emit('stop-bell');

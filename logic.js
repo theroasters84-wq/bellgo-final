@@ -300,7 +300,7 @@ module.exports = {
         const store = storesData[storeName];
         if (!store) return;
 
-        Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen')).forEach(u => {
+        Object.values(activeUsers).filter(u => u.store === storeName && (u.role === 'admin' || u.role === 'kitchen' || u.role === 'waiter')).forEach(u => {
             if (excludeSocketId && u.socketId === excludeSocketId) return;
             
             // ✅ NEW: Αν ζητήθηκε skipAdmins (π.χ. παραγγελία από Admin), μην χτυπάς στους άλλους Admin
@@ -312,7 +312,7 @@ module.exports = {
 
         if (!store.staffTokens) store.staffTokens = {};
         Object.entries(store.staffTokens).forEach(([username, data]) => {
-            if (data.role === 'admin' || data.role === 'kitchen') {
+            if (data.role === 'admin' || data.role === 'kitchen' || data.role === 'waiter') {
                 // ✅ NEW: Skip Admins if requested
                 if (skipAdmins && data.role === 'admin') return;
 

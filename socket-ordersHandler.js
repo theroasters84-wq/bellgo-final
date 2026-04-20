@@ -189,7 +189,7 @@ module.exports = function(socket, context, getMyStore) {
 
             if (store.staffTokens) {
                 Object.entries(store.staffTokens).forEach(([username, tData]) => {
-                    if (tData.role === 'admin') {
+                    if (tData.role === 'admin' || tData.role === 'waiter') {
                         const key = `${socket.store}_${username}`;
                         if (activeUsers[key] && activeUsers[key].status === 'online') return;
                         Logic.sendPushNotification({ fcmToken: tData.token, role: tData.role, isNative: tData.isNative }, `🛎️ ΚΛΗΣΗ: ΤΡΑΠΕΖΙ ${table}`, msg, { type: "alarm" }, YOUR_DOMAIN, admin);
