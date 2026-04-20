@@ -902,8 +902,8 @@ setTimeout(() => {
                 const latestVersion = data.tag_name;
                 if (!latestVersion) return;
                 
-                // ✅ Εκκίνηση ελέγχου από την v.0.0.1 (Αν δεν έχει καταγραφεί άλλη έκδοση)
-                const installedVersion = localStorage.getItem('bellgo_apk_version') || 'v.0.0.1';
+                // ✅ Εκκίνηση ελέγχου από την v.0.6 (Αν δεν έχει καταγραφεί άλλη έκδοση)
+                const installedVersion = localStorage.getItem('bellgo_apk_version') || 'v.0.6';
                 
                 if (latestVersion !== installedVersion) {
                     if (document.getElementById('apkUpdateOverlay')) return;
