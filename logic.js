@@ -286,11 +286,9 @@ module.exports = {
                 data: { type: "alarm", ...Object.fromEntries(Object.entries(dataPayload).map(([k, v]) => [k, String(v)])), title: title, body: body, url: targetUrl } // ✅ NEW: Ensure only string values
             };
 
-            // ✅ NEW: Android Native Logic (Data Only for Background Wakeup)
-            if (!target.isNative) {
-                msg.notification = { title: title, body: body };
-                msg.android.notification = { channelId: "bellgo_alarm_channel" };
-            }
+            // ✅ FIX: ΠΑΝΤΑ στέλνουμε το notification payload για να ξυπνάει το Native App!
+            msg.notification = { title: title, body: body };
+            msg.android.notification = { channelId: "bellgo_alarm_channel" };
 
             admin.messaging().send(msg).catch(e => console.log("Push Error:", e.message));
         }
