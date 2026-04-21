@@ -125,7 +125,16 @@ module.exports = function(socket, context, getMyStore) {
             const addrMatch = orderText.match(/📍\s*(.+)/);
             if (addrMatch) locationInfo = addrMatch[1].trim();
             let notifTitle = orderText.includes('[PICKUP') ? "NEO PICKUP 🛍️" : "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕";
-            Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, orderId, storesData, activeUsers, io, YOUR_DOMAIN, admin, false);
+            
+            if (socket.role !== 'admin') {
+                Logic.notifyAdmin(socket.store, notifTitle, `Από: ${socket.username}`, socket.id, locationInfo, orderId, storesData, activeUsers, io, YOUR_DOMAIN, admin, false);
+            } else {
+                // Όταν η παραγγελία μπαίνει από τον Admin, είναι ήδη 'cooking' (αποδεκτή).
+                // Δεν χρειάζεται να χτυπάει ο συναγερμός σε Σερβιτόρους. Ενημερώνουμε απλά για εκτύπωση:
+                setTimeout(() => {
+                    io.to(socket.store).emit('order-changed', { id: orderId, status: 'cooking', startTime: startTime });
+                }, 500);
+            }
         }
         Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
       } catch (e) {
