@@ -463,6 +463,11 @@ export const StatsUI = {
                     <span style="color:#00E676;">Μεροκάματα:</span>
                     <span>${dayWages.toFixed(2)}€</span>
                 </div>
+                ${(expenses.wagesList && expenses.wagesList.length > 0) ? `
+                <div style="margin-top:5px; margin-bottom:10px; padding:5px; background:rgba(0,0,0,0.2); border-radius:5px; font-size:13px;">
+                    ${expenses.wagesList.map(w => `<div style="display:flex; justify-content:space-between; color:#bbb;"><span>- ${w.name}</span><span>${w.price.toFixed(2)}€</span></div>`).join('')}
+                </div>
+                ` : ''}
                 <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #555;">
                     <div style="color:#aaa; font-size:12px; margin-bottom:5px;">Λοιπά Έξοδα:</div>
                     <pre style="white-space: pre-wrap; font-family:inherit; margin:0; color:#ddd; font-size:14px;">${expenses.text || '-'}</pre>

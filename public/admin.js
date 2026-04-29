@@ -502,10 +502,44 @@ export const Admin = {
         window.App.renderExpensePresets();
     },
     
+    renderWages: () => {
+        const container = document.getElementById('wagesContainer');
+        container.innerHTML = '';
+        let total = 0;
+        (window.App.dailyWagesList || []).forEach((w, idx) => {
+            total += w.price;
+            const row = document.createElement('div');
+            row.style.cssText = "display:flex; justify-content:space-between; color:#ddd; font-size:14px; border-bottom:1px solid #444; padding-bottom:3px;";
+            row.innerHTML = `<span>${w.name}</span> <span>${w.price.toFixed(2)}€ <span style="color:red; cursor:pointer; margin-left:10px; font-weight:bold;" onclick="App.removeWage(${idx})">✕</span></span>`;
+            container.appendChild(row);
+        });
+        document.getElementById('lblWagesTotal').innerText = total.toFixed(2) + '€';
+        window.App.calcExpensesTotal();
+    },
+    
+    addWage: () => {
+        const name = document.getElementById('inpWageName').value.trim();
+        const price = parseFloat(document.getElementById('inpWagePrice').value);
+        if(!name || isNaN(price)) return alert("Συμπληρώστε όνομα και τιμή!");
+        if(!window.App.dailyWagesList) window.App.dailyWagesList = [];
+        window.App.dailyWagesList.push({ name, price });
+        document.getElementById('inpWageName').value = '';
+        document.getElementById('inpWagePrice').value = '';
+        window.App.renderWages();
+    },
+    
+    removeWage: (idx) => {
+        if(confirm("Διαγραφή;")) {
+            window.App.dailyWagesList.splice(idx, 1);
+            window.App.renderWages();
+        }
+    },
+    
     calcExpensesTotal: () => {
         let total = 0;
         if(window.App.fixedExpenses) { window.App.fixedExpenses.forEach(f => total += (f.price || 0)); }
-        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
+        let wages = 0;
+        if(window.App.dailyWagesList) { window.App.dailyWagesList.forEach(w => wages += w.price); }
         total += wages;
         const txt = document.getElementById('txtExpenses').value;
         txt.split('\n').forEach(line => {
@@ -528,8 +562,9 @@ export const Admin = {
     saveExpenses: () => {
         const total = window.App.calcExpensesTotal();
         const text = document.getElementById('txtExpenses').value;
-        const wages = parseFloat(document.getElementById('inpWages').value) || 0;
-        window.socket.emit('save-expenses', { text: text, total: total, wages: wages });
+        let wages = 0;
+        if(window.App.dailyWagesList) { window.App.dailyWagesList.forEach(w => wages += w.price); }
+        window.socket.emit('save-expenses', { text: text, total: total, wages: wages, wagesList: window.App.dailyWagesList || [] });
         document.getElementById('expensesModal').style.display = 'none';
         alert("Αποθηκεύτηκε!");
     },

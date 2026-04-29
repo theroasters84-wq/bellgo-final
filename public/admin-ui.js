@@ -305,10 +305,19 @@ export const AdminUI = {
         document.getElementById('txtExpenses').value = currentText;
         
         let currentWages = 0;
+        let currentWagesList = [];
         if (window.App.cachedStats && window.App.cachedStats[monthKey] && window.App.cachedStats[monthKey].days[day] && window.App.cachedStats[monthKey].days[day].expenses) {
             currentWages = window.App.cachedStats[monthKey].days[day].expenses.wages || 0;
+            currentWagesList = window.App.cachedStats[monthKey].days[day].expenses.wagesList || [];
         }
-        document.getElementById('inpWages').value = currentWages > 0 ? currentWages : '';
+        
+        // Backward compatibility: If there are wages but no list, convert it to a generic item
+        if (currentWages > 0 && currentWagesList.length === 0) {
+             currentWagesList = [{name: 'Γενικό', price: currentWages}];
+        }
+        
+        window.App.dailyWagesList = currentWagesList;
+        if(window.App.renderWages) window.App.renderWages();
 
         if(window.App.calcExpensesTotal) window.App.calcExpensesTotal();
 

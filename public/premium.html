@@ -626,9 +626,17 @@
             </div>
 
             <!-- ✅ NEW: WAGES INPUT (ΜΕΡΟΚΑΜΑΤΑ) -->
-            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444; display:flex; align-items:center; justify-content:space-between;">
-                <span style="color:#FFD700; font-weight:bold;" data-i18n="wages">👷 ΜΕΡΟΚΑΜΑΤΑ (Ημέρας)</span>
-                <input type="number" id="inpWages" class="inp-settings" placeholder="0.00€" style="margin:0; width:100px; text-align:center; color:#00E676; font-weight:bold;" oninput="App.calcExpensesTotal()">
+            <div style="margin-bottom:10px; background:#222; padding:10px; border-radius:8px; border:1px solid #444;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:#FFD700; font-weight:bold;" data-i18n="wages">👷 ΜΕΡΟΚΑΜΑΤΑ (Ημέρας)</span>
+                    <span style="color:#00E676; font-weight:bold;" id="lblWagesTotal">0.00€</span>
+                </div>
+                <div id="wagesContainer" style="display:flex; flex-direction:column; gap:5px; margin-bottom:10px;"></div>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="inpWageName" class="inp-settings" placeholder="Όνομα (π.χ. Γιάννης)" style="margin:0; flex:2;">
+                    <input type="number" id="inpWagePrice" class="inp-settings" placeholder="€" style="margin:0; flex:1;">
+                    <button class="modal-btn" style="width:auto; margin:0; background:#FFD700; color:black;" onclick="App.addWage()">➕</button>
+                </div>
             </div>
 
             <textarea id="txtExpenses" class="order-text" style="height:65vh; font-size:16px;" data-i18n-placeholder="expenses_placeholder" placeholder="Γράψτε έξοδα (π.χ. Ψωμί . 2,50)..." oninput="App.calcExpensesTotal()"></textarea>
