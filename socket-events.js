@@ -192,7 +192,7 @@ module.exports = function(context) {
                 if (!store.stats) store.stats = {};
                 if (!store.stats[monthKey]) store.stats[monthKey] = { orders: 0, turnover: 0, days: {} };
                 if (!store.stats[monthKey].days[day]) store.stats[monthKey].days[day] = { orders: 0, turnover: 0 };
-                store.stats[monthKey].days[day].expenses = { text: data.text, total: data.total };
+                store.stats[monthKey].days[day].expenses = { text: data.text, total: data.total, wages: data.wages };
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         });

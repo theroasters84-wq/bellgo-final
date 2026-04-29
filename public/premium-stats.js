@@ -453,6 +453,22 @@ export const StatsUI = {
                 </div>
             </div>
 
+            <h3 class="stats-section-title">💸 Ανάλυση Εξόδων (Σύνολο: ${(expenses.total || 0).toFixed(2)}€)</h3>
+            <div style="background:#222; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:#FFD700;">Πάγια (Ημέρας):</span>
+                    <span>${dailyFixedSum.toFixed(2)}€</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:#00E676;">Μεροκάματα:</span>
+                    <span>${dayWages.toFixed(2)}€</span>
+                </div>
+                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #555;">
+                    <div style="color:#aaa; font-size:12px; margin-bottom:5px;">Λοιπά Έξοδα:</div>
+                    <pre style="white-space: pre-wrap; font-family:inherit; margin:0; color:#ddd; font-size:14px;">${expenses.text || '-'}</pre>
+                </div>
+            </div>
+
             ${StatsUI.getLogistisHtml(dayData.turnover || 0, dailyFixedSum, dayWages)}
 
             ${StatsUI.getQrStatsHtml(dayData.qrStats)}
