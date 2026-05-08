@@ -1,4 +1,5 @@
 import { DEFAULT_CATEGORIES } from './menu-presets.js';
+import { Sundromes } from './sundromes.js';
 
 export function initPremiumSockets(App, userData) {
     if (!window.socket) {
@@ -99,6 +100,7 @@ export function initPremiumSockets(App, userData) {
                 if (window.lastFeatsStr !== fStr) {
                     App.features = settings.features;
                     App.applyFeatureVisibility(); // ✅ Update UI based on features
+                    Sundromes.checkSubscriptionAndEnforce({ ...userData, features: App.features }); // ✅ Ζωντανό μπλοκάρισμα αν χαθεί η συνδρομή
                     window.lastFeatsStr = fStr;
                 }
                 
