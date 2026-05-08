@@ -7,7 +7,7 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js')
 let notificationInterval;
 
 /* -----------------------------------------------------------
-   2. CONFIGURATION & CACHE (V0.7)
+   2. CONFIGURATION & CACHE (V0.8)
 ----------------------------------------------------------- */
 const CACHE_NAME = 'bellgo-v0.7';
 const ASSETS_TO_CACHE = [
