@@ -212,7 +212,10 @@ module.exports = function(context) {
                 cancel_url: finalReturnUrl,
             });
             res.json({ url: session.url });
-        } catch(e) { res.status(500).json({ error: e.message }); }
+        } catch(e) { 
+            console.error("❌ Stripe Checkout Error:", e.message);
+            res.status(500).json({ error: e.message }); 
+        }
     });
 
     router.post('/create-order-payment', async (req, res) => {
