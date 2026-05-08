@@ -1,3 +1,4 @@
+require('dotenv').config(); // ✅ Απαραίτητο για να διαβάζει τα Live κλειδιά από το .env
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -23,12 +24,12 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const YOUR_DOMAIN = process.env.YOUR_DOMAIN || 'https://bellgo-final.onrender.com'; 
 
 // ✅ PRICE LIST (LIVE PRICE IDs)
-const PRICE_BASIC = process.env.PRICE_BASIC || 'price_1Sx9PFJcEtNSGviLteieJCwj';   // 4€
-const PRICE_PREMIUM = process.env.PRICE_PREMIUM || 'price_1SzHTPJcEtNSGviLk7N84Irn'; // 10€
-const PRICE_DELIVERY = process.env.PRICE_DELIVERY || 'price_1T5RpbJcEtNSGviLy5zj4t2F';
-const PRICE_TABLES = process.env.PRICE_TABLES || 'price_1T5RtQJcEtNSGviLGHRhyDx9';
-const PRICE_POS = process.env.PRICE_POS || 'price_1T5RvLJcEtNSGviLrYYs72aH';
-const PRICE_LOYALTY = process.env.PRICE_LOYALTY || 'price_1T5RwBJcEtNSGviLq7VJ1KLi';
+const PRICE_BASIC = process.env.PRICE_BASIC || 'price_1TDRNXJAVbLLS5IpL2kral1o';   // 4€
+const PRICE_PREMIUM = process.env.PRICE_PREMIUM || 'price_1TDRNaJAVbLLS5Ip8prJmGrD'; // 10€
+const PRICE_DELIVERY = process.env.PRICE_DELIVERY || 'price_1TDRNYJAVbLLS5Ip2cDXB22R';
+const PRICE_TABLES = process.env.PRICE_TABLES || 'price_1TDRNbJAVbLLS5IpeKBVsVvh';
+const PRICE_POS = process.env.PRICE_POS || 'price_1TDRNYJAVbLLS5Ipnsrk6rhY';
+const PRICE_LOYALTY = process.env.PRICE_LOYALTY || 'price_1TDRNYJAVbLLS5Ippmnf0Qzw';
 
 // ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
 // ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
