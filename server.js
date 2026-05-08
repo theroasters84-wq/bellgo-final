@@ -30,6 +30,7 @@ const PRICE_DELIVERY = process.env.PRICE_DELIVERY || 'price_1TDRNYJAVbLLS5Ip2cDX
 const PRICE_TABLES = process.env.PRICE_TABLES || 'price_1TDRNbJAVbLLS5IpeKBVsVvh';
 const PRICE_POS = process.env.PRICE_POS || 'price_1TDRNYJAVbLLS5Ipnsrk6rhY';
 const PRICE_LOYALTY = process.env.PRICE_LOYALTY || 'price_1TDRNYJAVbLLS5Ippmnf0Qzw';
+const PRICE_PROMO = process.env.PRICE_PROMO || 'price_1TUqpLJAVbLLS5IpSTH4GNys'; // 🎁 10€ Offer All-in-one
 
 // ✅ NEW: Αντιστοίχιση Stripe Price IDs με Features
 // ⚠️ ΠΡΟΣΟΧΗ: Αντικατέστησε τα 'price_xxx' με τα πραγματικά ID από το Stripe Dashboard
@@ -72,7 +73,7 @@ const tempBlacklist = new Set();
 // ✅ STRIPE ROUTES & WEBHOOKS (Mounted BEFORE express.json)
 const stripeRoutes = require('./stripe-routes')({
     stripe, STRIPE_WEBHOOK_SECRET, STRIPE_CLIENT_ID, YOUR_DOMAIN, 
-    PRICE_BASIC, PRICE_PREMIUM, FEATURE_PRICES, db, storesData, activeUsers, io, admin
+    PRICE_BASIC, PRICE_PREMIUM, PRICE_PROMO, FEATURE_PRICES, db, storesData, activeUsers, io, admin
 });
 app.use('/', stripeRoutes);
 

@@ -477,7 +477,7 @@ module.exports = function(socket, context, getMyStore) {
                         if (!line.includes('✅')) newTag = ' ✅';
                     }
                     lines[data.index] = clean + newTag;
-  trexw local hoast                   o.text = lines.join('\n'); 
+                    o.text = lines.join('\n'); 
                     Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db); 
                 } 
             } 

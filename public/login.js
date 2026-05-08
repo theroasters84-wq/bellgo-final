@@ -136,6 +136,27 @@ window.onload = function() {
     // Load Language
     const savedLang = localStorage.getItem('bellgo_lang') || 'el';
     I18n.setLanguage(savedLang);
+
+    // 🎁 Δημιουργία και Εμφάνιση του Promo Box
+    const roleSel = document.getElementById('roleSelection');
+    if (roleSel && !document.getElementById('promoBox')) {
+        const promo = document.createElement('div');
+        promo.id = 'promoBox';
+        promo.style.cssText = "background: linear-gradient(135deg, #FFD700, #FF9800); padding: 15px 20px; border-radius: 15px; text-align: center; margin-top: 25px; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); cursor: pointer; transition: transform 0.2s; width: 100%; box-sizing: border-box;";
+        promo.innerHTML = `
+            <div style="font-size:18px; margin-bottom:8px; color: #1f2937;">🎉 <b>ΜΕΓΑΛΗ ΠΡΟΣΦΟΡΑ</b> 🎉</div>
+            <div style="color:#1f2937; font-size:14px; margin-bottom:12px;">Απόκτησε ΟΛΟ το BellGo (εκτός POS) μόνο με <b style="font-size:16px;">10€ / μήνα</b>!</div>
+            <button style="background:#1f2937; color:#ffffff !important; border:none; padding:12px; border-radius:10px; font-weight:bold; cursor:pointer; width:100%; box-shadow:0 4px 10px rgba(0,0,0,0.3);">🚀 ΑΓΟΡΑ ΤΩΡΑ</button>
+        `;
+        promo.onmouseover = () => promo.style.transform = 'scale(1.02)';
+        promo.onmouseout = () => promo.style.transform = 'scale(1)';
+        promo.onclick = () => {
+            const email = prompt("🎉 ΠΡΟΣΦΟΡΑ 10€\n\nΓια να κατοχυρώσετε την προσφορά, εισάγετε το Email της επιχείρησής σας:");
+            if (email && email.includes('@')) { Admin.buyPackagePromo(email.trim()); }
+            else if (email) { alert("Παρακαλώ εισάγετε ένα έγκυρο email."); }
+        };
+        roleSel.appendChild(promo);
+    }
 };
 
 window.setLanguage = (lang) => {
@@ -427,6 +448,21 @@ window.Admin = {
         const data = await res.json();
         if(data.url) window.location.href = data.url;
         else alert("Σφάλμα σύνδεσης με Stripe");
+    },
+
+    buyPackagePromo: async (email) => {
+        const forceLive = localStorage.getItem('use_live_backend') === 'true';
+        const isLocal = !window.location.hostname.includes('onrender.com');
+        const baseUrl = (isLocal && !forceLive) ? "" : "https://bellgo-final.onrender.com";
+
+        const res = await fetch(`${baseUrl}/create-checkout-session`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email: email, plan: 'promo' })
+        });
+        const data = await res.json();
+        if(data.url) window.location.href = data.url;
+        else alert("Σφάλμα σύνδεσης με Stripe.");
     }
 };
 

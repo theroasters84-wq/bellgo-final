@@ -3,7 +3,7 @@ const Logic = require('./logic');
 
 module.exports = function(context) {
     const router = express.Router();
-    const { stripe, STRIPE_WEBHOOK_SECRET, STRIPE_CLIENT_ID, YOUR_DOMAIN, PRICE_BASIC, PRICE_PREMIUM, FEATURE_PRICES, db, storesData, activeUsers, io, admin } = context;
+    const { stripe, STRIPE_WEBHOOK_SECRET, STRIPE_CLIENT_ID, YOUR_DOMAIN, PRICE_BASIC, PRICE_PREMIUM, PRICE_PROMO, FEATURE_PRICES, db, storesData, activeUsers, io, admin } = context;
 
     // ✅ Stripe Webhook Endpoint (Πρέπει να δέχεται raw body)
     router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
@@ -159,6 +159,16 @@ module.exports = function(context) {
                         const priceId = item.price.id;
                         if (priceId === PRICE_PREMIUM) planType = 'premium';
                         if (FEATURE_PRICES[priceId]) activeFeatures[FEATURE_PRICES[priceId]] = true;
+                        
+                        // 🎁 PROMO PACK: Ενεργοποιεί τα πάντα ΕΚΤΟΣ από POS
+                        if (priceId === PRICE_PROMO) {
+                            planType = 'premium';
+                            activeFeatures['pack_chat'] = true;
+                            activeFeatures['pack_manager'] = true;
+                            activeFeatures['pack_delivery'] = true;
+                            activeFeatures['pack_tables'] = true;
+                            activeFeatures['pack_loyalty'] = true;
+                        }
                 });
 
                 if (storeData) {
@@ -192,6 +202,8 @@ module.exports = function(context) {
             if (plan === 'loyalty') {
                 const loyaltyPid = Object.keys(FEATURE_PRICES).find(k => FEATURE_PRICES[k] === 'pack_loyalty');
                 if (loyaltyPid) line_items.push({ price: loyaltyPid, quantity: 1 });
+            } else if (plan === 'promo') {
+                line_items.push({ price: PRICE_PROMO, quantity: 1 });
             } else {
                 line_items.push({ price: (plan === 'premium' ? PRICE_PREMIUM : PRICE_BASIC), quantity: 1 });
             }
