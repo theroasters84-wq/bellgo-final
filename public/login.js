@@ -358,19 +358,7 @@ window.Admin = {
         const btn = document.getElementById('btnAdminLogin');
         btn.innerText = t('checking') || "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
 
-        // ✅ HACK: Παράκαμψη Stripe για Demo Emails (που τελειώνουν σε 1992+)
-        // Αν το email έχει έτος >= 1992, το θεωρούμε Premium και μπαίνουμε.
-        const match = email.match(/(\d{4})(?:@|$)/);
-        if (match) {
-            const year = parseInt(match[1]);
-            if (year >= 1992) {
-                adminUser = { email: email, personalEmail: personalEmail, displayName: name || "Admin", features: {} }; 
-                adminPlan = 'premium'; // Force premium για να μπει στο dashboard
-                socket.emit('check-pin-status', { email: email });
-                btn.innerText = t('login_btn') || "ΕΙΣΟΔΟΣ"; btn.disabled = false;
-                return; // Σταματάμε εδώ, δεν καλούμε το Stripe
-            }
-        }
+        // Removed admin demo email hack
 
         // ✅ FIX: Αυστηρός έλεγχος συνδρομής μέσω Sundromes.checkLogin
         // Αν δεν έχει συνδρομή, το checkLogin εμφανίζει Alert & Modal και επιστρέφει null.

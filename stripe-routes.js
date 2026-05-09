@@ -122,23 +122,12 @@ module.exports = function(context) {
         let hasManualActive = false;
         if (storeData && storeData.settings && storeData.settings.features) {
             manualFeatures = storeData.settings.features;
-            hasManualActive = Object.values(manualFeatures).some(v => v === true);
+            // ✅ FIX: Ελέγχουμε ΜΟΝΟ τα πραγματικά πακέτα συνδρομών (αγνοούμε τα config όπως warnOnBackground)
+            const subKeys = ['pack_chat', 'pack_manager', 'pack_delivery', 'pack_tables', 'pack_pos', 'pack_loyalty'];
+            hasManualActive = subKeys.some(key => manualFeatures[key] === true);
         }
 
-        const match = email.match(/(\d{4})$/);
-        if (match) {
-            const year = parseInt(match[1]);
-            if (year >= 1992) {
-                 let hackFeatures = { ...manualFeatures };
-                 if (year === 1992) hackFeatures['pack_chat'] = true;      
-                 if (year === 1993) hackFeatures['pack_manager'] = true;   
-                 if (year === 1994) hackFeatures['pack_delivery'] = true;  
-                 if (year === 1995) hackFeatures['pack_tables'] = true;    
-                 if (year === 1996) hackFeatures['pack_pos'] = true;       
-                 if (year === 1997) hackFeatures['pack_loyalty'] = true;   
-                 return res.json({ active: true, plan: 'premium', features: hackFeatures, storeId: email, exists: true });
-            }
-        }
+        // Removed demo email hack
 
         try {
             const customers = await stripe.customers.search({ query: `email:'${email}'` });
