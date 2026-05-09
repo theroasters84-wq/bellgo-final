@@ -386,18 +386,7 @@ window.Admin = {
         signInWithPopup(auth, provider).then(async (result) => {
             const email = result.user.email;
             
-            // ✅ HACK: Παράκαμψη Stripe για Demo Emails (Google Login)
-            const match = email.match(/(\d{4})(?:@|$)/);
-            if (match) {
-                const year = parseInt(match[1]);
-                if (year >= 1992) {
-                    adminUser = result.user;
-                    adminUser.features = {};
-                    adminPlan = 'premium';
-                    socket.emit('check-pin-status', { email: email });
-                    return;
-                }
-            }
+            // Removed google login demo email hack
 
             // ✅ FIX: Αυστηρός έλεγχος και για Google Login
             const data = await Sundromes.checkLogin(email);
