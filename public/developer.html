@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BellGo Debugger</title>
-    <link rel="stylesheet" href="/style.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { background: #111; color: #0f0; font-family: 'Courier New', monospace; padding: 20px; overflow-y: auto; height: 100vh; display: block; }
-        .log-entry { border-bottom: 1px solid #333; padding: 8px 0; font-size: 13px; word-break: break-all; }
-        .log-time { color: #888; margin-right: 10px; }
-        .log-type { font-weight: bold; margin-right: 10px; display: inline-block; width: 60px; }
-        .log-data { color: #ddd; white-space: pre-wrap; }
+        body { background: #111 !important; color: #0f0 !important; font-family: 'Courier New', monospace; padding: 20px; overflow-y: auto; height: 100vh; display: block; margin: 0; }
+        .log-entry { border-bottom: 1px solid #444; padding: 12px 0; font-size: 14px; word-break: break-all; line-height: 1.5; }
+        .log-time { color: #bbb; margin-right: 10px; font-size: 13px; }
+        .log-type { font-weight: bold; margin-right: 10px; display: inline-block; width: 110px; font-size: 15px; }
+        .log-data { color: #ffffff; white-space: pre-wrap; font-weight: 600; }
         
         .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #222; padding: 15px; border-radius: 10px; border: 1px solid #444; }
         .btn-debug { padding: 10px 15px; background: #333; border: 1px solid #555; color: white; cursor: pointer; border-radius: 5px; font-weight: bold; font-family: sans-serif; }
@@ -35,13 +34,13 @@
     <h2 style="color: #FFD700;">🪲 BellGo Developer Console</h2>
     
     <div class="toolbar">
-        <button class="btn-debug" onclick="Debug.clearLogs()">🧹 Clear Logs</button>
-        <button class="btn-debug" onclick="Debug.checkStorage()">💾 Check Storage</button>
-        <button class="btn-debug" onclick="Debug.getStats()">📊 Get Stats</button>
-        <button class="btn-debug" style="background:#673AB7;" onclick="Debug.openAnalytics()">📈 Analytics</button>
-        <button class="btn-debug btn-danger" onclick="Debug.clearStorage()">🗑️ WIPE DATA</button>
-        <button class="btn-debug" onclick="Debug.reload()">🔄 Reload</button>
-        <button class="btn-debug" onclick="window.location.href='login.html'">🔙 Login</button>
+        <button class="btn-debug" onclick="Debug.clearLogs()">🧹 Καθαρισμός Logs</button>
+        <button class="btn-debug" onclick="Debug.checkStorage()">💾 Έλεγχος Μνήμης</button>
+        <button class="btn-debug" onclick="Debug.getStats()">📊 Λήψη Στατιστικών</button>
+        <button class="btn-debug" style="background:#673AB7;" onclick="Debug.openAnalytics()">📈 Αναλυτικά</button>
+        <button class="btn-debug btn-danger" onclick="Debug.clearStorage()">🗑️ ΔΙΑΓΡΑΦΗ ΔΕΔΟΜΕΝΩΝ</button>
+        <button class="btn-debug" onclick="Debug.reload()">🔄 Ανανέωση</button>
+        <button class="btn-debug" onclick="window.location.href='login.html'">🔙 Είσοδος</button>
     </div>
 
     <div id="consoleOutput"></div>
@@ -92,9 +91,9 @@
                 const json = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
                 
                 let color = '#fff';
-                if(type === 'IN 📥') color = '#00E676';
-                if(type === 'OUT 📤') color = '#2196F3';
-                if(type === 'SYS') color = '#FFD700';
+                if(type === 'ΛΗΨΗ 📥') color = '#00E676';
+                if(type === 'ΑΠΟΣΤΟΛΗ 📤') color = '#2196F3';
+                if(type === 'ΣΥΣΤΗΜΑ') color = '#FFD700';
 
                 div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-type" style="color:${color}">${type}</span><span class="log-data">${json}</span>`;
                 document.getElementById('consoleOutput').prepend(div);
@@ -111,7 +110,7 @@
             },
             getStats: () => {
                 socket.emit('get-stats');
-                Debug.log('OUT 📤', 'get-stats');
+                Debug.log('ΑΠΟΣΤΟΛΗ 📤', 'get-stats');
             },
             openAnalytics: () => {
                 socket.emit('get-dev-analytics');
@@ -131,29 +130,29 @@
         const onevent = socket.onevent;
         socket.onevent = function (packet) {
             const args = packet.data || [];
-            Debug.log('IN 📥', { event: args[0], data: args[1] });
+            Debug.log('ΛΗΨΗ 📥', { event: args[0], data: args[1] });
             if (onevent) onevent.call(this, packet);
         };
 
         const _emit = socket.emit;
         socket.emit = function (...args) {
-            Debug.log('OUT 📤', { event: args[0], data: args[1] });
+            Debug.log('ΑΠΟΣΤΟΛΗ 📤', { event: args[0], data: args[1] });
             _emit.apply(this, args);
         };
         
         socket.on('connect', () => {
-            Debug.log('SYS', 'Connected to Server (ID: ' + socket.id + ')');
+            Debug.log('ΣΥΣΤΗΜΑ', 'Επιτυχής σύνδεση στον Server (ID: ' + socket.id + ')');
             // Join as Admin for testing
             socket.emit('join-store', { storeName: 'debug_room', username: 'Dev', role: 'admin' });
         });
 
         socket.on('stats-data', (data) => {
-            Debug.log('IN 📥', { event: 'stats-data', summary: 'Received Stats Object' });
+            Debug.log('ΛΗΨΗ 📥', { event: 'stats-data', summary: 'Λήψη Αντικειμένου Στατιστικών (Stats Object)' });
         });
 
         // ✅ NEW: Analytics Data Handler
         socket.on('dev-analytics-data', (data) => {
-            if(data.error) return alert("Error: " + data.error);
+            if(data.error) return alert("Σφάλμα: " + data.error);
             
             document.getElementById('statClients').innerText = data.stores.length;
             document.getElementById('statRevenue').innerText = data.revenue + "€";

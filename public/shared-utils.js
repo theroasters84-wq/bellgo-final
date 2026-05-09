@@ -18,14 +18,93 @@ if (window.location.search.includes('debug=true') || localStorage.getItem('bellg
         logContainer.style.display = isVisible ? 'none' : 'flex';
     };
 
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '🗑️ Κλείσιμο Debugger';
-    closeBtn.style.cssText = "background:#EF4444; color:#fff; padding:8px; margin-bottom:5px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; flex-shrink:0;";
-    closeBtn.onclick = () => { 
-        localStorage.removeItem('bellgo_debug'); 
-        logContainer.remove(); toggleBtn.remove();
-    };
-    logContainer.appendChild(closeBtn);
+        // --- NEW: Developer Toolbar (Translated & Functional) ---
+        const devToolbar = document.createElement('div');
+        devToolbar.style.cssText = "display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; flex-shrink:0; padding-bottom:10px; border-bottom:1px solid #444;";
+
+        const btnStyle = "background:#333; color:#fff; border:1px solid #555; padding:6px 10px; border-radius:5px; font-size:11px; cursor:pointer; font-weight:bold;";
+
+        const btnClearLogs = document.createElement('button');
+        btnClearLogs.innerHTML = '🧹 Καθαρισμός Logs';
+        btnClearLogs.style.cssText = btnStyle;
+        btnClearLogs.onclick = () => {
+            const lines = logContainer.querySelectorAll('.log-line');
+            lines.forEach(l => l.remove());
+        };
+
+        const btnCheckStorage = document.createElement('button');
+        btnCheckStorage.innerHTML = '💾 Έλεγχος Μνήμης';
+        btnCheckStorage.style.cssText = btnStyle;
+        btnCheckStorage.onclick = () => {
+            console.log("--- LOCAL STORAGE ---");
+            for (let i = 0; i < localStorage.length; i++) {
+                console.log(localStorage.key(i), localStorage.getItem(localStorage.key(i)));
+            }
+        };
+
+        const btnGetStats = document.createElement('button');
+        btnGetStats.innerHTML = '📊 Λήψη Στατιστικών';
+        btnGetStats.style.cssText = btnStyle;
+        btnGetStats.onclick = () => {
+            if(window.socket) window.socket.emit('get-stats');
+            console.log("📊 Ζητήθηκαν Στατιστικά από τον Server.");
+        };
+
+        const btnAnalytics = document.createElement('button');
+        btnAnalytics.innerHTML = '📈 Αναλυτικά';
+        btnAnalytics.style.cssText = btnStyle;
+        btnAnalytics.onclick = () => {
+            if(window.socket) window.socket.emit('get-dev-analytics');
+            console.log("📈 Ζητήθηκαν Αναλυτικά Προγραμματιστή...");
+        };
+
+        const btnWipeData = document.createElement('button');
+        btnWipeData.innerHTML = '🗑️ ΔΙΑΓΡΑΦΗ ΔΕΔΟΜΕΝΩΝ';
+        btnWipeData.style.cssText = btnStyle + "background:#EF4444; color:#fff; border:none;";
+        btnWipeData.onclick = () => {
+            if(confirm("ΠΡΟΣΟΧΗ: Θα διαγραφούν όλα τα τοπικά δεδομένα (Storage) και η συνεδρία! Συνέχεια;")) {
+                localStorage.clear();
+                sessionStorage.clear();
+                console.log("🗑️ Τα δεδομένα διαγράφηκαν!");
+                setTimeout(() => location.reload(), 500);
+            }
+        };
+
+        const btnReload = document.createElement('button');
+        btnReload.innerHTML = '🔄 Ανανέωση';
+        btnReload.style.cssText = btnStyle;
+        btnReload.onclick = () => location.reload();
+
+        const btnLogin = document.createElement('button');
+        btnLogin.innerHTML = '🔙 Είσοδος';
+        btnLogin.style.cssText = btnStyle;
+        btnLogin.onclick = () => location.href = '/login.html';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '❌ Κλείσιμο';
+        closeBtn.style.cssText = btnStyle + "background:#444;";
+        closeBtn.onclick = () => { 
+            localStorage.removeItem('bellgo_debug'); 
+            logContainer.remove(); toggleBtn.remove();
+        };
+        
+        devToolbar.appendChild(btnClearLogs);
+        devToolbar.appendChild(btnCheckStorage);
+        devToolbar.appendChild(btnGetStats);
+        devToolbar.appendChild(btnAnalytics);
+        devToolbar.appendChild(btnWipeData);
+        devToolbar.appendChild(btnReload);
+        devToolbar.appendChild(btnLogin);
+        devToolbar.appendChild(closeBtn);
+
+        logContainer.appendChild(devToolbar);
+        
+        // Αυτόματη ακρόαση για το Analytics Result ώστε να τυπώνεται στην κονσόλα
+        setTimeout(() => {
+            if(window.socket) {
+                window.socket.on('dev-analytics-data', (data) => console.log('📈 ANALYTICS DATA:', data));
+            }
+        }, 3000);
 
     function attachDebugger() {
         if (!document.body) { setTimeout(attachDebugger, 100); return; }
@@ -39,6 +118,7 @@ if (window.location.search.includes('debug=true') || localStorage.getItem('bellg
     const origLog = console.log; const origErr = console.error; const origWarn = console.warn;
     function logToScreen(msgArgs, color) {
         const line = document.createElement('div');
+            line.className = 'log-line'; // Προσθήκη κλάσης για να μπορούμε να τα καθαρίσουμε
         line.style.cssText = `color:${color}; border-bottom:1px solid #333; padding-bottom:4px; word-break:break-word;`;
         try {
             line.innerText = msgArgs.map(m => (m instanceof Error) ? m.message + "\\n" + m.stack : (typeof m === 'object' ? JSON.stringify(m) : String(m))).join(' ');
