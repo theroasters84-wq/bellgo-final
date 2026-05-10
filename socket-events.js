@@ -358,12 +358,9 @@ module.exports = function(context) {
             } 
         });
 
-        socket.on('heartbeat', () => { 
         socket.on('heartbeat', () => {
             if (!socket.store || !socket.username) return;
             const key = `${socket.store}_${socket.username}`; 
-            if (activeUsers[key]) { 
-                activeUsers[key].lastSeen = Date.now(); 
             
             if (!activeUsers[key]) {
                 // BUG FIX: Ο server ξέχασε τον χρήστη αλλά το κινητό στέλνει ακόμα heartbeat!
@@ -380,10 +377,6 @@ module.exports = function(context) {
             
             activeUsers[key].lastSeen = Date.now(); 
             if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
-                    activeUsers[key].status = 'online';
-                    Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
-                }
-            } 
                 console.log(`[🟢 ONLINE] Ο ${socket.username} επανήλθε μέσω Heartbeat.`);
                 activeUsers[key].status = 'online';
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -393,7 +386,6 @@ module.exports = function(context) {
         socket.on('set-user-status', (status) => {
             if (!socket.store || !socket.username) return;
             const key = `${socket.store}_${socket.username}`;
-            if (activeUsers[key]) {
             if (activeUsers[key] && activeUsers[key].status !== status) {
                 console.log(`[🔄 STATUS CHANGE] Ο ${socket.username} άλλαξε κατάσταση σε: ${status.toUpperCase()}`);
                 activeUsers[key].status = status;
