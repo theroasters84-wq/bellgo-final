@@ -191,10 +191,8 @@ export const Admin = {
             if (u.role === 'admin' || u.role === 'customer') return;
 
             const staffDiv = document.createElement('div');
-            const isOffline = u.status === 'offline';
-            const isSleeping = u.status === 'sleeping';
-            const isBackground = u.status === 'background';
-            const isAway = (isOffline || isSleeping) && (!u.isAndroid || u.secondsSinceSeen > 60);
+            // ✅ FIX: Γίνεται γκρι αν είναι offline. Για Android δίνουμε 60'' περιθώριο (για να μην αναβοσβήνει στο background)
+            const isAway = u.status === 'offline' && (!u.isAndroid || u.secondsSinceSeen > 60);
             
             let roleClass = 'role-waiter';
             let icon = '🧑‍🍳';
@@ -204,58 +202,29 @@ export const Admin = {
             }
 
             staffDiv.className = `staff-folder ${roleClass} ${isAway ? 'ghost' : ''}`;
-            if (isAway) {
-                // ✅ FORCED OVERRIDE: Μηδενίζουμε την οπακότητα του γονέα για να μην ξεθωριάζουν οι τελείες!
-                staffDiv.style.setProperty('opacity', '1', 'important');
-                staffDiv.style.setProperty('filter', 'none', 'important');
-            }
 
-            let stTxt = "Ενεργός";
-            let dotColor = "#10B981"; // Green
-
-            if (isOffline) {
-                stTxt = "Κλειστό (Offline)";
-                dotColor = "#EF4444"; // Red
-            } else if (isSleeping) {
-                stTxt = "Αναμονή (Κλειδωμένο)";
-                dotColor = "#8B5CF6"; // Purple
-            } else if (isBackground) {
-                stTxt = "Παρασκήνιο";
-                dotColor = "#F59E0B"; // Orange
-            }
-
+            let stTxt = u.status === 'offline' ? "Offline" : (isAway ? "Away" : "Idle");
             const isComing = app.tempComingState[u.username] && (now - app.tempComingState[u.username] < 15000);
 
-            let dotAnimation = 'none';
-            let ringShadow = '0 2px 6px rgba(0,0,0,0.4)';
-
             if (u.isRinging) {
-                stTxt = "Χτυπάει!";
-                dotColor = "#3B82F6"; // Μπλε όταν χτυπάει
-                ringShadow = '0 0 15px #3B82F6'; // Έντονη λάμψη
-                dotAnimation = 'pulse 1s infinite alternate';
+                stTxt = "Ringing";
                 staffDiv.classList.add('ringing');
             } else if (isComing) {
-                stTxt = "Έρχεται...";
+                stTxt = "Coming";
                 staffDiv.classList.add('coming');
-            } else if (isBackground) {
-                staffDiv.style.border = '2px dashed #F59E0B';
             }
 
             let closeBtn = '';
             if (isAway) {
-                closeBtn = `<button onclick="event.stopPropagation(); App.removeStaff('${u.username}')" style="position:absolute; top:-8px; right:-8px; background:#D32F2F; color:white; border:2px solid #ffffff; border-radius:50%; width:22px; height:22px; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; box-shadow:0 2px 6px rgba(0,0,0,0.4);">✕</button>`;
+                closeBtn = `<button onclick="event.stopPropagation(); App.removeStaff('${u.username}')" style="position:absolute; top:2px; right:2px; background:#D32F2F; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.5);">✕</button>`;
             }
             
             staffDiv.style.position = 'relative'; 
             staffDiv.innerHTML = `
                 ${closeBtn}
-                <div style="position:absolute; top:-6px; left:-6px; width:16px; height:16px; border-radius:50%; background:${dotColor}; border:2px solid #ffffff; box-shadow:${ringShadow}; z-index:5; animation:${dotAnimation}" title="${stTxt}"></div>
-                <div style="${(isAway && !u.isRinging) ? 'opacity:0.4; filter:grayscale(100%);' : ''} display:flex; flex-direction:column; align-items:center; width:100%;">
-                    <div class="staff-icon">${icon}</div>
-                    <div class="staff-label">${u.username}</div>
-                    <div class="staff-status" style="font-size:10px; margin-top:2px; color:${u.isRinging ? '#3B82F6' : '#6b7280'}; font-weight:bold;">${stTxt}</div>
-                </div>
+                <div class="staff-icon">${icon}</div>
+                <div class="staff-label">${u.username}</div>
+                <div class="staff-status">${stTxt}</div>
             `;
             
             staffDiv.onclick = () => {

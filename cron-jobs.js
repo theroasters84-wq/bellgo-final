@@ -106,8 +106,16 @@ module.exports = function(context) {
         const now = Date.now();
         for (const key in activeUsers) {
             const user = activeUsers[key];
-            if (user.status !== 'offline' && user.status !== 'sleeping' && (now - user.lastSeen > 60000)) {
-                console.log(`[🟣 TIMEOUT] Ο ${user.username} δεν έστειλε σήμα για 60s! Τον βάζω σε ΑΝΑΜΟΝΗ (Sleeping).`);
+            const timeSinceLastSeen = now - user.lastSeen;
+            
+            if (user.status !== 'offline' && timeSinceLastSeen > 300000) {
+                // Μετά από 5 λεπτά χωρίς σήμα, γίνεται Κόκκινο (Offline)
+                console.log(`[🔴 TIMEOUT] Ο ${user.username} αγνοείται για 5 λεπτά! Τον κάνω OFFLINE.`);
+                user.status = 'offline';
+                Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
+            } else if (user.status !== 'offline' && user.status !== 'sleeping' && timeSinceLastSeen > 60000) {
+                // Μετά από 1 λεπτό χωρίς σήμα, γίνεται Μωβ (Sleeping)
+                console.log(`[🟣 TIMEOUT] Ο ${user.username} δεν έστειλε σήμα για 60s. Τον βάζω σε ΑΝΑΜΟΝΗ (Sleeping).`);
                 user.status = 'sleeping';
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             }

@@ -229,7 +229,7 @@ window.App = {
         initDriverSockets(window.App, userData);
     },
 
-    startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000),
+    startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat', { status: document.hidden ? 'background' : 'online' }); }, 3000),
 
     renderOrders: () => {
         const container = document.getElementById('ordersList');

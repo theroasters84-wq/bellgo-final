@@ -333,6 +333,16 @@ module.exports = function(context) {
             Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
         });
         
+        socket.on('client-closing', () => {
+            if (!socket.store || !socket.username) return;
+            const key = `${socket.store}_${socket.username}`;
+            if (activeUsers[key]) {
+                console.log(`[🚪 TAB CLOSED] Ο ${socket.username} έκλεισε την καρτέλα.`);
+                activeUsers[key].status = 'offline';
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            }
+        });
+
         socket.on('disconnect', () => { 
             let user = null;
             const key = `${socket.store}_${socket.username}`;
@@ -348,27 +358,29 @@ module.exports = function(context) {
             }
             if (user) {
                 const prevStatus = user.status;
-                if (user.status === 'background' || user.status === 'online' || user.fcmToken) {
-                    user.status = 'sleeping'; // iPhone: Κλειδώνει την οθόνη και κόβει κατευθείαν το ίντερνετ
-                } else {
-                    user.status = 'offline';
+                // Αν έκλεισε σκόπιμα την καρτέλα, είναι ήδη offline. Αλλιώς, μπαίνει σε Αναμονή (Purple).
+                if (user.status !== 'offline') {
+                    user.status = 'sleeping';
                 }
                 console.log(`[🔌 DISCONNECT] Ο ${user.username} αποσυνδέθηκε! Status: ${prevStatus} -> ${user.status}`);
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             } 
         });
 
-        socket.on('heartbeat', () => {
+        socket.on('heartbeat', (data) => {
             if (!socket.store || !socket.username) return;
             const key = `${socket.store}_${socket.username}`; 
             
+            // Αν το client στέλνει την κατάστασή του (online/background), την παίρνουμε. Αλλιώς υποθέτουμε online.
+            const clientStatus = (data && data.status) ? data.status : 'online';
+
             if (!activeUsers[key]) {
                 // BUG FIX: Ο server ξέχασε τον χρήστη αλλά το κινητό στέλνει ακόμα heartbeat!
-                console.log(`[⚠️ GHOST RECOVERY] Ο ${socket.username} έστελνε heartbeat αλλά έλειπε από τη μνήμη! Τον επαναφέρω...`);
+                console.log(`[⚠️ GHOST RECOVERY] Ο ${socket.username} έστελνε heartbeat αλλά έλειπε από τη μνήμη! Επαναφορά σε: ${clientStatus.toUpperCase()}`);
                 activeUsers[key] = {
                     store: socket.store, username: socket.username, role: socket.role, socketId: socket.id,
                     fcmToken: (storesData[socket.store]?.staffTokens?.[socket.username]?.token) || null,
-                    status: 'online', lastSeen: Date.now(),
+                    status: clientStatus, lastSeen: Date.now(),
                     isRinging: false, isNative: false 
                 };
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
@@ -376,9 +388,12 @@ module.exports = function(context) {
             }
             
             activeUsers[key].lastSeen = Date.now(); 
-            if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
-                console.log(`[🟢 ONLINE] Ο ${socket.username} επανήλθε μέσω Heartbeat.`);
-                activeUsers[key].status = 'online';
+            if (activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
+                console.log(`[🟢 ΕΠΑΝΑΦΟΡΑ] Ο ${socket.username} επανήλθε μέσω Heartbeat σε: ${clientStatus.toUpperCase()}`);
+                activeUsers[key].status = clientStatus;
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            } else if (activeUsers[key].status !== clientStatus) {
+                activeUsers[key].status = clientStatus;
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         });
