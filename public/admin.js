@@ -628,7 +628,13 @@ export const Admin = {
     },
 
     // --- SYSTEM ---
-    logout: () => { if(window.socket) window.socket.emit('manual-logout'); localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
+    logout: () => { 
+        if(window.socket) window.socket.emit('manual-logout'); 
+        setTimeout(() => {
+            localStorage.removeItem('bellgo_session'); 
+            window.location.replace("login.html"); 
+        }, 100);
+    },
     
     
     forceReconnect: () => { window.socket.disconnect(); setTimeout(()=>window.socket.connect(), 500); },

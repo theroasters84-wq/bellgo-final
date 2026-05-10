@@ -279,7 +279,13 @@ window.App = {
                 logoutBtn.style.cssText = 'width:100%; padding:15px; margin-top:20px; background:#EF4444; color:white; border:none; border-radius:8px; font-weight:bold; font-size:16px; cursor:pointer; box-shadow:0 4px 10px rgba(239,68,68,0.3); display:block !important;';
                 logoutBtn.onclick = () => { 
                     const msg = (window.App && window.App.t) ? window.App.t('logout_confirm') : "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;";
-                    if(confirm(msg)) { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); } 
+                    if(confirm(msg)) { 
+                        if(window.socket) window.socket.emit('manual-logout');
+                        setTimeout(() => {
+                            localStorage.removeItem('bellgo_session'); 
+                            window.location.replace("login.html"); 
+                        }, 100);
+                    } 
                 };
                 const existingCloseBtn = Array.from(box.children).find(el => (el.innerText || '').includes('ΚΛΕΙΣΙΜΟ') || el.getAttribute('data-i18n') === 'close');
                 if (existingCloseBtn) {

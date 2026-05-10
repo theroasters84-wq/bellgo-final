@@ -89,7 +89,11 @@ export const AdminUI = {
                 const msg = (window.App && window.App.t) ? window.App.t('logout_confirm') : "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;";
                 if(confirm(msg)) { 
                     if(window.Admin && window.Admin.logout) window.Admin.logout(); 
-                    else { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); } 
+                    else { Timeout(() => {
+                            localStorage.removeItem('bellgo_session'); 
+                            window.location.replace("login.html"); 
+                        }, 100);
+                    } 
                 } 
             };
             

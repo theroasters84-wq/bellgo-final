@@ -376,7 +376,13 @@ window.App = {
         window.socket.emit('charge-order-to-staff', { orderId: id, staffName: userData.name, amount: total, method: method });
     },
     
-    logout: () => { localStorage.removeItem('bellgo_session'); window.location.replace("login.html"); },
+    logout: () => { 
+        if(window.socket) window.socket.emit('manual-logout');
+        setTimeout(() => {
+            localStorage.removeItem('bellgo_session'); 
+            window.location.replace("login.html"); 
+        }, 100);
+    },
 
     // --- CHAT LOGIC ---
     toggleAdminChat: () => { 
