@@ -93,7 +93,7 @@ module.exports = {
                 seenUsers.add(lower);
                 list.push({ 
                     name: u.username, username: u.username, role: u.role, status: u.status, 
-                    isRinging: u.isRinging, isAndroid: u.isAndroid,
+                    isRinging: u.isRinging, alarmFailed: u.alarmFailed, alarmReceived: u.alarmReceived, isAndroid: u.isAndroid,
                     secondsSinceSeen: (Date.now() - u.lastSeen) / 1000 
                 });
             }

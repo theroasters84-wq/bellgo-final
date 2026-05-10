@@ -241,6 +241,8 @@ export function initKitchenSockets(App, userData) {
     });
 
     socket.on('ring-bell', (data) => {
+        socket.emit('alarm-received'); // ✅ Emit received
+
         // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
         if(window.AudioEngine) {
             window.AudioEngine.triggerAlarm(data ? data.source : null);

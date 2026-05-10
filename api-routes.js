@@ -3,7 +3,7 @@ const Logic = require('./logic');
 
 module.exports = function(context) {
     const router = express.Router();
-    const { db, storesData } = context;
+    const { db, storesData, activeUsers, io } = context;
 
     /* ---------------- PIN RESET ROUTES ---------------- */
     router.get('/reset-pin', (req, res) => {
@@ -244,6 +244,25 @@ module.exports = function(context) {
             target: reward.target || 5,
             gift: reward.gift || 'Καφές'
         });
+    });
+
+    /* ---------------- ACK ALARM ENDPOINT ---------------- */
+    router.get('/api/ack-alarm', (req, res) => {
+        const { store, username } = req.query;
+        if (store && username && activeUsers) {
+            const key = `${store}_${username}`;
+            const t = activeUsers[key];
+            if (t) {
+                t.alarmReceived = true;
+                t.alarmFailed = false;
+                if (io && storesData) {
+                    const Logic = require('./logic');
+                    Logic.updateStoreClients(store, io, storesData, activeUsers, db);
+                }
+            }
+            return res.json({ success: true });
+        }
+        res.json({ success: false });
     });
 
     return router;

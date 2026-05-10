@@ -85,6 +85,11 @@ messaging.setBackgroundMessageHandler(function(payload) {
                     payload.data.type === 'alarm'; // ✅ Ενεργοποίηση Loop και για Staff Calls
 
     if (isAlarm) {
+        // ✅ Acknowledge Alarm
+        if (payload.data.targetStore && payload.data.targetUser) {
+            fetch(`/api/ack-alarm?store=${encodeURIComponent(payload.data.targetStore)}&username=${encodeURIComponent(payload.data.targetUser)}`).catch(e=>{});
+        }
+
         const showNotification = () => {
             return self.registration.showNotification(title, {
                 body: body,

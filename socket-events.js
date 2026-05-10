@@ -253,25 +253,54 @@ module.exports = function(context) {
             const tName = (typeof data === 'object') ? data.target : data;
             const source = (typeof data === 'object') ? data.source : "Admin";
             const key = `${socket.store}_${tName}`; 
-            const t = activeUsers[key];
+            let t = activeUsers[key];
+            
+            if (!t) {
+                const store = getMyStore();
+                if (store && store.staffTokens && store.staffTokens[tName]) {
+                    const tokenData = store.staffTokens[tName];
+                    activeUsers[key] = {
+                        store: socket.store, username: tName, role: tokenData.role, socketId: null,
+                        fcmToken: tokenData.token, status: 'offline', lastSeen: Date.now(),
+                        isRinging: false, isNative: tokenData.isNative
+                    };
+                    t = activeUsers[key];
+                }
+            }
             
             if (t) {
                 t.isRinging = true;
+                t.ringStartTime = Date.now();
+                t.alarmReceived = false;
+                t.alarmFailed = false;
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
                 if (t.socketId) io.to(t.socketId).emit('ring-bell', { source: source, location: source });
             } 
             const store = getMyStore();
             if (store && store.staffTokens && store.staffTokens[tName]) {
                 const tokenData = store.staffTokens[tName];
-                Logic.sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role, isNative: tokenData.isNative }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source }, YOUR_DOMAIN, admin, 10);
+                Logic.sendPushNotification({ fcmToken: tokenData.token, role: tokenData.role, isNative: tokenData.isNative }, "📞 ΣΕ ΚΑΛΟΥΝ!", `Ο ${source} σε ζητάει!`, { type: "alarm", location: source, targetUser: tName, targetStore: socket.store }, YOUR_DOMAIN, admin, 10);
             } 
         });
         
+        socket.on('alarm-received', () => {
+            if (!socket.store || !socket.username) return;
+            const key = `${socket.store}_${socket.username}`;
+            const t = activeUsers[key];
+            if (t) {
+                t.alarmReceived = true;
+                t.alarmFailed = false;
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            }
+        });
+
         socket.on('admin-stop-ringing', () => { 
             const store = getMyStore(); 
             if(store) {
-                 Object.values(activeUsers).filter(u => u.store === socket.store && (u.role === 'admin' || u.role === 'kitchen' || u.role === 'waiter')).forEach(u => {
+                 Object.values(activeUsers).filter(u => u.store === socket.store && (u.role === 'admin' || u.role === 'kitchen' || u.role === 'waiter' || u.role === 'driver')).forEach(u => {
                      u.isRinging = false;
+                     u.alarmFailed = false;
+                     u.alarmReceived = false;
                      if (u.socketId) {
                          io.to(u.socketId).emit('stop-bell');
                      }
@@ -297,6 +326,8 @@ module.exports = function(context) {
             if (userKey) {
                 const user = activeUsers[userKey];
                 user.isRinging = false;
+                user.alarmFailed = false;
+                user.alarmReceived = false;
                 io.to(user.store).emit('staff-accepted-alarm', { username: user.username });
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             }

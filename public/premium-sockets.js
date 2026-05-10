@@ -405,6 +405,8 @@ export function initPremiumSockets(App, userData) {
     });
 
     socket.on('ring-bell', (data) => {
+        socket.emit('alarm-received'); // ✅ Emit received
+
         console.log("🔔 ΕΛΗΦΘΗ ΣΗΜΑ ΚΛΗΣΗΣ ΑΠΟ SERVER:", data);
         
         if (data && data.roleTarget && data.roleTarget !== 'admin') return; // ✅ Αγνοεί κλήσεις αν δεν προορίζονται για Admin

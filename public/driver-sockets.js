@@ -120,6 +120,8 @@ export function initDriverSockets(App, userData) {
 
     // ✅ NEW: ALARM LISTENERS
     socket.on('ring-bell', (data) => {
+        socket.emit('alarm-received'); // ✅ Emit received
+
         // ✅ FIX: Ensure alert.mp3 plays (Fallback if AudioEngine missing)
         if(window.AudioEngine) {
             window.AudioEngine.isRinging = false; // ✅ Force reset to ensure play

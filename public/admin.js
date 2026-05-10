@@ -207,8 +207,16 @@ export const Admin = {
             const isComing = app.tempComingState[u.username] && (now - app.tempComingState[u.username] < 15000);
 
             if (u.isRinging) {
-                stTxt = "Ringing";
-                staffDiv.classList.add('ringing');
+                if (u.alarmFailed) {
+                    stTxt = "Failed ❌";
+                    staffDiv.style.border = "2px solid #FF5252";
+                    staffDiv.style.boxShadow = "0 0 10px #FF5252";
+                    staffDiv.style.background = "#FFCDD2";
+                    staffDiv.style.color = "#b71c1c";
+                } else {
+                    stTxt = "Ringing";
+                    staffDiv.classList.add('ringing');
+                }
             } else if (isComing) {
                 stTxt = "Coming";
                 staffDiv.classList.add('coming');
@@ -232,6 +240,11 @@ export const Admin = {
                 window.socket.emit('trigger-alarm', { target: u.username, source: sourceLabel });
                 staffDiv.querySelector('.staff-status').innerText = 'Ringing';
                 staffDiv.classList.add('ringing');
+
+                staffDiv.style.border = "";
+                staffDiv.style.boxShadow = "";
+                staffDiv.style.background = "";
+                staffDiv.style.color = "";
             };
             container.appendChild(staffDiv);
         });

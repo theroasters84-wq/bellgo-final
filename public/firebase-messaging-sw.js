@@ -34,6 +34,11 @@ messaging.setBackgroundMessageHandler(function(payload) {
                   (originalTitle + originalBody).toLowerCase().includes('alarm');
 
   if (isAlarm) {
+      // ✅ Acknowledge Alarm
+      if (payload.data.targetStore && payload.data.targetUser) {
+          fetch(`/api/ack-alarm?store=${encodeURIComponent(payload.data.targetStore)}&username=${encodeURIComponent(payload.data.targetUser)}`).catch(e=>{});
+      }
+
       // ✅ STACKING: Tag based on Title (e.g. 'bellgo-alarm-order' vs 'bellgo-alarm-call')
       // This allows different types of alarms to stack instead of overwriting.
       const alarmTag = 'bellgo-alarm-' + originalTitle.replace(/\s+/g, '-').toLowerCase();

@@ -84,7 +84,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); 
 
 // ✅ API ROUTES (PIN Resets, Rewards, etc.)
-const apiRoutes = require('./api-routes')({ db, storesData });
+const apiRoutes = require('./api-routes')({ db, storesData, activeUsers, io });
 app.use('/', apiRoutes);
 
 // ✅ NEW: Redirect Root to Login (Admin PWA)

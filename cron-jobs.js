@@ -121,4 +121,19 @@ module.exports = function(context) {
             }
         }
     }, 10000);
+
+    // 5. FAILED ALARM CHECK (Κάθε 10 δευτερόλεπτα)
+    setInterval(() => {
+        const now = Date.now();
+        for (const key in activeUsers) {
+            const user = activeUsers[key];
+            if (user.isRinging && !user.alarmReceived && user.ringStartTime && (now - user.ringStartTime > 60000)) {
+                if (!user.alarmFailed) {
+                    console.log(`[⚠️ ALARM FAILED] Ο χρήστης ${user.username} δεν έλαβε την κλήση μετά από 60 δευτερόλεπτα.`);
+                    user.alarmFailed = true;
+                    Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
+                }
+            }
+        }
+    }, 10000);
 };
