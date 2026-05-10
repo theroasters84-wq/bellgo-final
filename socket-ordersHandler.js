@@ -124,6 +124,9 @@ module.exports = function(socket, context, getMyStore) {
             let locationInfo = "";
             const addrMatch = orderText.match(/📍\s*(.+)/);
             if (addrMatch) locationInfo = addrMatch[1].trim();
+            const zipMatch = orderText.match(/📮\s*T\.K\.:\s*(.+)/);
+            if (zipMatch && zipMatch[1].trim() !== '-') locationInfo += ', ' + zipMatch[1].trim();
+            
             let notifTitle = orderText.includes('[PICKUP') ? "NEO PICKUP 🛍️" : "ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ 🍕";
             
             if (socket.role !== 'admin') {

@@ -264,7 +264,7 @@ window.App = {
                 if (line.includes('📞')) phone = line.replace('📞', '').trim();
                 if (line.includes('💳') || line.includes('💵')) paymentMethod = line.trim();
                 if (line.includes('🏢')) floor = line.replace('🏢', '').trim();
-                if (line.includes('📮')) zip = line.replace('📮', '').trim();
+                if (line.includes('📮')) zip = line.replace('📮', '').replace(/T\.K\.:/g, '').trim();
             });
             
             const total = App.calculateTotal(order.text);
@@ -286,8 +286,8 @@ window.App = {
                     <span style="color:#6b7280; font-size:12px;">${time}</span>
                 </div>
                 <div style="font-size:18px; font-weight:bold; color:#1f2937; margin-bottom:5px;">${name}</div>
-                <div style="font-size:20px; color:#2196F3; margin-bottom:5px; font-weight:bold; line-height:1.3; cursor:pointer;" onclick="App.openMap('${address}')">📍 ${address} <span style="font-size:12px; color:#6b7280;">(Χάρτης)</span></div>
-                ${zip ? `<div style="font-size:14px; color:#6b7280; margin-bottom:2px;">📮 ${zip}</div>` : ''}
+                <div style="font-size:20px; color:#2196F3; margin-bottom:5px; font-weight:bold; line-height:1.3; cursor:pointer;" onclick="App.openMap('${address}', '${zip}')">📍 ${address} <span style="font-size:12px; color:#6b7280;">(Χάρτης)</span></div>
+                ${zip ? `<div style="font-size:14px; color:#6b7280; margin-bottom:2px;">📮 T.K.: ${zip}</div>` : ''}
                 ${floor ? `<div style="font-size:16px; color:#1f2937; font-weight:bold; margin-bottom:5px; background:#f3f4f6; border:1px solid #d1d5db; display:inline-block; padding:2px 8px; border-radius:4px;">🏢 ${floor}</div>` : ''}
                 <div style="font-size:16px; color:#6b7280; margin-bottom:15px;">📞 <a href="tel:${phone.replace(/[^0-9+]/g, '')}" style="color:#2196F3; text-decoration:none; font-weight:bold;">${phone}</a></div>
                 <div style="background:#f9fafb; border:1px solid #e5e7eb; padding:10px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
@@ -297,7 +297,7 @@ window.App = {
                 
                 ${assignedDriver ? `
                     <div style="display:flex; gap:10px;">
-                        <button onclick="App.openMap('${address}')" style="flex:1; padding:15px; background:#2196F3; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">${App.t('map') || '🗺️ ΧΑΡΤΗΣ'}</button>
+                        <button onclick="App.openMap('${address}', '${zip}')" style="flex:1; padding:15px; background:#2196F3; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">${App.t('map') || '🗺️ ΧΑΡΤΗΣ'}</button>
                         <button onclick="App.openQrPayment('${order.id}')" style="flex:1; padding:15px; background:#635BFF; color:white; border:none; border-radius:10px; font-weight:bold; font-size:16px; cursor:pointer;">${App.t('qr') || '💳 QR'}</button>
                     </div>
                 ` : ''}
@@ -309,7 +309,12 @@ window.App = {
     },
 
     calculateTotal: (text) => { let t=0; if(!text)return 0; text.split('\n').forEach(l=>{ const m=l.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/); if(m) t+=(parseInt(m[1]||'1')*parseFloat(m[3])); }); return t; },
-    openMap: (addr) => { if(!addr) return alert(App.t('no_address') || "Δεν υπάρχει διεύθυνση."); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`, '_blank'); },
+    openMap: (addr, zip) => { 
+        if(!addr) return alert(App.t('no_address') || "Δεν υπάρχει διεύθυνση."); 
+        let query = addr;
+        if (zip && zip !== '-') query += ', ' + zip;
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank'); 
+    },
     
     // ✅ NEW: Take Order Function
     takeOrder: (id) => {
