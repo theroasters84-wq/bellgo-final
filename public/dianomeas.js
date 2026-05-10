@@ -54,6 +54,15 @@ window.App = {
         App.setupChatUI();
         App.applyFeatureVisibility();
 
+        App.startHeartbeat();
+
+        // ✅ Ανίχνευση Background / Foreground State
+        document.addEventListener('visibilitychange', () => {
+            if (window.socket && window.socket.connected) {
+                window.socket.emit('set-user-status', document.hidden ? 'background' : 'online');
+            }
+        });
+
         // ✅ FIX: Κρύβουμε την "Πόρτα" (ΕΞΟΔΟΣ) από την κεντρική οθόνη μόνιμα με CSS
         if (!document.getElementById('hideDoorStyle')) {
             const hideDoorStyle = document.createElement('style');
@@ -219,6 +228,8 @@ window.App = {
     connectSocket: () => {
         initDriverSockets(window.App, userData);
     },
+
+    startHeartbeat: () => setInterval(() => { if (window.socket && window.socket.connected) window.socket.emit('heartbeat'); }, 3000),
 
     renderOrders: () => {
         const container = document.getElementById('ordersList');
