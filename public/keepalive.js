@@ -278,6 +278,11 @@ const KeepAlive = {
                         const isWarnEnabled = warnVal === true;
                         localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
                         console.log("🕵️‍♂️ [KeepAlive Global] Synced from Server:", isWarnEnabled);
+                    } else {
+                        const saved = localStorage.getItem('bellgo_keepalive');
+                        if (saved === null) {
+                            localStorage.setItem('bellgo_keepalive', 'true');
+                        }
                     }
                 });
 

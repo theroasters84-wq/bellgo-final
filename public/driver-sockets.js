@@ -93,10 +93,13 @@ export function initDriverSockets(App, userData) {
                 document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = isWarnEnabled);
                 localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
             } else {
-                // ✅ FIX: Αν ο Server ΔΕΝ έχει τη ρύθμιση, ΥΠΟΘΕΤΟΥΜΕ ΟΤΙ ΕΙΝΑΙ ΑΝΟΙΧΤΟ (true)!
-                console.log("🕵️‍♂️ [Driver-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
-                document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = true);
-                localStorage.setItem('bellgo_keepalive', 'true');
+                const saved = localStorage.getItem('bellgo_keepalive');
+                if (saved !== null) {
+                    document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = (saved === 'true'));
+                } else {
+                    document.querySelectorAll('[id="switchWarnOnBackgroundDriver"]').forEach(el => el.checked = true);
+                    localStorage.setItem('bellgo_keepalive', 'true');
+                }
             }
 
             if (settings.fakeLockEnabled !== undefined) {

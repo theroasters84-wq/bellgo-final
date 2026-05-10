@@ -73,6 +73,7 @@ window.App = {
 
         // ✅ Ελέγχουμε αν υπάρχει το settings modal και προσθέτουμε ΕΞΟΔΟ
         App.setupDriverSettingsExit();
+        App.setupDriverSettings();
 
         PushNotifications.requestPermission(messaging, (token) => {
             if(window.socket && window.socket.connected) {
@@ -179,6 +180,26 @@ window.App = {
                 }
             }
         }
+    },
+
+    // ✅ NEW: Setup Settings Toggle Listeners for Driver
+    setupDriverSettings: () => {
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'switchWarnOnBackgroundDriver') {
+                const isEnabled = e.target.checked;
+                localStorage.setItem('bellgo_keepalive', isEnabled ? 'true' : 'false');
+                if (window.socket && window.socket.connected) {
+                    window.socket.emit('save-store-settings', { warnOnBackground: isEnabled });
+                }
+            }
+            if (e.target && e.target.id === 'switchFakeLockDriver') {
+                const isEnabled = e.target.checked;
+                localStorage.setItem('bellgo_fakelock', isEnabled ? 'true' : 'false');
+                if (window.socket && window.socket.connected) {
+                    window.socket.emit('save-store-settings', { fakeLockEnabled: isEnabled });
+                }
+            }
+        });
     },
 
     // ✅ NEW: Δυναμική δημιουργία του Chat για τον διανομέα

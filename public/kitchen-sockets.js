@@ -163,10 +163,13 @@ export function initKitchenSockets(App, userData) {
                 document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = isWarnEnabled);
                 localStorage.setItem('bellgo_keepalive', isWarnEnabled ? 'true' : 'false');
             } else {
-                // ✅ FIX: Αν ο Server ΔΕΝ έχει τη ρύθμιση, ΥΠΟΘΕΤΟΥΜΕ ΟΤΙ ΕΙΝΑΙ ΑΝΟΙΧΤΟ (true) για ασφάλεια!
-                console.log("🕵️‍♂️ [Kitchen-Socket] KeepAlive Setting is UNDEFINED. Defaulting to true.");
-                document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = true);
-                localStorage.setItem('bellgo_keepalive', 'true');
+                const saved = localStorage.getItem('bellgo_keepalive');
+                if (saved !== null) {
+                    document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = (saved === 'true'));
+                } else {
+                    document.querySelectorAll('[id="switchWarnOnBackgroundKitchen"]').forEach(el => el.checked = true);
+                    localStorage.setItem('bellgo_keepalive', 'true');
+                }
             }
 
             if (settings.fakeLockEnabled !== undefined) {
