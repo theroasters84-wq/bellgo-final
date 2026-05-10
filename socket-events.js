@@ -347,13 +347,13 @@ module.exports = function(context) {
                 }
             }
             if (user) {
-            const prevStatus = user.status;
-            if (user.status === 'background') {
-                user.status = 'sleeping'; // Ήταν στο background και το OS έκοψε τη σύνδεση
-            } else {
-                user.status = 'offline'; // Το έκλεισε / σκότωσε τελείως
-            }
-            console.log(`[🔌 DISCONNECT] Ο ${user.username} αποσυνδέθηκε! Status: ${prevStatus} -> ${user.status}`);
+                const prevStatus = user.status;
+                if (user.status === 'background' || user.status === 'online' || user.fcmToken) {
+                    user.status = 'sleeping'; // iPhone: Κλειδώνει την οθόνη και κόβει κατευθείαν το ίντερνετ
+                } else {
+                    user.status = 'offline';
+                }
+                console.log(`[🔌 DISCONNECT] Ο ${user.username} αποσυνδέθηκε! Status: ${prevStatus} -> ${user.status}`);
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             } 
         });

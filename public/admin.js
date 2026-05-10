@@ -226,8 +226,14 @@ export const Admin = {
 
             const isComing = app.tempComingState[u.username] && (now - app.tempComingState[u.username] < 15000);
 
+            let dotAnimation = 'none';
+            let ringShadow = '0 2px 6px rgba(0,0,0,0.4)';
+
             if (u.isRinging) {
                 stTxt = "Χτυπάει!";
+                dotColor = "#3B82F6"; // Μπλε όταν χτυπάει
+                ringShadow = '0 0 15px #3B82F6'; // Έντονη λάμψη
+                dotAnimation = 'pulse 1s infinite alternate';
                 staffDiv.classList.add('ringing');
             } else if (isComing) {
                 stTxt = "Έρχεται...";
@@ -244,11 +250,11 @@ export const Admin = {
             staffDiv.style.position = 'relative'; 
             staffDiv.innerHTML = `
                 ${closeBtn}
-                <div style="position:absolute; top:-6px; left:-6px; width:16px; height:16px; border-radius:50%; background:${dotColor}; border:2px solid #ffffff; box-shadow:0 2px 6px rgba(0,0,0,0.4); z-index:5;" title="${stTxt}"></div>
-                <div style="${isAway ? 'opacity:0.4; filter:grayscale(100%);' : ''} display:flex; flex-direction:column; align-items:center; width:100%;">
+                <div style="position:absolute; top:-6px; left:-6px; width:16px; height:16px; border-radius:50%; background:${dotColor}; border:2px solid #ffffff; box-shadow:${ringShadow}; z-index:5; animation:${dotAnimation}" title="${stTxt}"></div>
+                <div style="${(isAway && !u.isRinging) ? 'opacity:0.4; filter:grayscale(100%);' : ''} display:flex; flex-direction:column; align-items:center; width:100%;">
                     <div class="staff-icon">${icon}</div>
                     <div class="staff-label">${u.username}</div>
-                    <div class="staff-status" style="font-size:10px; margin-top:2px; color:#6b7280; font-weight:bold;">${stTxt}</div>
+                    <div class="staff-status" style="font-size:10px; margin-top:2px; color:${u.isRinging ? '#3B82F6' : '#6b7280'}; font-weight:bold;">${stTxt}</div>
                 </div>
             `;
             
