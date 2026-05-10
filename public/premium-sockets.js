@@ -25,8 +25,9 @@ export function initPremiumSockets(App, userData) {
             username: userData.name, 
             role: userData.role, 
             token: localStorage.getItem('fcm_token'), 
-            isNative: isNative,
-            isAndroid: /android/i.test(navigator.userAgent)
+            isNative: !!window.Capacitor,
+            isAndroid: /android/i.test(navigator.userAgent),
+            status: document.hidden ? 'background' : 'online'
         });
 
         // ✅ ROBUST FETCH: Επαναλαμβανόμενο αίτημα ρυθμίσεων μέχρι να μας απαντήσει ο Server
@@ -54,7 +55,7 @@ export function initPremiumSockets(App, userData) {
 
     // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
     if(socket.connected) {
-        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, isAndroid: /android/i.test(navigator.userAgent) });
+        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, isAndroid: /android/i.test(navigator.userAgent), status: document.hidden ? 'background' : 'online' });
         socket.emit('get-store-settings', { storeName: userData.store });
         socket.emit('get-reservations');
     }

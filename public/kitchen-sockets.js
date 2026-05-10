@@ -24,7 +24,8 @@ export function initKitchenSockets(App, userData) {
             username: userData.name, 
             role: userData.role, 
             token: localStorage.getItem('fcm_token'), 
-            isNative: isNative 
+            isNative: !!window.Capacitor,
+            status: document.hidden ? 'background' : 'online'
         });
 
         // ✅ NEW: Handle SoftPOS Completion
@@ -54,7 +55,7 @@ export function initKitchenSockets(App, userData) {
 
     // ✅ FIX: Αν είναι ήδη συνδεδεμένο, κάνε trigger το join χειροκίνητα
     if(socket.connected) {
-        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: userData.role, token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, status: document.hidden ? 'background' : 'online' });
         socket.emit('get-store-settings', { storeName: userData.store });
     }
 

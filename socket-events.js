@@ -61,7 +61,7 @@ module.exports = function(context) {
             activeUsers[key] = {
                 store: storeName, username, role: socket.role, socketId: socket.id,
                 fcmToken: data.token || existingToken, 
-                status: "online", lastSeen: Date.now(),
+                status: data.status || "online", lastSeen: Date.now(),
                 isRinging: wasRinging, isNative: data.isNative 
             };
 
@@ -347,7 +347,11 @@ module.exports = function(context) {
                 }
             }
             if (user) {
-                user.status = 'offline';
+            if (user.status === 'background') {
+                user.status = 'sleeping'; // Ήταν στο background και το OS έκοψε τη σύνδεση
+            } else {
+                user.status = 'offline'; // Το έκλεισε / σκότωσε τελείως
+            }
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             } 
         });
@@ -356,7 +360,7 @@ module.exports = function(context) {
             const key = `${socket.store}_${socket.username}`; 
             if (activeUsers[key]) { 
                 activeUsers[key].lastSeen = Date.now(); 
-                if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline') {
+            if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
                     activeUsers[key].status = 'online';
                     Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
                 }

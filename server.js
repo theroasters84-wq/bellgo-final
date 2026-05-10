@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
+const cors = require('cors');
 const admin = require("firebase-admin");
 const nodemailer = require('nodemailer'); // ✅ NEW: Email Module
 const Logic = require('./logic'); // ✅ Import Logic Module
@@ -58,6 +59,7 @@ try {
 
 /* ---------------- SERVER SETUP ---------------- */
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*" },

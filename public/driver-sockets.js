@@ -20,7 +20,8 @@ export function initDriverSockets(App, userData) {
             username: userData.name, 
             role: 'driver', 
             token: localStorage.getItem('fcm_token'),
-            isNative: !!window.Capacitor 
+            isNative: !!window.Capacitor,
+            status: document.hidden ? 'background' : 'online'
         });
 
         // ✅ NEW: Handle SoftPOS Completion after reload
@@ -40,10 +41,9 @@ export function initDriverSockets(App, userData) {
     });
 
     if (socket.connected) {
-        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: 'driver', token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor });
+        socket.emit('join-store', { storeName: userData.store, username: userData.name, role: 'driver', token: localStorage.getItem('fcm_token'), isNative: !!window.Capacitor, status: document.hidden ? 'background' : 'online' });
         socket.emit('get-store-settings', { storeName: userData.store });
     }
-
     socket.on('disconnect', () => { document.getElementById('connDot').style.background = 'red'; });
 
     socket.on('orders-update', (orders) => {

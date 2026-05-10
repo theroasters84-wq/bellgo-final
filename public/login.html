@@ -141,13 +141,13 @@
         </div>
 
         <!-- 2. STAFF LOGIN FORM -->
-        <div id="staffForm" class="form-section">
+        <form id="staffForm" class="form-section" onsubmit="event.preventDefault();">
             <h3 style="color:#1f2937; margin:0;" data-i18n="staff_login">Είσοδος Προσωπικού</h3>
             <input type="text" id="stStore" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
-            <input type="email" id="stUserEmail" class="inp" placeholder="Το Προσωπικό σου Email" data-i18n-placeholder="placeholder_personal_email">
+            <input type="email" id="stUserEmail" class="inp" placeholder="Το Προσωπικό σου Email" data-i18n-placeholder="placeholder_personal_email" autocomplete="username">
             <input type="text" id="stName" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
             <div class="password-wrapper">
-                <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin">
+                <input type="password" id="stPin" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin" autocomplete="current-password">
                 <button class="password-toggle" onclick="UI.togglePinVisibility()" type="button">👁️</button>
             </div>
             <!-- Hidden Select, controlled by JS -->
@@ -155,28 +155,28 @@
                 <option value="waiter">Σερβιτόρος 🤵</option>
                 <option value="driver">Διανομέας 🛵</option>
             </select>
-            <button class="btn-main" id="btnStaffLogin" onclick="Staff.login()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
-            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
-        </div>
+            <button type="button" class="btn-main" id="btnStaffLogin" onclick="Staff.login()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
+            <button type="button" class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">🔙 ΠΙΣΩ</button>
+        </form>
 
         <!-- 3. ADMIN LOGIN FORM -->
-        <div id="adminForm" class="form-section">
+        <form id="adminForm" class="form-section" onsubmit="event.preventDefault();">
             <h3 id="adminFormTitle" style="color:#1f2937; margin:0;" data-i18n="admin_management">Διαχείριση (Admin)</h3>
-            <input type="email" id="adminEmailInp" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email">
+            <input type="email" id="adminEmailInp" class="inp" placeholder="Email Επιχείρησης (Admin Email)" data-i18n-placeholder="placeholder_admin_email" autocomplete="username">
             <input type="email" id="adminPersonalEmailInp" class="inp" placeholder="Το Προσωπικό σου Email" data-i18n-placeholder="placeholder_personal_email">
             <input type="text" id="adminNameInp" class="inp" placeholder="Το Όνομά σου" data-i18n-placeholder="placeholder_your_name">
             <div class="password-wrapper">
-                <input type="password" id="adminPinInp" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin">
+                <input type="password" id="adminPinInp" class="inp" placeholder="Κωδικός Καταστήματος (PIN)" inputmode="numeric" data-i18n-placeholder="placeholder_pin" autocomplete="current-password">
                 <button class="password-toggle" onclick="UI.toggleAdminPinVisibility()" type="button">👁️</button>
             </div>
-            <button class="btn-main" id="btnAdminLogin" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
+            <button type="button" class="btn-main" id="btnAdminLogin" onclick="Admin.manualLogin()" data-i18n="login_btn">ΕΙΣΟΔΟΣ</button>
             <div id="adminOnlyExtras">
                 <div class="divider" data-i18n="or">Ή</div>
-                <button class="btn-main btn-google" onclick="Admin.googleLogin()"><span style="font-size:18px;">G</span> <span data-i18n="google_login">Σύνδεση με Google</span></button>
-                <button onclick="Sundromes.openSubscriptionsModal()" style="background:transparent; color:#262626; border:1px solid #dbdbdb; padding:10px 20px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; margin-top:10px;">Διαχείριση Συνδρομών</button>
+                <button type="button" class="btn-main btn-google" onclick="Admin.googleLogin()"><span style="font-size:18px;">G</span> <span data-i18n="google_login">Σύνδεση με Google</span></button>
+                <button type="button" onclick="Sundromes.openSubscriptionsModal()" style="background:transparent; color:#262626; border:1px solid #dbdbdb; padding:10px 20px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; margin-top:10px;">Διαχείριση Συνδρομών</button>
             </div>
-            <button class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">Επιστροφή</button>
-        </div>
+            <button type="button" class="btn-back" onclick="UI.showRoles()" data-i18n="back_btn">Επιστροφή</button>
+        </form>
 
     <div id="pinModal">
         <div class="pin-box">
