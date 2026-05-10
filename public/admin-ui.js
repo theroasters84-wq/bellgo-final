@@ -105,6 +105,61 @@ export const AdminUI = {
             }
         }
 
+        // ✅ NEW: Προσθήκη Γρήγορων Ρυθμίσεων για το Προσωπικό (αφού δεν έχουν πρόσβαση στο κλειδωμένο subGeneral)
+        if (settingsMain && !document.getElementById('quickSettingsDynamic')) {
+            const qsDiv = document.createElement('div');
+            qsDiv.id = 'quickSettingsDynamic';
+            qsDiv.style.cssText = 'background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; margin-top:20px; margin-bottom:10px; overflow:hidden;';
+            qsDiv.innerHTML = `
+                <div style="padding:10px 15px; background:#e5e7eb; font-size:12px; font-weight:bold; color:#4b5563; text-align:left;">ΓΡΗΓΟΡΕΣ ΡΥΘΜΙΣΕΙΣ</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #e5e7eb;">
+                    <div style="text-align:left;">
+                        <strong style="color:#1f2937; font-size:14px;">🌙 Προστασία Οθόνης</strong>
+                        <div style="font-size:11px; color:#6b7280;">(Keep Alive / Ήχος Background)</div>
+                    </div>
+                    <label class="switch" style="margin:0;">
+                        <input type="checkbox" id="switchWarnOnBackgroundDynamic">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px;">
+                    <div style="text-align:left;">
+                        <strong style="color:#1f2937; font-size:14px;">🔒 Κλείδωμα Εφαρμογής</strong>
+                        <div style="font-size:11px; color:#6b7280;">(Ασφαλής οθόνη στην τσέπη)</div>
+                    </div>
+                    <label class="switch" style="margin:0;">
+                        <input type="checkbox" id="switchFakeLockDynamic">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            `;
+            
+            const existingLogout = document.getElementById('btnSettingsLogoutDynamic');
+            if (existingLogout) settingsMain.insertBefore(qsDiv, existingLogout);
+            else settingsMain.appendChild(qsDiv);
+
+            document.getElementById('switchWarnOnBackgroundDynamic').addEventListener('change', (e) => {
+                const isEnabled = e.target.checked;
+                localStorage.setItem('bellgo_keepalive', isEnabled ? 'true' : 'false');
+                document.querySelectorAll('[id^="switchWarnOnBackground"]').forEach(el => { if (el !== e.target) el.checked = isEnabled; });
+                if (window.socket && window.socket.connected) window.socket.emit('save-store-settings', { warnOnBackground: isEnabled });
+                if (isEnabled && window.AudioEngine && window.AudioEngine.init) window.AudioEngine.init();
+            });
+            document.getElementById('switchFakeLockDynamic').addEventListener('change', (e) => {
+                const isEnabled = e.target.checked;
+                localStorage.setItem('bellgo_fakelock', isEnabled ? 'true' : 'false');
+                window.disableFakeLock = !isEnabled;
+                document.querySelectorAll('[id^="switchFakeLock"]').forEach(el => { if (el !== e.target) el.checked = isEnabled; });
+                const btnFakeLock = document.getElementById('btnFakeLock');
+                if (btnFakeLock) btnFakeLock.style.display = isEnabled ? 'flex' : 'none';
+                if (window.socket && window.socket.connected) window.socket.emit('save-store-settings', { fakeLockEnabled: isEnabled });
+            });
+        }
+        if (document.getElementById('switchWarnOnBackgroundDynamic')) {
+            document.getElementById('switchWarnOnBackgroundDynamic').checked = (localStorage.getItem('bellgo_keepalive') !== 'false');
+            document.getElementById('switchFakeLockDynamic').checked = (localStorage.getItem('bellgo_fakelock') !== 'false');
+        }
+
         // ✅ NEW: Αυτόματη αποθήκευση αμέσως μόλις πληκτρολογείς στις ρυθμίσεις
         const sModal = document.getElementById('settingsModal');
         if (sModal && !sModal.dataset.autosaveAttached) {
