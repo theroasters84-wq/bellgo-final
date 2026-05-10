@@ -52,7 +52,7 @@ module.exports = function(context) {
             if (data.role === 'customer') socket.role = 'customer';
 
             socket.join(storeName); 
-            console.log(`📡 User ${username} joined room: ${storeName}`); 
+            console.log(`[🚀 JOIN] Ο ${username} (Role: ${socket.role}) μπήκε στο κατάστημα: ${storeName}`); 
 
             const key = `${storeName}_${username}`;
             const wasRinging = activeUsers[key]?.isRinging || false;
@@ -347,30 +347,57 @@ module.exports = function(context) {
                 }
             }
             if (user) {
+            const prevStatus = user.status;
             if (user.status === 'background') {
                 user.status = 'sleeping'; // Ήταν στο background και το OS έκοψε τη σύνδεση
             } else {
                 user.status = 'offline'; // Το έκλεισε / σκότωσε τελείως
             }
+            console.log(`[🔌 DISCONNECT] Ο ${user.username} αποσυνδέθηκε! Status: ${prevStatus} -> ${user.status}`);
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             } 
         });
 
         socket.on('heartbeat', () => { 
+        socket.on('heartbeat', () => {
+            if (!socket.store || !socket.username) return;
             const key = `${socket.store}_${socket.username}`; 
             if (activeUsers[key]) { 
                 activeUsers[key].lastSeen = Date.now(); 
+            
+            if (!activeUsers[key]) {
+                // BUG FIX: Ο server ξέχασε τον χρήστη αλλά το κινητό στέλνει ακόμα heartbeat!
+                console.log(`[⚠️ GHOST RECOVERY] Ο ${socket.username} έστελνε heartbeat αλλά έλειπε από τη μνήμη! Τον επαναφέρω...`);
+                activeUsers[key] = {
+                    store: socket.store, username: socket.username, role: socket.role, socketId: socket.id,
+                    fcmToken: (storesData[socket.store]?.staffTokens?.[socket.username]?.token) || null,
+                    status: 'online', lastSeen: Date.now(),
+                    isRinging: false, isNative: false 
+                };
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+                return;
+            }
+            
+            activeUsers[key].lastSeen = Date.now(); 
             if (activeUsers[key].status === 'away' || activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
                     activeUsers[key].status = 'online';
                     Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
                 }
             } 
+                console.log(`[🟢 ONLINE] Ο ${socket.username} επανήλθε μέσω Heartbeat.`);
+                activeUsers[key].status = 'online';
+                Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            }
         });
         
         socket.on('set-user-status', (status) => {
+            if (!socket.store || !socket.username) return;
             const key = `${socket.store}_${socket.username}`;
             if (activeUsers[key]) {
+            if (activeUsers[key] && activeUsers[key].status !== status) {
+                console.log(`[🔄 STATUS CHANGE] Ο ${socket.username} άλλαξε κατάσταση σε: ${status.toUpperCase()}`);
                 activeUsers[key].status = status;
+                activeUsers[key].lastSeen = Date.now(); // Ανανέωση χρόνου για να μην πέσει σε timeout
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
             }
         });

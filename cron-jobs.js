@@ -107,6 +107,7 @@ module.exports = function(context) {
         for (const key in activeUsers) {
             const user = activeUsers[key];
             if (user.status !== 'offline' && (now - user.lastSeen > 60000)) {
+                    console.log(`[🔴 TIMEOUT] Ο ${user.username} δεν έστειλε σήμα για 60s! Τον κάνω OFFLINE.`);
                 user.status = 'offline';
                 Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
             }
