@@ -424,6 +424,8 @@ window.App = {
         const hasManager = App.hasFeature('pack_manager');
         const hasDelivery = App.hasFeature('pack_delivery');
         const hasTables = App.hasFeature('pack_tables');
+        const hasChat = App.hasFeature('pack_chat');
+        const hasLoyalty = App.hasFeature('pack_loyalty');
         
         const isMidTier = hasManager || hasDelivery || hasTables; // 2, 3, 4
 
@@ -437,11 +439,10 @@ window.App = {
         const stripe = document.getElementById('stripeSettingsContainer');
         const einvInner = document.getElementById('einvSettingsContainer');
 
-        if (hasPos || isMidTier) {
-            // Categories 2, 3, 4, 5: Show Admin Settings Category
+        if (visibleIds.has('btnSettingsAdmin')) {
             if(btnAdmin) btnAdmin.style.display = 'flex';
             if(btnPinMain) btnPinMain.style.display = 'none';
-            
+
             if (hasPos) {
                 // Category 5: Show All inside Admin
                 if(softPos) softPos.style.display = 'block';
@@ -450,15 +451,17 @@ window.App = {
                 if(einvInner) einvInner.style.display = 'block';
                 if(btnEinvMain) btnEinvMain.style.display = 'none'; // Hide from main
             } else {
-                // Categories 2, 3, 4: Show ONLY Stripe inside Admin
+                // Hide POS specific things
                 if(softPos) softPos.style.display = 'none';
                 if(physPos) physPos.style.display = 'none';
-                if(stripe) stripe.style.display = 'block';
                 if(einvInner) einvInner.style.display = 'none';
-                if(btnEinvMain) btnEinvMain.style.display = 'none'; // Hide from main (not in these packs)
+                if(btnEinvMain) btnEinvMain.style.display = 'none';
+                
+                // Show Stripe only for MidTier (2,3,4) where it's needed
+                if(stripe) stripe.style.display = isMidTier ? 'block' : 'none';
             }
         } else {
-            // Categories 1, 6: Hide Admin Settings Category, Show PIN loose
+            // Fallback (e.g. no Admin Settings needed)
             if(btnAdmin) btnAdmin.style.display = 'none';
             if(btnPinMain) btnPinMain.style.display = 'flex';
             if(btnEinvMain) btnEinvMain.style.display = 'none';

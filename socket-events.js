@@ -207,11 +207,46 @@ module.exports = function(context) {
         });
         
         socket.on('get-dev-analytics', async () => {
-            let allStores = Object.values(storesData).map(s => ({ name: s.settings.name, email: s.settings.adminEmail, plan: s.settings.plan || 'basic' }));
-            if (db) { try { const snapshot = await db.collection('stores').get(); const dbStores = []; snapshot.forEach(doc => { const d = doc.data(); dbStores.push({ name: d.settings?.name || doc.id, email: d.settings?.adminEmail || doc.id, plan: d.settings?.plan || 'basic' }); }); if (dbStores.length > 0) allStores = dbStores; } catch(e) { console.log("Analytics DB Error", e.message); } }
+            const packagePrices = { pack_chat: 4, pack_manager: 10, pack_delivery: 15, pack_tables: 15, pack_pos: 20, pack_loyalty: 5 };
+            let allStores = Object.values(storesData).map(s => ({ name: s.settings.name, email: s.settings.adminEmail, plan: s.settings.plan || 'basic', features: s.settings.features || {} }));
+            if (db) { try { const snapshot = await db.collection('stores').get(); const dbStores = []; snapshot.forEach(doc => { const d = doc.data(); dbStores.push({ name: d.settings?.name || doc.id, email: d.settings?.adminEmail || doc.id, plan: d.settings?.plan || 'basic', features: d.settings?.features || {} }); }); if (dbStores.length > 0) allStores = dbStores; } catch(e) { console.log("Analytics DB Error", e.message); } }
             const uniqueEmails = [...new Set(allStores.map(s => s.email).filter(e => e && e.includes('@')))];
-            const revenue = allStores.reduce((sum, s) => sum + (s.plan === 'premium' ? 10 : 4), 0);
-            socket.emit('dev-analytics-data', { stores: allStores, emails: uniqueEmails, revenue: revenue });
+            
+            let totalRevenue = 0;
+            const validStores = allStores.filter(s => s.email !== 'debug_room').map(s => {
+                let storeRev = 0;
+                if (s.features) {
+                    for (const [key, price] of Object.entries(packagePrices)) {
+                        if (s.features[key] === true) storeRev += price;
+                    }
+                }
+                s.realRevenue = storeRev;
+                totalRevenue += storeRev;
+                return s;
+            });
+
+            socket.emit('dev-analytics-data', { stores: validStores, emails: uniqueEmails, revenue: totalRevenue });
+        });
+
+        // ✅ NEW: Reset all test subscriptions in Firebase
+        socket.on('dev-reset-subscriptions', async () => {
+            if (db) {
+                try {
+                    const snapshot = await db.collection('stores').get();
+                    const batch = db.batch();
+                    snapshot.forEach(doc => {
+                        const storeRef = db.collection('stores').doc(doc.id);
+                        batch.update(storeRef, { 'settings.features': {}, 'settings.plan': 'basic' });
+                    });
+                    await batch.commit();
+                    for (let key in storesData) {
+                        if (storesData[key].settings) { storesData[key].settings.features = {}; storesData[key].settings.plan = 'basic'; }
+                    }
+                    socket.emit('dev-reset-success');
+                } catch(e) {
+                    console.log("Reset DB Error", e.message);
+                }
+            }
         });
 
         socket.on('trigger-alarm', (data) => { 

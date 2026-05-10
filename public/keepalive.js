@@ -118,7 +118,7 @@ const KeepAlive = {
                 }
 
                 // 4. Επιστροφή στις κατηγορίες (Κατάλογος) αν είμαστε μέσα σε Προϊόντα
-                if (window.App.currentCategoryIndex !== null) {
+                if (window.App && window.App.currentCategoryIndex !== null) {
                     window.App.currentCategoryIndex = null;
                     if (typeof window.App.renderMenu === 'function') window.App.renderMenu();
                     return;
@@ -128,6 +128,19 @@ const KeepAlive = {
                 const sb = document.getElementById('orderSidebar');
                 if (sb && (sb.style.left === '0px' || sb.style.left === '0%')) {
                     if (typeof window.App.toggleOrderSidebar === 'function') window.App.toggleOrderSidebar();
+                    return;
+                }
+
+                // 6. Κλείσιμο Επεξεργασίας Μενού (Menu Editor)
+                const menuPanel = document.getElementById('menuFullPanel');
+                if (menuPanel && (menuPanel.style.display === 'flex' || menuPanel.style.display === 'block')) {
+                    if (window.AdminUI && window.AdminUI.toggleMenuMode) {
+                        window.AdminUI.toggleMenuMode();
+                    } else if (window.App && window.App.toggleMenuMode) {
+                        window.App.toggleMenuMode();
+                    } else {
+                        menuPanel.style.display = 'none';
+                    }
                     return;
                 }
             }

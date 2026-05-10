@@ -12,12 +12,13 @@ export const AdminUI = {
     toggleMenuMode: () => {
         const panel = document.getElementById('menuFullPanel');
         const btn = document.getElementById('btnMenuToggle');
+        if (!panel) return;
         if (panel.style.display === 'flex') {
             panel.style.display = 'none';
-            btn.classList.remove('menu-active');
+            if (btn) btn.classList.remove('menu-active');
         } else {
             panel.style.display = 'flex';
-            btn.classList.add('menu-active');
+            if (btn) btn.classList.add('menu-active');
         }
     },
     

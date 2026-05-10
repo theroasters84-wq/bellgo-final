@@ -168,6 +168,10 @@ export const I18n = {
             cancel: "Cancel",
             create_pin: "CREATE PIN",
             set_new_pin: "Set a new 4-digit code",
+            new_pin_title: "CONFIRM PIN",
+            new_pin_sub: "Please type it again",
+            admin_pin_confirm_title: "CONFIRM ADMIN PIN",
+            admin_pin_confirm_sub: "Please type Admin PIN again",
             
             // ✅ Settings Menu translations (with spaces for alignment)
             settings_title: "⚙️ SETTINGS",
@@ -437,6 +441,10 @@ export const I18n = {
             cancel: "Ακύρωση",
             create_pin: "ΔΗΜΙΟΥΡΓΙΑ PIN",
             set_new_pin: "Ορίστε έναν νέο 4-ψήφιο κωδικό",
+            new_pin_title: "ΕΠΙΒΕΒΑΙΩΣΗ PIN",
+            new_pin_sub: "Πληκτρολογήστε το ξανά",
+            admin_pin_confirm_title: "ΕΠΙΒΕΒΑΙΩΣΗ ADMIN PIN",
+            admin_pin_confirm_sub: "Πληκτρολογήστε ξανά το Admin PIN",
             
             // ✅ Settings Menu translations (with spaces for alignment)
             settings_title: "⚙️ ΡΥΘΜΙΣΕΙΣ",
@@ -1017,3 +1025,87 @@ setTimeout(() => {
             }).catch(e => console.log("APK Update Check Error", e));
     }
 }, 3000);
+
+/* -----------------------------------------------------------
+   5. GLOBAL BACK BUTTON HANDLER (PWA / SPA)
+----------------------------------------------------------- */
+window.BackHandler = {
+    init: function() {
+        // ✅ FIX: Απενεργοποίηση του BackHandler στις εφαρμογές του προσωπικού 
+        // διότι εκεί υπάρχει το KeepAlive (keepalive.js) που το διαχειρίζεται!
+        const path = window.location.pathname;
+        if (path.includes('premium.html') || path.includes('kitchen.html') || path.includes('dianomeas.html') || path.includes('stafpremium.html') || path.includes('index.html') || path.includes('manage')) {
+            return;
+        }
+
+        if (window.history && window.history.pushState) {
+            // Προσθέτουμε ένα αρχικό state για να πιάσουμε το πρώτο πάτημα του "Πίσω"
+            window.history.pushState({ app_state: 'home' }, null, window.location.href);
+
+            window.addEventListener('popstate', function(event) {
+                let closedSomething = false;
+
+                // 1. Έλεγχος αν υπάρχει ανοιχτό overlay/modal
+                const overlays = document.querySelectorAll('.overlay-screen, .modal-overlay');
+                let visibleOverlays = Array.from(overlays).filter(el => {
+                    const style = window.getComputedStyle(el);
+                    return style.display !== 'none' && style.visibility !== 'hidden';
+                });
+
+                if (visibleOverlays.length > 0) {
+                    // Κλείσιμο του modal με το μεγαλύτερο z-index
+                    visibleOverlays.sort((a, b) => {
+                        let zA = parseInt(window.getComputedStyle(a).zIndex) || 0;
+                        let zB = parseInt(window.getComputedStyle(b).zIndex) || 0;
+                        return zB - zA;
+                    });
+                    
+                    let topOverlay = visibleOverlays[0];
+                    topOverlay.style.display = 'none';
+                    closedSomething = true;
+                }
+
+                // 2. Αν δεν έκλεισε overlay, έλεγχος για το orderPanel (καλάθι)
+                if (!closedSomething) {
+                    const orderPanel = document.getElementById('orderPanel');
+                    if (orderPanel && !orderPanel.classList.contains('minimized')) {
+                        if (window.App && typeof window.App.toggleOrderPanel === 'function') {
+                            window.App.toggleOrderPanel();
+                        } else {
+                            orderPanel.classList.add('minimized');
+                        }
+                        closedSomething = true;
+                    }
+                }
+
+                // 3. Έλεγχος για την οθόνη Login (επιστροφή στο Role Selection)
+                if (!closedSomething && window.location.pathname.includes('login.html')) {
+                    const roleSelection = document.getElementById('roleSelection');
+                    if (roleSelection && !roleSelection.classList.contains('active')) {
+                        if (window.UI && typeof window.UI.showRoles === 'function') {
+                            window.UI.showRoles();
+                            closedSomething = true;
+                        }
+                    }
+                }
+
+                if (closedSomething) {
+                    // Κάτι έκλεισε, οπότε παραμένουμε στην εφαρμογή και προσθέτουμε ξανά το buffer state
+                    window.history.pushState({ app_state: 'home' }, null, window.location.href);
+                } else {
+                    // Αν δεν υπήρχε κάτι να κλείσει, θα μπορούσαμε να αφήσουμε τον χρήστη να βγει.
+                    // Για να ικανοποιήσουμε το "να μην τον βγάζει", βάζουμε πάντα ένα νέο state
+                    // εφόσον θέλουμε να αποτρέψουμε εντελώς την έξοδο από το Back.
+                    // Προσθήκη buffer state για να μείνει "παγιδευμένος" στην εφαρμογή.
+                    window.history.pushState({ app_state: 'home' }, null, window.location.href);
+                }
+            });
+        }
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+        window.BackHandler.init();
+    });
+}

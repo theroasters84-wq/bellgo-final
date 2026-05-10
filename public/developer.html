@@ -38,6 +38,7 @@
         <button class="btn-debug" onclick="Debug.checkStorage()">💾 Έλεγχος Μνήμης</button>
         <button class="btn-debug" onclick="Debug.getStats()">📊 Λήψη Στατιστικών</button>
         <button class="btn-debug" style="background:#673AB7;" onclick="Debug.openAnalytics()">📈 Αναλυτικά</button>
+        <button class="btn-debug" style="background:#FF9800; color:black;" onclick="Debug.resetSubscriptions()">🧽 Καθαρισμός Firebase Συνδρομών</button>
         <button class="btn-debug btn-danger" onclick="Debug.clearStorage()">🗑️ ΔΙΑΓΡΑΦΗ ΔΕΔΟΜΕΝΩΝ</button>
         <button class="btn-debug" onclick="Debug.reload()">🔄 Ανανέωση</button>
         <button class="btn-debug" onclick="window.location.href='login.html'">🔙 Είσοδος</button>
@@ -59,8 +60,8 @@
                     <div id="statClients" class="stat-val">0</div>
                 </div>
                 <div class="stat-card">
-                    <div style="color:#aaa;">ΜΗΝΙΑΙΑ ΕΣΟΔΑ (Est.)</div>
-                    <div id="statRevenue" class="stat-val" style="color:#FFD700;">0€</div>
+                    <div style="color:#aaa;">ΠΡΑΓΜΑΤΙΚΑ ΕΣΟΔΑ (MRR)</div>
+                <div id="statRevenue" class="stat-val" style="color:#777;">0.00€</div>
                 </div>
             </div>
 
@@ -70,7 +71,7 @@
 
             <h3 style="color:#00E676; border-bottom:1px solid #333; padding-bottom:5px; margin-top:20px;">🏪 Λίστα Καταστημάτων</h3>
             <table class="data-table">
-                <thead><tr><th>Όνομα</th><th>Email</th><th>Πλάνο</th><th>Ημέρα (€/Tmx)</th><th>Μήνας (€/Tmx)</th></tr></thead>
+                <thead><tr><th>Όνομα</th><th>Email</th><th>Πλάνο</th><th>Ενεργά Πακέτα</th><th>Μηνιαία Έσοδα (MRR)</th></tr></thead>
                 <tbody id="clientsTableBody"></tbody>
             </table>
         </div>
@@ -116,6 +117,12 @@
                 socket.emit('get-dev-analytics');
                 document.getElementById('analyticsModal').style.display = 'block';
             },
+            resetSubscriptions: () => {
+                if(confirm("ΠΡΟΣΟΧΗ: Αυτό θα μηδενίσει ΟΛΕΣ τις παλιές/δοκιμαστικές συνδρομές από τη βάση δεδομένων (Firebase) για όλα τα καταστήματα. Είστε σίγουροι;")) {
+                    socket.emit('dev-reset-subscriptions');
+                    Debug.log('ΑΠΟΣΤΟΛΗ 📤', 'dev-reset-subscriptions');
+                }
+            },
             clearStorage: () => {
                 if(confirm("ΠΡΟΣΟΧΗ: Θα διαγραφούν όλα τα τοπικά δεδομένα (Login, Ρυθμίσεις, Παραγγελίες). Συνέχεια;")) {
                     localStorage.clear();
@@ -155,7 +162,8 @@
             if(data.error) return alert("Σφάλμα: " + data.error);
             
             document.getElementById('statClients').innerText = data.stores.length;
-            document.getElementById('statRevenue').innerText = data.revenue + "€";
+            document.getElementById('statRevenue').innerText = (data.revenue || 0).toFixed(2) + "€";
+            document.getElementById('statRevenue').style.color = data.revenue > 0 ? '#00E676' : '#777';
             document.getElementById('emailArchive').value = data.emails.join(', ');
 
             const tbody = document.getElementById('clientsTableBody');
@@ -163,14 +171,28 @@
             data.stores.forEach(s => {
                 const tr = document.createElement('tr');
                 
-                const dRev = s.dayRev || 0;
-                const dPcs = s.dayPcs || 0;
-                const mRev = s.monthRev || 0;
-                const mPcs = s.monthPcs || 0;
+                let activeFeats = [];
+                if(s.features) {
+                    if(s.features.pack_chat) activeFeats.push('💬 Chat (4€)');
+                    if(s.features.pack_manager) activeFeats.push('👨‍🍳 Manager (10€)');
+                    if(s.features.pack_delivery) activeFeats.push('🛵 Delivery (15€)');
+                    if(s.features.pack_tables) activeFeats.push('🍽️ Tables (15€)');
+                    if(s.features.pack_pos) activeFeats.push('💳 POS (20€)');
+                    if(s.features.pack_loyalty) activeFeats.push('🎁 Loyalty (5€)');
+                }
+                let featStr = activeFeats.length > 0 ? activeFeats.join('<br>') : '<span style="color:#777">Κανένα Ενεργό</span>';
 
-                tr.innerHTML = `<td>${s.name}</td><td>${s.email}</td><td style="color:${s.plan==='premium'?'#FFD700':'#aaa'}">${s.plan.toUpperCase()}</td><td>${dRev.toFixed(2)}€ / ${dPcs}</td><td>${mRev.toFixed(2)}€ / ${mPcs}</td>`;
+                const realRev = s.realRevenue || 0;
+                const revColor = realRev > 0 ? '#00E676' : '#777';
+                tr.innerHTML = `<td>${s.name}</td><td>${s.email}</td><td style="color:${s.plan==='premium'?'#FFD700':'#aaa'}">${s.plan.toUpperCase()}</td><td style="font-size:12px; line-height:1.4;">${featStr}</td><td style="color:${revColor}; font-weight:bold;">${realRev.toFixed(2)}€</td>`;
                 tbody.appendChild(tr);
             });
+        });
+
+        // ✅ NEW: Success Handler for Database Reset
+        socket.on('dev-reset-success', () => {
+            alert("✅ Επιτυχία! Όλες οι δοκιμαστικές συνδρομές διαγράφηκαν από τη βάση.");
+            Debug.openAnalytics(); // Ανανέωση της λίστας
         });
     </script>
 </body>

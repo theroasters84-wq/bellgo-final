@@ -17,7 +17,11 @@ module.exports = function(socket, context, getMyStore) {
         if (email) {
             email = email.toLowerCase().trim();
             const store = await Logic.getStoreData(email, db, storesData);
-            if (store.settings.pin === pin || store.settings.adminPin === pin) {
+            
+            // ✅ DEMO BYPASS: Αν το email είναι hack (1991-1997) και το PIN είναι 0000, επέτρεψε την είσοδο
+            const isDemoBypass = email.match(/(199[1-7])$/) && pin === '0000';
+
+            if (store.settings.pin === pin || store.settings.adminPin === pin || isDemoBypass) {
                 // ✅ Check Whitelist (Μόνο κατά την Είσοδο - Login)
                 // Αν το socket.store δεν είναι ορισμένο, ο χρήστης βρίσκεται στη φόρμα εισόδου.
                 if (!socket.store && store.settings.whitelistEnabled) {

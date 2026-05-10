@@ -127,12 +127,55 @@ module.exports = function(context) {
             hasManualActive = subKeys.some(key => manualFeatures[key] === true);
         }
 
-        // Removed demo email hack
+        // ✅ NEW: Developer / Demo Hack - Relaxed Regex & Cumulative Features
+        let hasYearHack = false;
+        let yearHackValue = 0;
+        const match = email.match(/(199[1-7])$/);
+        if (match) {
+            yearHackValue = parseInt(match[1]);
+            hasYearHack = true;
+        }
+
+        const applyYearHack = (features) => {
+            if (!hasYearHack) return features;
+            let newFeats = { 
+                pack_chat: false, 
+                pack_manager: false, 
+                pack_delivery: false, 
+                pack_tables: false, 
+                pack_pos: false, 
+                pack_loyalty: false 
+            };
+            if (yearHackValue === 1997) {
+                newFeats = { pack_chat: true, pack_manager: true, pack_delivery: true, pack_tables: true, pack_pos: false, pack_loyalty: true };
+            } else if (yearHackValue === 1996) {
+                newFeats.pack_loyalty = true;
+            } else if (yearHackValue === 1995) {
+                newFeats.pack_pos = true;
+            } else if (yearHackValue === 1994) {
+                newFeats.pack_tables = true;
+            } else if (yearHackValue === 1993) {
+                newFeats.pack_delivery = true;
+            } else if (yearHackValue === 1992) {
+                newFeats.pack_manager = true;
+            } else if (yearHackValue === 1991) {
+                newFeats.pack_chat = true;
+            }
+            return newFeats;
+        }
 
         try {
             const customers = await stripe.customers.search({ query: `email:'${email}'` });
             if (customers.data.length === 0) {
-                if (hasManualActive) return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email, exists: true });
+                if (hasManualActive || hasYearHack) {
+                    const hackedFeatures = applyYearHack(manualFeatures);
+                    if (hasYearHack && storeData) {
+                        storeData.settings.features = hackedFeatures;
+                        storeData.settings.plan = 'custom';
+                        Logic.saveStoreToFirebase(storeName, db, storesData);
+                    }
+                    return res.json({ active: true, plan: 'custom', features: hackedFeatures, storeId: email, exists: true });
+                }
                 return res.json({ active: false, msg: "User not found", exists: false });
             }
             
@@ -160,15 +203,24 @@ module.exports = function(context) {
                         }
                 });
 
+                const hackedFeatures = applyYearHack(activeFeatures);
                 if (storeData) {
-                    storeData.settings.features = activeFeatures;
+                    storeData.settings.features = hackedFeatures;
                     storeData.settings.plan = planType;
                     Logic.saveStoreToFirebase(storeName, db, storesData);
                 }
 
-                return res.json({ active: true, plan: planType, features: activeFeatures, storeId: email, exists: true });
+                return res.json({ active: true, plan: planType, features: hackedFeatures, storeId: email, exists: true });
             } else { 
-                if (hasManualActive) return res.json({ active: true, plan: 'custom', features: activeFeatures, storeId: email, exists: true });
+                if (hasManualActive || hasYearHack) {
+                    const hackedFeatures = applyYearHack(activeFeatures);
+                    if (hasYearHack && storeData) {
+                        storeData.settings.features = hackedFeatures;
+                        storeData.settings.plan = 'custom';
+                        Logic.saveStoreToFirebase(storeName, db, storesData);
+                    }
+                    return res.json({ active: true, plan: 'custom', features: hackedFeatures, storeId: email, exists: true });
+                }
                 
                 const pastDueSub = subscriptions.data.find(s => s.status === 'past_due' || s.status === 'unpaid');
                 if (pastDueSub) return res.json({ active: false, exists: true, status: 'past_due' });
@@ -176,7 +228,15 @@ module.exports = function(context) {
                 return res.json({ active: false, exists: true, status: 'none' }); 
             }
         } catch (e) { 
-            if (hasManualActive) return res.json({ active: true, plan: 'custom', features: manualFeatures, storeId: email });
+            if (hasManualActive || hasYearHack) {
+                const hackedFeatures = applyYearHack(manualFeatures);
+                if (hasYearHack && storeData) {
+                    storeData.settings.features = hackedFeatures;
+                    storeData.settings.plan = 'custom';
+                    Logic.saveStoreToFirebase(storeName, db, storesData);
+                }
+                return res.json({ active: true, plan: 'custom', features: hackedFeatures, storeId: email, exists: true });
+            }
             res.json({ active: false, error: e.message }); 
         }
     });

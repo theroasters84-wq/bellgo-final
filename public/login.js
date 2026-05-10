@@ -105,7 +105,7 @@ window.onload = function() {
                 if (session && session.role) {
                     // Έλεγχος Ρόλου και ανακατεύθυνση
                     if (session.role === 'admin') {
-                        if (session.plan === 'premium') {
+                        if (session.plan === 'premium' || session.plan === 'custom') {
                             const adminMode = localStorage.getItem('bellgo_admin_mode');
                             window.location.replace(adminMode === 'kitchen' ? "/manage/kitchen.html" : "/manage/premium.html");
                         } else {
@@ -116,7 +116,7 @@ window.onload = function() {
                         if (session.role === 'driver') {
                             window.location.replace("/staff/driver");
                         } else {
-                            window.location.replace(session.plan === 'premium' ? "/staff/app" : "/manage/index.html");
+                            window.location.replace((session.plan === 'premium' || session.plan === 'custom') ? "/staff/app" : "/manage/index.html");
                         }
                     }
                     return; // Σταματάμε εδώ για να μην φορτώσει η φόρμα
