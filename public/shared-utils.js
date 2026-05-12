@@ -1027,6 +1027,45 @@ setTimeout(() => {
 }, 3000);
 
 /* -----------------------------------------------------------
+   6. SMART RECONNECT (NATIVE APP & WEB ZOMBIE SOCKET FIX)
+----------------------------------------------------------- */
+window.ForceReconnect = {
+    init: function() {
+        // Όταν το κινητό ξαναβρίσκει ίντερνετ
+        window.addEventListener('online', () => {
+            console.log("🌐 Δίκτυο Επανήλθε! Εκτέλεση Force Reconnect...");
+            this.trigger();
+        });
+
+        // Όταν η εφαρμογή επιστρέφει από το background στο προσκήνιο
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log("📱 Η εφαρμογή επανήλθε στο προσκήνιο! Έλεγχος σύνδεσης...");
+                if (navigator.onLine) {
+                    this.trigger();
+                }
+            }
+        });
+
+        // Εξάγουμε τη συνάρτηση για να την καλεί η Kotlin (μέσω WebView)
+        window.forceAppReconnect = () => {
+            console.log("🤖 Εντολή Force Reconnect από το Native App!");
+            this.trigger();
+        };
+        if (!window.App) window.App = {};
+        window.App.forceReconnect = window.forceAppReconnect;
+    },
+
+    trigger: function() {
+        if (window.socket) {
+            console.log("🔄 Κλείσιμο και επανεκκίνηση Socket.io...");
+            window.socket.disconnect();
+            setTimeout(() => window.socket.connect(), 500);
+        }
+    }
+};
+
+/* -----------------------------------------------------------
    5. GLOBAL BACK BUTTON HANDLER (PWA / SPA)
 ----------------------------------------------------------- */
 window.BackHandler = {
@@ -1107,5 +1146,6 @@ window.BackHandler = {
 if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
         window.BackHandler.init();
+        window.ForceReconnect.init();
     });
 }

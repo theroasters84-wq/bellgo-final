@@ -88,8 +88,13 @@ export const AdminUI = {
             logoutBtn.onclick = () => { 
                 const msg = (window.App && window.App.t) ? window.App.t('logout_confirm') : "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;";
                 if(confirm(msg)) { 
-                    if(window.Admin && window.Admin.logout) window.Admin.logout(); 
-                    else { Timeout(() => {
+                    if(window.App && window.App.logout) {
+                        window.App.logout();
+                    } else if(window.Admin && window.Admin.logout) {
+                        window.Admin.logout(); 
+                    } else { 
+                        if(window.socket) window.socket.emit('manual-logout');
+                        setTimeout(() => {
                             localStorage.removeItem('bellgo_session'); 
                             window.location.replace("login.html"); 
                         }, 100);

@@ -418,6 +418,11 @@ module.exports = function(context) {
                 return;
             }
             
+            // ✅ FIX: Ενημέρωση του Socket ID σε περίπτωση Zombie Socket
+            if (activeUsers[key].socketId !== socket.id) {
+                activeUsers[key].socketId = socket.id;
+            }
+
             activeUsers[key].lastSeen = Date.now(); 
             if (activeUsers[key].status === 'offline' || activeUsers[key].status === 'sleeping') {
                 console.log(`[🟢 ΕΠΑΝΑΦΟΡΑ] Ο ${socket.username} επανήλθε μέσω Heartbeat σε: ${clientStatus.toUpperCase()}`);
@@ -426,6 +431,12 @@ module.exports = function(context) {
             } else if (activeUsers[key].status !== clientStatus) {
                 activeUsers[key].status = clientStatus;
                 Logic.updateStoreClients(socket.store, io, storesData, activeUsers, db);
+            }
+
+            // ✅ NEW: Smart Heartbeat - Αν ο χρήστης πρέπει να χτυπάει, του ξαναστέλνουμε το σήμα!
+            if (activeUsers[key].isRinging) {
+                console.log(`[🔔 SMART HEARTBEAT] Ο ${socket.username} χτυπάει ακόμα! Επαναποστολή 'ring-bell'.`);
+                socket.emit('ring-bell', { source: "ΣΥΣΤΗΜΑ", location: "ΕΠΑΝΑΦΟΡΑ" });
             }
         });
         
