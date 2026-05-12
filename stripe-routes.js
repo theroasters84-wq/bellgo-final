@@ -190,7 +190,10 @@ module.exports = function(context) {
                 activeSub.items.data.forEach(item => {
                         const priceId = item.price.id;
                         if (priceId === PRICE_PREMIUM) planType = 'premium';
-                        if (FEATURE_PRICES[priceId]) activeFeatures[FEATURE_PRICES[priceId]] = true;
+                        if (FEATURE_PRICES[priceId]) {
+                            activeFeatures[FEATURE_PRICES[priceId]] = true;
+                            if (FEATURE_PRICES[priceId] !== 'pack_chat') planType = 'premium';
+                        }
                         
                         // 🎁 PROMO PACK: Ενεργοποιεί τα πάντα ΕΚΤΟΣ από POS
                         if (priceId === PRICE_PROMO) {

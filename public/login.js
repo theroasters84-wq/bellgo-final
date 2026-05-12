@@ -103,9 +103,10 @@ window.onload = function() {
             try {
                 const session = JSON.parse(savedSession);
                 if (session && session.role) {
+                    const hasPremium = session.plan === 'premium' || session.plan === 'custom' || (session.features && (session.features.pack_manager || session.features.pack_delivery || session.features.pack_tables || session.features.pack_pos || session.features.pack_loyalty));
                     // Έλεγχος Ρόλου και ανακατεύθυνση
                     if (session.role === 'admin') {
-                        if (session.plan === 'premium' || session.plan === 'custom') {
+                        if (hasPremium) {
                             const adminMode = localStorage.getItem('bellgo_admin_mode');
                             window.location.replace(adminMode === 'kitchen' ? "/manage/kitchen.html" : "/manage/premium.html");
                         } else {
@@ -116,7 +117,7 @@ window.onload = function() {
                         if (session.role === 'driver') {
                             window.location.replace("/staff/driver");
                         } else {
-                            window.location.replace((session.plan === 'premium' || session.plan === 'custom') ? "/staff/app" : "/manage/index.html");
+                            window.location.replace(hasPremium ? "/staff/app" : "/manage/index.html");
                         }
                     }
                     return; // Σταματάμε εδώ για να μην φορτώσει η φόρμα
@@ -131,6 +132,18 @@ window.onload = function() {
     } else {
         const savedEmail = localStorage.getItem('bellgo_last_email');
         if(savedEmail) document.getElementById('adminEmailInp').value = savedEmail;
+
+        // ✅ NEW: Φόρτωση των υπόλοιπων αποθηκευμένων στοιχείων (Admin & Staff)
+        const savedPersonalEmail = localStorage.getItem('bellgo_last_personal_email');
+        if(savedPersonalEmail) document.getElementById('adminPersonalEmailInp').value = savedPersonalEmail;
+        const savedAdminName = localStorage.getItem('bellgo_last_admin_name');
+        if(savedAdminName) document.getElementById('adminNameInp').value = savedAdminName;
+        const savedStStore = localStorage.getItem('bellgo_last_st_store');
+        if(savedStStore) document.getElementById('stStore').value = savedStStore;
+        const savedStUserEmail = localStorage.getItem('bellgo_last_st_user_email');
+        if(savedStUserEmail) document.getElementById('stUserEmail').value = savedStUserEmail;
+        const savedStName = localStorage.getItem('bellgo_last_st_name');
+        if(savedStName) document.getElementById('stName').value = savedStName;
     }
 
     // Load Language
@@ -279,6 +292,11 @@ window.Staff = {
         const btn = document.getElementById('btnStaffLogin');
         btn.innerText = t('checking') || "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
 
+        // ✅ NEW: Αποθήκευση στοιχείων Προσωπικού για την επόμενη φορά
+        localStorage.setItem('bellgo_last_st_store', adminEmail);
+        localStorage.setItem('bellgo_last_st_user_email', userEmail);
+        localStorage.setItem('bellgo_last_st_name', name);
+
         socket.emit('verify-pin', { pin: pin, email: adminEmail, personalEmail: userEmail });
         
         socket.once('pin-verified', async (res) => {
@@ -310,7 +328,8 @@ window.Staff = {
                         
                         localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
 
-                        if (plan === 'premium' || plan === 'custom') {
+                        const hasPremium = plan === 'premium' || plan === 'custom' || (features && (features.pack_manager || features.pack_delivery || features.pack_tables || features.pack_pos || features.pack_loyalty));
+                        if (hasPremium) {
                             if (role === 'driver') {
                                 window.location.replace("/staff/driver");
                             } else {
@@ -354,6 +373,8 @@ window.Admin = {
 
         if(!email) return alert(t('enter_email_alert') || "Παρακαλώ εισάγετε email.");
         localStorage.setItem('bellgo_last_email', email); // ✅ Save email for next time
+        localStorage.setItem('bellgo_last_personal_email', personalEmail); // ✅ Save personal email
+        localStorage.setItem('bellgo_last_admin_name', name); // ✅ Save admin name
         
         const btn = document.getElementById('btnAdminLogin');
         btn.innerText = t('checking') || "ΕΛΕΓΧΟΣ..."; btn.disabled = true;
@@ -477,7 +498,8 @@ socket.on('pin-success', (data) => {
     const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.personalEmail || adminUser.email, plan: adminPlan, features: adminUser.features };
     localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
     
-    if(adminPlan === 'premium' || adminPlan === 'custom') {
+    const hasPremium = adminPlan === 'premium' || adminPlan === 'custom' || (adminUser.features && (adminUser.features.pack_manager || adminUser.features.pack_delivery || adminUser.features.pack_tables || adminUser.features.pack_pos || adminUser.features.pack_loyalty));
+    if(hasPremium) {
         const adminMode = localStorage.getItem('bellgo_admin_mode');
         if (adminMode === 'kitchen') {
             window.location.replace("/manage/kitchen.html");
@@ -495,7 +517,8 @@ socket.on('pin-verified', (res) => {
             const sessionData = { name: adminUser.displayName, store: adminUser.email, role: 'admin', email: adminUser.personalEmail || adminUser.email, plan: adminPlan, features: adminUser.features };
             localStorage.setItem('bellgo_session', JSON.stringify(sessionData));
             
-            if(adminPlan === 'premium' || adminPlan === 'custom') {
+            const hasPremium = adminPlan === 'premium' || adminPlan === 'custom' || (adminUser.features && (adminUser.features.pack_manager || adminUser.features.pack_delivery || adminUser.features.pack_tables || adminUser.features.pack_pos || adminUser.features.pack_loyalty));
+            if(hasPremium) {
                 const adminMode = localStorage.getItem('bellgo_admin_mode');
                 if (adminMode === 'kitchen') {
                     window.location.replace("/manage/kitchen.html");
