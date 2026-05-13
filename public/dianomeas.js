@@ -341,11 +341,20 @@ window.App = {
     },
 
     calculateTotal: (text) => { let t=0; if(!text)return 0; text.split('\n').forEach(l=>{ const m=l.match(/^(\d+)?\s*(.+):(\d+(?:\.\d+)?)$/); if(m) t+=(parseInt(m[1]||'1')*parseFloat(m[3])); }); return t; },
-    openMap: (addr, zip) => { 
-        if(!addr) return alert(App.t('no_address') || "Δεν υπάρχει διεύθυνση."); 
+    openMap: (addr, zip) => {
+        if(!addr) return alert(App.t('no_address') || "Δεν υπάρχει διεύθυνση.");
         let query = addr;
         if (zip && zip !== '-') query += ', ' + zip;
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank'); 
+        const encodedQuery = encodeURIComponent(query);
+
+        // ✅ FIX: iOS Compatibility for Maps
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        if (isIos) {
+            window.open(`http://maps.apple.com/?q=${encodedQuery}`, '_blank');
+        } else {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodedQuery}`, '_blank');
+        }
     },
     
     // ✅ NEW: Take Order Function
