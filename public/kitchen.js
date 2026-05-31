@@ -342,6 +342,9 @@ window.App = {
         // ✅ LOAD LANGUAGE ON INIT
         const savedLang = localStorage.getItem('bellgo_lang') || 'el';
         I18n.setLanguage(savedLang);
+
+        // ✅ FIX: Initialize Smart Reconnect to prevent "zombie" sockets
+        if(window.KeepAlive) window.KeepAlive.init();
     },
     
     connectSocket: () => {

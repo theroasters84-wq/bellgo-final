@@ -333,6 +333,31 @@ module.exports = function(context) {
             }
         });
         
+        // ✅ NEW: Handler for the native mobile app's "coming" event
+        socket.on('staff-coming', (data) => {
+            let userKey = null;
+            if (data && data.store && data.username) {
+                const directKey = `${data.store}_${data.username}`;
+                if (activeUsers[directKey]) userKey = directKey;
+            }
+            if (!userKey) {
+                for (const [key, user] of Object.entries(activeUsers)) {
+                    if (user.socketId === socket.id) {
+                        userKey = key;
+                        break;
+                    }
+                }
+            }
+            if (userKey) {
+                const user = activeUsers[userKey];
+                user.isRinging = false;
+                user.alarmFailed = false;
+                user.alarmReceived = false;
+                io.to(user.store).emit('staff-coming', { username: user.username }); // Emit the new event
+                Logic.updateStoreClients(user.store, io, storesData, activeUsers, db);
+            }
+        });
+
         socket.on('manual-logout', (data) => { 
             const tUser = data && data.targetUser ? data.targetUser : socket.username; 
             const tKey = `${socket.store}_${tUser}`; 
