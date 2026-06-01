@@ -718,9 +718,13 @@ window.App = {
                 cat.items.forEach(item => {
                     // ✅ FIX: Έλεγχος αν είναι αντικείμενο ή κείμενο
                     if (item && (typeof item === 'object' || item.trim())) {
-                        const { name, price, desc, allergens, extras } = parseItem(item);
+                        const { name, price, desc, allergens, extras, useStock, stock, enabled } = parseItem(item);
+                        const isOutOfStock = useStock && stock <= 0;
                         const box = document.createElement('div');
                         box.className = 'item-box';
+                        if(isOutOfStock || !enabled){
+                            box.style.opacity = '0.5';
+                        }
                         // ✅ FIX iOS: touch-action: manipulation disables zoom delay
                         box.style.touchAction = 'manipulation';
                         box.style.cursor = 'pointer'; // ✅ Fix for iOS click registration
@@ -749,47 +753,34 @@ window.App = {
                                 alert(t('menu_only_alert') || "Για να παραγγείλετε, πατήστε 'ΕΠΙΣΤΡΟΦΗ' και επιλέξτε 'ΠΑΡΑΓΓΕΙΛΕ ΤΩΡΑ'.");
                                 return;
                             }
-
-                        const handleItemSelect = () => {
-                            if (isOutOfStock || !enabled) return;
                             
-                            if (useStock) {
-                                const txt = document.getElementById('orderText');
-                                const lines = txt.value.split('\n');
-                                let inCart = 0;
-                                for (let l of lines) {
-                                    if (l.includes(name)) {
-                                        const m = l.match(/^(\d+)?\s*(.+)$/);
-                                        if (m && m[2].includes(name)) inCart += parseInt(m[1] || '1');
+                            const handleItemSelect = () => {
+                                if (isOutOfStock || !enabled) return;
+                                
+                                if (useStock) {
+                                    const txt = document.getElementById('orderText');
+                                    const lines = txt.value.split('\n');
+                                    let inCart = 0;
+                                    for (let l of lines) {
+                                        if (l.includes(name)) {
+                                            const m = l.match(/^(\d+)?\s*(.+)$/);
+                                            if (m && m[2].includes(name)) inCart += parseInt(m[1] || '1');
+                                        }
+                                    }
+                                    if (inCart >= stock) {
+                                        alert(I18n.t('stock_limit_reached') || `Έχετε ήδη προσθέσει το μέγιστο διαθέσιμο απόθεμα (${stock} τμχ) για αυτό το προϊόν!`);
+                                        return;
                                     }
                                 }
-                                if (inCart >= stock) {
-                                    alert(I18n.t('stock_limit_reached') || `Έχετε ήδη προσθέσει το μέγιστο διαθέσιμο απόθεμα (${stock} τμχ) για αυτό το προϊόν!`);
-                                    return;
+
+                                if (extras && extras.length > 0) {
+                                    App.openItemOptionsModal(name, price, extras);
+                                } else {
+                                    App.addToOrder(`${name}:${price}`);
                                 }
-                            }
+                            };
 
-                            if (extras && extras.length > 0) {
-                                App.openItemOptionsModal(name, price, extras);
-                            } else {
-                                App.addToOrder(`${name}:${price}`);
-                            }
-                        };
-
-                            // ✅ FIX: Στα iPhone το Double Tap δυσκολεύει, οπότε το κάνουμε Single Tap
-                            if (isIos()) {
-                                handleItemSelect();
-                                return;
-                            }
-
-                            const currentTime = new Date().getTime();
-                            const tapLength = currentTime - lastTap;
-                            if (tapLength < 500 && tapLength > 0) { 
-                                handleItemSelect();
-                                lastTap = 0;
-                            } else {
-                                lastTap = currentTime;
-                            }
+                            handleItemSelect();
                         });
                         itemsDiv.appendChild(box);
                     }
