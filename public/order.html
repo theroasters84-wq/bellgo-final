@@ -76,6 +76,17 @@
         <button class="btn-google" onclick="App.loginGoogle()">
             <span style="font-weight:900; font-size:24px; margin-right:8px;">G</span> <span data-i18n="login_with_google">Σύνδεση με Google</span>
         </button>
+
+        <div class="divider" data-i18n="or" style="margin: 20px 0; max-width: 280px; margin-left:auto; margin-right:auto;">Ή</div>
+
+        <div id="emailLoginSection" style="width: 100%; max-width: 280px; text-align: center; margin: 0 auto;">
+            <p id="emailLinkMessage" style="color: #00E676; font-size: 14px; display: none; margin-bottom: 10px;" data-i18n="email_sent_check_inbox">Σας στείλαμε ένα link! Ελέγξτε τα εισερχόμενά σας.</p>
+            <input type="email" id="emailForSignIn" class="inp-detail" placeholder="Εισάγετε το email σας" data-i18n-placeholder="enter_your_email" style="margin-bottom: 10px; text-align: center;">
+            <button id="btnEmailLogin" class="btn-email-login" onclick="App.loginEmailLink()" style="width: 100%; padding: 12px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                <span data-i18n="login_with_email">Είσοδος με Email</span>
+            </button>
+        </div>
+
         <button id="btnInstallLogin" class="btn-install-app" onclick="App.installPWA()"><span data-i18n="install_app">📲 ΕΓΚΑΤΑΣΤΑΣΗ APP</span></button>
     </div>
 

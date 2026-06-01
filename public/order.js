@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 import { firebaseConfig, vapidKey } from './config.js';
 import { ReserveTable } from './reserve-table.js?v=5';
@@ -201,8 +201,25 @@ window.App = {
     showProductInfo: (desc) => {
         const modal = document.getElementById('productInfoModal');
         const text = document.getElementById('productInfoText');
-        if (modal && text) {
+        const title = modal.querySelector('h3');
+        if (modal && text && title) {
+            title.innerText = `ℹ️ ${t('information') || 'Πληροφορίες'}`;
             text.innerText = desc;
+            modal.style.display = 'flex';
+        }
+    },
+
+    showOrderDetails: (orderId) => {
+        const order = activeOrders.find(o => o.id === orderId);
+        if (!order) return;
+
+        const modal = document.getElementById('productInfoModal');
+        const title = modal.querySelector('h3');
+        const text = modal.querySelector('#productInfoText');
+
+        if (modal && title && text) {
+            title.innerText = `📦 ${t('order_details') || 'Λεπτομέρειες Παραγγελίας'}`;
+            text.innerText = order.text;
             modal.style.display = 'flex';
         }
     },
@@ -226,6 +243,41 @@ window.App = {
     },
 
     loginGoogle: () => { signInWithPopup(auth, provider).catch(e => alert((t('error') || "Σφάλμα: ") + e.message)); },
+
+    loginEmailLink: () => {
+        const emailInput = document.getElementById('emailForSignIn');
+        const email = emailInput.value.trim();
+        if (!email) {
+            return alert(t('enter_email_error') || 'Παρακαλώ εισάγετε το email σας.');
+        }
+
+        const actionCodeSettings = {
+            url: window.location.href.split('?')[0], // Clean URL without params
+            handleCodeInApp: true,
+        };
+
+        const emailLoginButton = document.getElementById('btnEmailLogin');
+        emailLoginButton.disabled = true;
+        emailLoginButton.querySelector('span').innerText = t('sending_link') || 'Αποστολή...';
+
+        sendSignInLinkToEmail(auth, email, actionCodeSettings)
+            .then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                
+                document.getElementById('emailLinkMessage').style.display = 'block';
+                emailInput.style.display = 'none';
+                emailLoginButton.style.display = 'none';
+                
+                alert(t('email_sent_alert') || 'Το link εισόδου στάλθηκε στο email σας! Ελέγξτε τα εισερχόμενά σας (και τον φάκελο spam).');
+            })
+            .catch((error) => {
+                console.error("Email Link Error:", error);
+                alert((t('error') || 'Σφάλμα: ') + error.message);
+                emailLoginButton.disabled = false;
+                emailLoginButton.querySelector('span').innerText = t('login_with_email') || 'Είσοδος με Email';
+            });
+    },
+
     logout: () => { signOut(auth).then(() => location.reload()); },
 
     checkDetails: () => {
@@ -1290,8 +1342,10 @@ window.App = {
                     <div class="btn-dismiss" style="font-size:22px; color:#888; padding:0 0 0 15px; cursor:pointer;">✖</div>
                 `;
                 
-                el.style.cssText = `background:#222; border:1px solid ${color}; border-radius:10px; padding:15px; margin-bottom:10px; display:flex; align-items:center; width:100%;`;
+                el.style.cssText = `background:#222; border:1px solid ${color}; border-radius:10px; padding:15px; margin-bottom:10px; display:flex; align-items:center; width:100%; cursor: pointer;`;
                 
+                el.onclick = () => App.showOrderDetails(order.id);
+
                 el.querySelector('.btn-dismiss').onclick = (e) => {
                     e.stopPropagation();
                     if (order.status !== 'ready' && order.status !== 'completed' && !confirm(t('hide_order_confirm') || "Απόκρυψη παραγγελίας;")) return;
@@ -1483,6 +1537,30 @@ window.App = {
         document.getElementById('tableChoiceModal').style.display = 'flex';
     }
 };
+
+// Check for Email Link Sign In
+if (isSignInWithEmailLink(auth, window.location.href)) {
+    let email = window.localStorage.getItem('emailForSignIn');
+    if (!email) {
+        // User opened the link on a different device. To prevent session fixation
+        // attacks, ask the user to provide the email again. For example:
+        email = window.prompt(t('confirm_email_prompt') || 'Για να ολοκληρωθεί η είσοδος, παρακαλώ επιβεβαιώστε το email σας:');
+    }
+    if (email) {
+        signInWithEmailLink(auth, email, window.location.href)
+            .then((result) => {
+                // Clear email from storage.
+                window.localStorage.removeItem('emailForSignIn');
+                // You can access the new user via result.user
+                // Additional user info profile can be retrieved via:
+                // result.additionalUserInfo.profile
+            })
+            .catch((error) => {
+                console.error("Sign In with Email Link Error:", error);
+                alert((t('error') || 'Σφάλμα: ') + 'Could not complete sign in. ' + error.message);
+            });
+    }
+}
 
 onAuthStateChanged(auth, (user) => {
     if (user) { currentUser = user; App.checkDetails(); } 
